@@ -1,0 +1,25 @@
+# Cursor & AI Assistant Rules for Smart Triage & Clinical Intake Web Assistant (v2.0 Modular Architecture)
+# Always read PROJECT_RULES.md and CLINICAL_ALGORITHMS.md before modifying any files.
+
+1. Modular CC Architecture (Double-Click `file:///` Ready):
+   - `index.html`: Core UI shell & modals only (~1,377 lines). Injects CC forms into `#ccQuestionnairesContainer`. Loads `clinical_knowledge_core.js`, `cc_modules/*.js`, and `core_engine.js`.
+   - `clinical_knowledge_core.js`: Shared constants (`UNIVERSAL_DURATION_UNITS`, `PATIENT_TITLES`, `CHIEF_COMPLAINTS`, `AI_CONSULTANT_CONFIG`) and `registerCcModule(mod)` plugin loader.
+   - `cc_modules/XX_<cc_id>.js`: Self-contained symptom modules (1 file per Chief Complaint) containing `algorithm`, `seedPatients`, `formHtml`, `collectIntake`, `hydrateForm`, `isRedFlag`, `evaluateRedFlags`, `updateOutputs`, and `generateCds`.
+   - `core_engine.js`: FROZEN Core Engine (Queue, `localStorage`, RBAC, Universal Date `dd/mm/yyyy` & 24h Time `HH:mm`, Patient Switching, Doctor Dashboard).
+
+2. 5 Non-Negotiable Clinical UX & Date/Time Rules:
+   - Rule 1 (No Default Bias): NEVER pre-select radios, checkboxes, or Pain Score sliders. Untouched Pain Score must emit `null`.
+   - Rule 2 (Hidden Red Flags on Patient UI): Never show `🚩`, "Red Flag" labels, scary red borders, or presumptive diagnoses `(สงสัย...)` on the patient form (`#patientView` / `formHtml`).
+   - Rule 3 (Dual Translation): Translate layperson Thai into Doctor Thai Medical Summary (Rapid Bullet + Narrative with Pertinent Positives & Negatives) and English JSON Schema. Never use "ยอดอก" (always use "เหนือลิ้นปี่").
+   - Rule 4 (Progressive Disclosure & Dynamic Numbering): Hide sub-questions by default and reveal via `toggleBranch()`. Keep card numbering contiguous via `pmhSectionNumber` / `getPmhSectionNumber()` and `updateSectionNumbering()`.
+   - Rule 5 (Universal Date `dd/mm/yyyy` & 24-Hour Time `HH:mm`): NEVER use native `<input type="date">` or `<input type="time">`. Always use `data-universal-date="true"` (`dd/mm/yyyy`) and `data-universal-time="true"` (`HH:mm`, `00:00`-`23:59`, zero `AM`/`PM`).
+
+3. Strict Verification & Isolation Protocol:
+   - Core System Freeze: DO NOT modify `core_engine.js` or the core layout of `index.html` when adding a new CC without explicit user approval. Add new CCs exclusively by creating `cc_modules/XX_<cc_id>.js` and adding its `<script>` tag to `index.html`.
+   - Mandatory 4-Dimension Core Guard TDD: Always run `node tests/core_guard_test.js` and verify 0 failures across all 4 dimensions (DOM/UX/Date-Time, Save Persistence, Patient A<->B Isolation, and Doctor Dashboard/JSON/CDS Render) before reporting completion.
+   - Circuit Breaker: If the same bug/test failure persists after 3 consecutive fix attempts, STOP modifying code immediately and write a root-cause analysis to `ERROR_REPORT.md`.
+   - Audit & Checkpoints: Run `node scripts/audit.js` to generate `AUDIT_REPORT.md` and use `node scripts/checkpoint.js save <tag> "<message>"` to create rollback checkpoints.
+
+4. Documentation & Handover Standards (Pragmatic Doc-as-Code):
+   - Quota-Friendly Inline Comments: DO NOT write redundant JSDocs or syntax explanations inside `.js` files to strictly preserve line quotas (`index <= 2000`, `core <= 3200`, `cc <= 2000`). Only write concise 1-2 line comments for Technical Workarounds (CORS, Thermal QR, WebUSB/Serial quirks) and Architectural Guardrails (FROZEN, Zero Default Bias, Proxy Interceptors).
+   - Continuous Catalog Sync: Every time a CC module is added or modified in `cc_modules/`, immediately update `docs/CC_MODULES_CATALOG.md`. Every time a core payload, hardware (WebUSB/Serial), or API interface changes in `core_engine.js` or `clinical_knowledge_core.js`, immediately update `docs/DEV_HANDOVER_ARCHITECTURE.md`. For clinician workflows, refer to and maintain `docs/CLINICIAN_CC_AUTHORING_GUIDE.md`.

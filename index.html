@@ -1,0 +1,1989 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover">
+  <title>MedHistory Assistant - ระบบช่วยซักประวัติอัจฉริยะ (ER Smart Intake)</title>
+  <!-- PWA & Mobile Web App Capabilities for ER Staff -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="ER Intake">
+  <meta name="theme-color" content="#0284c7">
+  <!-- Google Fonts: Prompt & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Prompt:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons CDN -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- QRCode.js CDN for Offline & Standalone QR Ticket Generation -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Prompt', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            medical: {
+              50: '#f0f9ff',
+              100: '#e0f2fe',
+              200: '#bae6fd',
+              500: '#0284c7',
+              600: '#0369a1',
+              700: '#075985',
+              800: '#0c4a6e',
+              900: '#082f49',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    /* Custom scrollbars */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #f1f5f9;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+
+    /* Uniform Choice Card styling - No bias between high/low risk */
+    .selectable-card,
+    .selection-card {
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      border: 1.5px solid #e2e8f0;
+      background-color: #ffffff;
+      color: #334155;
+    }
+    .selectable-card:hover,
+    .selection-card:hover {
+      border-color: #cbd5e1;
+      background-color: #f8fafc;
+    }
+    /* Distinct highlighted background when selected */
+    .selectable-input:checked + .selectable-card,
+    .selectable-input:checked + .selection-card,
+    .selectable-card:has(input:checked),
+    .selection-card:has(input:checked) {
+      border-color: #0284c7 !important;
+      background-color: #f0f9ff !important;
+      color: #0c4a6e !important;
+      box-shadow: 0 1px 3px 0 rgba(2, 132, 199, 0.15);
+    }
+    .branch-card {
+      animation: fadeIn 0.25s ease-out;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* iOS 16px Auto-Zoom Shield: Prevents iOS Safari from zooming in on text inputs */
+    @media (max-width: 768px) {
+      input[type="text"],
+      input[type="number"],
+      input[type="password"],
+      select,
+      textarea {
+        font-size: 16px !important;
+      }
+    }
+
+    /* Safe Area Insets for Notch, Dynamic Island & Home Indicator */
+    .pt-safe { padding-top: env(safe-area-inset-top, 0px); }
+    .pb-safe { padding-bottom: max(1rem, env(safe-area-inset-bottom, 0px)); }
+    .pl-safe { padding-left: env(safe-area-inset-left, 0px); }
+    .pr-safe { padding-right: env(safe-area-inset-right, 0px); }
+
+    /* Touch Targets & Ergonomics */
+    .selectable-card,
+    .selection-card {
+      min-height: 44px;
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    /* Touch-Friendly ER Queue Carousel */
+    #patientQueueList {
+      -webkit-overflow-scrolling: touch;
+      scroll-snap-type: x mandatory;
+    }
+    #patientQueueList > div {
+      scroll-snap-align: start;
+    }
+
+    /* In-App Device Viewport Frame Simulator (for testing on Desktop) */
+    .sim-frame-mobile-se {
+      max-width: 375px !important;
+      margin: 20px auto !important;
+      box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.4);
+      border-radius: 36px;
+      border: 12px solid #0f172a;
+      overflow: hidden;
+      background: #f8fafc;
+    }
+    .sim-frame-mobile-std {
+      max-width: 414px !important;
+      margin: 20px auto !important;
+      box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.4);
+      border-radius: 36px;
+      border: 12px solid #0f172a;
+      overflow: hidden;
+      background: #f8fafc;
+    }
+    .sim-frame-tablet {
+      max-width: 820px !important;
+      margin: 20px auto !important;
+      box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.4);
+      border-radius: 28px;
+      border: 14px solid #0f172a;
+      overflow: hidden;
+      background: #f8fafc;
+    }
+
+    /* Container-Scoped Responsive Overrides for In-App Viewport Simulator on PC */
+    body.sim-viewport-mobile-se > header { max-width: 375px !important; margin: 0 auto !important; width: 100% !important; }
+    body.sim-viewport-mobile-std > header { max-width: 414px !important; margin: 0 auto !important; width: 100% !important; }
+    body.sim-viewport-tablet > header { max-width: 820px !important; margin: 0 auto !important; width: 100% !important; }
+    body.sim-viewport-mobile-se #mainNavTabs,
+    body.sim-viewport-mobile-std #mainNavTabs { display: none !important; }
+
+    .sim-frame-mobile-se #doctorMobileTabs,
+    .sim-frame-mobile-std #doctorMobileTabs,
+    .sim-frame-tablet #doctorMobileTabs { display: flex !important; }
+
+    .sim-frame-mobile-se #toggleJsonDevBtn,
+    .sim-frame-mobile-std #toggleJsonDevBtn,
+    .sim-frame-tablet #toggleJsonDevBtn,
+    .sim-frame-mobile-se #doctorJsonCol,
+    .sim-frame-mobile-std #doctorJsonCol,
+    .sim-frame-tablet #doctorJsonCol { display: none !important; }
+
+    .sim-frame-mobile-se #doctorCdsSection.hidden,
+    .sim-frame-mobile-std #doctorCdsSection.hidden,
+    .sim-frame-tablet #doctorCdsSection.hidden,
+    .sim-frame-mobile-se #doctorTextCol.hidden,
+    .sim-frame-mobile-std #doctorTextCol.hidden,
+    .sim-frame-tablet #doctorTextCol.hidden,
+    .sim-frame-mobile-se #doctorAddendumCard.hidden,
+    .sim-frame-mobile-std #doctorAddendumCard.hidden,
+    .sim-frame-tablet #doctorAddendumCard.hidden { display: none !important; }
+
+    .sim-frame-mobile-se,
+    .sim-frame-mobile-std { padding: 1rem !important; }
+    .sim-frame-tablet { padding: 1.5rem !important; }
+
+    .sim-frame-mobile-se input[type="text"],
+    .sim-frame-mobile-se input[type="number"],
+    .sim-frame-mobile-se input[type="password"],
+    .sim-frame-mobile-se select,
+    .sim-frame-mobile-se textarea,
+    .sim-frame-mobile-std input[type="text"],
+    .sim-frame-mobile-std input[type="number"],
+    .sim-frame-mobile-std input[type="password"],
+    .sim-frame-mobile-std select,
+    .sim-frame-mobile-std textarea { font-size: 16px !important; }
+
+    .sim-frame-mobile-se [class*="sm:grid-cols-"],
+    .sim-frame-mobile-se [class*="md:grid-cols-"],
+    .sim-frame-mobile-se [class*="lg:grid-cols-"],
+    .sim-frame-mobile-std [class*="sm:grid-cols-"],
+    .sim-frame-mobile-std [class*="md:grid-cols-"],
+    .sim-frame-mobile-std [class*="lg:grid-cols-"] { grid-template-columns: repeat(1, minmax(0, 1fr)) !important; }
+
+    .sim-frame-mobile-se #docVsGrid,
+    .sim-frame-mobile-std #docVsGrid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+    .sim-frame-tablet #docVsGrid { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+    .sim-frame-tablet [class*="lg:grid-cols-4"] { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+
+    .sim-frame-mobile-se [class*="sm:col-span-"],
+    .sim-frame-mobile-se [class*="md:col-span-"],
+    .sim-frame-mobile-se [class*="lg:col-span-"],
+    .sim-frame-mobile-std [class*="sm:col-span-"],
+    .sim-frame-mobile-std [class*="md:col-span-"],
+    .sim-frame-mobile-std [class*="lg:col-span-"],
+    .sim-frame-tablet [class*="lg:col-span-"] { grid-column: span 1 / span 1 !important; }
+
+    .sim-frame-mobile-se [class*="sm:flex-row"],
+    .sim-frame-mobile-se [class*="md:flex-row"],
+    .sim-frame-mobile-se [class*="lg:flex-row"],
+    .sim-frame-mobile-std [class*="sm:flex-row"],
+    .sim-frame-mobile-std [class*="md:flex-row"],
+    .sim-frame-mobile-std [class*="lg:flex-row"] { flex-direction: column !important; align-items: stretch !important; }
+  </style>
+</head>
+<body class="bg-slate-100 text-slate-800 font-sans min-h-screen flex flex-col overflow-x-hidden">
+
+  <!-- DEV ROLE SWITCHER & SECURITY SIMULATOR BAR -->
+  <div id="devRoleBar" class="bg-slate-900 text-slate-200 border-b border-slate-800 px-3 sm:px-6 py-1.5 text-[11px] z-50 overflow-x-auto">
+    <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2">
+      <div class="flex items-center space-x-2">
+        <span class="bg-amber-500/20 text-amber-300 border border-amber-500/30 font-mono font-bold px-2 py-0.5 rounded text-[10px]">ROLE SIMULATOR</span>
+        <span class="text-slate-400 hidden md:inline">สลับมุมมองเพื่อทดสอบสิทธิ์การเข้าถึง (Patient QR vs ER Doctor vs Admin):</span>
+      </div>
+      <div class="flex flex-wrap items-center gap-1.5">
+        <!-- In-App Device Viewport Simulator Buttons (for easy testing on PC) -->
+        <div class="hidden lg:flex items-center space-x-1 bg-slate-800 border border-slate-700/80 px-2 py-0.5 rounded-lg text-[10px] mr-1">
+          <span class="text-slate-400 font-mono">📱 VIEWPORT:</span>
+          <button type="button" onclick="setDeviceViewportSimulator('desktop')" id="simBtnDesktop" title="เต็มจอคอมพิวเตอร์ปกติ (Full Screen)" class="px-1.5 py-0.5 rounded font-bold bg-slate-700 text-white transition">Full</button>
+          <button type="button" onclick="setDeviceViewportSimulator('tablet')" id="simBtnTablet" title="จำลองจอ iPad / Tablet (820px)" class="px-1.5 py-0.5 rounded text-slate-300 hover:text-white transition">iPad (820)</button>
+          <button type="button" onclick="setDeviceViewportSimulator('mobile_std')" id="simBtnMobileStd" title="จำลองจอ iPhone 15/Android (414px)" class="px-1.5 py-0.5 rounded text-slate-300 hover:text-white transition">Mobile (414)</button>
+          <button type="button" onclick="setDeviceViewportSimulator('mobile_se')" id="simBtnMobileSe" title="จำลองจอเล็ก iPhone SE (375px)" class="px-1.5 py-0.5 rounded text-slate-300 hover:text-white transition">SE (375)</button>
+        </div>
+
+        <button type="button" id="roleBtnPatient" onclick="switchUserRole('patient')" class="px-2.5 py-1 rounded-lg text-[11px] font-medium bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white transition flex items-center space-x-1">
+          <i data-lucide="qr-code" class="w-3 h-3"></i>
+          <span>มุมมองผู้ป่วย (Scan QR)</span>
+        </button>
+        <button type="button" id="roleBtnDoctor" onclick="switchUserRole('doctor')" class="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-medical-500 text-white shadow-xs transition flex items-center space-x-1">
+          <i data-lucide="stethoscope" class="w-3.5 h-3.5"></i>
+          <span>มุมมองแพทย์ (ER Doctor)</span>
+        </button>
+        <button type="button" id="roleBtnAdmin" onclick="switchUserRole('admin')" class="px-2.5 py-1 rounded-lg text-[11px] font-medium bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white transition flex items-center space-x-1">
+          <i data-lucide="shield-check" class="w-3 h-3"></i>
+          <span>Admin</span>
+        </button>
+        <button type="button" onclick="openTriageSimulatorModal()" class="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-teal-600 hover:bg-teal-500 text-white shadow-xs transition flex items-center space-x-1">
+          <i data-lucide="clipboard-check" class="w-3 h-3"></i>
+          <span>🏥 จุดคัดกรอง & พิมพ์บัตรคิว QR</span>
+        </button>
+        <button type="button" id="devSimulateQrBtn" onclick="simulateNewQrQueuePass()" class="hidden px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-emerald-600 hover:bg-emerald-500 text-white transition flex items-center space-x-1">
+          <i data-lucide="ticket" class="w-3 h-3"></i>
+          <span>จำลองสแกน QR คิวใหม่</span>
+        </button>
+        <button type="button" id="devLockStaffBtn" onclick="lockStaffSession()" title="ทดสอบหน้าล็อกอินแพทย์" class="px-2 py-1 rounded-lg text-[11px] font-medium bg-slate-800 hover:bg-rose-900/60 text-slate-300 hover:text-rose-200 border border-slate-700 transition flex items-center space-x-1">
+          <i data-lucide="lock" class="w-3 h-3"></i>
+          <span class="hidden sm:inline">ทดสอบหน้า Login</span>
+        </button>
+        <!-- Reset Test DB Button (ย้ายมารวมใน ROLE SIMULATOR) -->
+        <button type="button" id="resetDbBtn" onclick="confirmResetDatabase()" title="ล้างข้อมูลทดสอบและคืนค่าเริ่มต้น" class="px-2 py-1 rounded-lg text-[11px] font-semibold bg-rose-900/60 hover:bg-rose-800 text-rose-200 border border-rose-700/60 transition flex items-center space-x-1">
+          <i data-lucide="rotate-ccw" class="w-3 h-3 text-rose-300"></i>
+          <span>รีเซ็ตข้อมูลทดสอบ (Reset DB)</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOP APP BAR -->
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-sm w-full">
+    <div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-2 sm:gap-4">
+      
+      <!-- Brand & Status -->
+      <div class="flex items-center space-x-2 sm:space-x-2.5 cursor-pointer min-w-0" onclick="navigateTo('landing')">
+        <div class="bg-medical-600 text-white p-2 rounded-xl shadow-sm flex items-center justify-center shrink-0">
+          <i data-lucide="activity" class="w-4 h-4 sm:w-5 sm:h-5"></i>
+        </div>
+        <div class="min-w-0">
+          <div class="flex items-center space-x-1.5 sm:space-x-2">
+            <span class="font-bold text-sm sm:text-base md:text-lg text-slate-900 leading-none truncate">MedHistory Assistant</span>
+            <span class="bg-emerald-100 text-emerald-800 text-[10px] font-semibold px-1.5 sm:px-2 py-0.5 rounded-full shrink-0">รพ.ราชบุรี ER</span>
+          </div>
+          <p class="text-[11px] sm:text-xs text-slate-500 hidden md:block truncate mt-0.5">ระบบช่วยซักประวัติอัจฉริยะ & คิวตรวจห้องฉุกเฉิน</p>
+        </div>
+      </div>
+
+      <!-- Mode Switcher, Badges & Actions -->
+      <div class="flex items-center space-x-1.5 sm:space-x-2 shrink-0">
+        <!-- Patient QR Queue Badge (Visible ONLY in Patient Role) -->
+        <div id="patientQrHeaderBadge" class="hidden items-center space-x-1 sm:space-x-1.5 bg-emerald-50 border border-emerald-300 text-emerald-800 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl text-xs font-semibold shrink-0">
+          <span class="text-[11px] sm:text-xs text-emerald-700">คิวของคุณ:</span>
+          <strong id="headerQrQueueNo" class="font-mono text-emerald-900 text-xs sm:text-sm">A-054</strong>
+        </div>
+
+        <!-- Staff Session Badge (Visible in Doctor/Admin Role only) -->
+        <!-- Protected with max-w-[125px] on mobile and text-truncate so even long doctor names never overlap or break layout -->
+        <div id="staffHeaderBadge" class="hidden items-center space-x-1.5 bg-sky-50 border border-sky-200 text-sky-800 px-2 sm:px-2.5 py-1 rounded-xl text-xs font-medium max-w-[125px] xs:max-w-[145px] sm:max-w-[200px] md:max-w-xs shrink-0 cursor-default" title="นพ.เวรฉุกเฉิน (ER Attending)">
+          <i data-lucide="user-check" class="w-3.5 h-3.5 text-sky-600 shrink-0"></i>
+          <span id="staffHeaderName" class="truncate block">นพ.เวรฉุกเฉิน (ER Attending)</span>
+        </div>
+
+        <!-- Navigation Segmented Tabs (Visible in Doctor/Admin Role on Tablet/Desktop only) -->
+        <div id="mainNavTabs" class="hidden sm:flex items-center bg-slate-200/80 p-1 rounded-xl shadow-inner text-xs shrink-0">
+          <button id="navLandingBtn" onclick="navigateTo('landing')" class="hidden lg:flex items-center space-x-1 px-2.5 py-1.5 rounded-lg font-medium transition text-slate-600 hover:text-slate-900">
+            <i data-lucide="layout-grid" class="w-3.5 h-3.5"></i>
+            <span>เลือกอาการนำ</span>
+          </button>
+          <button id="navPatientBtn" onclick="navigateTo('patient')" class="hidden lg:flex items-center space-x-1 px-2.5 py-1.5 rounded-lg font-medium transition text-slate-600 hover:text-slate-900">
+            <i data-lucide="user-plus" class="w-3.5 h-3.5"></i>
+            <span>คนไข้ตอบประวัติ</span>
+          </button>
+          <button id="navDoctorBtn" onclick="navigateTo('doctor')" class="flex items-center space-x-1 px-2.5 py-1.5 rounded-lg font-medium transition bg-white text-medical-700 shadow-sm">
+            <i data-lucide="stethoscope" class="w-3.5 h-3.5"></i>
+            <span class="hidden sm:inline">ห้องตรวจแพทย์</span>
+            <span class="sm:hidden">ห้องตรวจ</span>
+            <span id="redFlagDot" class="hidden w-2 h-2 rounded-full bg-rose-500 animate-pulse ml-0.5"></span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN CONTAINER -->
+  <main id="mainAppContainer" class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 transition-all duration-300">
+
+    <!-- ========================================================================= -->
+    <!-- VIEW 0: CHIEF COMPLAINTS LANDING PAGE (หน้าเลือกอาการนำ 23 รายการ)          -->
+    <!-- ========================================================================= -->
+    <section id="ccLandingView" class="hidden transition-all duration-200">
+      <div class="max-w-4xl mx-auto">
+        <!-- QR Code Triage Queue Ticket Banner -->
+        <div id="qrQueueTicketBanner" class="mb-4 bg-gradient-to-r from-emerald-600 to-teal-700 text-white rounded-2xl p-4 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div class="flex items-center space-x-3">
+            <div class="bg-white/20 p-2.5 rounded-xl backdrop-blur-xs shrink-0">
+              <i data-lucide="qr-code" class="w-6 h-6 text-white"></i>
+            </div>
+            <div class="min-w-0">
+              <div class="flex items-center space-x-2">
+                <span class="text-[11px] uppercase tracking-wider font-semibold bg-white/20 px-2 py-0.5 rounded-full truncate">บัตรคิวจุดคัดกรอง (Verified Triage QR Pass)</span>
+              </div>
+              <div class="flex items-baseline flex-wrap gap-x-1.5 mt-1">
+                <span class="text-xs sm:text-sm font-semibold opacity-90 shrink-0">
+                  <span class="sm:hidden">คิวของคุณ:</span>
+                  <span class="hidden sm:inline">หมายเลขคิวของคุณ:</span>
+                </span>
+                <span class="font-bold text-sm sm:text-base whitespace-nowrap">
+                  <span class="font-mono text-amber-300 text-base sm:text-lg qr-pass-queue-display">A-054</span>
+                  <span class="text-xs font-normal text-emerald-100 ml-1.5 whitespace-nowrap">(HN: <span class="font-mono qr-pass-hn-display">6788412</span>)</span>
+                </span>
+              </div>
+            </div>
+          </div>
+          <div class="flex items-center space-x-2 self-end sm:self-auto shrink-0">
+            <button type="button" onclick="openTriageSimulatorModal()" class="px-3 py-1.5 bg-white/15 hover:bg-white/25 border border-white/25 rounded-xl text-xs font-semibold text-white transition flex items-center space-x-1.5">
+              <i data-lucide="printer" class="w-3.5 h-3.5"></i>
+              <span>จุดคัดกรอง / พิมพ์บัตรคิวใหม่</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Hero Banner -->
+        <div class="text-center py-4 sm:py-6">
+          <span class="bg-medical-100 text-medical-700 text-xs font-semibold px-3 py-1 rounded-full uppercase tracking-wider">ห้องฉุกเฉิน โรงพยาบาลราชบุรี</span>
+          <h1 class="text-2xl sm:text-3xl font-bold text-slate-900 mt-2">กรุณาเลือกอาการสำคัญที่นำท่านมาโรงพยาบาล</h1>
+          <p class="text-xs sm:text-sm text-slate-500 mt-2 max-w-2xl mx-auto">
+            เลือกอาการที่ตรงกับความรู้สึกหรือปัญหาหลักของท่าน เพื่อเริ่มการตอบประวัติอาการอย่างแม่นยำ
+          </p>
+        </div>
+
+        <!-- Search / Filter input -->
+        <div class="relative mb-6 max-w-md mx-auto">
+          <i data-lucide="search" class="w-4 h-4 absolute left-3.5 top-3 text-slate-400"></i>
+          <input type="text" id="ccSearchInput" oninput="filterChiefComplaints()" placeholder="ค้นหาอาการสำคัญ เช่น ปวดท้อง, ไข้, หอบเหนื่อย..." 
+            class="w-full bg-white border border-slate-300 rounded-xl pl-10 pr-4 py-2 text-xs sm:text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-medical-500 shadow-sm">
+        </div>
+
+        <!-- 23 Chief Complaints Grid -->
+        <div id="ccGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          <!-- Dynamically populated below -->
+        </div>
+
+        <div class="mt-8 text-center bg-slate-50 border border-slate-200 rounded-2xl p-4 text-xs text-slate-500">
+          <p>💡 ในเวอร์ชันปัจจุบัน ระบบเปิดใช้งานอัลกอริทึมซักประวัติเชิงลึกครบ 18 อาการสำคัญของห้องฉุกเฉิน พร้อมระบบ Built-in CDS และคัดกรองสัญญาณเตือนวิกฤต (Red Flags)</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================================================= -->
+    <!-- VIEW 1: PATIENT INTAKE MODE (มุมมองคนไข้ - สำหรับซักประวัติไข้)             -->
+    <!-- ========================================================================= -->
+    <section id="patientView" class="hidden max-w-3xl mx-auto transition-all duration-200">
+
+      <!-- Breadcrumb & Back to Landing Page -->
+      <div class="mb-4 flex items-center justify-between">
+        <button onclick="navigateTo('landing')" class="inline-flex items-center text-xs font-medium text-medical-600 hover:text-medical-800 bg-white border border-slate-200 rounded-xl px-3 py-1.5 shadow-xs transition">
+          <i data-lucide="arrow-left" class="w-3.5 h-3.5 mr-1.5"></i>
+          <span>เลือกอาการนำอื่น (กลับหน้าแรก)</span>
+        </button>
+        <span class="text-xs text-slate-400">ระบบคัดกรอง: <strong class="text-slate-700 font-mono">รพ.ราชบุรี</strong></span>
+      </div>
+
+      <!-- Patient Header Info Card -->
+      <div class="bg-gradient-to-r from-medical-600 to-medical-700 rounded-2xl p-5 text-white shadow-md mb-6 relative overflow-hidden">
+        <div class="relative z-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div>
+            <div class="flex items-center space-x-2">
+              <span class="bg-white/20 text-white text-xs px-2.5 py-0.5 rounded-full font-medium">ห้องฉุกเฉิน (ER)</span>
+              <span class="text-xs text-medical-100">ผู้ป่วยใหม่ / คิวรอตรวจ</span>
+            </div>
+            <!-- ข้อ 1: แยกบรรทัดภาษาไทยกับภาษาอังกฤษ -->
+            <h1 class="text-xl sm:text-2xl font-bold mt-1 leading-tight">
+              <span id="patientFormHeaderTitleTh">แบบฟอร์มซักประวัติ: มีไข้ / หนาวสั่น</span>
+              <span id="patientFormHeaderTitleEn" class="block text-xs sm:text-sm font-normal text-medical-100 font-sans tracking-wide mt-0.5">(Fever / Chills)</span>
+            </h1>
+            <!-- ข้อ 2: ข้อความมาตรฐานเหมือนกันทุก CC -->
+            <p id="patientFormHeaderSubtitle" class="text-xs sm:text-sm text-medical-100 mt-1.5">กรุณาเลือกอาการที่ตรงกับท่าน เพื่อให้ท่านได้รับการรักษาอย่างถูกต้องและเหมาะสม</p>
+          </div>
+          <div class="bg-white/15 backdrop-blur-sm rounded-2xl px-5 py-3.5 flex flex-col items-center justify-center border border-white/25 shadow-xs flex-shrink-0">
+            <span class="text-xs font-medium text-medical-100 tracking-wide whitespace-nowrap">อาการหลัก (Chief Complaint)</span>
+            <span id="patientFormCcBadge" class="text-base sm:text-lg font-extrabold flex items-center justify-center gap-2 text-amber-300 mt-1 whitespace-nowrap">
+              <i data-lucide="flame" class="w-5 h-5 sm:w-6 sm:h-6 flex-shrink-0"></i>
+              <span class="whitespace-nowrap">ไข้ / หนาวสั่น</span>
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- EDIT EXISTING HISTORY BANNER (แสดงเมื่อผู้ป่วยหรือแพทย์กำลังแก้ไขประวัติเดิม) -->
+      <div id="formEditModeBanner" class="hidden mb-5 bg-amber-50 border-2 border-amber-400 rounded-2xl p-4 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div class="flex items-center space-x-3">
+          <div class="bg-amber-500 text-white p-2 rounded-xl flex-shrink-0">
+            <i data-lucide="file-edit" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <h3 class="text-xs sm:text-sm font-bold text-amber-900" id="formEditModeLabel">กำลังแก้ไขข้อมูลประวัติที่ได้บันทึกไว้</h3>
+            <p class="text-[11px] text-amber-700 mt-0.5">ท่านสามารถปรับเปลี่ยนหรือเพิ่มเติมคำตอบด้านล่าง แล้วกดปุ่มบันทึกการแก้ไขที่ด้านล่างสุดของฟอร์ม</p>
+          </div>
+        </div>
+        <button type="button" onclick="cancelFormEditMode()" class="px-3.5 py-1.5 bg-white hover:bg-amber-100 text-amber-900 border border-amber-300 rounded-xl text-xs font-semibold transition self-end sm:self-auto flex items-center space-x-1">
+          <i data-lucide="x" class="w-3.5 h-3.5"></i>
+          <span>ยกเลิกการแก้ไข</span>
+        </button>
+      </div>
+
+      <form id="intakeForm" onsubmit="handlePatientSubmit(event)" novalidate class="space-y-6">
+
+        <!-- CARD 0: ข้อมูลทั่วไปของผู้ป่วย (ชื่อ-นามสกุล, อายุ, เพศ) -->
+        <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+          <div class="flex items-center space-x-3 mb-4 pb-3 border-b border-slate-100">
+            <div class="bg-medical-100 text-medical-700 p-2 rounded-xl">
+              <i data-lucide="user" class="w-5 h-5"></i>
+            </div>
+            <div>
+              <h2 class="text-base font-bold text-slate-900">ข้อมูลผู้ป่วยเบื้องต้น</h2>
+              <p class="text-xs text-slate-500">ข้อมูลสำหรับระบุตัวตนในระบบคิวห้องฉุกเฉิน</p>
+            </div>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-12 gap-3">
+            <div class="sm:col-span-3">
+              <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">คำนำหน้าชื่อ <span class="text-rose-500">*</span></label>
+              <select id="patientTitleSelect" onchange="handlePatientTitleChange()"
+                class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 text-slate-800 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-medical-500 focus:bg-white">
+                <option value="" disabled selected>เลือกคำนำหน้า</option>
+                <option value="นาย (Mr.)">นาย (Mr.)</option>
+                <option value="นาง (Mrs.)">นาง (Mrs.)</option>
+                <option value="นางสาว (Ms.)">นางสาว (Ms.)</option>
+                <option value="ด.ช. (Master)">ด.ช. (Master)</option>
+                <option value="ด.ญ. (Miss)">ด.ญ. (Miss)</option>
+              </select>
+            </div>
+            <div class="sm:col-span-6">
+              <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">ชื่อ-นามสกุล <span class="text-rose-500">*</span></label>
+              <input type="text" id="patientNameInput" placeholder="เช่น สมคิด สุขเกษม" 
+                class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-medical-500 focus:bg-white placeholder:text-slate-400">
+            </div>
+            <div class="sm:col-span-3">
+              <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">อายุ (ปี) <span class="text-rose-500">*</span></label>
+              <input type="number" id="patientAgeInput" min="1" max="120" placeholder="เช่น 45" oninput="checkSeizurePediatricAgeGuidance()" 
+                class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-medical-500 focus:bg-white placeholder:text-slate-400">
+            </div>
+          </div>
+        </div>
+
+        <!-- ================================================================= -->
+        <!-- MODULAR CHIEF COMPLAINT QUESTIONNAIRES CONTAINER (cc_modules/)    -->
+        <!-- ================================================================= -->
+        <div id="ccQuestionnairesContainer" class="space-y-6"></div>
+
+        <!-- CARD 3: หมวดประวัติสุขภาพและยาประจำตัว -->
+        <!-- ข้อ 1: ลบค่า default ทั้งหมดออก ให้เป็นช่องว่าง placeholder ตัวซีด -->
+        <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+          <div class="flex items-center space-x-3 mb-4 pb-3 border-b border-slate-100">
+            <div class="bg-medical-100 text-medical-700 p-2 rounded-xl">
+              <i data-lucide="clipboard-list" class="w-5 h-5"></i>
+            </div>
+            <div>
+              <h2 class="text-base font-bold text-slate-900"><span id="pmhSectionNumber">3</span>. ประวัติสุขภาพและยาประจำตัว</h2>
+              <p class="text-xs text-slate-500">ข้อมูลพื้นฐานเพื่อความปลอดภัยในการรักษาและการสั่งยา</p>
+            </div>
+          </div>
+
+          <div class="space-y-5">
+
+            <!-- ข้อ 1 & 7: ตัวเลือกประวัติกับรพ.ราชบุรี (ไม่ถูกเลือกไว้ก่อน) -->
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
+                ประวัติการรักษาเดิมกับโรงพยาบาลราชบุรี
+              </label>
+              <div class="grid grid-cols-1 gap-2">
+                <label class="selectable-card flex items-center p-3 rounded-xl cursor-pointer">
+                  <input type="radio" name="hospRecordStatus" value="complete" onchange="handleHospRecordChange(this.value)" class="text-medical-600 focus:ring-medical-500 h-4 w-4">
+                  <div class="ml-3">
+                    <span class="text-xs sm:text-sm font-semibold block text-slate-800">มีประวัติกับ รพ.ราชบุรี ครบถ้วน</span>
+                    <span class="text-[11px] text-slate-500">แพทย์สามารถดึงข้อมูลโรคประจำตัว ยาเดิม และประวัติแพ้ยา/แพ้อาหารจากฐานข้อมูล รพ. ได้ทันที</span>
+                  </div>
+                </label>
+                <label class="selectable-card flex items-center p-3 rounded-xl cursor-pointer">
+                  <input type="radio" name="hospRecordStatus" value="additional" onchange="handleHospRecordChange(this.value)" class="text-medical-600 focus:ring-medical-500 h-4 w-4">
+                  <div class="ml-3">
+                    <span class="text-xs sm:text-sm font-semibold block text-slate-800">มีประวัติกับ รพ.ราชบุรี และขอให้ข้อมูลเพิ่มเติม</span>
+                    <span class="text-[11px] text-slate-500">มีโรคประจำตัวหรือยาใหม่ที่เริ่มทานเพิ่ม หรือต้องการอัปเดตข้อมูล</span>
+                  </div>
+                </label>
+                <label class="selectable-card flex items-center p-3 rounded-xl cursor-pointer">
+                  <input type="radio" name="hospRecordStatus" value="self" onchange="handleHospRecordChange(this.value)" class="text-medical-600 focus:ring-medical-500 h-4 w-4">
+                  <div class="ml-3">
+                    <span class="text-xs sm:text-sm font-semibold block text-slate-800">ขอให้ข้อมูลด้วยตัวเองทั้งหมด (ผู้ป่วยใหม่ / ไม่มีประวัติเดิม)</span>
+                    <span class="text-[11px] text-slate-500">ต้องการระบุโรคประจำตัว ยา และประวัติแพ้ยา/แพ้อาหารด้วยตนเองทั้งหมด</span>
+                  </div>
+                </label>
+              </div>
+            </div>
+
+            <!-- ข้อความแจ้งเตือนเมื่อเลือก "มีประวัติครบถ้วน" -->
+            <div id="hospRecordCompleteNotice" class="hidden bg-emerald-50 border border-emerald-300 rounded-xl p-4 text-xs text-emerald-800 flex items-center space-x-2">
+              <i data-lucide="check-circle-2" class="w-5 h-5 text-emerald-600 flex-shrink-0"></i>
+              <span>ท่านเลือก <strong>"มีประวัติกับ รพ.ราชบุรี ครบถ้วน"</strong> ระบบจะดึงข้อมูลโรคประจำตัว รายการยา และประวัติแพ้ยา/แพ้อาหารเดิมจากฐานข้อมูล รพ.ราชบุรี ให้แพทย์ห้องฉุกเฉินโดยอัตโนมัติ (ท่านสามารถกดส่งข้อมูลได้ทันที)</span>
+            </div>
+
+            <!-- ส่วนกรอกข้อมูลสุขภาพเพิ่มเติม: จะแสดงเมื่อเลือกกลุ่ม 2 หรือ 3 -->
+            <div id="pmhDetailsSection" class="hidden space-y-4 pt-2 border-t border-slate-100">
+
+              <!-- โรคประจำตัว -->
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">โรคประจำตัวที่มี (เลือกได้หลายข้อ)</label>
+                <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-2">
+                  <label class="selectable-card flex items-center p-2.5 rounded-lg text-xs cursor-pointer">
+                    <input type="checkbox" id="ud_dm" class="rounded text-medical-600 h-3.5 w-3.5">
+                    <span class="ml-2 font-medium">เบาหวาน (DM)</span>
+                  </label>
+                  <label class="selectable-card flex items-center p-2.5 rounded-lg text-xs cursor-pointer">
+                    <input type="checkbox" id="ud_ht" class="rounded text-medical-600 h-3.5 w-3.5">
+                    <span class="ml-2 font-medium">ความดันสูง (HT)</span>
+                  </label>
+                  <label class="selectable-card flex items-center p-2.5 rounded-lg text-xs cursor-pointer">
+                    <input type="checkbox" id="ud_dlp" class="rounded text-medical-600 h-3.5 w-3.5">
+                    <span class="ml-2 font-medium">ไขมันในเลือดสูง (DLP)</span>
+                  </label>
+                  <label class="selectable-card flex items-center p-2.5 rounded-lg text-xs cursor-pointer">
+                    <input type="checkbox" id="ud_cad" onchange="toggleBranch('ud_cad_detail_wrap', this.checked)" class="rounded text-medical-600 h-3.5 w-3.5">
+                    <span class="ml-2 font-medium">หลอดเลือดหัวใจ (CAD)</span>
+                  </label>
+                  <label class="selectable-card flex items-center p-2.5 rounded-lg text-xs cursor-pointer">
+                    <input type="checkbox" id="ud_stroke" class="rounded text-medical-600 h-3.5 w-3.5">
+                    <span class="ml-2 font-medium">หลอดเลือดสมอง (Stroke)</span>
+                  </label>
+                  <label class="selectable-card flex items-center p-2.5 rounded-lg text-xs cursor-pointer">
+                    <input type="checkbox" id="ud_ckd" class="rounded text-medical-600 h-3.5 w-3.5">
+                    <span class="ml-2 font-medium">ไตเรื้อรัง (CKD)</span>
+                  </label>
+                  <label class="selectable-card flex items-center p-2.5 rounded-lg text-xs cursor-pointer">
+                    <input type="checkbox" id="ud_asthma" onchange="handleAsthmaCopdToggle()" class="rounded text-medical-600 h-3.5 w-3.5">
+                    <span class="ml-2 font-medium">หอบหืด (Asthma)</span>
+                  </label>
+                  <label class="selectable-card flex items-center p-2.5 rounded-lg text-xs cursor-pointer">
+                    <input type="checkbox" id="ud_copd" onchange="handleAsthmaCopdToggle()" class="rounded text-medical-600 h-3.5 w-3.5">
+                    <span class="ml-2 font-medium">ถุงลมโป่งพอง (COPD)</span>
+                  </label>
+                  <label class="selectable-card flex items-center p-2.5 rounded-lg text-xs cursor-pointer">
+                    <input type="checkbox" id="ud_cancer" onchange="toggleBranch('cancer_type_wrap', this.checked)" class="rounded text-medical-600 h-3.5 w-3.5">
+                    <span class="ml-2 font-medium">มะเร็ง (Cancer)</span>
+                  </label>
+                </div>
+
+                
+                
+                <!-- กิ่งเจาะลึกการใช้ยาพ่นขยายหลอดลม (เมื่อเลือก หอบหืด หรือ ถุงลมโป่งพอง) -->
+                <div id="ud_inhaler_detail_wrap" class="hidden bg-slate-50 border border-slate-200 rounded-xl p-3.5 mb-2 space-y-3">
+                  <div>
+                    <label class="block text-xs font-semibold text-slate-800 mb-1.5 flex items-center">
+                      <i data-lucide="wind" class="w-3.5 h-3.5 mr-1 text-medical-600"></i> ประวัติการใช้ยาพ่นขยายหลอดลมฉุกเฉิน (เช่น Ventolin / Berodual):
+                    </label>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
+                      <label class="selectable-card bg-white p-2 rounded-lg flex items-center cursor-pointer">
+                        <input type="radio" name="ud_inhaler_usage_24h" value="none" class="text-medical-600 focus:ring-medical-500 h-3.5 w-3.5">
+                        <span class="ml-2 font-medium">ไม่ได้พ่นยาใน 24 ชม.</span>
+                      </label>
+                      <label class="selectable-card bg-white p-2 rounded-lg flex items-center cursor-pointer">
+                        <input type="radio" name="ud_inhaler_usage_24h" value="1_2_times" class="text-medical-600 focus:ring-medical-500 h-3.5 w-3.5">
+                        <span class="ml-2 font-medium">พ่นไป 1 - 2 ครั้ง</span>
+                      </label>
+                      <label class="selectable-card bg-white p-2 rounded-lg flex items-center cursor-pointer">
+                        <input type="radio" name="ud_inhaler_usage_24h" value="ge_3_times" class="text-medical-600 focus:ring-medical-500 h-3.5 w-3.5">
+                        <span class="ml-2 font-medium text-rose-700 font-semibold">พ่นตั้งแต่ 3 ครั้งขึ้นไป</span>
+                      </label>
+                    </div>
+                  </div>
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs pt-2 border-t border-slate-200">
+                    <label class="selectable-card bg-white p-2.5 rounded-lg flex items-center cursor-pointer">
+                      <input type="checkbox" id="ud_inhaler_no_relief" class="rounded text-medical-600 h-3.5 w-3.5">
+                      <span class="ml-2 font-medium text-slate-800">พ่นยาแล้วไม่ทุเลา หรือดีขึ้นชั่วคราวแล้วหอบซ้ำ</span>
+                    </label>
+                    <label class="selectable-card bg-white p-2.5 rounded-lg flex items-center cursor-pointer">
+                      <input type="checkbox" id="ud_asthma_prior_icu" class="rounded text-medical-600 h-3.5 w-3.5">
+                      <span class="ml-2 font-medium text-slate-800">เคยต้องใส่ท่อช่วยหายใจหรือนอน ICU จากอาการหอบ</span>
+                    </label>
+                  </div>
+                </div>
+
+                <!-- กล่องเจาะลึกประวัติรักษา CAD (ข้อ 9) -->
+                <div id="ud_cad_detail_wrap" class="hidden bg-slate-50 border border-slate-200 rounded-xl p-3.5 mb-2 space-y-3">
+                  <div>
+                    <label class="block text-xs font-semibold text-slate-800 mb-1.5">ประวัติการรักษาโรคหลอดเลือดหัวใจกับ รพ.ราชบุรี:</label>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                      <label class="selectable-card bg-white p-2.5 rounded-lg flex items-center cursor-pointer">
+                        <input type="radio" name="ud_cad_hosp_status" value="ratchaburi" onchange="toggleBranch('ud_cad_other_hosp_wrap', false)" class="text-medical-600 focus:ring-medical-500 h-3.5 w-3.5">
+                        <span class="ml-2 font-medium text-slate-800">มีประวัติรักษาที่ รพ.ราชบุรี ครบถ้วน</span>
+                      </label>
+                      <label class="selectable-card bg-white p-2.5 rounded-lg flex items-center cursor-pointer">
+                        <input type="radio" name="ud_cad_hosp_status" value="other" onchange="toggleBranch('ud_cad_other_hosp_wrap', true)" class="text-medical-600 focus:ring-medical-500 h-3.5 w-3.5">
+                        <span class="ml-2 font-semibold text-slate-800">ไม่มีประวัติที่ รพ.ราชบุรี (รักษาจาก รพ. อื่น)</span>
+                      </label>
+                    </div>
+                  </div>
+                  <div id="ud_cad_other_hosp_wrap" class="hidden space-y-2 pt-2 border-t border-slate-200">
+                    <label class="block text-xs font-semibold text-slate-800">ประวัติการรักษาที่เคยได้รับ (เลือกได้หลายข้อ):</label>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
+                      <label class="selectable-card bg-white p-2 rounded-lg flex items-center cursor-pointer">
+                        <input type="checkbox" id="ud_cad_tx_pci" class="rounded text-medical-600 h-3.5 w-3.5">
+                        <span class="ml-2 font-medium">เคยทำบอลลูนใส่ขดลวด (PCI/Stent)</span>
+                      </label>
+                      <label class="selectable-card bg-white p-2 rounded-lg flex items-center cursor-pointer">
+                        <input type="checkbox" id="ud_cad_tx_cabg" class="rounded text-medical-600 h-3.5 w-3.5">
+                        <span class="ml-2 font-medium">เคยผ่าตัดบายพาส (CABG)</span>
+                      </label>
+                      <label class="selectable-card bg-white p-2 rounded-lg flex items-center cursor-pointer">
+                        <input type="checkbox" id="ud_cad_tx_meds" class="rounded text-medical-600 h-3.5 w-3.5">
+                        <span class="ml-2 font-medium">รักษาด้วยยาควบคุมอาการ</span>
+                      </label>
+                    </div>
+                    <div class="mt-2">
+                      <input type="text" id="ud_cad_hosp_name" placeholder="ระบุชื่อโรงพยาบาลเดิมที่เคยทำหัตถการหรือรักษา เช่น รพ.ศิริราช, รพ.จุฬาฯ..." class="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2 text-xs text-slate-800 placeholder:text-slate-400 focus:ring-2 focus:ring-medical-500">
+                    </div>
+                  </div>
+                </div>
+
+                <!-- ช่องระบุประเภทมะเร็ง -->
+                <div id="cancer_type_wrap" class="hidden mb-2">
+                  <input type="text" id="ud_cancer_type" placeholder="ระบุประเภทมะเร็ง เช่น มะเร็งปอด, มะเร็งเต้านม, มะเร็งลำไส้..." class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2 text-xs text-slate-800 placeholder:text-slate-400">
+                </div>
+
+                <!-- โรคประจำตัวอื่นๆ -->
+                <input type="text" id="ud_other" placeholder="โรคประจำตัวอื่นๆ (ถ้ามี เช่น ตับแข็ง, ไทรอยด์, SLE)" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2 text-xs text-slate-800 placeholder:text-slate-400">
+              </div>
+
+              <!-- ข้อ 4: ประวัติการแพ้ยา/แพ้อาหาร (ไม่เลือก default ล่วงหน้า) -->
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">ประวัติการแพ้ยา/แพ้อาหาร</label>
+                <div class="grid grid-cols-2 gap-2 mb-2">
+                  <label class="selectable-card flex items-center p-2.5 rounded-xl cursor-pointer">
+                    <input type="radio" name="hasDrugAllergy" value="no" onchange="toggleBranch('drugAllergyInputWrap', false)" class="text-medical-600 focus:ring-medical-500 h-4 w-4">
+                    <span class="ml-2 text-xs font-semibold">ไม่มี (ปฏิเสธการแพ้ยา / แพ้อาหาร)</span>
+                  </label>
+                  <label class="selectable-card flex items-center p-2.5 rounded-xl cursor-pointer">
+                    <input type="radio" name="hasDrugAllergy" value="yes" onchange="toggleBranch('drugAllergyInputWrap', true)" class="text-medical-600 focus:ring-medical-500 h-4 w-4">
+                    <span class="ml-2 text-xs font-semibold text-rose-700">มีประวัติแพ้ยา หรือ แพ้อาหาร</span>
+                  </label>
+                </div>
+                <div id="drugAllergyInputWrap" class="hidden">
+                  <input type="text" id="drugAllergyDetails" placeholder="เช่น Amoxicillin (ผื่นคัน), Tramadol (คลื่นไส้), กุ้ง/อาหารทะเล (ปากบวม แน่นคอ)" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2 text-xs text-slate-800 font-medium placeholder:text-slate-400">
+                </div>
+              </div>
+
+              <!-- ยาประจำตัว (ลบ default 'ไม่มี' ออก ใช้ placeholder แทน + เพิ่ม checkbox ไม่ทราบชื่อ) -->
+              <div>
+                <div class="flex flex-wrap items-center justify-between gap-2 mb-1.5">
+                  <label for="currentMeds" class="block text-xs font-semibold text-slate-700 uppercase tracking-wider">ยาที่รับประทานประจำในปัจจุบัน</label>
+                  <label class="selectable-card inline-flex items-center px-2.5 py-1 rounded-lg cursor-pointer bg-slate-50 border border-slate-200 hover:border-medical-400 transition">
+                    <input type="checkbox" id="currentMedsUnknown" onchange="handleCurrentMedsUnknownToggle(this.checked)" class="text-medical-600 focus:ring-medical-500 h-3.5 w-3.5 rounded">
+                    <span class="ml-1.5 text-xs font-semibold text-slate-700">ไม่ทราบชื่อ</span>
+                  </label>
+                </div>
+                <input type="text" id="currentMeds" placeholder="เช่น Amlodipine 5mg, ยาเบาหวาน หรือระบุ 'ไม่มี'" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2 text-xs text-slate-800 font-medium placeholder:text-slate-400">
+              </div>
+
+            </div>
+          </div>
+        </div>
+
+        <!-- Submit Button -->
+        <div class="pt-2">
+          <button type="submit" id="submitIntakeBtn" onclick="handlePatientSubmit(event)" class="w-full bg-gradient-to-r from-medical-600 to-medical-700 hover:from-medical-700 hover:to-medical-800 text-white font-semibold py-3.5 px-6 rounded-2xl shadow-md transition duration-150 flex items-center justify-center space-x-2 text-base cursor-pointer">
+            <i data-lucide="send" class="w-5 h-5"></i>
+            <span id="submitIntakeBtnText">ส่งข้อมูลประวัติเข้าคิวห้องฉุกเฉิน (Submit Intake)</span>
+          </button>
+          <p class="text-center text-xs text-slate-400 mt-2">ข้อมูลจะถูกส่งเข้าห้องตรวจฉุกเฉิน รพ.ราชบุรี ทันทีเพื่อเตรียมพบแพทย์</p>
+        </div>
+
+      </form>
+    </section>
+
+    <!-- ========================================================================= -->
+    <!-- VIEW 1.5: PATIENT QUEUE STATUS & CONFIRMATION (หน้าสถานะคิวและแก้ไขประวัติสำหรับผู้ป่วย) -->
+    <!-- ========================================================================= -->
+    <section id="patientStatusView" class="hidden max-w-2xl mx-auto transition-all duration-200">
+      <div class="bg-white rounded-3xl border border-slate-200 shadow-lg overflow-hidden">
+        <!-- Top Green Banner -->
+        <div class="bg-gradient-to-r from-emerald-600 to-teal-700 p-6 sm:p-8 text-white text-center relative">
+          <div class="w-16 h-16 bg-white/20 backdrop-blur-xs rounded-2xl flex items-center justify-center mx-auto mb-3 border border-white/30">
+            <i data-lucide="check-circle-2" class="w-9 h-9 text-white"></i>
+          </div>
+          <span class="bg-white/20 text-white text-[11px] font-semibold px-3 py-1 rounded-full uppercase tracking-wider">บันทึกข้อมูลเข้าสู่ระบบห้องฉุกเฉินสำเร็จ</span>
+          <h1 class="text-xl sm:text-2xl font-bold mt-2">แพทย์และพยาบาลได้รับข้อมูลประวัติของท่านแล้ว</h1>
+          <p class="text-xs sm:text-sm text-emerald-100 mt-1">กรุณานั่งรอเรียกชื่อตามหมายเลขบัตรคิวบริเวณจุดรอตรวจห้องฉุกเฉิน</p>
+        </div>
+
+        <!-- Queue Pass & Summary Content -->
+        <div class="p-6 sm:p-8 space-y-6">
+          <!-- Queue Ticket Box -->
+          <div class="bg-slate-50 border-2 border-emerald-500/40 rounded-2xl p-5 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div class="text-center sm:text-left">
+              <span class="text-[11px] font-bold uppercase tracking-wider text-emerald-700 block">หมายเลขคิวรอตรวจ (ER Queue Ticket)</span>
+              <div id="statusViewQueueNo" class="text-3xl sm:text-4xl font-extrabold font-mono text-slate-900 mt-0.5">A-054</div>
+              <p id="statusViewTimestamp" class="text-[11px] text-slate-500 mt-1">บันทึกข้อมูลเมื่อสักครู่</p>
+            </div>
+            <div class="text-center sm:text-right border-t sm:border-t-0 pt-3 sm:pt-0 border-slate-200 w-full sm:w-auto">
+              <div id="statusViewPatientName" class="text-base font-bold text-slate-900">นายสมชาย ใจดี</div>
+              <div id="statusViewPatientDemog" class="text-xs text-slate-500 mt-0.5">อายุ 45 ปี • เพศชาย • HN: 6788412</div>
+              <div class="mt-2 inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-medical-100 text-medical-800">
+                <span>อาการสำคัญ: </span>
+                <strong id="statusViewCcTitle" class="ml-1">เจ็บแน่นหน้าอก</strong>
+              </div>
+            </div>
+          </div>
+
+          <!-- Submitted History Summary for Patient Review -->
+          <div class="bg-slate-50 rounded-2xl p-4 sm:p-5 border border-slate-200">
+            <h3 class="text-xs sm:text-sm font-bold text-slate-800 flex items-center mb-2.5">
+              <i data-lucide="clipboard-list" class="w-4 h-4 mr-1.5 text-medical-600"></i>
+              <span>สรุปข้อมูลประวัติที่ท่านได้แจ้งไว้ (สามารถกดแก้ไขเพิ่มเติมได้ตลอดเวลาระหว่างรอตรวจ)</span>
+            </h3>
+            <ul id="statusViewSummaryList" class="space-y-1.5 text-xs text-slate-700 list-disc list-inside leading-relaxed">
+              <!-- Populated dynamically -->
+            </ul>
+          </div>
+
+          <!-- Action Buttons: Edit Own History or Change CC -->
+          <div class="space-y-3 pt-2">
+            <button type="button" id="patientEditOwnHistoryBtn" onclick="startEditPatientHistory(lastSubmittedPatientId)"
+              class="w-full bg-medical-600 hover:bg-medical-700 text-white font-semibold py-3.5 px-5 rounded-2xl shadow-sm transition flex items-center justify-center space-x-2 text-sm cursor-pointer">
+              <i data-lucide="file-edit" class="w-4 h-4"></i>
+              <span>✏️ แก้ไขข้อมูลประวัติที่ได้แจ้งไว้ / เพิ่มเติมอาการ (Edit My History)</span>
+            </button>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              <button type="button" onclick="startChangePatientCc(lastSubmittedPatientId)"
+                class="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium py-2.5 px-4 rounded-xl text-xs transition flex items-center justify-center space-x-1.5">
+                <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
+                <span>เปลี่ยนอาการสำคัญหลัก (Change CC)</span>
+              </button>
+              <button type="button" onclick="simulateNewQrQueuePass()"
+                class="w-full bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 font-medium py-2.5 px-4 rounded-xl text-xs transition flex items-center justify-center space-x-1.5">
+                <i data-lucide="qr-code" class="w-3.5 h-3.5"></i>
+                <span>จำลองสแกน QR ผู้ป่วยรายถัดไป</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="bg-amber-50 border border-amber-200 rounded-xl p-3.5 text-[11px] text-amber-900 flex items-start space-x-2.5">
+            <i data-lucide="alert-triangle" class="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5"></i>
+            <span><strong>คำแนะนำฉุกเฉิน:</strong> หากระหว่างรอตรวจ ท่านมีอาการเหนื่อยหอบรุนแรงขึ้น เจ็บแน่นหน้าอกมากขึ้น หน้ามืดคล้ายจะเป็นลม หรือซึมลง กรุณาแจ้งพยาบาลหน้าห้องฉุกเฉินทันที</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================================================= -->
+    <!-- VIEW 2: DOCTOR CLINICAL DASHBOARD (มุมมองแพทย์ห้องฉุกเฉิน + ระบบคิวผู้ป่วย)     -->
+    <!-- ========================================================================= -->
+    <section id="doctorView" class="transition-all duration-200">
+
+      <!-- ข้อ 2: ระบบฐานข้อมูลและตัวสลับผู้ป่วย (PATIENT QUEUE NAVIGATOR) -->
+      <div class="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-sm mb-6">
+        <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+          <div class="flex items-center space-x-2">
+            <div class="bg-medical-100 text-medical-700 p-2 rounded-xl">
+              <i data-lucide="list-ordered" class="w-4 h-4"></i>
+            </div>
+            <div>
+              <h2 class="text-sm sm:text-base font-bold text-slate-900">รายการคิวผู้ป่วยห้องฉุกเฉิน (ER Patient Database)</h2>
+              <p class="text-[11px] text-slate-500">คลิกเลือกบัตรคิวเพื่อสลับดูและตรวจประวัติผู้ป่วยแต่ละรายได้ทันที</p>
+            </div>
+          </div>
+
+          <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
+            <!-- ระบบค้นหาผู้ป่วยในคิวห้องฉุกเฉิน -->
+            <div class="relative flex-1 sm:w-64 md:w-72">
+              <i data-lucide="search" class="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+              <input type="text" id="queueSearchInput" oninput="handleQueueSearch(this.value)" onkeydown="if(event.key==='Enter'){event.preventDefault();selectFirstSearchedPatient();}"
+                placeholder="ค้นหาชื่อ, เลขคิว, HN, อาการนำ..."
+                class="w-full bg-slate-50 border border-slate-200 focus:border-medical-500 focus:bg-white rounded-xl pl-8 pr-7 py-1.5 text-xs text-slate-800 font-medium placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-medical-500/20 transition">
+              <button type="button" id="queueSearchClearBtn" onclick="clearQueueSearch()" title="ล้างคำค้นหา"
+                class="hidden absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 rounded-md">
+                <i data-lucide="x" class="w-3.5 h-3.5"></i>
+              </button>
+            </div>
+
+            <!-- Queue Status Tabs (รอตรวจ vs ตรวจแล้ว) -->
+            <div class="flex items-center space-x-1.5 bg-slate-100 p-1 rounded-xl text-xs self-start sm:self-auto">
+              <button id="queueTabWaiting" onclick="switchQueueFilter('waiting')" class="px-3 py-1.5 rounded-lg font-semibold bg-white text-medical-700 shadow-xs transition flex items-center space-x-1">
+                <span>รอตรวจ</span>
+                <span id="badgeCountWaiting" class="ml-1 bg-medical-600 text-white text-[10px] px-1.5 py-0.2 rounded-full font-mono">0</span>
+              </button>
+              <button id="queueTabCompleted" onclick="switchQueueFilter('completed')" class="px-3 py-1.5 rounded-lg font-medium text-slate-600 hover:text-slate-900 transition flex items-center space-x-1">
+                <span>ตรวจแล้ว / ปิดเคส</span>
+                <span id="badgeCountCompleted" class="ml-1 bg-slate-300 text-slate-700 text-[10px] px-1.5 py-0.2 rounded-full font-mono">0</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Patient Cards Carousel / Horizontal Scroll List with Controls -->
+        <div class="relative mt-3.5">
+          <!-- Scroll Left Button -->
+          <button type="button" onclick="scrollQueue(-300)" title="เลื่อนซ้าย" class="hidden sm:flex absolute -left-2 top-1/2 -translate-y-1/2 z-10 w-8 h-8 rounded-full bg-white/95 border border-slate-300 shadow-md text-slate-700 hover:text-medical-600 hover:border-medical-400 items-center justify-center transition">
+            <i data-lucide="chevron-left" class="w-4 h-4"></i>
+          </button>
+
+          <div id="patientQueueList" class="flex items-stretch space-x-3 overflow-x-auto pb-2 scroll-smooth px-1">
+            <!-- Dynamically populated patient cards -->
+          </div>
+
+          <!-- Scroll Right Button -->
+          <button type="button" onclick="scrollQueue(300)" title="เลื่อนขวา" class="hidden sm:flex absolute -right-2 top-1/2 -translate-y-1/2 z-10 w-8 h-8 rounded-full bg-white/95 border border-slate-300 shadow-md text-slate-700 hover:text-medical-600 hover:border-medical-400 items-center justify-center transition">
+            <i data-lucide="chevron-right" class="w-4 h-4"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- EMPTY STATE: เมื่อไม่มีผู้ป่วยรอตรวจ -->
+      <div id="emptyQueueNotice" class="hidden bg-white rounded-2xl p-10 border border-slate-200 shadow-sm text-center my-6">
+        <div class="w-14 h-14 bg-emerald-100 text-emerald-600 rounded-2xl flex items-center justify-center mx-auto mb-3">
+          <i data-lucide="check-circle" class="w-8 h-8"></i>
+        </div>
+        <h3 class="text-base font-bold text-slate-800">ไม่มีผู้ป่วยในรายการรอตรวจขณะนี้</h3>
+        <p class="text-xs text-slate-500 mt-1 max-w-sm mx-auto">แพทย์ตรวจผู้ป่วยในคิวครบถ้วนแล้ว หรือสามารถคลิกด้านล่างเพื่อโหลดเคสตัวอย่างใหม่</p>
+        <div class="mt-4 flex items-center justify-center space-x-2">
+          <button onclick="restoreInitialDatabase()" class="px-4 py-2 bg-medical-600 hover:bg-medical-700 text-white rounded-xl text-xs font-semibold shadow-xs transition">
+            รีโหลดเคสผู้ป่วยตัวอย่าง (12 เคส)
+          </button>
+          <button onclick="navigateTo('patient')" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-medium transition">
+            + ให้คนไข้ใหม่กรอกประวัติ
+          </button>
+        </div>
+      </div>
+
+      <!-- ACTIVE PATIENT WORKSPACE CONTAINER (จะซ่อนเมื่อคิวว่าง) -->
+      <div id="activePatientWorkspace">
+
+        <!-- Active Patient Header Info Banner -->
+        <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div class="flex items-start sm:items-center space-x-4">
+            <div class="bg-medical-50 border border-medical-200 text-medical-700 rounded-2xl p-3 flex flex-col items-center justify-center min-w-[75px]">
+              <span class="text-[10px] uppercase font-bold tracking-wider text-medical-600">กำลังตรวจ</span>
+              <span id="activeQueueDisplay" class="text-xl font-bold font-mono text-medical-800">A-042</span>
+            </div>
+            <div>
+              <div class="flex flex-wrap items-center gap-2">
+                <h2 id="activeNameDisplay" class="text-lg font-bold text-slate-900">นายสมคิด สุขเกษม</h2>
+                <span id="activeDemogDisplay" class="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md">อายุ 45 ปี | ชาย</span>
+                <span id="activeCcDisplay" class="text-xs bg-amber-100 text-amber-800 font-semibold px-2 py-0.5 rounded-md flex items-center">
+                  <i data-lucide="flame" class="w-3 h-3 mr-1"></i> CC: Fever / Chills
+                </span>
+                <span id="activeStatusBadge" class="text-[10px] bg-sky-100 text-sky-800 font-semibold px-2 py-0.5 rounded-full">รอการตรวจ</span>
+              </div>
+              <p class="text-xs text-slate-500 mt-1 flex flex-wrap items-center gap-2">
+                <span>HN: <strong id="activeHnDisplay" class="font-mono text-slate-700">6709842</strong> (รพ.ราชบุรี)</span>
+                <span>•</span>
+                <span id="activeTimestampDisplay">เวลาที่บันทึก: วันนี้ 20:15 น.</span>
+              </p>
+            </div>
+          </div>
+
+          <!-- Quick Action Buttons in Top Banner (Prev/Next + Guided Form Edit + 1-Click AI Consultant + New Intake) -->
+          <div class="flex flex-wrap items-center gap-1.5">
+            <button type="button" onclick="selectPrevPatient()" title="ผู้ป่วยก่อนหน้า" class="p-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition flex items-center">
+              <i data-lucide="chevron-left" class="w-4 h-4"></i>
+            </button>
+            <button type="button" onclick="selectNextPatient()" title="ผู้ป่วยถัดไป" class="p-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition flex items-center">
+              <i data-lucide="chevron-right" class="w-4 h-4"></i>
+            </button>
+            <button type="button" id="doctorEditInFormBtn" onclick="startEditPatientHistory(activePatientId)"
+              title="เปิดฟอร์มซักประวัติเพื่อดูหรือแก้ไขคำตอบของผู้ป่วยรายนี้"
+              class="text-xs px-3 py-2 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 rounded-xl transition font-semibold flex items-center space-x-1.5 shadow-2xs">
+              <i data-lucide="clipboard-edit" class="w-3.5 h-3.5 text-amber-700"></i>
+              <span>แก้ไขในฟอร์ม UI (Guided Edit)</span>
+            </button>
+            <button type="button" onclick="startDoctorGuidedNewIntake()" class="text-xs px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition font-medium flex items-center">
+              <i data-lucide="user-plus" class="w-3.5 h-3.5 mr-1 text-medical-600"></i>
+              <span>+ รับคนไข้ใหม่</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- DOCTOR TRIAGE VITAL SIGNS & CLINICAL INDICES CARD -->
+        <div id="doctorTriageVsCard" class="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-sm mb-5 transition-all">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-slate-100 gap-2">
+            <div class="flex items-center space-x-2.5">
+              <div class="bg-teal-50 border border-teal-200 text-teal-700 p-2 rounded-xl">
+                <i data-lucide="activity" class="w-4 h-4"></i>
+              </div>
+              <div>
+                <div class="flex items-center space-x-2">
+                  <h3 class="text-sm font-bold text-slate-900">สัญญาณชีพจากจุดคัดกรอง (Triage Vital Signs)</h3>
+                  <span id="docVsEsiBadge" class="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300">ESI 3 (Urgent)</span>
+                </div>
+                <p class="text-[11px] text-slate-500">บันทึก ณ จุดคัดกรองพยาบาล พร้อมคำนวณ Shock Index และสัญญาณชีพวิกฤตอัตโนมัติ</p>
+              </div>
+            </div>
+            <span class="text-[11px] text-slate-400 font-mono" id="docVsTimestamp">บันทึก ณ จุดคัดกรอง ER</span>
+          </div>
+
+          <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 mt-3.5 text-center" id="docVsGrid">
+            <!-- Dynamically populated -->
+          </div>
+        </div>
+
+        <!-- TABLET / MOBILE DOCTOR WORKSPACE TAB SELECTOR (< 1024px) -->
+        <div id="doctorMobileTabs" class="lg:hidden mb-5 bg-white p-1.5 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-1.5 text-xs">
+          <button type="button" id="docTabBtnNote" onclick="switchDoctorMobileTab('note')"
+            class="flex-1 py-2.5 px-3 rounded-xl font-bold bg-medical-600 text-white shadow-xs transition flex items-center justify-center space-x-1.5">
+            <i data-lucide="file-text" class="w-4 h-4"></i>
+            <span>รายงานประวัติแพทย์</span>
+          </button>
+          <button type="button" id="docTabBtnCds" onclick="switchDoctorMobileTab('cds')"
+            class="flex-1 py-2.5 px-3 rounded-xl font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200 transition flex items-center justify-center space-x-1.5">
+            <i data-lucide="activity" class="w-4 h-4 text-rose-500"></i>
+            <span>การวิเคราะห์ CDS & สัญญาณวิกฤต</span>
+          </button>
+        </div>
+
+        <!-- DOCTOR CDS & RED FLAGS SECTION (Tab 2 on Mobile/Tablet, Top Banner on Desktop) -->
+        <div id="doctorCdsSection" class="lg:block transition-all duration-200">
+
+          <!-- RED FLAGS ALERT BANNER (แจ้งเตือนฉุกเฉินเด่นชัดสำหรับแพทย์) -->
+          <div id="redFlagBanner" class="hidden mb-6 bg-rose-50 border-2 border-rose-500 rounded-2xl p-5 shadow-sm">
+            <div class="flex items-start space-x-3.5">
+              <div class="bg-rose-600 text-white p-2 rounded-xl flex-shrink-0 animate-bounce">
+                <i data-lucide="alert-octagon" class="w-6 h-6"></i>
+              </div>
+              <div class="flex-1">
+                <div class="flex items-center space-x-2">
+                  <h3 class="text-base font-bold text-rose-800 uppercase tracking-wide">🚩 สัญญาณเตือนวิกฤต (EMERGENCY RED FLAGS DETECTED)</h3>
+                  <span class="bg-rose-200 text-rose-800 text-[10px] font-bold px-2 py-0.5 rounded-full">PRIORITY 1 / ER IMMEDIATE</span>
+                </div>
+                <p class="text-xs text-rose-700 mt-1">ผู้ป่วยมีอาการเตือนอันตรายต่อไปนี้ กรุณาประเมินและให้การรักษาเบื้องต้นทันที:</p>
+                <ul id="redFlagList" class="mt-2.5 space-y-1.5 text-xs text-rose-900 font-medium list-disc list-inside bg-white/70 p-3 rounded-xl border border-rose-200">
+                  <!-- Dynamically populated -->
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <!-- NO RED FLAGS BANNER (เขียว) -->
+          <div id="safeFlagBanner" class="mb-6 bg-emerald-50 border border-emerald-300 rounded-2xl p-4 flex items-center space-x-3 text-emerald-800">
+            <div class="bg-emerald-500 text-white p-1.5 rounded-lg flex-shrink-0">
+              <i data-lucide="shield-check" class="w-4 h-4"></i>
+            </div>
+            <div class="text-xs">
+              <span class="font-bold">No Immediate Red Flag Detected:</span> ไม่พบสัญญาณวิกฤตเฉียบพลัน เช่น หายใจหอบเหนื่อย, ซึม/สับสน, คอแข็ง, อาเจียนเป็นเลือด หรือจุดเลือดออก
+            </div>
+          </div>
+
+          <!-- HIGH-RISK CARDIAC MEDICATIONS CONTRAINDICATIONS PANEL (ข้อ 10 & 10.1) -->
+          <div id="cardiacContraindicationBanner" class="hidden mb-6 bg-slate-900 text-white rounded-2xl p-5 shadow-lg border border-slate-700">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-800">
+              <div class="flex items-center space-x-2.5">
+                <div class="bg-amber-500/20 text-amber-400 p-2 rounded-xl">
+                  <i data-lucide="shield-alert" class="w-5 h-5"></i>
+                </div>
+                <div>
+                  <h3 class="text-sm sm:text-base font-bold text-white flex items-center">
+                    <span>ระบบคัดกรองข้อห้ามใช้ยาฉุกเฉิน (High-Risk Medication Contraindications)</span>
+                  </h3>
+                  <p class="text-[11px] text-slate-400">ประเมินข้อห้ามสำหรับการให้ยาละลายลิ่มเลือด (Fibrinolytic) และยาขยายหลอดเลือด (Nitroglycerin)</p>
+                </div>
+              </div>
+              <span class="text-[10px] bg-amber-500/20 text-amber-300 font-mono font-bold px-2.5 py-1 rounded-full border border-amber-500/30 w-fit">
+                CARDIAC SAFETY CHECK
+              </span>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 text-xs">
+              <!-- Box 1: Fibrinolytic Contraindications -->
+              <div class="bg-slate-800/80 rounded-xl p-3.5 border border-slate-700 space-y-2.5">
+                <div class="flex items-center justify-between pb-1.5 border-b border-slate-700">
+                  <span class="font-bold text-slate-200 flex items-center">
+                    <i data-lucide="activity" class="w-3.5 h-3.5 mr-1.5 text-rose-400"></i>
+                    Fibrinolytic Therapy (ยาสลายลิ่มเลือด)
+                  </span>
+                  <span id="fibrinolyticStatusBadge" class="text-[10px] px-2 py-0.5 rounded-full font-bold"></span>
+                </div>
+
+                <!-- Absolute list -->
+                <div>
+                  <span class="font-bold text-rose-400 text-[11px] block mb-1">🛑 Absolute Contraindications (ข้อห้ามเด็ดขาด):</span>
+                  <ul id="absoluteContraList" class="space-y-1 text-slate-300 list-disc list-inside">
+                    <!-- Populated dynamically -->
+                  </ul>
+                </div>
+
+                <!-- Relative list -->
+                <div class="pt-2 border-t border-slate-700/60">
+                  <span class="font-bold text-amber-400 text-[11px] block mb-1">⚠️ Relative Contraindications (ข้อห้ามสัมพัทธ์):</span>
+                  <ul id="relativeContraList" class="space-y-1 text-slate-300 list-disc list-inside">
+                    <!-- Populated dynamically -->
+                  </ul>
+                </div>
+              </div>
+
+              <!-- Box 2: Nitroglycerin Contraindications -->
+              <div class="bg-slate-800/80 rounded-xl p-3.5 border border-slate-700 space-y-2.5 flex flex-col justify-between">
+                <div>
+                  <div class="flex items-center justify-between pb-1.5 border-b border-slate-700">
+                    <span class="font-bold text-slate-200 flex items-center">
+                      <i data-lucide="pill" class="w-3.5 h-3.5 mr-1.5 text-sky-400"></i>
+                      Nitroglycerin / NTG (ยาอมใต้ลิ้น/ขยายหลอดเลือด)
+                    </span>
+                    <span id="ntgStatusBadge" class="text-[10px] px-2 py-0.5 rounded-full font-bold"></span>
+                  </div>
+
+                  <div class="mt-2.5">
+                    <span class="font-bold text-rose-400 text-[11px] block mb-1">🚫 ข้อห้ามใช้ยา Nitroglycerin:</span>
+                    <ul id="ntgContraList" class="space-y-1 text-slate-300 list-disc list-inside">
+                      <!-- Populated dynamically -->
+                    </ul>
+                  </div>
+                </div>
+
+                <div class="bg-slate-900/90 rounded-lg p-2.5 text-[11px] text-slate-400 border border-slate-700/50 mt-2">
+                  <strong class="text-slate-300">ข้อควรระวังทางคลินิก:</strong> หากตรวจพบ SBP > 180 mmHg หรือ DBP > 110 mmHg หรือมีประวัติ PDE-5 inhibitor (เช่น Viagra) ภายใน 24-48 ชม. ให้แพทย์ระงับการสั่งใช้ยาจนกว่าจะประเมินซ้ำ
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- STROKE FAST TRACK & FIBRINOLYSIS CONTRAINDICATIONS PANEL -->
+          <div id="strokeContraindicationBanner" class="hidden mb-6 bg-slate-900 text-white rounded-2xl p-5 shadow-lg border border-slate-700">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-800">
+              <div class="flex items-center space-x-2.5">
+                <div class="bg-amber-500/20 text-amber-400 p-2 rounded-xl">
+                  <i data-lucide="brain" class="w-5 h-5"></i>
+                </div>
+                <div>
+                  <h3 class="text-sm sm:text-base font-bold text-white flex items-center">
+                    <span>ระบบคัดกรองข้อห้ามยาสลายลิ่มเลือดโรคหลอดเลือดสมอง (Stroke Fibrinolysis Exclusion Check)</span>
+                  </h3>
+                  <p id="strokeTimeWindowSummaryText" class="text-[11px] text-slate-400">ประเมินเกณฑ์เวลา (Time Window ≤ 4.5 ชม.) และข้อห้ามการให้ IV rt-PA / Tenecteplase</p>
+                </div>
+              </div>
+              <span id="strokeFastTrackWindowBadge" class="text-[10px] bg-amber-500/20 text-amber-300 font-mono font-bold px-2.5 py-1 rounded-full border border-amber-500/30 w-fit">
+                STROKE FAST TRACK CHECK
+              </span>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 text-xs">
+              <!-- Box 1: History-Based & Auto-Detected Contraindications -->
+              <div class="bg-slate-800/80 rounded-xl p-3.5 border border-slate-700 space-y-2.5">
+                <div class="flex items-center justify-between pb-1.5 border-b border-slate-700">
+                  <span class="font-bold text-slate-200 flex items-center">
+                    <i data-lucide="shield-alert" class="w-3.5 h-3.5 mr-1.5 text-rose-400"></i>
+                    IV Fibrinolysis (rt-PA / TNK) History Screen
+                  </span>
+                  <span id="strokeFibrinolyticStatusBadge" class="text-[10px] px-2 py-0.5 rounded-full font-bold"></span>
+                </div>
+
+                <!-- Absolute list -->
+                <div>
+                  <span class="font-bold text-rose-400 text-[11px] block mb-1">🛑 ข้อห้ามเด็ดขาด (Absolute Exclusion Criteria):</span>
+                  <ul id="strokeAbsoluteContraList" class="space-y-1 text-slate-300 list-disc list-inside">
+                    <!-- Populated dynamically -->
+                  </ul>
+                </div>
+
+                <!-- Relative list -->
+                <div class="pt-2 border-t border-slate-700/60">
+                  <span class="font-bold text-amber-400 text-[11px] block mb-1">⚠️ ข้อควรระวังและข้อห้ามสัมพัทธ์ (Relative Warnings):</span>
+                  <ul id="strokeRelativeContraList" class="space-y-1 text-slate-300 list-disc list-inside">
+                    <!-- Populated dynamically -->
+                  </ul>
+                </div>
+              </div>
+
+              <!-- Box 2: Mandatory Bedside, Lab & Imaging Exclusions for Physician -->
+              <div class="bg-slate-800/80 rounded-xl p-3.5 border border-slate-700 space-y-2.5 flex flex-col justify-between">
+                <div>
+                  <div class="flex items-center justify-between pb-1.5 border-b border-slate-700">
+                    <span class="font-bold text-slate-200 flex items-center">
+                      <i data-lucide="clipboard-check" class="w-3.5 h-3.5 mr-1.5 text-sky-400"></i>
+                      เกณฑ์ตรวจร่างกาย ผลเลือด และ CT สมองที่แพทย์ต้องยืนยัน
+                    </span>
+                    <span class="text-[10px] px-2 py-0.5 rounded-full font-bold bg-sky-500/20 text-sky-300 border border-sky-500/30">MD CHECKLIST</span>
+                  </div>
+                  <ul class="mt-2.5 space-y-1.5 text-slate-300 list-disc list-inside text-[11px]">
+                    <li><strong class="text-white">Non-contrast CT / MRI:</strong> ต้องไม่พบ Intracranial Hemorrhage และไม่มีสมองตายวงกว้าง (&gt; 1/3 ของ MCA territory)</li>
+                    <li><strong class="text-white">Blood Pressure Cutoff:</strong> ห้ามให้หาก SBP ≥ 185 หรือ DBP ≥ 110 mmHg ที่ลดไม่ลงด้วยยา IV (Nicardipine / Labetalol)</li>
+                    <li><strong class="text-white">Blood Glucose (DTX):</strong> ต้อง ≥ 50 mg/dL (หาก &lt; 50 mg/dL ต้องแก้ภาวะน้ำตาลต่ำก่อนเพื่อแยก Hypoglycemia mimic)</li>
+                    <li><strong class="text-white">Coagulopathy Cutoff:</strong> Platelet &lt; 100,000/mm³, INR &gt; 1.7, PT &gt; 15 วินาที หรือ aPTT สูงกว่าค่ามาตรฐาน</li>
+                    <li><strong class="text-white">ข้อพิจารณาไม่ให้ยาอื่นๆ (Exclusions &amp; Mimics):</strong> ชัก (Seizure / Todd’s paralysis), ไมเกรน (Migraine mimic), อาการสมองขาดเลือดชั่วคราว (TIA), หรืออาการน้อยไม่ทุพพลภาพ (Nondisabling Minor Strokes)</li>
+                  </ul>
+                </div>
+                <div class="bg-slate-900/90 rounded-lg p-2.5 text-[11px] text-slate-400 border border-slate-700/50 mt-2">
+                  <strong class="text-slate-300">หมายเหตุ:</strong> หากได้รับ DOAC ภายใน 48 ชม. หรือ LMWH ขนาดรักษาภายใน 24 ชม. ถือเป็นข้อห้ามเด็ดขาด เว้นแต่ผลตรวจการแข็งตัวของเลือดปกติหรือได้ยาต้านฤทธิ์จำเพาะ (เช่น Idarucizumab)
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div><!-- End #doctorCdsSection -->
+
+        <!-- ข้อ 1 & 2: ช่องทางแก้ไขและเพิ่มเติมข้อมูลอิสระสำหรับแพทย์ (DOCTOR'S CLINICAL ADDENDUM & EXAM) -->
+        <!-- คงหัวข้อไว้ ซ่อนช่องกรอกไว้ก่อนจนกว่าแพทย์จะกดเลือกเปิด และเปลี่ยนเป็น textarea หลายบรรทัด -->
+        <div id="doctorAddendumCard" class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm mb-6 transition-all">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+            <div class="flex items-center space-x-2">
+              <div class="bg-medical-100 text-medical-700 p-2 rounded-xl">
+                <i data-lucide="file-edit" class="w-4 h-4"></i>
+              </div>
+              <div>
+                <h3 class="text-sm font-bold text-slate-900">บันทึกเพิ่มเติม & แก้ไขประวัติโดยแพทย์ (Doctor's Notes & Clinical Addendum)</h3>
+                <p class="text-[11px] text-slate-500">แพทย์สามารถแก้ไขประวัติให้ตรงตามจริง บันทึกสัญญาณชีพ ผลการตรวจร่างกาย และแผนการรักษา</p>
+              </div>
+            </div>
+            
+            <div class="flex items-center space-x-2 self-end sm:self-auto">
+              <span id="saveStatusIndicator" class="text-[11px] text-emerald-600 font-medium hidden sm:flex items-center mr-2">
+                <i data-lucide="check" class="w-3.5 h-3.5 mr-1"></i> บันทึกอัตโนมัติ
+              </span>
+              <button type="button" id="toggleDoctorAddendumBtn" onclick="toggleDoctorAddendumSection()" 
+                class="inline-flex items-center space-x-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-medical-50 text-medical-700 hover:bg-medical-100 border border-medical-200 transition shadow-2xs">
+                <i data-lucide="chevron-down" id="toggleDoctorAddendumIcon" class="w-3.5 h-3.5"></i>
+                <span id="toggleDoctorAddendumText">เปิดบันทึกเพิ่มเติม</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- ช่องกรอกข้อมูลแพทย์: ซ่อนเป็นค่าเริ่มต้น (hidden) จนกว่าแพทย์จะกดเปิด -->
+          <div id="doctorAddendumFields" class="hidden pt-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+              <!-- ช่อง 1: ประวัติเพิ่มเติม / แก้ไขประวัติตามจริง -->
+              <div>
+                <label class="block font-semibold text-slate-700 mb-1.5 flex items-center">
+                  <i data-lucide="message-square" class="w-3.5 h-3.5 mr-1 text-medical-600"></i>
+                  ประวัติเพิ่มเติม / ข้อมูลที่แพทย์ซักแก้ตามจริง (Doctor Clarification)
+                </label>
+                <textarea id="doctorAdditionalHpi" rows="3" oninput="handleDoctorAddendumChange()"
+                  placeholder="เช่น คนไข้บอกมีไข้ 3 วัน แต่ซักเพิ่มพบว่ามีไข้ต่ำๆ มา 1 สัปดาห์ และมีอาการอ่อนเพลีย เบื่ออาหารร่วมด้วย..." 
+                  class="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-medical-500 focus:bg-white resize-y"></textarea>
+              </div>
+
+              <!-- ช่อง 2: สัญญาณชีพและการตรวจร่างกาย -->
+              <div>
+                <label class="block font-semibold text-slate-700 mb-1.5 flex items-center">
+                  <i data-lucide="stethoscope" class="w-3.5 h-3.5 mr-1 text-medical-600"></i>
+                  สัญญาณชีพ & การตรวจร่างกาย (Vitals & Physical Exam)
+                </label>
+                <textarea id="doctorPhysicalExam" rows="3" oninput="handleDoctorAddendumChange()"
+                  placeholder="เช่น BT 38.8 C, PR 102/min, RR 22/min, BP 120/80 mmHg, SpO2 96% RA. Chest: Normal breath sounds, no rhonchi. Abdomen: Soft, non-tender..." 
+                  class="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-medical-500 focus:bg-white resize-y"></textarea>
+              </div>
+
+              <!-- ช่อง 3: การวินิจฉัยเบื้องต้น (ปรับเป็น textarea หลายบรรทัด) -->
+              <div>
+                <label class="block font-semibold text-slate-700 mb-1.5 flex items-center">
+                  <i data-lucide="target" class="w-3.5 h-3.5 mr-1 text-medical-600"></i>
+                  การวินิจฉัยเบื้องต้น (Provisional Diagnosis / Impression)
+                </label>
+                <textarea id="doctorPrelimDx" rows="3" oninput="handleDoctorAddendumChange()"
+                  placeholder="เช่น Acute Upper Respiratory Tract Infection (URI) / Rule out Dengue Fever" 
+                  class="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-medical-500 focus:bg-white resize-y"></textarea>
+              </div>
+
+              <!-- ช่อง 4: แผนการรักษาและคำสั่งห้องฉุกเฉิน (ปรับเป็น textarea หลายบรรทัด) -->
+              <div>
+                <label class="block font-semibold text-slate-700 mb-1.5 flex items-center">
+                  <i data-lucide="clipboard-check" class="w-3.5 h-3.5 mr-1 text-medical-600"></i>
+                  แผนการรักษา & คำสั่งห้องฉุกเฉิน (Treatment Plan & ER Orders)
+                </label>
+                <textarea id="doctorPlan" rows="3" oninput="handleDoctorAddendumChange()"
+                  placeholder="เช่น Paracetamol (500) 1 tab po prn q 4-6 hr, CBC, Dengue NS1 Ag, NSS IV maintenance, Advice return to ER if high fever or warning signs..." 
+                  class="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-medical-500 focus:bg-white resize-y"></textarea>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- DOCTOR OUTPUT TABS: CLINICAL TEXT vs JSON SCHEMA -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+          <!-- LEFT COLUMN: DOCTOR TEXT SUMMARY (ภาษาไทยทางการแพทย์ - ขยายเต็ม 12 คอลัมน์เป็นค่าเริ่มต้น) -->
+          <div id="doctorTextCol" class="lg:col-span-12 space-y-4 transition-all duration-300">
+            <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col h-full">
+
+              <!-- Card Header & Format Selector -->
+              <div class="p-4 bg-slate-50 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2">
+                <div class="flex items-center space-x-2">
+                  <i data-lucide="file-text" class="w-4 h-4 text-medical-600"></i>
+                  <h3 class="text-sm font-bold text-slate-800">รายงานประวัติสำหรับแพทย์ (Clinical Text Summary)</h3>
+                </div>
+                <div class="flex flex-wrap items-center gap-2">
+                  <!-- Dev Collapsible JSON Toggle Button (Visible only on Desktop >= 1024px) -->
+                  <button type="button" id="toggleJsonDevBtn" onclick="toggleJsonDevViewer()"
+                    title="เปิด/ปิดการแสดงผล JSON Schema สำหรับนักพัฒนา"
+                    class="hidden lg:inline-flex items-center space-x-1.5 px-3 py-1 rounded-lg text-xs font-medium border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 transition shadow-2xs">
+                    <i data-lucide="code-2" class="w-3.5 h-3.5 text-emerald-600"></i>
+                    <span id="toggleJsonDevText">เปิดแสดง JSON (สำหรับ Dev)</span>
+                  </button>
+
+                  <div class="flex items-center space-x-1.5 bg-slate-200/80 p-0.5 rounded-lg text-xs">
+                    <button id="formatRapidBtn" onclick="switchTextFormat('rapid')" class="px-2.5 py-1 rounded-md font-semibold bg-white text-medical-700 shadow-xs transition">
+                      Rapid Bullet Note
+                    </button>
+                    <button id="formatNarrativeBtn" onclick="switchTextFormat('narrative')" class="px-2.5 py-1 rounded-md font-medium text-slate-600 hover:text-slate-900 transition">
+                      Narrative Paragraph
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Content Area: Editable directly if doctor desires -->
+              <div class="p-5 flex-1 relative flex flex-col">
+                <div class="flex items-center justify-between text-[11px] text-slate-400 mb-2">
+                  <span>พร้อมคัดลอกลงระบบ HIS โรงพยาบาลราชบุรี</span>
+                  <span class="text-slate-500 flex items-center">
+                    <i data-lucide="info" class="w-3 h-3 mr-1"></i> รวมประวัติคนไข้ + บันทึกของแพทย์
+                  </span>
+                </div>
+
+                <!-- Rapid Bullet View (Textarea for direct editing) -->
+                <textarea id="rapidTextView" rows="16" oninput="handleDirectNoteEdit('rapid')"
+                  class="font-mono text-xs sm:text-[13px] leading-relaxed text-slate-800 bg-slate-50/80 border border-slate-200 rounded-xl p-4 w-full focus:outline-none focus:ring-2 focus:ring-medical-500 focus:bg-white resize-y"></textarea>
+
+                <!-- Narrative Paragraph View (Textarea for direct editing) -->
+                <textarea id="narrativeTextView" rows="16" oninput="handleDirectNoteEdit('narrative')"
+                  class="hidden text-xs sm:text-[13px] leading-relaxed text-slate-800 bg-slate-50/80 border border-slate-200 rounded-xl p-4 w-full focus:outline-none focus:ring-2 focus:ring-medical-500 focus:bg-white resize-y"></textarea>
+              </div>
+
+              <!-- Card Footer: 1-Click AI Consultant & 1-Click Copy -->
+              <div class="p-3 bg-slate-50 border-t border-slate-200 flex flex-wrap items-center justify-between gap-2">
+                <span class="text-[11px] text-slate-500">สามารถพิมพ์แก้ไขข้อความในกล่องด้านบนได้อิสระ</span>
+                <div class="flex items-center space-x-2 ml-auto">
+                  <button type="button" id="openAiConsultantBtn" onclick="openAiConsultantModal()"
+                    title="วิเคราะห์แยกโรคและแนวทางรักษาด้วย 1-Click Medical AI Consultant"
+                    class="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white rounded-lg text-xs font-semibold shadow-xs transition">
+                    <i data-lucide="sparkles" class="w-3.5 h-3.5"></i>
+                    <span>1-Click AI Consultant</span>
+                  </button>
+                  <button type="button" onclick="copyClinicalText()" id="copyTextBtn" class="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-medical-600 hover:bg-medical-700 text-white rounded-lg text-xs font-semibold shadow-xs transition">
+                    <i data-lucide="copy" class="w-3.5 h-3.5"></i>
+                    <span>คัดลอกข้อความ (Copy)</span>
+                  </button>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- RIGHT COLUMN: JSON SCHEMA OUTPUT (Medical English) - ซ่อนเป็นค่าเริ่มต้นบน Desktop และซ่อนถาวรบน Tablet/Mobile -->
+          <div id="doctorJsonCol" class="hidden space-y-4 transition-all duration-300">
+            <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col h-full">
+
+              <!-- Card Header -->
+              <div class="p-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+                <div class="flex items-center space-x-2">
+                  <i data-lucide="code-2" class="w-4 h-4 text-emerald-600"></i>
+                  <h3 class="text-sm font-bold text-slate-800">JSON Output (Medical English)</h3>
+                </div>
+                <span class="text-[10px] font-mono bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded font-semibold">API Ready</span>
+              </div>
+
+              <!-- Content Area: Formatted JSON -->
+              <div class="p-4 flex-1 flex flex-col">
+                <div class="flex items-center justify-between text-[11px] text-slate-400 mb-2">
+                  <span>Data Types: Strict Schema</span>
+                  <span class="font-mono">Content-Type: application/json</span>
+                </div>
+                <pre id="jsonViewer" class="bg-slate-900 text-emerald-400 font-mono text-[11px] leading-relaxed rounded-xl p-3.5 overflow-x-auto flex-1 max-h-[500px] select-all border border-slate-800">
+                  <!-- Dynamically populated -->
+                </pre>
+              </div>
+
+              <!-- Card Footer: Copy JSON & Download -->
+              <div class="p-3 bg-slate-50 border-t border-slate-200 flex items-center justify-between">
+                <button onclick="downloadJsonFile()" class="inline-flex items-center space-x-1 text-slate-600 hover:text-slate-900 text-xs font-medium">
+                  <i data-lucide="download" class="w-3.5 h-3.5"></i>
+                  <span>ดาวน์โหลด .json</span>
+                </button>
+                <button onclick="copyJsonOutput()" id="copyJsonBtn" class="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-900 text-white rounded-lg text-xs font-semibold shadow-xs transition">
+                  <i data-lucide="copy" class="w-3.5 h-3.5"></i>
+                  <span>คัดลอก JSON</span>
+                </button>
+              </div>
+
+            </div>
+          </div>
+
+        </div>
+
+        <!-- BOTTOM ACTION BAR: ข้อ 3 ปุ่มบันทึกข้อมูลและปิดเคส ย้ายมามุมขวาล่าง -->
+        <div class="mt-6 p-4 sm:p-5 bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-3">
+          <div class="flex items-center space-x-2.5 text-xs text-slate-500">
+            <div class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse flex-shrink-0"></div>
+            <span>ตรวจสอบและสรุปประวัติเรียบร้อยแล้ว กดปุ่มเพื่อบันทึกประวัติและปิดเคส</span>
+          </div>
+          <div class="flex flex-wrap items-center gap-2.5 w-full sm:w-auto justify-end">
+            <button type="button" onclick="openIntermediateExportModal()" title="ส่งต่อข้อมูลไปยังโปรแกรมตัวกลาง Dextor เพื่อสั่งการรักษา / ICD-10 / HIS" class="w-full sm:w-auto px-4 py-2.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-900 border border-indigo-200 rounded-xl transition font-semibold text-xs sm:text-sm flex items-center justify-center space-x-2 shadow-2xs">
+              <i data-lucide="share-2" class="w-4 h-4 text-indigo-600"></i>
+              <span>ส่งข้อมูลเข้า Dextor</span>
+            </button>
+            <button onclick="confirmCloseActiveCase()" id="closeCaseBtn" class="w-full sm:w-auto px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white rounded-xl shadow-xs transition font-semibold text-xs sm:text-sm flex items-center justify-center space-x-2">
+              <i data-lucide="check-check" class="w-4 h-4"></i>
+              <span>บันทึกข้อมูลและปิดเคส (Complete Case)</span>
+            </button>
+            <button type="button" onclick="executeReopenActiveCase()" id="reopenCaseBtn" class="hidden w-full sm:w-auto px-5 py-2.5 bg-amber-600 hover:bg-amber-700 active:bg-amber-800 text-white rounded-xl shadow-xs transition font-semibold text-xs sm:text-sm flex items-center justify-center space-x-2">
+              <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+              <span>ย้ายกลับไปรายการรอตรวจ (Reopen to Waiting)</span>
+            </button>
+          </div>
+        </div>
+
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- CONFIRM CLOSE CASE MODAL (ข้อ 3) -->
+  <div id="closeCaseModal" class="hidden fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl border border-slate-200">
+      <div class="w-12 h-12 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center mb-3">
+        <i data-lucide="check-check" class="w-6 h-6"></i>
+      </div>
+      <h3 class="text-base font-bold text-slate-900">ยืนยันการบันทึกและปิดเคส?</h3>
+      <p id="closeCaseModalMsg" class="text-xs text-slate-500 mt-1">ผู้ป่วยรายนี้จะถูกนำออกจากรายการรอตรวจ และบันทึกประวัติการตรวจลงฐานข้อมูล</p>
+      
+      <div class="mt-5 flex items-center justify-end space-x-2">
+        <button onclick="hideCloseCaseModal()" class="px-3 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100 rounded-xl transition">
+          ยกเลิก
+        </button>
+        <button onclick="executeCloseActiveCase()" class="px-4 py-2 text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-xs transition flex items-center space-x-1">
+          <i data-lucide="check" class="w-3.5 h-3.5 mr-1"></i>
+          <span>ยืนยันปิดเคส</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- CONFIRM RESET DATABASE MODAL (ข้อ 11) -->
+  <div id="resetDbModal" class="hidden fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl border border-slate-200">
+      <div class="w-12 h-12 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center mb-3">
+        <i data-lucide="rotate-ccw" class="w-6 h-6"></i>
+      </div>
+      <h3 class="text-base font-bold text-slate-900">รีเซ็ตข้อมูลทดสอบทั้งหมด?</h3>
+      <p class="text-xs text-slate-500 mt-1.5 leading-relaxed">ระบบจะล้างข้อมูลที่ถูกบันทึกไว้ใน Browser และโหลดข้อมูลตัวอย่างเริ่มต้น 12 เคส (3 เคสไข้ + 3 เคสปวดท้อง + 3 เคสเจ็บแน่นหน้าอก + 3 เคสหอบเหนื่อย) เพื่อให้แพทย์และผู้ดูแลสามารถทดสอบระบบได้อย่างสมบูรณ์</p>
+      
+      <div class="mt-5 flex items-center justify-end space-x-2">
+        <button type="button" onclick="hideResetDbModal()" class="px-3 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100 rounded-xl transition">
+          ยกเลิก
+        </button>
+        <button type="button" onclick="executeResetDatabase()" class="px-4 py-2 text-xs font-semibold bg-amber-600 hover:bg-amber-700 text-white rounded-xl shadow-xs transition flex items-center space-x-1">
+          <i data-lucide="rotate-ccw" class="w-3.5 h-3.5 mr-1"></i>
+          <span>ยืนยันรีเซ็ต</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST NOTIFICATION -->
+  <div id="toastNotification" class="fixed bottom-6 right-6 z-50 transform translate-y-24 opacity-0 transition-all duration-300 pointer-events-none">
+    <div class="bg-slate-900 text-white px-4 py-3 rounded-xl shadow-xl flex items-center space-x-2 text-xs">
+      <i data-lucide="check-circle" class="w-4 h-4 text-emerald-400"></i>
+      <span id="toastMsg">คัดลอกข้อมูลเรียบร้อยแล้ว!</span>
+    </div>
+  </div>
+
+  <!-- STAFF LOGIN MODAL (สำหรับแพทย์เวร ER และผู้ดูแลระบบ) -->
+  <div id="staffLoginModal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl border border-slate-200">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+        <div class="flex items-center space-x-2.5">
+          <div class="bg-medical-100 text-medical-700 p-2.5 rounded-xl">
+            <i data-lucide="shield-Alert" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <h3 class="text-base font-bold text-slate-900">เข้าสู่ระบบสำหรับแพทย์และเจ้าหน้าที่ ER</h3>
+            <p class="text-[11px] text-slate-500">ระบบจำกัดสิทธิ์การเข้าถึงข้อมูลผู้ป่วยตามมาตรฐานความปลอดภัย</p>
+          </div>
+        </div>
+        <button type="button" onclick="closeStaffLoginModal()" class="text-slate-400 hover:text-slate-600 p-1">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <form onsubmit="handleStaffLoginSubmit(event)" class="mt-4 space-y-3.5">
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">ชื่อผู้ใช้งาน (Staff Username)</label>
+          <input type="text" id="staffUsernameInput" value="doctor" placeholder="เช่น doctor หรือ admin"
+            class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2 text-xs sm:text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-medical-500">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">รหัสผ่าน (Password)</label>
+          <input type="password" id="staffPasswordInput" placeholder="กรอกรหัสผ่าน หรือกดปุ่ม 1-Click ด้านล่าง"
+            class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2 text-xs sm:text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-medical-500">
+        </div>
+        <p id="staffLoginError" class="hidden text-xs text-rose-600 font-medium"></p>
+
+        <button type="submit" class="w-full bg-medical-600 hover:bg-medical-700 text-white font-semibold py-2.5 rounded-xl text-xs sm:text-sm transition shadow-xs">
+          เข้าสู่ระบบ (Sign In)
+        </button>
+      </form>
+
+      <!-- 1-Click Quick Demo Login -->
+      <div class="mt-4 pt-4 border-t border-slate-100">
+        <span class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-2">⚡ เข้าสู่ระบบด่วนสำหรับการทดสอบ (1-Click Quick Demo Login):</span>
+        <div class="grid grid-cols-2 gap-2">
+          <button type="button" onclick="quickStaffLogin('doctor')" class="px-3 py-2 bg-sky-50 hover:bg-sky-100 text-sky-800 border border-sky-200 rounded-xl text-xs font-semibold transition flex items-center justify-center space-x-1.5">
+            <i data-lucide="stethoscope" class="w-3.5 h-3.5 text-sky-600"></i>
+            <span>แพทย์เวร ER (1-Click)</span>
+          </button>
+          <button type="button" onclick="quickStaffLogin('admin')" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 rounded-xl text-xs font-semibold transition flex items-center justify-center space-x-1.5">
+            <i data-lucide="shield-check" class="w-3.5 h-3.5 text-slate-700"></i>
+            <span>Admin (1-Click)</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 1-CLICK MEDICAL AI CONSULTANT MODAL (ปรึกษา AI แพทย์ฉุกเฉิน) -->
+  <!-- ========================================================================= -->
+  <!-- MODAL: 1-CLICK ER MEDICAL AI CONSULTANT (PDPA-COMPLIANT & GLM / CDS)     -->
+  <!-- ========================================================================= -->
+  <div id="aiConsultantModal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
+    <div class="bg-white rounded-3xl max-w-5xl w-full shadow-2xl border border-slate-200 overflow-hidden my-auto max-h-[94vh] flex flex-col">
+      <!-- Modal Header -->
+      <div class="bg-gradient-to-r from-indigo-700 via-indigo-600 to-violet-700 p-4 sm:p-5 text-white flex items-center justify-between">
+        <div class="flex items-center space-x-3">
+          <div class="bg-white/20 p-2.5 rounded-2xl backdrop-blur-xs">
+            <i data-lucide="sparkles" class="w-6 h-6 text-amber-300"></i>
+          </div>
+          <div>
+            <div class="flex items-center space-x-2">
+              <h3 class="text-base sm:text-lg font-bold">1-Click ER Medical AI Consultant</h3>
+              <span class="bg-emerald-400/20 text-emerald-200 border border-emerald-300/30 text-[10px] font-mono font-bold px-2 py-0.5 rounded-full">PDPA PROTECTED</span>
+              <span id="aiKeyStatusBadge"></span>
+            </div>
+            <p id="aiModalPatientBadge" class="text-xs text-indigo-100 mt-0.5">[ผู้ป่วย] ห้องฉุกเฉิน</p>
+          </div>
+        </div>
+        <button type="button" onclick="closeAiConsultantModal()" class="bg-white/10 hover:bg-white/20 text-white p-2 rounded-xl transition">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <!-- Modal Body -->
+      <div class="p-4 sm:p-6 overflow-y-auto space-y-4 flex-1 text-xs">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+          <!-- Left Column: Structured Prompt (PDPA De-identified) -->
+          <div class="lg:col-span-5 space-y-2 flex flex-col">
+            <div class="flex items-center justify-between">
+              <label class="font-bold text-slate-800 text-xs flex items-center">
+                <i data-lucide="terminal" class="w-4 h-4 mr-1.5 text-indigo-600"></i>
+                <span>1. Prompt ปรึกษา AI (PDPA Shield)</span>
+              </label>
+              <button type="button" onclick="copyAiConsultantPrompt()" class="px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 font-semibold rounded-lg transition flex items-center space-x-1 shadow-2xs text-[11px]">
+                <i data-lucide="copy" class="w-3 h-3"></i>
+                <span>คัดลอก Prompt</span>
+              </button>
+            </div>
+            <p class="text-[11px] text-slate-500">ตัดชื่อ-นามสกุล, HN, คิว และชื่อ รพ. ออก 100% ปลอดภัยต่อข้อมูลส่วนบุคคล</p>
+            <textarea id="aiConsultantPromptText" rows="18" readonly
+              class="w-full flex-1 font-mono text-[11px] leading-relaxed bg-slate-50 border border-slate-300 rounded-xl p-3 text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500 resize-y"></textarea>
+          </div>
+
+          <!-- Right Column: 2 Distinct Output Sections (Dx & ER Orders) -->
+          <div class="lg:col-span-7 space-y-3 flex flex-col">
+            <div class="flex items-center justify-between pb-1 border-b border-slate-100">
+              <label class="font-bold text-slate-800 text-xs sm:text-sm flex items-center">
+                <i data-lucide="cpu" class="w-4 h-4 mr-1.5 text-violet-600"></i>
+                <span>2. ผลการวิเคราะห์ & แผนคำสั่งห้องฉุกเฉิน (AI / CDS Output)</span>
+              </label>
+              <button type="button" id="runAiAnalysisBtn" onclick="runDirectAiConsultation()" class="px-3.5 py-1.5 bg-violet-600 hover:bg-violet-700 text-white font-semibold rounded-xl shadow-xs transition flex items-center space-x-1.5 cursor-pointer">
+                <i data-lucide="zap" class="w-3.5 h-3.5"></i>
+                <span>วิเคราะห์ด้วย AI</span>
+              </button>
+            </div>
+            <p id="aiApiStatusMsg" class="text-[11px] text-slate-500">💡 ระบบสร้างคำแนะนำเบื้องต้นจาก Built-in CDS ให้ทันที หรือกดปุ่มด้านบนเพื่อเรียก AI</p>
+
+            <!-- Section 1: Provisional & Differential Diagnosis -->
+            <div class="bg-indigo-50/50 border border-indigo-200 rounded-xl p-3 space-y-1.5">
+              <div class="flex items-center justify-between">
+                <span class="font-bold text-indigo-950 text-xs flex items-center">
+                  <i data-lucide="target" class="w-3.5 h-3.5 mr-1 text-indigo-600"></i>
+                  การวินิจฉัยเบื้องต้น & แยกโรค (Provisional & Differential Diagnosis)
+                </span>
+                <div class="flex items-center space-x-1.5">
+                  <button type="button" onclick="copyAiResultSection('dx')" class="px-2 py-0.5 bg-white text-indigo-700 border border-indigo-200 hover:bg-indigo-50 rounded text-[10px] font-semibold flex items-center space-x-1 cursor-pointer">
+                    <i data-lucide="copy" class="w-3 h-3"></i>
+                    <span>คัดลอก Dx</span>
+                  </button>
+                  <button type="button" onclick="applyAiResultToDoctorAddendum('dx')" class="px-2 py-0.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded text-[10px] font-semibold flex items-center space-x-1 cursor-pointer">
+                    <i data-lucide="corner-down-left" class="w-3 h-3"></i>
+                    <span>นำเฉพาะ Dx เข้า</span>
+                  </button>
+                </div>
+              </div>
+              <textarea id="aiResultDxBox" rows="5"
+                placeholder="การวินิจฉัยเบื้องต้นและวินิจฉัยแยกโรคเรียงตามลำดับ..."
+                class="w-full font-sans text-xs leading-relaxed bg-white border border-indigo-200 rounded-lg p-2.5 text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500 resize-y"></textarea>
+            </div>
+
+            <!-- Section 2: Treatment Plan & ER Orders (Nurse-Ready [ ] format) -->
+            <div class="bg-emerald-50/40 border border-emerald-200 rounded-xl p-3 space-y-1.5">
+              <div class="flex items-center justify-between">
+                <span class="font-bold text-emerald-950 text-xs flex items-center">
+                  <i data-lucide="clipboard-list" class="w-3.5 h-3.5 mr-1 text-emerald-600"></i>
+                  แผนการรักษา & คำสั่งห้องฉุกเฉิน (Treatment Plan & ER Orders)
+                </span>
+                <div class="flex items-center space-x-1.5">
+                  <button type="button" onclick="copyAiResultSection('orders')" class="px-2 py-0.5 bg-white text-emerald-700 border border-emerald-200 hover:bg-emerald-50 rounded text-[10px] font-semibold flex items-center space-x-1 cursor-pointer">
+                    <i data-lucide="copy" class="w-3 h-3"></i>
+                    <span>คัดลอก Orders</span>
+                  </button>
+                  <button type="button" onclick="applyAiResultToDoctorAddendum('plan')" class="px-2 py-0.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-[10px] font-semibold flex items-center space-x-1 cursor-pointer">
+                    <i data-lucide="corner-down-left" class="w-3 h-3"></i>
+                    <span>นำเฉพาะ Plan เข้า</span>
+                  </button>
+                </div>
+              </div>
+              <textarea id="aiResultOrdersBox" rows="8"
+                placeholder="แผนการตรวจแล็บ เอ็กซเรย์ POCUS และคำสั่งการรักษาพยาบาล (- [ ])..."
+                class="w-full font-sans text-xs leading-relaxed bg-white border border-emerald-200 rounded-lg p-2.5 text-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-500 resize-y"></textarea>
+            </div>
+          </div>
+        </div>
+
+        <!-- Admin Settings Accordion (Collapsible at bottom) -->
+        <div class="border border-slate-200 rounded-2xl overflow-hidden bg-slate-50/60 mt-3">
+          <button type="button" onclick="toggleAiAdminSettings()" class="w-full px-4 py-2.5 flex items-center justify-between hover:bg-slate-100 transition text-left cursor-pointer">
+            <div class="flex items-center space-x-2">
+              <i data-lucide="settings" class="w-4 h-4 text-slate-600"></i>
+              <span class="font-bold text-slate-700 text-xs">การตั้งค่า AI Gateway & API Key (สำหรับ Admin หลังบ้าน / รองรับ z.ai GLM Coding Plan)</span>
+            </div>
+            <i id="aiAdminToggleIcon" data-lucide="chevron-down" class="w-4 h-4 text-slate-500"></i>
+          </button>
+
+          <div id="aiAdminSettingsPanel" class="hidden p-4 border-t border-slate-200 bg-white space-y-3 text-xs">
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <label class="block font-semibold text-slate-700 mb-1">ผู้ให้บริการ (Provider Preset):</label>
+                <select id="aiProviderSelect" onchange="handleAiProviderPresetChange()"
+                  class="w-full bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 focus:ring-1 focus:ring-medical-500">
+                  <option value="gemini" selected>Google Gemini 3.8 Flash (แนะนำ: ประหยัด แม่นยำ ล่าสุด)</option>
+                  <option value="gemini_3_1_pro">Google Gemini 3.1 Pro Preview (เคสซับซ้อน/วิกฤตสูง)</option>
+                  <option value="gemini_2_5_flash">Google Gemini 2.5 Flash (เสถียร LTS)</option>
+                  <option value="custom_openai">Custom OpenAI-Compatible API</option>
+                  <option value="z_ai">z.ai (GLM OpenAI API / bigmodel.cn)</option>
+                </select>
+              </div>
+              <div>
+                <label class="block font-semibold text-slate-700 mb-1">Endpoint URL (Gemini API):</label>
+                <input type="text" id="aiApiEndpointInput" placeholder="https://generativelanguage.googleapis.com"
+                  class="w-full bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 focus:ring-1 focus:ring-medical-500 font-mono">
+              </div>
+              <div>
+                <label class="block font-semibold text-slate-700 mb-1">Model Name:</label>
+                <input type="text" id="aiApiModelInput" placeholder="gemini-3.8-flash"
+                  class="w-full bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 focus:ring-1 focus:ring-medical-500 font-mono">
+              </div>
+            </div>
+
+            <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 pt-1">
+              <div class="flex-1">
+                <label class="block font-semibold text-slate-700 mb-1">API Key (ซ่อนความปลอดภัย ไม่แสดงผลค้าง):</label>
+                <input type="password" id="aiApiKeyInput" placeholder="กรอก Gemini API Key (ขึ้นต้นด้วย AQ.Ab... หรือ AIzaSy...)"
+                  class="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-1.5 text-xs text-slate-800 focus:ring-1 focus:ring-medical-500 font-mono">
+              </div>
+              <div class="flex items-center space-x-2 sm:self-end">
+                <button type="button" onclick="saveAiAdminSettings()" class="px-3.5 py-1.5 bg-medical-600 hover:bg-medical-700 text-white font-semibold rounded-lg shadow-2xs transition text-xs flex items-center space-x-1 cursor-pointer">
+                  <i data-lucide="save" class="w-3.5 h-3.5"></i>
+                  <span>บันทึกการตั้งค่า</span>
+                </button>
+                <button type="button" onclick="clearAiAdminApiKey()" class="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-semibold rounded-lg transition text-xs flex items-center space-x-1 cursor-pointer">
+                  <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                  <span>ล้างคีย์ความปลอดภัย</span>
+                </button>
+              </div>
+            </div>
+            <p class="text-[11px] text-slate-400">🔒 API Key จะถูกเข้ารหัสในเบราว์เซอร์ ไม่แสดงข้อความตัวจริงเพื่อป้องกันบุคคลอื่นมาเปิดดูย้อนหลัง</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="p-4 bg-slate-50 border-t border-slate-200 flex flex-wrap items-center justify-between gap-3">
+        <span class="text-[11px] text-slate-500 flex items-center">
+          <i data-lucide="shield-check" class="w-3.5 h-3.5 mr-1 text-emerald-600"></i>
+          <span>ข้อมูลถูกถอดรหัสระบุตัวตน (PDPA Protected) และผลลัพธ์เป็นเครื่องมือสนับสนุนการตัดสินใจทางคลินิก</span>
+        </span>
+        <div class="flex items-center space-x-2">
+          <button type="button" onclick="applyAiResultToDoctorAddendum('both')" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold transition flex items-center space-x-1.5 shadow-2xs cursor-pointer">
+            <i data-lucide="check-check" class="w-4 h-4"></i>
+            <span>⚡ 1-Click นำเข้าทั้งการวินิจฉัยและคำสั่งการรักษา</span>
+          </button>
+          <button type="button" onclick="closeAiConsultantModal()" class="px-3.5 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl text-xs font-semibold transition cursor-pointer">
+            ปิดหน้าต่าง
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CONFIRM APPLY AI RESULT OVERWRITE/APPEND MODAL -->
+  <div id="aiApplyConfirmModal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl p-5 max-w-sm w-full shadow-2xl border border-slate-200 space-y-3">
+      <div class="w-10 h-10 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center">
+        <i data-lucide="alert-triangle" class="w-5 h-5"></i>
+      </div>
+      <div>
+        <h3 class="text-sm font-bold text-slate-900">ตรวจพบข้อความเดิมของแพทย์</h3>
+        <p class="text-xs text-slate-500 mt-1">ในช่องการวินิจฉัยหรือแผนการรักษามีข้อความที่ท่านพิมพ์ไว้แล้ว ต้องการดำเนินการอย่างไร?</p>
+      </div>
+      <div class="flex flex-col gap-2 pt-2">
+        <button type="button" onclick="confirmApplyAiResult('append')" class="w-full py-2 px-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold transition flex items-center justify-center space-x-1.5 shadow-2xs cursor-pointer">
+          <i data-lucide="file-plus" class="w-3.5 h-3.5"></i>
+          <span>เขียนต่อท้ายข้อความเดิม (Append)</span>
+        </button>
+        <button type="button" onclick="confirmApplyAiResult('replace')" class="w-full py-2 px-3 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-semibold transition flex items-center justify-center space-x-1.5 shadow-2xs cursor-pointer">
+          <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+          <span>แทนที่ข้อความเดิมทั้งหมด (Replace)</span>
+        </button>
+        <button type="button" onclick="closeAiApplyConfirmModal()" class="w-full py-2 px-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-medium transition text-center cursor-pointer">
+          ยกเลิก
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- MODAL: จุดคัดกรองพยาบาลห้องฉุกเฉิน (ER TRIAGE STATION SIMULATOR)              -->
+  <!-- ========================================================================= -->
+  <div id="triageStationModal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+    <div class="bg-white rounded-3xl max-w-2xl w-full p-5 sm:p-6 shadow-2xl border border-slate-200 my-6">
+      
+      <!-- Header -->
+      <div class="flex items-start justify-between pb-4 border-b border-slate-100">
+        <div class="flex items-center space-x-3">
+          <div class="bg-teal-100 text-teal-700 p-2.5 rounded-2xl">
+            <i data-lucide="clipboard-check" class="w-6 h-6"></i>
+          </div>
+          <div>
+            <h2 class="text-base sm:text-lg font-bold text-slate-900">จุดคัดกรองผู้ป่วยห้องฉุกเฉิน (ER Triage Station)</h2>
+            <p class="text-xs text-slate-500">บันทึกข้อมูลคัดกรอง สัญญาณชีพ และออกบัตรคิวพร้อม QR Code</p>
+          </div>
+        </div>
+        <button type="button" onclick="closeTriageSimulatorModal()" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <!-- Quick Presets -->
+      <div class="mt-4 p-3 bg-slate-50 border border-slate-200 rounded-2xl">
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-xs font-bold text-slate-700 flex items-center">
+            <i data-lucide="zap" class="w-3.5 h-3.5 mr-1 text-amber-500"></i>
+            สุ่มเคสตัวอย่างคัดกรองด่วน (Quick Presets):
+          </span>
+          <button type="button" onclick="randomizeTriageCase()" class="text-xs font-semibold text-teal-700 hover:text-teal-800 flex items-center">
+            <i data-lucide="refresh-cw" class="w-3 h-3 mr-1"></i> สุ่มเคสอัตโนมัติ
+          </button>
+        </div>
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-1.5 text-xs">
+          <button type="button" onclick="applyTriagePreset(1)" class="p-2 rounded-xl border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-800 text-left font-medium transition">
+            <span class="font-bold block text-[11px] text-rose-900">ESI 1: วิกฤต/ช็อก</span>
+            <span class="text-[10px] text-rose-700">BP 85/50, PR 128 (A-xxx)</span>
+          </button>
+          <button type="button" onclick="applyTriagePreset(2)" class="p-2 rounded-xl border border-amber-200 bg-amber-50 hover:bg-amber-100 text-amber-900 text-left font-medium transition">
+            <span class="font-bold block text-[11px] text-amber-950">ESI 2: แน่นอก/BPสูง</span>
+            <span class="text-[10px] text-amber-800">BP 195/115 (B-xxx)</span>
+          </button>
+          <button type="button" onclick="applyTriagePreset(3)" class="p-2 rounded-xl border border-teal-200 bg-teal-50 hover:bg-teal-100 text-teal-900 text-left font-medium transition">
+            <span class="font-bold block text-[11px] text-teal-950">ESI 3: ไข้สูง/หนาวสั่น</span>
+            <span class="text-[10px] text-teal-800">BT 39.2, PR 108 (C-xxx)</span>
+          </button>
+          <button type="button" onclick="applyTriagePreset(4)" class="p-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 text-slate-800 text-left font-medium transition">
+            <span class="font-bold block text-[11px] text-slate-900">ESI 4: เวียนหัว/ปกติ</span>
+            <span class="text-[10px] text-slate-500">VS ปกติ (D-xxx)</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Triage Form Fields -->
+      <form id="triageSimulatorForm" onsubmit="event.preventDefault(); generateTriageTicket();" class="mt-4 space-y-4">
+        <!-- Row 1: ESI Level & Queue No -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">ระดับความเร่งด่วน (ESI Level):</label>
+            <select id="triageEsiSelect" onchange="handleTriageEsiChange()" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-500">
+              <option value="1">ระดับ 1: กู้ชีพทันที (ESI 1 - Resuscitation) -> หมวด A-xxx</option>
+              <option value="2">ระดับ 2: ฉุกเฉินวิกฤต/รอไม่ได้ (ESI 2 - Emergent) -> หมวด B-xxx</option>
+              <option value="3" selected>ระดับ 3: ฉุกเฉินเร่งด่วน (ESI 3 - Urgent) -> หมวด C-xxx</option>
+              <option value="4">ระดับ 4: ฉุกเฉินไม่รุนแรง (ESI 4 - Semi-urgent) -> หมวด D-xxx</option>
+              <option value="5">ระดับ 5: ไม่ฉุกเฉิน (ESI 5 - Non-urgent) -> หมวด E-xxx</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">หมายเลขบัตรคิว (Queue Number):</label>
+            <input type="text" id="triageQueueNoInput" value="E3-054" required
+              class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono font-bold text-teal-800 focus:outline-none focus:ring-2 focus:ring-teal-500">
+          </div>
+        </div>
+
+        <!-- Row 2: Patient Identity -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">เลขประจำตัวผู้ป่วย (HN):</label>
+            <input type="text" id="triageHnInput" value="6788412" placeholder="เช่น 6788412"
+              class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-500">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">ชื่อ-นามสกุล (ถ้ามี):</label>
+            <input type="text" id="triageNameInput" value="นายสมเกียรติ มั่นคง" placeholder="เว้นว่างได้"
+              class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-500">
+          </div>
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">อายุ (ปี):</label>
+              <input type="number" id="triageAgeInput" value="48" min="0" max="130"
+                class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-500">
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">เพศ:</label>
+              <select id="triageGenderSelect" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-2 py-2 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-500">
+                <option value="ชาย" selected>ชาย</option>
+                <option value="หญิง">หญิง</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Row 3: Vital Signs -->
+        <div class="p-3.5 bg-teal-50/50 border border-teal-200 rounded-2xl">
+          <span class="text-xs font-bold text-teal-900 block mb-2.5 flex items-center">
+            <i data-lucide="heart-pulse" class="w-3.5 h-3.5 mr-1 text-teal-600"></i>
+            สัญญาณชีพแรกรับจากจุดคัดกรอง (Triage Vital Signs):
+          </span>
+          <div class="grid grid-cols-2 sm:grid-cols-5 gap-2.5 text-xs">
+            <div>
+              <label class="block text-[11px] font-medium text-slate-600 mb-0.5">BT (°C):</label>
+              <input type="number" step="0.1" id="triageBtInput" value="38.8" placeholder="38.8"
+                class="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-mono text-slate-800">
+            </div>
+            <div>
+              <label class="block text-[11px] font-medium text-slate-600 mb-0.5">BP (mmHg):</label>
+              <div class="flex items-center space-x-1">
+                <input type="number" id="triageSbpInput" value="135" placeholder="SBP" class="w-1/2 bg-white border border-slate-300 rounded-lg px-1.5 py-1.5 text-xs font-mono text-center text-slate-800">
+                <span class="text-slate-400">/</span>
+                <input type="number" id="triageDbpInput" value="85" placeholder="DBP" class="w-1/2 bg-white border border-slate-300 rounded-lg px-1.5 py-1.5 text-xs font-mono text-center text-slate-800">
+              </div>
+            </div>
+            <div>
+              <label class="block text-[11px] font-medium text-slate-600 mb-0.5">PR (bpm):</label>
+              <input type="number" id="triagePrInput" value="104" placeholder="104"
+                class="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-mono text-slate-800">
+            </div>
+            <div>
+              <label class="block text-[11px] font-medium text-slate-600 mb-0.5">RR (/min):</label>
+              <input type="number" id="triageRrInput" value="22" placeholder="22"
+                class="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-mono text-slate-800">
+            </div>
+            <div>
+              <label class="block text-[11px] font-medium text-slate-600 mb-0.5">SpO2 (%):</label>
+              <input type="number" id="triageSpo2Input" value="96" placeholder="96"
+                class="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs font-mono text-slate-800">
+            </div>
+          </div>
+          <p class="text-[11px] text-teal-700 mt-2">💡 หากช่องใดพยาบาลไม่ได้วัด สามารถเว้นว่างไว้ได้ ระบบจะทำงานต่อได้อย่างยืดหยุ่น</p>
+        </div>
+
+        <!-- Footer Buttons -->
+        <div class="flex items-center justify-end space-x-2.5 pt-2">
+          <button type="button" onclick="closeTriageSimulatorModal()" class="px-4 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100 rounded-xl transition">
+            ยกเลิก
+          </button>
+          <button type="submit" class="px-5 py-2.5 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-bold shadow-sm transition flex items-center space-x-1.5">
+            <i data-lucide="printer" class="w-4 h-4"></i>
+            <span>พิมพ์บัตรคิวพร้อม QR Code (Generate Ticket)</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- MODAL: บัตรคิวห้องฉุกเฉินสำหรับพิมพ์/สแกน (THERMAL PRINT TICKET PASS)           -->
+  <!-- ========================================================================= -->
+  <div id="triageTicketModal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+    <div class="bg-white rounded-3xl max-w-sm w-full p-5 sm:p-6 shadow-2xl border border-slate-300 my-6 text-slate-900">
+      
+      <!-- Thermal Ticket Styled Header -->
+      <div class="text-center pb-3 border-b-2 border-dashed border-slate-300">
+        <div class="flex items-center justify-center space-x-1.5 text-teal-800 font-bold text-sm">
+          <i data-lucide="activity" class="w-4 h-4 text-medical-600"></i>
+          <span>โรงพยาบาลราชบุรี</span>
+        </div>
+        <p class="text-xs font-semibold text-slate-700">งานการพยาบาลผู้ป่วยฉุกเฉิน (ER Triage)</p>
+        <p class="text-[10px] text-slate-500 font-mono mt-0.5" id="ticketTimestampDisplay">29/10/2026 15:30 น.</p>
+      </div>
+
+      <!-- Queue Display -->
+      <div class="text-center py-3 border-b-2 border-dashed border-slate-300">
+        <span class="text-[10px] uppercase font-bold tracking-wider text-slate-500">หมายเลขคิวรอตรวจ</span>
+        <div id="ticketQueueDisplay" class="text-4xl sm:text-5xl font-black font-mono tracking-tight text-slate-900 my-0.5">E3-054</div>
+        <div class="mt-1 flex justify-center">
+          <span id="ticketEsiBadge" class="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300">
+            ESI Level 3: ฉุกเฉินเร่งด่วน (Urgent)
+          </span>
+        </div>
+      </div>
+
+      <!-- Patient & Vital Signs Info -->
+      <div class="py-2.5 border-b-2 border-dashed border-slate-300 text-xs space-y-1">
+        <div class="flex justify-between items-center">
+          <span class="text-slate-500">HN:</span>
+          <strong id="ticketHnDisplay" class="font-mono text-slate-900">6788412</strong>
+        </div>
+        <div class="flex justify-between items-center">
+          <span class="text-slate-500">ชื่อผู้ป่วย:</span>
+          <strong id="ticketNameDisplay" class="text-slate-900 truncate max-w-[180px]">นายสมเกียรติ มั่นคง</strong>
+        </div>
+        <div class="flex justify-between items-center">
+          <span class="text-slate-500">ข้อมูลพื้นฐาน:</span>
+          <span id="ticketDemogDisplay" class="text-slate-700">อายุ 48 ปี • ชาย</span>
+        </div>
+        <div class="pt-1.5 border-t border-slate-200">
+          <span class="text-[10px] font-bold text-slate-600 block mb-0.5">สัญญาณชีพแรกรับ (Vital Signs):</span>
+          <div id="ticketVsDisplay" class="text-[11px] font-mono bg-slate-50 p-1.5 rounded-lg border border-slate-200 text-slate-800">
+            BP: 135/85 | PR: 104 | RR: 22 | BT: 38.8°C | SpO2: 96%
+          </div>
+        </div>
+      </div>
+
+      <!-- QR Code Center -->
+      <div class="py-3 text-center">
+        <div id="ticketQrContainer" class="flex justify-center p-2 bg-slate-50 border border-slate-200 rounded-2xl mx-auto w-fit">
+          <img id="ticketQrImage" src="" alt="QR Code" class="w-44 h-44 rounded-xl object-contain bg-white">
+        </div>
+        <p class="text-[11px] font-bold text-teal-800 mt-2">📱 สแกน QR Code เพื่อเริ่มทำประวัติระหว่างรอตรวจ</p>
+        <p class="text-[10px] text-slate-400">ข้อมูลคัดกรองและสัญญาณชีพจะถูกส่งเข้าห้องตรวจแพทย์อัตโนมัติ</p>
+        <a id="ticketQrLink" href="#" target="_blank" class="text-[10px] text-medical-600 hover:underline block truncate max-w-[260px] mx-auto mt-1 font-mono"></a>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="pt-3 border-t-2 border-dashed border-slate-300 space-y-2">
+        <button type="button" onclick="simulateScanTicketOnThisDevice()" class="w-full py-2.5 px-3 bg-teal-600 hover:bg-teal-700 text-white font-bold rounded-xl text-xs transition shadow-xs flex items-center justify-center space-x-1.5">
+          <i data-lucide="smartphone" class="w-3.5 h-3.5"></i>
+          <span>จำลองสแกนบนเครื่องนี้ (Simulate Scan)</span>
+        </button>
+        <div class="flex items-center space-x-2">
+          <button type="button" onclick="printTriageTicket()" class="flex-1 py-2 px-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl text-xs transition flex items-center justify-center space-x-1">
+            <i data-lucide="printer" class="w-3.5 h-3.5"></i>
+            <span>พิมพ์บัตรคิว (Print)</span>
+          </button>
+          <button type="button" onclick="closeTriageTicketModal()" class="py-2 px-4 bg-slate-100 hover:bg-slate-200 text-slate-600 font-semibold rounded-xl text-xs transition">
+            ปิด
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- MODAL: ส่งต่อข้อมูลสู่โปรแกรมตัวกลาง (INTERMEDIATE APP & HIS BRIDGE)           -->
+  <!-- ========================================================================= -->
+  <div id="intermediateExportModal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+    <div class="bg-white rounded-3xl max-w-2xl w-full p-5 sm:p-6 shadow-2xl border border-slate-200 my-6">
+      
+      <!-- Header -->
+      <div class="flex items-start justify-between pb-3 border-b border-slate-100">
+        <div class="flex items-center space-x-3">
+          <div class="bg-indigo-100 text-indigo-700 p-2.5 rounded-2xl">
+            <i data-lucide="share-2" class="w-6 h-6"></i>
+          </div>
+          <div>
+            <h2 class="text-base sm:text-lg font-bold text-slate-900">ส่งต่อข้อมูลสู่โปรแกรมตัวกลาง (Intermediate App Bridge)</h2>
+            <p class="text-xs text-slate-500" id="intermediateModalPatientBadge">ผู้ป่วยคิว [E3-054] นายสมเกียรติ มั่นคง</p>
+          </div>
+        </div>
+        <button type="button" onclick="closeIntermediateExportModal()" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <!-- Format Tabs -->
+      <div class="flex items-center space-x-2 mt-4 text-xs font-semibold">
+        <button type="button" id="exportTabBtnText" onclick="switchIntermediateExportTab('text')"
+          class="px-3.5 py-1.5 rounded-xl bg-indigo-600 text-white shadow-2xs transition">
+          ข้อความสรุปทางคลินิก (Text Format)
+        </button>
+        <button type="button" id="exportTabBtnJson" onclick="switchIntermediateExportTab('json')"
+          class="px-3.5 py-1.5 rounded-xl bg-slate-100 text-slate-700 hover:bg-slate-200 transition">
+          JSON Payload (API Format)
+        </button>
+      </div>
+
+      <!-- Export Contents -->
+      <div class="mt-3">
+        <textarea id="intermediateExportText" rows="13" readonly
+          class="w-full font-mono text-xs leading-relaxed p-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-slate-800 focus:outline-none resize-y"></textarea>
+        <textarea id="intermediateExportJson" rows="13" readonly
+          class="hidden w-full font-mono text-xs leading-relaxed p-3.5 bg-slate-900 text-emerald-400 border border-slate-700 rounded-2xl focus:outline-none resize-y"></textarea>
+      </div>
+
+      <div class="flex flex-wrap items-center justify-between gap-2 mt-4 pt-3 border-t border-slate-100 text-xs">
+        <span class="text-slate-500 text-[11px]">💡 รองรับทั้งการคัดลอกวางในโปรแกรมตรวจร่างกายเดิม หรือส่งผ่าน API เข้า HIS</span>
+        <div class="flex items-center space-x-2">
+          <button type="button" onclick="copyIntermediateCurrentPayload()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl transition flex items-center space-x-1.5 shadow-2xs">
+            <i data-lucide="copy" class="w-3.5 h-3.5"></i>
+            <span>คัดลอกข้อมูล (Copy)</span>
+          </button>
+          <button type="button" onclick="downloadIntermediateJson()" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium rounded-xl transition flex items-center space-x-1">
+            <i data-lucide="download" class="w-3.5 h-3.5"></i>
+            <span>บันทึก JSON</span>
+          </button>
+          <button type="button" onclick="closeIntermediateExportModal()" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 font-medium rounded-xl transition">
+            ปิด
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODULAR APPLICATION SCRIPTS (Double-click file:/// ready without server) -->
+  <script src="clinical_knowledge_core.js"></script>
+  <script src="cc_modules/01_abdpain.js"></script>
+  <script src="cc_modules/02_chestpain.js"></script>
+  <script src="cc_modules/03_dyspnea.js"></script>
+  <script src="cc_modules/04_fever.js"></script>
+  <script src="cc_modules/05_dizziness.js"></script>
+  <script src="cc_modules/06_headache.js"></script>
+  <script src="cc_modules/07_stroke_deficit.js"></script>
+  <script src="cc_modules/08_seizure.js"></script>
+  <script src="cc_modules/09_syncope.js"></script>
+  <script src="cc_modules/10_altered_mental.js"></script>
+  <script src="cc_modules/11_vomiting.js"></script>
+  <script src="cc_modules/12_diarrhea.js"></script>
+  <script src="cc_modules/13_gi_bleed.js"></script>
+  <script src="cc_modules/14_palpitation.js"></script>
+  <script src="cc_modules/15_weakness.js"></script>
+  <script src="cc_modules/16_allergy.js"></script>
+  <script src="cc_modules/17_urinary_retention.js"></script>
+  <script src="cc_modules/18_dysuria.js"></script>
+  <script src="cc_modules/19_hematuria.js"></script>
+  <script src="cc_modules/20_back_pain.js"></script>
+  <script src="core_engine.js"></script>
+</body>
+</html>

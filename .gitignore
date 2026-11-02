@@ -1,0 +1,8 @@
+.snapshots/
+_backups/
+scratch/
+node_modules/
+*.tmp
+*.log
+.DS_Store
+Thumbs.db
