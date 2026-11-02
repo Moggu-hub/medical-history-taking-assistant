@@ -2443,9 +2443,35 @@ function openAiConsultantModal() {
 
   updateAiAdminUiState();
 
-  // Populate instant built-in CDS analysis immediately into 2 cards
-  const cdsOutput = generateBuiltInCdsAnalysis(patient);
-  renderAiConsultantOutput(cdsOutput);
+  // Check if patient already has a saved AI consult (persists across modal closes)
+  let savedAi = patient.aiConsultResult;
+  if (!savedAi) {
+    try {
+      const cached = sessionStorage.getItem('er_ai_consult_' + patient.id);
+      if (cached) {
+        savedAi = JSON.parse(cached);
+        patient.aiConsultResult = savedAi;
+      }
+    } catch (_) {}
+  }
+
+  const statusEl = document.getElementById('aiApiStatusMsg');
+  if (savedAi && savedAi.rawText) {
+    renderAiConsultantOutput(savedAi.rawText);
+    if (statusEl) {
+      const modelInfo = savedAi.model || 'Gemini';
+      statusEl.textContent = `✓ แสดงผลการวิเคราะห์จาก AI ล่าสุดที่บันทึกไว้ (${modelInfo}) • กด 'วิเคราะห์ด้วย AI' หากต้องการขอผลใหม่`;
+      statusEl.className = 'text-[11px] text-emerald-700 font-semibold mt-1.5';
+    }
+  } else {
+    // Populate instant built-in CDS analysis immediately into 2 cards
+    const cdsOutput = generateBuiltInCdsAnalysis(patient);
+    renderAiConsultantOutput(cdsOutput);
+    if (statusEl) {
+      statusEl.textContent = '💡 ระบบสร้างคำแนะนำเบื้องต้นจาก Built-in CDS ให้ทันที หรือกดปุ่มด้านบนเพื่อเรียก AI';
+      statusEl.className = 'text-[11px] text-slate-500 mt-1.5';
+    }
+  }
 
   const modal = document.getElementById('aiConsultantModal');
   if (modal) modal.classList.remove('hidden');
@@ -2470,6 +2496,159 @@ function copyAiConsultantPrompt() {
     document.execCommand('copy');
     showToast('📋 คัดลอก AI Consultation Prompt เรียบร้อย!');
   }
+}
+
+async function executeGeminiConsultWithRetry(apiKey, baseUrl, promptText, onProgress, customAttempts = null) {
+  // Model Fallback Chain: Primary 3.8 Flash -> Fast Retry -> Fallback 1 (3-flash-preview) -> Fallback 2 (3.1-pro-preview)
+  const attempts = customAttempts || [
+    { model: 'gemini-3.8-flash', delay: 0, label: 'Primary Attempt' },
+    { model: 'gemini-3.8-flash', delay: () => 1200 + Math.floor(Math.random() * 400), label: 'Fast Retry on Primary' },
+    { model: 'gemini-3-flash-preview', delay: 500, label: 'Fallback 1' },
+    { model: 'gemini-3.1-pro-preview', delay: 0, label: 'Fallback 2' }
+  ];
+
+  let lastError = null;
+
+  for (let i = 0; i < attempts.length; i++) {
+    const step = attempts[i];
+    const currentModel = step.model;
+    const attemptNum = i + 1;
+
+    const waitMs = typeof step.delay === 'function' ? step.delay() : step.delay;
+    if (waitMs > 0) {
+      await new Promise(r => setTimeout(r, waitMs));
+    }
+
+    if (typeof onProgress === 'function') {
+      onProgress({ attempt: attemptNum, total: attempts.length, model: currentModel, label: step.label });
+    }
+
+    const abortCtrl = new AbortController();
+    const timeoutId = setTimeout(() => abortCtrl.abort(), 25000);
+
+    try {
+      const url = `${baseUrl}/v1beta/models/${encodeURIComponent(currentModel)}:generateContent?key=${encodeURIComponent(apiKey)}`;
+      const payload = {
+        system_instruction: { parts: [{ text: AI_CONSULTANT_CONFIG.systemInstruction }] },
+        contents: [{ role: 'user', parts: [{ text: promptText }] }],
+        generationConfig: {
+          temperature: 0.1,
+          topP: 0.85,
+          maxOutputTokens: 1536,
+          responseMimeType: 'text/plain',
+          thinkingConfig: {
+            thinkingBudget: 1024,
+            includeThoughts: false
+          }
+        }
+      };
+
+      let response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-goog-api-key': apiKey
+        },
+        body: JSON.stringify(payload),
+        signal: abortCtrl.signal
+      });
+
+      clearTimeout(timeoutId);
+
+      // Auto-fallback if thinkingConfig is unsupported on this specific model/endpoint
+      if (!response.ok && response.status === 400) {
+        let errJson = null;
+        try { errJson = await response.clone().json(); } catch (_) {}
+        const msg = errJson?.error?.message || '';
+        if (msg.includes('thinkingConfig') || msg.includes('thinkingBudget')) {
+          const payloadNoThinking = {
+            ...payload,
+            generationConfig: {
+              temperature: 0.1,
+              topP: 0.85,
+              maxOutputTokens: 1536,
+              responseMimeType: 'text/plain'
+            }
+          };
+          response = await fetch(url, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'x-goog-api-key': apiKey
+            },
+            body: JSON.stringify(payloadNoThinking)
+          });
+        }
+      }
+
+      if (!response.ok) {
+        let errDetail = '';
+        try {
+          const errData = await response.json();
+          errDetail = errData?.error?.message || errData?.message || '';
+        } catch (_) {}
+
+        const status = response.status;
+        // Non-retryable client errors (400 Bad Request, 401/403 Invalid API Key)
+        const isClientNonRetryable = (status === 400 && !errDetail.includes('thinking')) || status === 401 || status === 403;
+        if (isClientNonRetryable) {
+          throw new Error(`HTTP ${status}: ${errDetail || 'API Key หรือสิทธิ์การใช้งานไม่ถูกต้อง'}`);
+        }
+
+        const isRetryable = status === 503 || status === 429 || status === 500 || status === 502 || status === 504 ||
+          /high demand|overloaded|UNAVAILABLE|RESOURCE_EXHAUSTED/i.test(errDetail);
+
+        if (!isRetryable && status !== 404) {
+          throw new Error(`HTTP ${status}: ${errDetail || 'เกิดข้อผิดพลาดในการเชื่อมต่อ'}`);
+        }
+
+        const nextStep = attempts[i + 1];
+        if (nextStep) {
+          console.warn(`[Gemini Consult] ${status} on ${currentModel} -> falling back to ${nextStep.model} (Attempt ${attemptNum}/${attempts.length})`);
+        }
+        lastError = new Error(`HTTP ${status}: ${errDetail || 'โมเดลไม่พร้อมให้บริการชั่วคราว'}`);
+        continue;
+      }
+
+      const data = await response.json();
+      const candidate = data?.candidates?.[0];
+      const textParts = (candidate?.content?.parts || []).filter(p => !p.thought && p.text);
+      const aiReply = textParts.map(p => p.text).join('\n') || candidate?.content?.parts?.[0]?.text || '';
+      
+      if (!aiReply && candidate?.finishReason) {
+        throw new Error(`โมเดลสิ้นสุดด้วยสถานะ: ${candidate.finishReason}`);
+      }
+
+      const usageMetadata = data?.usageMetadata || null;
+      console.log(`[Gemini Consult] Succeeded on attempt ${attemptNum} using ${currentModel}`, {
+        modelUsed: currentModel,
+        attemptCount: attemptNum,
+        usageMetadata: usageMetadata
+      });
+
+      return {
+        reply: aiReply,
+        modelUsed: currentModel,
+        attemptCount: attemptNum,
+        usageMetadata: usageMetadata
+      };
+
+    } catch (err) {
+      clearTimeout(timeoutId);
+      const isAbort = err.name === 'AbortError' || err.message?.includes('Timeout');
+      if (/HTTP 401|HTTP 403|HTTP 400/i.test(err.message)) {
+        throw err;
+      }
+
+      const nextStep = attempts[i + 1];
+      if (nextStep) {
+        console.warn(`[Gemini Consult] ${isAbort ? '25s Timeout' : err.message} on ${currentModel} -> falling back to ${nextStep.model} (Attempt ${attemptNum}/${attempts.length})`);
+      }
+      lastError = isAbort ? new Error(`HTTP 504 Timeout (25s timeout on ${currentModel})`) : err;
+    }
+  }
+
+  throw lastError || new Error('การเชื่อมต่อ Gemini API ล้มเหลวครบทุกรอบสำรอง');
 }
 
 async function runDirectAiConsultation() {
@@ -2510,91 +2689,30 @@ async function runDirectAiConsultation() {
     if (statusEl) {
       const isGemini = cfg.provider === 'gemini' || cfg.provider?.startsWith('gemini');
       const provName = isGemini
-        ? `Google Gemini (${cfg.model || '3.8 Flash'})`
+        ? `Google Gemini (3.8 Flash พร้อมระบบสำรอง)`
         : (cfg.provider === 'z_ai' ? 'z.ai GLM' : cfg.provider);
       statusEl.textContent = `⏳ กำลังส่งข้อมูลปรึกษา AI (${provName})...`;
       statusEl.className = 'text-[11px] text-indigo-700 font-medium mt-1.5 animate-pulse';
     }
 
     let aiReply = '';
+    let finalModelUsed = cfg.model || 'gemini-3.8-flash';
+    let finalAttemptCount = 1;
 
     if (cfg.provider === 'gemini' || cfg.provider?.startsWith('gemini')) {
-      let model = (cfg.model && !cfg.model.includes('glm') && !cfg.model.includes('gpt')) ? cfg.model.trim() : 'gemini-3.8-flash';
-      if (model.includes('1.5') || model.includes('2.0')) {
-        model = 'gemini-3.8-flash';
-      }
-      const baseUrl = (cfg.endpoint && cfg.endpoint.includes('googleapis.com')) ? cfg.endpoint.replace(/\/+$/, '') : 'https://generativelanguage.googleapis.com';
-      const geminiPayload = {
-        system_instruction: { parts: [{ text: AI_CONSULTANT_CONFIG.systemInstruction }] },
-        contents: [{ role: 'user', parts: [{ text: promptText }] }],
-        generationConfig: {
-          temperature: 0.1,
-          topP: 0.85,
-          maxOutputTokens: 1536,
-          responseMimeType: 'text/plain',
-          thinkingConfig: {
-            thinkingBudget: 1024,
-            includeThoughts: false
-          }
+      const baseUrl = (cfg.endpoint && cfg.endpoint.includes('googleapis.com'))
+        ? cfg.endpoint.replace(/\/+$/, '')
+        : 'https://generativelanguage.googleapis.com';
+
+      const consultResult = await executeGeminiConsultWithRetry(apiKey, baseUrl, promptText, ({ attempt, total, model, label }) => {
+        if (statusEl && attempt > 1) {
+          statusEl.textContent = `⏳ กำลังลองใหม่ (${model} - ${label}) รอบที่ ${attempt}/${total}...`;
         }
-      };
+      });
 
-      const doGeminiFetch = async (targetModel, withThinking = true) => {
-        const url = `${baseUrl}/v1beta/models/${encodeURIComponent(targetModel)}:generateContent?key=${encodeURIComponent(apiKey)}`;
-        const payloadToSend = withThinking ? geminiPayload : {
-          ...geminiPayload,
-          generationConfig: {
-            temperature: 0.1,
-            topP: 0.85,
-            maxOutputTokens: 1536,
-            responseMimeType: 'text/plain'
-          }
-        };
-        return fetch(url, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-goog-api-key': apiKey
-          },
-          body: JSON.stringify(payloadToSend)
-        });
-      };
-
-      let response = await doGeminiFetch(model, true);
-      // Auto-fallback if thinkingConfig is unsupported on this specific model/endpoint
-      if (!response.ok && response.status === 400) {
-        let errJson = null;
-        try { errJson = await response.clone().json(); } catch (_) {}
-        const msg = errJson?.error?.message || '';
-        if (msg.includes('thinkingConfig') || msg.includes('thinkingBudget')) {
-          response = await doGeminiFetch(model, false);
-        }
-      }
-      // Smart fallback if model returns 404
-      if (response.status === 404 && model !== 'gemini-3.8-flash') {
-        const fb38 = await doGeminiFetch('gemini-3.8-flash', true);
-        if (fb38.ok) { response = fb38; model = 'gemini-3.8-flash'; }
-      }
-      if (response.status === 404 && model !== 'gemini-2.5-flash') {
-        const fb25 = await doGeminiFetch('gemini-2.5-flash', true);
-        if (fb25.ok) { response = fb25; model = 'gemini-2.5-flash'; }
-      }
-
-      if (!response.ok) {
-        let errDetail = '';
-        try {
-          const errData = await response.json();
-          errDetail = errData?.error?.message || errData?.message || '';
-        } catch (_) {}
-        throw new Error(`HTTP ${response.status}: ${errDetail || 'ตรวจสอบ Gemini API Key'}`);
-      }
-      const data = await response.json();
-      const candidate = data?.candidates?.[0];
-      const textParts = (candidate?.content?.parts || []).filter(p => !p.thought && p.text);
-      aiReply = textParts.map(p => p.text).join('\n') || candidate?.content?.parts?.[0]?.text || '';
-      if (!aiReply && candidate?.finishReason) {
-        throw new Error(`โมเดลสิ้นสุดด้วยสถานะ: ${candidate.finishReason}`);
-      }
+      aiReply = consultResult.reply;
+      finalModelUsed = consultResult.modelUsed;
+      finalAttemptCount = consultResult.attemptCount;
     } else {
       // z_ai GLM Coding Plan, z_ai_china, or Custom OpenAI-Compatible API
       let endpoint = (cfg.endpoint || 'https://api.z.ai/api/coding/paas/v4/chat/completions').trim();
@@ -2641,12 +2759,22 @@ async function runDirectAiConsultation() {
 
     if (aiReply) {
       renderAiConsultantOutput(aiReply);
+      // Persist to patient record & sessionStorage
+      patient.aiConsultResult = {
+        rawText: aiReply,
+        dxText: currentAiParsedDx,
+        ordersText: currentAiParsedOrders,
+        model: finalModelUsed,
+        attemptCount: finalAttemptCount,
+        timestamp: new Date().toISOString()
+      };
+      try {
+        sessionStorage.setItem('er_ai_consult_' + patient.id, JSON.stringify(patient.aiConsultResult));
+      } catch (_) {}
+
       if (statusEl) {
-        const isGemini = cfg.provider === 'gemini' || cfg.provider?.startsWith('gemini');
-        const provName = isGemini
-          ? `Google Gemini (${cfg.model || '1.5 Flash'})`
-          : (cfg.provider === 'z_ai' ? 'z.ai GLM' : cfg.model);
-        statusEl.textContent = `✓ ได้รับผลการวิเคราะห์จาก AI (${provName}) สำเร็จแล้ว`;
+        const retryNote = finalAttemptCount > 1 ? ` (สลับใช้โมเดลสำรองรอบที่ ${finalAttemptCount})` : '';
+        statusEl.textContent = `✓ ได้รับผลการวิเคราะห์จาก AI (${finalModelUsed}${retryNote}) สำเร็จแล้ว`;
         statusEl.className = 'text-[11px] text-emerald-700 font-semibold mt-1.5';
       }
       showToast('🤖 ได้รับคำแนะนำจาก AI เรียบร้อยแล้ว!');
@@ -2655,14 +2783,16 @@ async function runDirectAiConsultation() {
     }
   } catch (err) {
     console.warn('AI API Call error:', err);
-    const cdsOutput = generateBuiltInCdsAnalysis(patient);
-    renderAiConsultantOutput(cdsOutput);
+    if (!patient.aiConsultResult?.rawText) {
+      const cdsOutput = generateBuiltInCdsAnalysis(patient);
+      renderAiConsultantOutput(cdsOutput);
+    }
     if (statusEl) {
       const isNetworkErr = err.message?.includes('Failed to fetch') || err.name === 'TypeError';
       const reason = isNetworkErr
         ? 'ไม่สามารถเชื่อมต่อไปยัง Endpoint ได้ (ตรวจ Endpoint URL หรือการเชื่อมต่อเครือข่าย)'
         : err.message;
-      statusEl.textContent = `⚠️ เชื่อมต่อ API ไม่สำเร็จ (${reason}) — แสดงผลจาก Built-in CDS แทน`;
+      statusEl.textContent = `⚠️ เชื่อมต่อ API ไม่สำเร็จ (${reason}) — แสดงผลจาก ${patient.aiConsultResult?.rawText ? 'AI ที่บันทึกไว้เดิม' : 'Built-in CDS แทน'}`;
       statusEl.className = 'text-[11px] text-amber-700 font-medium mt-1.5';
     }
     showToast(`⚠️ การเชื่อมต่อ AI ไม่สำเร็จ (${err.message})`);
@@ -2671,7 +2801,7 @@ async function runDirectAiConsultation() {
   }
 }
 
-function applyAiResultToDoctorAddendum(mode) {
+function applyAiResultToDoctorAddendum(mode = 'both') {
   const patient = patientDatabase.find(p => p.id === activePatientId);
   if (!patient) return showToast('⚠️ กรุณาเลือกผู้ป่วยก่อน');
 

@@ -280,11 +280,17 @@ const mockStorage = new Map();
 const sandbox = {
   console,
   URLSearchParams,
+  AbortController,
   setTimeout: (fn) => fn(),
   clearTimeout: () => {},
   Event: class { constructor(type, opts = {}) { this.type = type; this.bubbles = opts.bubbles; } },
   HTMLInputElement: MockElement,
   localStorage: {
+    getItem: (k) => mockStorage.get(k) || null,
+    setItem: (k, v) => mockStorage.set(k, String(v)),
+    removeItem: (k) => mockStorage.delete(k)
+  },
+  sessionStorage: {
     getItem: (k) => mockStorage.get(k) || null,
     setItem: (k, v) => mockStorage.set(k, String(v)),
     removeItem: (k) => mockStorage.delete(k)
@@ -693,11 +699,129 @@ assert(bpRf3.some(r => r.key === 'rf_spinal_infection'), 'Back Pain Case 3 trigg
 const bpRf4 = ccModBp.evaluateRedFlags(bpCase4);
 assert(bpRf4.length === 0, 'Back Pain Case 4 (Mechanical Lumbago) triggers Zero Red Flags (Low-Risk)');
 
-console.log('\n====================================================================');
-if (failures === 0) {
-  console.log('🎉 ALL 4 MANDATORY CORE GUARD TDD DIMENSIONS PASSED (0 FAILURES)!');
-  process.exit(0);
-} else {
-  console.error(`🚨 ${failures} CHECK(S) FAILED!`);
-  process.exit(1);
-}
+// === AI CONSULTANT PERSISTENCE & RESILIENT RETRY/FALLBACK TESTS ===
+// Test 4: AI Consult Result Persistence across modal close & reopen
+sandbox.selectPatient('case-040');
+const runtimePt = sandbox.getFilteredQueuePatients().find(p => p.id === 'case-040');
+runtimePt.aiConsultResult = {
+  rawText: '[PROVISIONAL_DDX]\n• AI Diagnosis: Acute Cholecystitis (85%)\n\n[ER_ORDERS]\n- [ ] Bedside POCUS Gallbladder',
+  dxText: '• AI Diagnosis: Acute Cholecystitis (85%)',
+  ordersText: '- [ ] Bedside POCUS Gallbladder',
+  model: 'gemini-3.8-flash',
+  timestamp: new Date().toISOString()
+};
+
+sandbox.openAiConsultantModal();
+assert(
+  elementsById.get('aiResultDxBox').value.includes('AI Diagnosis: Acute Cholecystitis'),
+  'openAiConsultantModal preserves and restores saved AI consult diagnosis instead of overwriting with CDS'
+);
+assert(
+  elementsById.get('aiResultOrdersBox').value.includes('Bedside POCUS Gallbladder'),
+  'openAiConsultantModal preserves and restores saved AI consult orders checklist'
+);
+assert(
+  elementsById.get('aiApiStatusMsg').textContent.includes('แสดงผลการวิเคราะห์จาก AI ล่าสุดที่บันทึกไว้'),
+  'openAiConsultantModal displays saved AI status banner indicating persisted consultation'
+);
+
+sandbox.closeAiConsultantModal();
+sandbox.openAiConsultantModal();
+assert(
+  elementsById.get('aiResultDxBox').value.includes('AI Diagnosis: Acute Cholecystitis'),
+  'AI consult result persists intact across multiple modal close/open cycles'
+);
+
+(async () => {
+  // Unit tests for executeGeminiConsultWithRetry:
+  const fastAttempts = [
+    { model: 'gemini-3.8-flash', delay: 0, label: 'Primary Attempt' },
+    { model: 'gemini-3.8-flash', delay: 0, label: 'Fast Retry on Primary' },
+    { model: 'gemini-3-flash-preview', delay: 0, label: 'Fallback 1' },
+    { model: 'gemini-3.1-pro-preview', delay: 0, label: 'Fallback 2' }
+  ];
+
+  const mockPayloadSuccess = (text = 'Mock Success') => ({
+    ok: true,
+    status: 200,
+    json: async () => ({
+      candidates: [{ content: { parts: [{ text }] } }],
+      usageMetadata: { promptTokenCount: 120, candidatesTokenCount: 80 }
+    })
+  });
+
+  const mockPayloadError = (status, msg) => ({
+    ok: false,
+    status,
+    json: async () => ({ error: { message: msg, code: status } }),
+    clone() { return this; }
+  });
+
+  // Test A: Attempt 1 Success on Primary (gemini-3.8-flash)
+  let calls = [];
+  sandbox.fetch = async (url) => {
+    calls.push(url);
+    return mockPayloadSuccess('Primary success');
+  };
+  const resA = await sandbox.executeGeminiConsultWithRetry('test-key', 'https://generativelanguage.googleapis.com', 'test prompt', null, fastAttempts);
+  assert(resA.attemptCount === 1 && resA.modelUsed === 'gemini-3.8-flash', 'Gemini Consult Attempt 1 succeeds cleanly on primary model (gemini-3.8-flash)');
+
+  // Test B: Fast Retry on Primary after transient 503 high demand
+  calls = [];
+  let callCountB = 0;
+  sandbox.fetch = async (url) => {
+    calls.push(url);
+    callCountB++;
+    if (callCountB === 1) return mockPayloadError(503, 'This model is currently experiencing high demand');
+    return mockPayloadSuccess('Retry success');
+  };
+  const resB = await sandbox.executeGeminiConsultWithRetry('test-key', 'https://generativelanguage.googleapis.com', 'test prompt', null, fastAttempts);
+  assert(resB.attemptCount === 2 && resB.modelUsed === 'gemini-3.8-flash', 'Gemini Consult Attempt 2 fast-retries on primary model after 503 high demand');
+
+  // Test C: Fallback 1 to gemini-3-flash-preview after 2 failed attempts
+  calls = [];
+  let callCountC = 0;
+  sandbox.fetch = async (url) => {
+    calls.push(url);
+    callCountC++;
+    if (callCountC <= 2) return mockPayloadError(503, 'Model overloaded');
+    return mockPayloadSuccess('Fallback 1 success');
+  };
+  const resC = await sandbox.executeGeminiConsultWithRetry('test-key', 'https://generativelanguage.googleapis.com', 'test prompt', null, fastAttempts);
+  assert(resC.attemptCount === 3 && resC.modelUsed === 'gemini-3-flash-preview', 'Gemini Consult switches to Fallback 1 (gemini-3-flash-preview) after 2 failed attempts');
+
+  // Test D: Fallback 2 to gemini-3.1-pro-preview after Fallback 1 fails
+  calls = [];
+  let callCountD = 0;
+  sandbox.fetch = async (url) => {
+    calls.push(url);
+    callCountD++;
+    if (callCountD <= 3) return mockPayloadError(503, 'Model overloaded');
+    return mockPayloadSuccess('Fallback 2 success');
+  };
+  const resD = await sandbox.executeGeminiConsultWithRetry('test-key', 'https://generativelanguage.googleapis.com', 'test prompt', null, fastAttempts);
+  assert(resD.attemptCount === 4 && resD.modelUsed === 'gemini-3.1-pro-preview', 'Gemini Consult switches to Fallback 2 (gemini-3.1-pro-preview) after Fallback 1 fails');
+
+  // Test E: Non-retryable 401/403 Invalid API Key halts immediately
+  calls = [];
+  let caughtErrorE = null;
+  sandbox.fetch = async (url) => {
+    calls.push(url);
+    return mockPayloadError(401, 'API_KEY_INVALID');
+  };
+  try {
+    await sandbox.executeGeminiConsultWithRetry('bad-key', 'https://generativelanguage.googleapis.com', 'test prompt', null, fastAttempts);
+  } catch (err) {
+    caughtErrorE = err;
+  }
+  assert(caughtErrorE && calls.length === 1, 'Gemini Consult halts immediately on HTTP 401 without retrying or falling back');
+
+  console.log('\n====================================================================');
+  if (failures === 0) {
+    console.log('🎉 ALL 4 MANDATORY CORE GUARD TDD DIMENSIONS PASSED (0 FAILURES)!');
+    process.exit(0);
+  } else {
+    console.error(`🚨 ${failures} CHECK(S) FAILED!`);
+    process.exit(1);
+  }
+})();
