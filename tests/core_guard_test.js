@@ -699,6 +699,22 @@ assert(bpRf3.some(r => r.key === 'rf_spinal_infection'), 'Back Pain Case 3 trigg
 const bpRf4 = ccModBp.evaluateRedFlags(bpCase4);
 assert(bpRf4.length === 0, 'Back Pain Case 4 (Mechanical Lumbago) triggers Zero Red Flags (Low-Risk)');
 
+// Test new Back Pain Red Flags: Aortic Dissection with Limb Ischemia (ESI 1) & Urinary Calculus (ESI 3)
+const bpLimbIschemiaPt = {
+  ...bpCase2,
+  backpainWarningSigns: ['ischemic_limb_pain', 'pulsatile_abd_mass']
+};
+const bpRfLimb = ccModBp.evaluateRedFlags(bpLimbIschemiaPt);
+assert(bpRfLimb.some(r => r.key === 'rf_aortic_dissection_limb_ischemia'), 'Back Pain with ischemic limb pain triggers Aortic Dissection with Limb Ischemia (ESI 1)');
+
+const bpCalculusPt = {
+  ...bpCase4,
+  backpainLoc: ['flank_side'],
+  backpainWarningSigns: ['gravel_sand_urine']
+};
+const bpRfCalculus = ccModBp.evaluateRedFlags(bpCalculusPt);
+assert(bpRfCalculus.some(r => r.key === 'rf_urinary_calculus_colic'), 'Back Pain with gravel/sand in urine triggers Urinary Calculus / Renal Colic (ESI 3)');
+
 // === AI CONSULTANT PERSISTENCE & RESILIENT RETRY/FALLBACK TESTS ===
 // Test 4: AI Consult Result Persistence across modal close & reopen
 sandbox.selectPatient('case-040');

@@ -1,6 +1,6 @@
 # 🕵️‍♂️ รายงานการตรวจสอบคุณภาพโค้ดและสถาปัตยกรรม (AUTOMATED & AI AUDIT REPORT)
 
-- **วันที่ตรวจสอบ:** `02/11/2026` เวลา `21:04` น. (24-Hour Format)
+- **วันที่ตรวจสอบ:** `02/11/2026` เวลา `22:12` น. (24-Hour Format)
 - **สถานะภาพรวม (Overall Verdict):** **✅ PASS (ผ่านการตรวจสอบครบทุกมิติ)**
 - **จำนวนหัวข้อที่ผ่าน (Passed Checks):** 7 รายการ
 - **จำนวนคำเตือน (Warnings):** 0 รายการ
@@ -12,7 +12,7 @@
 
 | ไฟล์ (File Path) | จำนวนบรรทัด (Lines) | เพดานสูงสุด (Max Limit) | สถานะ (Status) |
 | :--- | :---: | :---: | :---: |
-| `index.html` | 1,988 | 2,000 | ✅ ปกติ (Safe) |
+| `index.html` | 1,982 | 2,000 | ✅ ปกติ (Safe) |
 | `clinical_knowledge_core.js` | 986 | 1,000 | ✅ ปกติ (Safe) |
 | `core_engine.js` | 2,949 | 3,200 | ✅ ปกติ (Safe) |
 | `cc_modules/01_abdpain.js` | 1,251 | 2,000 | ✅ ปกติ (Safe) |
@@ -34,13 +34,13 @@
 | `cc_modules/17_urinary_retention.js` | 1,419 | 2,000 | ✅ ปกติ (Safe) |
 | `cc_modules/18_dysuria.js` | 1,255 | 2,000 | ✅ ปกติ (Safe) |
 | `cc_modules/19_hematuria.js` | 1,660 | 2,000 | ✅ ปกติ (Safe) |
-| `cc_modules/20_back_pain.js` | 1,569 | 2,000 | ✅ ปกติ (Safe) |
+| `cc_modules/20_back_pain.js` | 1,668 | 2,000 | ✅ ปกติ (Safe) |
 
 ---
 
 ## 2. สรุปรายการที่ตรวจผ่าน (Passed Verification Checks)
 
-- ✅ index.html: 1988 บรรทัด (อยู่ในเกณฑ์ปลอดภัย <= 2000 บรรทัด)
+- ✅ index.html: 1982 บรรทัด (อยู่ในเกณฑ์ปลอดภัย <= 2000 บรรทัด)
 - ✅ clinical_knowledge_core.js: 986 บรรทัด (อยู่ในเกณฑ์ปลอดภัย <= 1000 บรรทัด)
 - ✅ core_engine.js: 2949 บรรทัด (อยู่ในเกณฑ์ปลอดภัย <= 3200 บรรทัด)
 - ✅ Core System Freeze: core_engine.js ไม่ถูกแก้ไขนับจากจุดเซฟ 'v2.44' (SHA-256 ตรงกัน 100%)
@@ -103,6 +103,8 @@
 ✅ PASS: Back Pain Case 2 triggers Ruptured/Leaking AAA Red Flag
 ✅ PASS: Back Pain Case 3 triggers Spinal Epidural Abscess/Infection Red Flag
 ✅ PASS: Back Pain Case 4 (Mechanical Lumbago) triggers Zero Red Flags (Low-Risk)
+✅ PASS: Back Pain with ischemic limb pain triggers Aortic Dissection with Limb Ischemia (ESI 1)
+✅ PASS: Back Pain with gravel/sand in urine triggers Urinary Calculus / Renal Colic (ESI 3)
 ✅ PASS: openAiConsultantModal preserves and restores saved AI consult diagnosis instead of overwriting with CDS
 ✅ PASS: openAiConsultantModal preserves and restores saved AI consult orders checklist
 ✅ PASS: openAiConsultantModal displays saved AI status banner indicating persisted consultation

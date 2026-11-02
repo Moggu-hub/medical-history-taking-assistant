@@ -84,8 +84,8 @@ function toggleBackpainRadiationSub(isVisible) {
   }
 }
 
-function toggleBackpainWarningSub(isVisible) {
-  const el = document.getElementById('backpainWarningSub');
+function toggleBackpainWarningGroup(groupId, isVisible) {
+  const el = document.getElementById(groupId);
   if (el) {
     el.classList.toggle('hidden', !isVisible);
     if (!isVisible) {
@@ -136,13 +136,24 @@ function evaluateBackpainRedFlags(patient) {
   const bt = typeof vs.bt === 'number' ? vs.bt : parseFloat(vs.bt);
   const shockIndex = (sbp && pr) ? (pr / sbp) : 0;
 
-  // 1. Ruptured / Leaking AAA Risk (ESI 1)
+  // 1. Aortic Dissection with Acute Lower Limb Ischemia (ESI 1)
   const isTearing = charTypes.includes('tearing_ripping');
   const isRadThoracoAbdomen = radLocs.includes('rad_abdomen_chest');
   const hasPulsatileMass = warnSigns.includes('pulsatile_abd_mass');
   const hasSyncope = warnSigns.includes('syncope_hypotension');
   const isHypotensive = (sbp && sbp < 90) || (shockIndex >= 0.9);
+  const hasLimbIschemia = warnSigns.includes('ischemic_limb_pain') || warnSigns.includes('ischemic_limb_numbness');
 
+  if (hasLimbIschemia) {
+    rfs.push({
+      key: 'rf_aortic_dissection_limb_ischemia',
+      level: 1,
+      textTh: 'สงสัยหลอดเลือดแดงใหญ่ฉีกขาดร่วมกับภาวะขาขาดเลือดเฉียบพลัน (Aortic Dissection with Acute Limb Ischemia)',
+      risk: 'วิกฤตฉุกเฉินสูงสุด: ตรวจคลำ Femoral/Pedal pulses (Pulse deficit), Stat CT Angiography Whole Aorta with Runoff, ปรึกษาศัลยแพทย์หลอดเลือดทันที'
+    });
+  }
+
+  // 1.1 Ruptured / Leaking AAA Risk (ESI 1)
   if ((isTearing || isRadThoracoAbdomen || hasPulsatileMass) && (hasSyncope || isHypotensive || hasPulsatileMass)) {
     rfs.push({
       key: 'rf_ruptured_aaa',
@@ -225,6 +236,19 @@ function evaluateBackpainRedFlags(patient) {
     });
   }
 
+  // 7. Urinary Tract Calculus with Obstruction / Renal Colic (ESI 3)
+  const hasGravel = warnSigns.includes('gravel_sand_urine');
+  const hasDysuria = warnSigns.includes('dysuria_hematuria');
+  const hasFlank = Array.isArray(patient.backpainLoc) && patient.backpainLoc.includes('flank_side');
+  if (hasGravel || (hasFlank && hasDysuria)) {
+    rfs.push({
+      key: 'rf_urinary_calculus_colic',
+      level: 3,
+      textTh: 'สงสัยนิ่วทางเดินปัสสาวะอุดกั้น / กรวยไตอักเสบ (Urinary Tract Calculus / Renal Colic)',
+      risk: 'ตรวจปัสสาวะ (Urinalysis), KUB X-ray หรือ Bedside U/S KUB ประเมิน Hydronephrosis และให้ยาแก้ปวดลดการเกร็ง'
+    });
+  }
+
   return rfs;
 }
 
@@ -236,11 +260,27 @@ function generateBackpainCds(patient, context) {
   const warnSigns = Array.isArray(patient.backpainWarningSigns) ? patient.backpainWarningSigns : [];
   const traumaTypes = Array.isArray(patient.backpainTraumaTypes) ? patient.backpainTraumaTypes : [];
 
-  const hasCes = rfs.some(r => r.key === 'rf_cauda_equina_syndrome');
+  const hasLimbIschemia = rfs.some(r => r.key === 'rf_aortic_dissection_limb_ischemia');
   const hasAaa = rfs.some(r => r.key === 'rf_ruptured_aaa');
+  const hasCes = rfs.some(r => r.key === 'rf_cauda_equina_syndrome');
   const hasInf = rfs.some(r => r.key === 'rf_spinal_infection');
   const hasFx = rfs.some(r => r.key === 'rf_spinal_fracture');
+  const hasCalculus = rfs.some(r => r.key === 'rf_urinary_calculus_colic');
   const hasSciatica = radLocs.includes('rad_leg_below_knee');
+
+  if (hasLimbIschemia) {
+    ddxList.push('1. Acute Aortic Dissection (Stanford Type B) with Iliac/Femoral Occlusion');
+    ddxList.push('2. Acute Lower Extremity Arterial Embolism / Limb Ischemia');
+    ddxList.push('3. Ruptured or Leaking Abdominal Aortic Aneurysm (AAA)');
+    workupList.push('ตรวจคลำ Femoral, Popliteal, Posterior Tibial และ Dorsalis Pedis pulses ทั้ง 2 ข้างทันที');
+    workupList.push('Stat CT Angiography Whole Aorta with Bilateral Lower Extremities Runoff');
+    workupList.push('เปิดเส้น IV เบอร์ 18 จำนวน 2 เส้น พร้อมส่งจองเลือด PRC 4 ยูนิต, FFP และ Coagulogram ด่วน');
+    workupList.push('ตรวจ Bedside Vascular Doppler Ultrasound ประเมินสัญญาณชีพจรส่วนปลาย');
+    managementList.push('งดน้ำและอาหาร (NPO) ทันที เตรียมเข้าห้องผ่าตัดฉุกเฉิน');
+    managementList.push('ปรึกษา ศัลยแพทย์หลอดเลือด (Vascular Surgeon) ด่วนที่สุด');
+    managementList.push('ควบคุมความดันโลหิตและอัตราการเต้นของหัวใจ (Target SBP 100-120 mmHg, HR < 60 bpm)');
+    return;
+  }
 
   if (hasAaa) {
     ddxList.push('1. Ruptured or Leaking Abdominal Aortic Aneurysm (AAA) (ความเร่งด่วนสูงสุด)');
@@ -295,6 +335,19 @@ function generateBackpainCds(patient, context) {
     return;
   }
 
+  if (hasCalculus) {
+    ddxList.push('1. Urinary Tract Calculus with Ureteric / Renal Colic');
+    ddxList.push('2. Acute Pyelonephritis with Obstruction');
+    ddxList.push('3. Musculoskeletal Flank Pain / Lumbar Sprain');
+    workupList.push('ส่งตรวจปัสสาวะ (Urinalysis) เพื่อตรวจหา Microscopic Hematuria และภาวะติดเชื้อ');
+    workupList.push('ส่งตรวจ Plain KUB หรือ Bedside Ultrasound KUB ประเมินภาวะไตบวมน้ำ (Hydronephrosis)');
+    workupList.push('ตรวจการทำงานของไต: BUN, Cr, eGFR');
+    managementList.push('ให้ยาแก้ปวดลดการอักเสบ: IV/Oral NSAIDs หรือ Paracetamol IV');
+    managementList.push('ให้ยาลดการบีบเกร็งกล้ามเนื้อเรียบ (Antispasmodics) ตามดุลยพินิจแพทย์');
+    managementList.push('แนะนำดื่มน้ำมากๆ และนัดตรวจติดตามที่คลินิกศัลยกรรมระบบทางเดินปัสสาวะ (Urology)');
+    return;
+  }
+
   if (hasSciatica) {
     ddxList.push('1. Acute Lumbar Disc Herniation with Radiculopathy (Sciatica)');
     ddxList.push('2. Lumbar Spinal Stenosis with Neurogenic Claudication');
@@ -335,11 +388,13 @@ registerCcModule({
     version: '2.0.0',
     redFlagDefinitions: [
       { key: 'rf_cauda_equina_syndrome', level: 1, textTh: 'Cauda Equina Syndrome / เส้นประสาทไขสันหลังส่วนปลายถูกกดทับวิกฤต (ชาอานม้า/ปัสสาวะคั่ง/ขาอ่อนแรงสองข้าง)' },
+      { key: 'rf_aortic_dissection_limb_ischemia', level: 1, textTh: 'Aortic Dissection with Acute Lower Limb Ischemia (หลอดเลือดแดงใหญ่ฉีกขาดร่วมกับขาขาดเลือดเฉียบพลัน)' },
       { key: 'rf_ruptured_aaa', level: 1, textTh: 'Ruptured / Leaking AAA / สงสัยหลอดเลือดแดงใหญ่ในช่องท้องแตกหรือฉีกขาดทะลุหลัง' },
       { key: 'rf_spinal_infection', level: 2, textTh: 'Spinal Epidural Abscess / Spondylodiscitis (สงสัยฝีหรือการติดเชื้อรุนแรงในช่องไขสันหลัง)' },
       { key: 'rf_spinal_fracture', level: 2, textTh: 'Traumatic / Osteoporotic Spinal Fracture (สงสัยกระดูกสันหลังหักหรือยุบตัว)' },
       { key: 'rf_spinal_cord_compression_malignancy', level: 2, textTh: 'Malignant Spinal Cord Compression / สงสัยมะเร็งลุกลามกดทับไขสันหลัง' },
-      { key: 'rf_radicular_foot_drop', level: 3, textTh: 'Acute Lumbar Radiculopathy with Foot Drop (รากประสาทถูกกดทับจนปลายเท้าตก)' }
+      { key: 'rf_radicular_foot_drop', level: 3, textTh: 'Acute Lumbar Radiculopathy with Foot Drop (รากประสาทถูกกดทับจนปลายเท้าตก)' },
+      { key: 'rf_urinary_calculus_colic', level: 3, textTh: 'Urinary Tract Calculus with Obstruction / Renal Colic (สงสัยนิ่วทางเดินปัสสาวะอุดกั้น)' }
     ]
   },
 
@@ -383,41 +438,13 @@ registerCcModule({
             </div>
           </div>
 
-          <!-- 1.2 ตำแหน่งที่ปวด (พร้อมเลือก ซ้าย / ขวา / ตรงกลาง) -->
+          <!-- 1.2 ตำแหน่งที่ปวด (เรียงลำดับตาม Anatomy จากบนลงล่าง พร้อมระบุข้าง) -->
           <div>
             <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
               ตำแหน่งที่ปวด (เลือกได้หลายข้อ และระบุข้าง)
             </label>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <!-- บั้นเอว / หลังช่วงล่าง -->
-              <div class="border border-slate-200 rounded-xl p-3 bg-white hover:border-medical-300 transition">
-                <label class="flex items-start cursor-pointer">
-                  <input type="checkbox" name="backpainLoc" value="low_back_lumbar"
-                    onchange="toggleBackpainSideGroup('lumbarSideGroup', this.checked)"
-                    class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0 mt-0.5">
-                  <div class="ml-3">
-                    <span class="text-xs sm:text-sm font-semibold text-slate-800 block">บั้นเอว / หลังช่วงล่าง</span>
-                    <span class="text-[11px] text-slate-500 font-normal block mt-0.5">เหนือสะโพกขึ้นมาถึงระดับเอว พบบ่อยในกล้ามเนื้อและหมอนรองกระดูก</span>
-                  </div>
-                </label>
-                <div id="lumbarSideGroup" class="hidden pl-7 pt-2.5 mt-2 border-t border-slate-100 flex items-center space-x-2 text-xs">
-                  <span class="text-slate-500 text-[11px] font-medium mr-1">ข้างที่ปวด:</span>
-                  <label class="inline-flex items-center px-2 py-1 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg cursor-pointer">
-                    <input type="checkbox" name="backpainLocLumbarSide" value="left" class="mr-1.5 h-3.5 w-3.5 text-medical-600 rounded">
-                    <span>ซ้าย</span>
-                  </label>
-                  <label class="inline-flex items-center px-2 py-1 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg cursor-pointer">
-                    <input type="checkbox" name="backpainLocLumbarSide" value="right" class="mr-1.5 h-3.5 w-3.5 text-medical-600 rounded">
-                    <span>ขวา</span>
-                  </label>
-                  <label class="inline-flex items-center px-2 py-1 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg cursor-pointer">
-                    <input type="checkbox" name="backpainLocLumbarSide" value="center" class="mr-1.5 h-3.5 w-3.5 text-medical-600 rounded">
-                    <span>ตรงกลาง</span>
-                  </label>
-                </div>
-              </div>
-
-              <!-- หลังช่วงกลาง / สะบัก -->
+              <!-- 1. หลังช่วงกลาง / สะบัก (Mid Back / Thoracic) -->
               <div class="border border-slate-200 rounded-xl p-3 bg-white hover:border-medical-300 transition">
                 <label class="flex items-start cursor-pointer">
                   <input type="checkbox" name="backpainLoc" value="mid_back_thoracic"
@@ -445,35 +472,59 @@ registerCcModule({
                 </div>
               </div>
 
-              <!-- หลังช่วงบน / ต้นคอ -->
+              <!-- 2. สีข้าง / บั้นเอวด้านข้าง (Flank Side) -->
               <div class="border border-slate-200 rounded-xl p-3 bg-white hover:border-medical-300 transition">
                 <label class="flex items-start cursor-pointer">
-                  <input type="checkbox" name="backpainLoc" value="upper_back_neck"
-                    onchange="toggleBackpainSideGroup('neckSideGroup', this.checked)"
+                  <input type="checkbox" name="backpainLoc" value="flank_side"
+                    onchange="toggleBackpainSideGroup('flankSideGroup', this.checked)"
                     class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0 mt-0.5">
                   <div class="ml-3">
-                    <span class="text-xs sm:text-sm font-semibold text-slate-800 block">หลังช่วงบน / ต้นคอ</span>
-                    <span class="text-[11px] text-slate-500 font-normal block mt-0.5">บริเวณท้ายทอย บ่า และแนวหลังส่วนบน</span>
+                    <span class="text-xs sm:text-sm font-semibold text-slate-800 block">สีข้าง / บั้นเอวด้านข้าง</span>
+                    <span class="text-[11px] text-slate-500 font-normal block mt-0.5">ชายโครงด้านข้างลงมาถึงเอว ระวังนิ่วทางเดินปัสสาวะหรือกรวยไต</span>
                   </div>
                 </label>
-                <div id="neckSideGroup" class="hidden pl-7 pt-2.5 mt-2 border-t border-slate-100 flex items-center space-x-2 text-xs">
+                <div id="flankSideGroup" class="hidden pl-7 pt-2.5 mt-2 border-t border-slate-100 flex items-center space-x-2 text-xs">
                   <span class="text-slate-500 text-[11px] font-medium mr-1">ข้างที่ปวด:</span>
                   <label class="inline-flex items-center px-2 py-1 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg cursor-pointer">
-                    <input type="checkbox" name="backpainLocNeckSide" value="left" class="mr-1.5 h-3.5 w-3.5 text-medical-600 rounded">
+                    <input type="checkbox" name="backpainLocFlankSide" value="left" class="mr-1.5 h-3.5 w-3.5 text-medical-600 rounded">
                     <span>ซ้าย</span>
                   </label>
                   <label class="inline-flex items-center px-2 py-1 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg cursor-pointer">
-                    <input type="checkbox" name="backpainLocNeckSide" value="right" class="mr-1.5 h-3.5 w-3.5 text-medical-600 rounded">
+                    <input type="checkbox" name="backpainLocFlankSide" value="right" class="mr-1.5 h-3.5 w-3.5 text-medical-600 rounded">
+                    <span>ขวา</span>
+                  </label>
+                </div>
+              </div>
+
+              <!-- 3. บั้นเอว / หลังช่วงล่าง (Low Back / Lumbar) -->
+              <div class="border border-slate-200 rounded-xl p-3 bg-white hover:border-medical-300 transition">
+                <label class="flex items-start cursor-pointer">
+                  <input type="checkbox" name="backpainLoc" value="low_back_lumbar"
+                    onchange="toggleBackpainSideGroup('lumbarSideGroup', this.checked)"
+                    class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0 mt-0.5">
+                  <div class="ml-3">
+                    <span class="text-xs sm:text-sm font-semibold text-slate-800 block">บั้นเอว / หลังช่วงล่าง</span>
+                    <span class="text-[11px] text-slate-500 font-normal block mt-0.5">เหนือสะโพกขึ้นมาถึงระดับเอว พบบ่อยในกล้ามเนื้อและหมอนรองกระดูก</span>
+                  </div>
+                </label>
+                <div id="lumbarSideGroup" class="hidden pl-7 pt-2.5 mt-2 border-t border-slate-100 flex items-center space-x-2 text-xs">
+                  <span class="text-slate-500 text-[11px] font-medium mr-1">ข้างที่ปวด:</span>
+                  <label class="inline-flex items-center px-2 py-1 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg cursor-pointer">
+                    <input type="checkbox" name="backpainLocLumbarSide" value="left" class="mr-1.5 h-3.5 w-3.5 text-medical-600 rounded">
+                    <span>ซ้าย</span>
+                  </label>
+                  <label class="inline-flex items-center px-2 py-1 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg cursor-pointer">
+                    <input type="checkbox" name="backpainLocLumbarSide" value="right" class="mr-1.5 h-3.5 w-3.5 text-medical-600 rounded">
                     <span>ขวา</span>
                   </label>
                   <label class="inline-flex items-center px-2 py-1 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg cursor-pointer">
-                    <input type="checkbox" name="backpainLocNeckSide" value="center" class="mr-1.5 h-3.5 w-3.5 text-medical-600 rounded">
+                    <input type="checkbox" name="backpainLocLumbarSide" value="center" class="mr-1.5 h-3.5 w-3.5 text-medical-600 rounded">
                     <span>ตรงกลาง</span>
                   </label>
                 </div>
               </div>
 
-              <!-- ก้นกบ / สะโพก -->
+              <!-- 4. ก้นกบ / สะโพก (Sacrum / Coccyx / Gluteal) -->
               <div class="border border-slate-200 rounded-xl p-3 bg-white hover:border-medical-300 transition">
                 <label class="flex items-start cursor-pointer">
                   <input type="checkbox" name="backpainLoc" value="sacrum_buttock"
@@ -501,32 +552,8 @@ registerCcModule({
                 </div>
               </div>
 
-              <!-- สีข้าง / บั้นเอวด้านข้าง (ไม่มีตรงกลาง) -->
-              <div class="border border-slate-200 rounded-xl p-3 bg-white hover:border-medical-300 transition">
-                <label class="flex items-start cursor-pointer">
-                  <input type="checkbox" name="backpainLoc" value="flank_side"
-                    onchange="toggleBackpainSideGroup('flankSideGroup', this.checked)"
-                    class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0 mt-0.5">
-                  <div class="ml-3">
-                    <span class="text-xs sm:text-sm font-semibold text-slate-800 block">สีข้าง / บั้นเอวด้านข้าง</span>
-                    <span class="text-[11px] text-slate-500 font-normal block mt-0.5">ชายโครงด้านข้างลงมาถึงเอว ระวังนิ่วทางเดินปัสสาวะหรือกรวยไต</span>
-                  </div>
-                </label>
-                <div id="flankSideGroup" class="hidden pl-7 pt-2.5 mt-2 border-t border-slate-100 flex items-center space-x-2 text-xs">
-                  <span class="text-slate-500 text-[11px] font-medium mr-1">ข้างที่ปวด:</span>
-                  <label class="inline-flex items-center px-2 py-1 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg cursor-pointer">
-                    <input type="checkbox" name="backpainLocFlankSide" value="left" class="mr-1.5 h-3.5 w-3.5 text-medical-600 rounded">
-                    <span>ซ้าย</span>
-                  </label>
-                  <label class="inline-flex items-center px-2 py-1 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg cursor-pointer">
-                    <input type="checkbox" name="backpainLocFlankSide" value="right" class="mr-1.5 h-3.5 w-3.5 text-medical-600 rounded">
-                    <span>ขวา</span>
-                  </label>
-                </div>
-              </div>
-
-              <!-- ปวดระบมทั่วแผ่นหลัง -->
-              <div class="border border-slate-200 rounded-xl p-3 bg-white hover:border-medical-300 transition flex items-center">
+              <!-- 5. ปวดระบมทั่วแผ่นหลัง (Diffuse) -->
+              <div class="border border-slate-200 rounded-xl p-3 bg-white hover:border-medical-300 transition flex items-center sm:col-span-2">
                 <label class="flex items-start cursor-pointer w-full">
                   <input type="checkbox" name="backpainLoc" value="diffuse"
                     class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0 mt-0.5">
@@ -723,7 +750,7 @@ registerCcModule({
         </div>
       </div>
 
-      <!-- CARD 3: <สัญญาณเตือน สภาวะอันตราย / ความเสี่ยงสูง> (รวมหมวดประสาทและสัญญาณร่างกาย) -->
+      <!-- CARD 3: สัญญาณเตือน สภาวะอันตราย / ความเสี่ยงสูง (Warning Signs) -->
       <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
         <div class="flex items-center space-x-3 mb-4 pb-3 border-b border-slate-100">
           <div class="bg-medical-100 text-medical-700 p-2 rounded-xl">
@@ -735,82 +762,128 @@ registerCcModule({
           </div>
         </div>
 
-        <div class="space-y-4">
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <label class="selectable-card flex items-center p-3.5 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition"
-              onclick="toggleBackpainWarningSub(false)">
-              <input type="radio" name="backpainWarningMaster" value="none" class="text-medical-600 focus:ring-medical-500 h-4 w-4 flex-shrink-0">
-              <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800">ไม่มีสัญญาณเตือนอันตราย (ปกติ ขับถ่ายปกติ ขาไม่อ่อนแรง)</span>
+        <div class="space-y-3">
+          <!-- กลุ่ม 1: อ่อนแรง / ชา / ปวด ช่วงล่างหรือขาร่วมด้วย (Progressive Parent) -->
+          <div class="border border-slate-200 rounded-xl p-3 bg-white hover:border-medical-300 transition">
+            <label class="flex items-start cursor-pointer">
+              <input type="checkbox" id="backpainWarningNeuroParent"
+                onchange="toggleBackpainWarningGroup('backpainWarningNeuroSub', this.checked)"
+                class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0 mt-0.5">
+              <div class="ml-3">
+                <span class="text-xs sm:text-sm font-semibold text-slate-800 block">อ่อนแรง / ชา / ปวด ช่วงล่างหรือขาร่วมด้วย</span>
+                <span class="text-[11px] text-slate-500 font-normal block mt-0.5">มีอาการผิดปกติบริเวณขา เท้า หรือความรู้สึกช่วงล่าง</span>
+              </div>
             </label>
-            <label class="selectable-card flex items-center p-3.5 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition"
-              onclick="toggleBackpainWarningSub(true)">
-              <input type="radio" name="backpainWarningMaster" value="yes" class="text-medical-600 focus:ring-medical-500 h-4 w-4 flex-shrink-0">
-              <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800">มีสัญญาณเตือนอันตราย หรือความผิดปกติร่วม</span>
-            </label>
-          </div>
-
-          <!-- กล่องแตกกิ่ง: เจาะลึกสัญญาณเตือนอันตราย -->
-          <div id="backpainWarningSub" class="hidden bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-4">
-            <!-- กลุ่ม 1: ระบบประสาท ขา และขับถ่าย -->
-            <div>
-              <span class="text-xs font-bold text-slate-800 block mb-2 flex items-center text-medical-700">
-                <i data-lucide="corner-down-right" class="w-3.5 h-3.5 mr-1.5"></i> 1. อาการทางระบบประสาท ขา และการขับถ่าย (เลือกได้หลายข้อ)
+            <div id="backpainWarningNeuroSub" class="hidden pl-7 pt-3 mt-2 border-t border-slate-100 space-y-2">
+              <span class="text-[11px] font-bold text-slate-700 block mb-1">
+                ระบุรายละเอียดอาการที่พบ (เลือกได้หลายข้อ):
               </span>
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-                <label class="selectable-card flex items-center p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer">
+                <label class="selectable-card flex items-center p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer hover:bg-slate-50">
                   <input type="checkbox" name="backpainWarningSigns" value="saddle_anesthesia" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
                   <span class="ml-2.5 text-xs font-medium text-slate-800">ชาบริเวณก้น แก้มก้น หว่างขา หรือรอบรูทวาร</span>
                 </label>
-                <label class="selectable-card flex items-center p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer">
-                  <input type="checkbox" name="backpainWarningSigns" value="urinary_retention" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
-                  <span class="ml-2.5 text-xs font-medium text-slate-800">ปัสสาวะไม่ออกเลย หรือปวดตึงแน่นท้องน้อย</span>
-                </label>
-                <label class="selectable-card flex items-center p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer">
-                  <input type="checkbox" name="backpainWarningSigns" value="bowel_incontinence" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
-                  <span class="ml-2.5 text-xs font-medium text-slate-800">กลั้นอุจจาระไม่ได้ เล็ดราดโดยไม่รู้ตัว</span>
-                </label>
-                <label class="selectable-card flex items-center p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer">
+                <label class="selectable-card flex items-center p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer hover:bg-slate-50">
                   <input type="checkbox" name="backpainWarningSigns" value="leg_weakness_both" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
                   <span class="ml-2.5 text-xs font-medium text-slate-800">ขาอ่อนแรงทั้งสองข้าง เดินไม่ไหว หรือขาทรุด</span>
                 </label>
-                <label class="selectable-card flex items-center p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer">
+                <label class="selectable-card flex items-center p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer hover:bg-slate-50">
                   <input type="checkbox" name="backpainWarningSigns" value="foot_drop_single" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
                   <span class="ml-2.5 text-xs font-medium text-slate-800">ปลายเท้าตก กระดกข้อเท้าหรือนิ้วเท้าไม่ขึ้น</span>
                 </label>
-                <label class="selectable-card flex items-center p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer">
+                <label class="selectable-card flex items-center p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer hover:bg-slate-50">
                   <input type="checkbox" name="backpainWarningSigns" value="numbness_leg_foot" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
                   <span class="ml-2.5 text-xs font-medium text-slate-800">ชาตามแนวขา น่อง หรือหลังเท้า</span>
                 </label>
+                <label class="selectable-card flex items-center p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer hover:bg-slate-50">
+                  <input type="checkbox" name="backpainWarningSigns" value="ischemic_limb_pain" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
+                  <span class="ml-2.5 text-xs font-medium text-slate-800">ปวดรุนแรงเหมือนเนื้อจะระเบิด ลึกๆ อยู่ในน่องหรือเท้า</span>
+                </label>
+                <label class="selectable-card flex items-center p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer hover:bg-slate-50">
+                  <input type="checkbox" name="backpainWarningSigns" value="ischemic_limb_numbness" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
+                  <span class="ml-2.5 text-xs font-medium text-slate-800">ไม่รู้สึกถึงความรู้สึกใดๆที่ขา หรือเท้าเลย</span>
+                </label>
               </div>
             </div>
+          </div>
 
-            <!-- กลุ่ม 2: สัญญาณร่วมทางร่างกายและหลอดเลือด -->
-            <div>
-              <span class="text-xs font-bold text-slate-800 block mb-2 flex items-center text-medical-700">
-                <i data-lucide="corner-down-right" class="w-3.5 h-3.5 mr-1.5"></i> 2. สัญญาณเตือนร่วมทางร่างกายและหลอดเลือด (เลือกได้หลายข้อ)
+          <!-- กลุ่ม 2: มีปัญหาการขับถ่ายอุจจาระ / ปัสสาวะ (Progressive Parent) -->
+          <div class="border border-slate-200 rounded-xl p-3 bg-white hover:border-medical-300 transition">
+            <label class="flex items-start cursor-pointer">
+              <input type="checkbox" id="backpainWarningExcretoryParent"
+                onchange="toggleBackpainWarningGroup('backpainWarningExcretorySub', this.checked)"
+                class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0 mt-0.5">
+              <div class="ml-3">
+                <span class="text-xs sm:text-sm font-semibold text-slate-800 block">มีปัญหาการขับถ่ายอุจจาระ / ปัสสาวะ</span>
+                <span class="text-[11px] text-slate-500 font-normal block mt-0.5">กลั้นไม่ได้ ปัสสาวะไม่ออก หรือมีความผิดปกติของน้ำปัสสาวะ</span>
+              </div>
+            </label>
+            <div id="backpainWarningExcretorySub" class="hidden pl-7 pt-3 mt-2 border-t border-slate-100 space-y-2">
+              <span class="text-[11px] font-bold text-slate-700 block mb-1">
+                ระบุรายละเอียดความผิดปกติ (เลือกได้หลายข้อ):
               </span>
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-                <label class="selectable-card flex items-center p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer">
-                  <input type="checkbox" name="backpainWarningSigns" value="fever_chills" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
-                  <span class="ml-2.5 text-xs font-medium text-slate-800">มีไข้สูง หนาวสั่นสะท้าน</span>
+                <label class="selectable-card flex items-center p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer hover:bg-slate-50">
+                  <input type="checkbox" name="backpainWarningSigns" value="bowel_incontinence" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
+                  <span class="ml-2.5 text-xs font-medium text-slate-800">กลั้นอุจจาระไม่ได้ เล็ดราดโดยไม่รู้ตัว</span>
                 </label>
-                <label class="selectable-card flex items-center p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer">
-                  <input type="checkbox" name="backpainWarningSigns" value="syncope_hypotension" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
-                  <span class="ml-2.5 text-xs font-medium text-slate-800">หน้ามืด วูบ เป็นลม เหงื่อแตกตัวเย็น</span>
+                <label class="selectable-card flex items-center p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer hover:bg-slate-50">
+                  <input type="checkbox" name="backpainWarningSigns" value="urinary_retention" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
+                  <span class="ml-2.5 text-xs font-medium text-slate-800">ปัสสาวะไม่ออกเลย หรือปวดตึงแน่นท้องน้อย</span>
                 </label>
-                <label class="selectable-card flex items-center p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer">
-                  <input type="checkbox" name="backpainWarningSigns" value="pulsatile_abd_mass" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
-                  <span class="ml-2.5 text-xs font-medium text-slate-800">คลำเจอก้อนเต้นตุบๆ ในช่องท้อง</span>
-                </label>
-                <label class="selectable-card flex items-center p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer">
+                <label class="selectable-card flex items-center p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer hover:bg-slate-50">
                   <input type="checkbox" name="backpainWarningSigns" value="dysuria_hematuria" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
                   <span class="ml-2.5 text-xs font-medium text-slate-800">ปัสสาวะแสบขัด หรือปัสสาวะเป็นเลือด</span>
                 </label>
-                <label class="selectable-card flex items-center p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer">
-                  <input type="checkbox" name="backpainWarningSigns" value="weight_loss_anorexia" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
-                  <span class="ml-2.5 text-xs font-medium text-slate-800">น้ำหนักลดลงฮวบผิดปกติ เบื่ออาหาร</span>
+                <label class="selectable-card flex items-center p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer hover:bg-slate-50">
+                  <input type="checkbox" name="backpainWarningSigns" value="gravel_sand_urine" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
+                  <span class="ml-2.5 text-xs font-medium text-slate-800">ปัสสาวะปนตะกอน คล้ายกรวดทราย</span>
                 </label>
               </div>
+            </div>
+          </div>
+
+          <!-- รายการเตือน Standalone (4 ข้อ) -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+            <div class="border border-slate-200 rounded-xl p-3 bg-white hover:border-medical-300 transition">
+              <label class="flex items-start cursor-pointer">
+                <input type="checkbox" name="backpainWarningSigns" value="fever_chills"
+                  class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0 mt-0.5">
+                <div class="ml-3">
+                  <span class="text-xs sm:text-sm font-semibold text-slate-800 block">มีไข้สูง หนาวสั่นสะท้าน</span>
+                  <span class="text-[11px] text-slate-500 font-normal block mt-0.5">ตัวร้อน วัดอุณหภูมิได้สูง หรือมีอาการสั่นสะท้าน</span>
+                </div>
+              </label>
+            </div>
+            <div class="border border-slate-200 rounded-xl p-3 bg-white hover:border-medical-300 transition">
+              <label class="flex items-start cursor-pointer">
+                <input type="checkbox" name="backpainWarningSigns" value="syncope_hypotension"
+                  class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0 mt-0.5">
+                <div class="ml-3">
+                  <span class="text-xs sm:text-sm font-semibold text-slate-800 block">หน้ามืด วูบ เป็นลม เหงื่อแตกตัวเย็น</span>
+                  <span class="text-[11px] text-slate-500 font-normal block mt-0.5">รู้สึกวูบคล้ายจะหมดสติ หรือความดันโลหิตตก</span>
+                </div>
+              </label>
+            </div>
+            <div class="border border-slate-200 rounded-xl p-3 bg-white hover:border-medical-300 transition">
+              <label class="flex items-start cursor-pointer">
+                <input type="checkbox" name="backpainWarningSigns" value="pulsatile_abd_mass"
+                  class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0 mt-0.5">
+                <div class="ml-3">
+                  <span class="text-xs sm:text-sm font-semibold text-slate-800 block">คลำเจอก้อนเต้นตุบๆ ในช่องท้อง</span>
+                  <span class="text-[11px] text-slate-500 font-normal block mt-0.5">คลำได้ก้อนเต้นตามจังหวะชีพจรบริเวณกลางท้อง</span>
+                </div>
+              </label>
+            </div>
+            <div class="border border-slate-200 rounded-xl p-3 bg-white hover:border-medical-300 transition">
+              <label class="flex items-start cursor-pointer">
+                <input type="checkbox" name="backpainWarningSigns" value="weight_loss_anorexia"
+                  class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0 mt-0.5">
+                <div class="ml-3">
+                  <span class="text-xs sm:text-sm font-semibold text-slate-800 block">น้ำหนักลดลงฮวบผิดปกติ เบื่ออาหาร</span>
+                  <span class="text-[11px] text-slate-500 font-normal block mt-0.5">น้ำหนักตัวลดลงชัดเจนโดยไม่ได้ตั้งใจลด หรือเบื่ออาหารเรื้อรัง</span>
+                </div>
+              </label>
             </div>
           </div>
         </div>
@@ -957,7 +1030,6 @@ registerCcModule({
     const backpainLoc = Array.from(document.querySelectorAll('input[name="backpainLoc"]:checked')).map(el => el.value);
     const backpainLocLumbarSide = Array.from(document.querySelectorAll('input[name="backpainLocLumbarSide"]:checked')).map(el => el.value);
     const backpainLocThoracicSide = Array.from(document.querySelectorAll('input[name="backpainLocThoracicSide"]:checked')).map(el => el.value);
-    const backpainLocNeckSide = Array.from(document.querySelectorAll('input[name="backpainLocNeckSide"]:checked')).map(el => el.value);
     const backpainLocSacrumSide = Array.from(document.querySelectorAll('input[name="backpainLocSacrumSide"]:checked')).map(el => el.value);
     const backpainLocFlankSide = Array.from(document.querySelectorAll('input[name="backpainLocFlankSide"]:checked')).map(el => el.value);
 
@@ -977,10 +1049,9 @@ registerCcModule({
       if (pSlider) painScore = parseInt(pSlider.value, 10);
     }
 
-    const backpainWarningMaster = document.querySelector('input[name="backpainWarningMaster"]:checked')?.value || 'none';
-    const backpainWarningSigns = backpainWarningMaster === 'yes'
-      ? Array.from(document.querySelectorAll('input[name="backpainWarningSigns"]:checked')).map(el => el.value)
-      : [];
+    const backpainWarningSigns = Array.from(document.querySelectorAll('input[name="backpainWarningSigns"]:checked')).map(el => el.value);
+    const backpainWarningNeuroParent = !!document.getElementById('backpainWarningNeuroParent')?.checked;
+    const backpainWarningExcretoryParent = !!document.getElementById('backpainWarningExcretoryParent')?.checked;
 
     const backpainTraumaMaster = document.querySelector('input[name="backpainTraumaMaster"]:checked')?.value || 'no';
     const backpainTraumaTypes = backpainTraumaMaster === 'yes'
@@ -1014,7 +1085,6 @@ registerCcModule({
       backpainLoc,
       backpainLocLumbarSide,
       backpainLocThoracicSide,
-      backpainLocNeckSide,
       backpainLocSacrumSide,
       backpainLocFlankSide,
       backpainOnsetMode,
@@ -1023,8 +1093,9 @@ registerCcModule({
       backpainChar,
       backpainBehavior,
       painScore,
-      backpainWarningMaster,
       backpainWarningSigns,
+      backpainWarningNeuroParent,
+      backpainWarningExcretoryParent,
       backpainTraumaMaster,
       backpainTraumaTypes,
       backpainTraumaOtherText,
@@ -1057,7 +1128,6 @@ registerCcModule({
     setCheckedArr('backpainLoc', patient.backpainLoc);
     setCheckedArr('backpainLocLumbarSide', patient.backpainLocLumbarSide);
     setCheckedArr('backpainLocThoracicSide', patient.backpainLocThoracicSide);
-    setCheckedArr('backpainLocNeckSide', patient.backpainLocNeckSide);
     setCheckedArr('backpainLocSacrumSide', patient.backpainLocSacrumSide);
     setCheckedArr('backpainLocFlankSide', patient.backpainLocFlankSide);
 
@@ -1065,7 +1135,6 @@ registerCcModule({
     const locs = Array.isArray(patient.backpainLoc) ? patient.backpainLoc : [];
     toggleBackpainSideGroup('lumbarSideGroup', locs.includes('low_back_lumbar'));
     toggleBackpainSideGroup('thoracicSideGroup', locs.includes('mid_back_thoracic'));
-    toggleBackpainSideGroup('neckSideGroup', locs.includes('upper_back_neck'));
     toggleBackpainSideGroup('sacrumSideGroup', locs.includes('sacrum_buttock'));
     toggleBackpainSideGroup('flankSideGroup', locs.includes('flank_side'));
 
@@ -1092,12 +1161,19 @@ registerCcModule({
       clearBackpainPainScore();
     }
 
-    if (patient.backpainWarningMaster) {
-      const r = document.querySelector(`input[name="backpainWarningMaster"][value="${patient.backpainWarningMaster}"]`);
-      if (r) r.checked = true;
-    }
-    toggleBackpainWarningSub(patient.backpainWarningMaster === 'yes');
     setCheckedArr('backpainWarningSigns', patient.backpainWarningSigns);
+    const warnSigns = Array.isArray(patient.backpainWarningSigns) ? patient.backpainWarningSigns : [];
+    const neuroKeys = ['saddle_anesthesia', 'leg_weakness_both', 'foot_drop_single', 'numbness_leg_foot', 'ischemic_limb_pain', 'ischemic_limb_numbness'];
+    const hasNeuro = patient.backpainWarningNeuroParent || warnSigns.some(k => neuroKeys.includes(k));
+    const pNeuro = document.getElementById('backpainWarningNeuroParent');
+    if (pNeuro) pNeuro.checked = !!hasNeuro;
+    toggleBackpainWarningGroup('backpainWarningNeuroSub', !!hasNeuro);
+
+    const excretoryKeys = ['bowel_incontinence', 'urinary_retention', 'dysuria_hematuria', 'gravel_sand_urine'];
+    const hasExcretory = patient.backpainWarningExcretoryParent || warnSigns.some(k => excretoryKeys.includes(k));
+    const pExcretory = document.getElementById('backpainWarningExcretoryParent');
+    if (pExcretory) pExcretory.checked = !!hasExcretory;
+    toggleBackpainWarningGroup('backpainWarningExcretorySub', !!hasExcretory);
 
     if (patient.backpainTraumaMaster) {
       const r = document.querySelector(`input[name="backpainTraumaMaster"][value="${patient.backpainTraumaMaster}"]`);
@@ -1124,13 +1200,13 @@ registerCcModule({
     const unitEl = document.getElementById('backpainDurationUnit');
     if (unitEl) unitEl.value = 'days';
 
-    const radios = ['backpainOnsetMode', 'backpainRadMaster', 'backpainWarningMaster', 'backpainTraumaMaster'];
+    const radios = ['backpainOnsetMode', 'backpainRadMaster', 'backpainTraumaMaster'];
     radios.forEach(name => {
       document.querySelectorAll(`input[name="${name}"]`).forEach(r => { r.checked = false; });
     });
 
     const cbs = [
-      'backpainLoc', 'backpainLocLumbarSide', 'backpainLocThoracicSide', 'backpainLocNeckSide',
+      'backpainLoc', 'backpainLocLumbarSide', 'backpainLocThoracicSide',
       'backpainLocSacrumSide', 'backpainLocFlankSide', 'backpainRadLoc', 'backpainChar',
       'backpainBehavior', 'backpainWarningSigns', 'backpainTraumaTypes', 'backpainRisks'
     ];
@@ -1138,8 +1214,14 @@ registerCcModule({
       document.querySelectorAll(`input[name="${name}"]`).forEach(cb => { cb.checked = false; });
     });
 
-    ['lumbarSideGroup', 'thoracicSideGroup', 'neckSideGroup', 'sacrumSideGroup', 'flankSideGroup',
-     'backpainRadiationSub', 'backpainWarningSub', 'backpainTraumaSub', 'backpainTraumaOtherWrap'].forEach(id => {
+    ['backpainWarningNeuroParent', 'backpainWarningExcretoryParent'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.checked = false;
+    });
+
+    ['lumbarSideGroup', 'thoracicSideGroup', 'sacrumSideGroup', 'flankSideGroup',
+     'backpainRadiationSub', 'backpainWarningNeuroSub', 'backpainWarningExcretorySub',
+     'backpainTraumaSub', 'backpainTraumaOtherWrap'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.classList.add('hidden');
     });
@@ -1189,7 +1271,6 @@ registerCcModule({
       backpainLoc: ['low_back_lumbar'],
       backpainLocLumbarSide: ['center', 'left', 'right'],
       backpainLocThoracicSide: [],
-      backpainLocNeckSide: [],
       backpainLocSacrumSide: [],
       backpainLocFlankSide: [],
       backpainOnsetMode: 'sudden_severe',
@@ -1198,8 +1279,9 @@ registerCcModule({
       backpainChar: ['sharp_stabbing', 'electric_shock'],
       backpainBehavior: ['worse_cough_strain'],
       painScore: 8,
-      backpainWarningMaster: 'yes',
       backpainWarningSigns: ['saddle_anesthesia', 'urinary_retention', 'leg_weakness_both'],
+      backpainWarningNeuroParent: true,
+      backpainWarningExcretoryParent: true,
       backpainTraumaMaster: 'yes',
       backpainTraumaTypes: ['heavy_lifting'],
       backpainTraumaOtherText: '',
@@ -1232,7 +1314,6 @@ registerCcModule({
       backpainLoc: ['low_back_lumbar', 'flank_side'],
       backpainLocLumbarSide: ['center'],
       backpainLocThoracicSide: [],
-      backpainLocNeckSide: [],
       backpainLocSacrumSide: [],
       backpainLocFlankSide: ['left'],
       backpainOnsetMode: 'sudden_severe',
@@ -1241,8 +1322,9 @@ registerCcModule({
       backpainChar: ['tearing_ripping'],
       backpainBehavior: [],
       painScore: 10,
-      backpainWarningMaster: 'yes',
       backpainWarningSigns: ['syncope_hypotension', 'pulsatile_abd_mass'],
+      backpainWarningNeuroParent: false,
+      backpainWarningExcretoryParent: false,
       backpainTraumaMaster: 'no',
       backpainTraumaTypes: [],
       backpainTraumaOtherText: '',
@@ -1275,7 +1357,6 @@ registerCcModule({
       backpainLoc: ['mid_back_thoracic', 'low_back_lumbar'],
       backpainLocLumbarSide: ['center'],
       backpainLocThoracicSide: ['center'],
-      backpainLocNeckSide: [],
       backpainLocSacrumSide: [],
       backpainLocFlankSide: [],
       backpainOnsetMode: 'gradual_worsening',
@@ -1284,8 +1365,9 @@ registerCcModule({
       backpainChar: ['sharp_stabbing'],
       backpainBehavior: ['worse_night_supine'],
       painScore: 7,
-      backpainWarningMaster: 'yes',
       backpainWarningSigns: ['fever_chills'],
+      backpainWarningNeuroParent: false,
+      backpainWarningExcretoryParent: false,
       backpainTraumaMaster: 'yes',
       backpainTraumaTypes: ['recent_spine_procedure'],
       backpainTraumaOtherText: '',
@@ -1318,7 +1400,6 @@ registerCcModule({
       backpainLoc: ['low_back_lumbar'],
       backpainLocLumbarSide: ['right'],
       backpainLocThoracicSide: [],
-      backpainLocNeckSide: [],
       backpainLocSacrumSide: [],
       backpainLocFlankSide: [],
       backpainOnsetMode: 'gradual_worsening',
@@ -1327,8 +1408,9 @@ registerCcModule({
       backpainChar: ['dull_aching'],
       backpainBehavior: [],
       painScore: 4,
-      backpainWarningMaster: 'none',
       backpainWarningSigns: [],
+      backpainWarningNeuroParent: false,
+      backpainWarningExcretoryParent: false,
       backpainTraumaMaster: 'yes',
       backpainTraumaTypes: ['heavy_lifting'],
       backpainTraumaOtherText: '',
@@ -1350,11 +1432,10 @@ function formatBackpainLocations(patient) {
   };
 
   locs.forEach(l => {
-    if (l === 'low_back_lumbar') parts.push(`บั้นเอว/หลังช่วงล่าง${sideFormat(patient.backpainLocLumbarSide)}`);
-    else if (l === 'mid_back_thoracic') parts.push(`หลังช่วงกลาง/สะบัก${sideFormat(patient.backpainLocThoracicSide)}`);
-    else if (l === 'upper_back_neck') parts.push(`หลังช่วงบน/ต้นคอ${sideFormat(patient.backpainLocNeckSide)}`);
-    else if (l === 'sacrum_buttock') parts.push(`ก้นกบ/สะโพก${sideFormat(patient.backpainLocSacrumSide)}`);
+    if (l === 'mid_back_thoracic') parts.push(`หลังช่วงกลาง/สะบัก${sideFormat(patient.backpainLocThoracicSide)}`);
     else if (l === 'flank_side') parts.push(`สีข้าง/บั้นเอวด้านข้าง${sideFormat(patient.backpainLocFlankSide)}`);
+    else if (l === 'low_back_lumbar') parts.push(`บั้นเอว/หลังช่วงล่าง${sideFormat(patient.backpainLocLumbarSide)}`);
+    else if (l === 'sacrum_buttock') parts.push(`ก้นกบ/สะโพก${sideFormat(patient.backpainLocSacrumSide)}`);
     else if (l === 'diffuse') parts.push('ปวดระบมทั่วแผ่นหลัง');
     else parts.push(l);
   });
@@ -1443,9 +1524,15 @@ function renderBackpainRapidHpi(patient) {
   if (warnSigns.includes('bowel_incontinence')) posList.push('กลั้นอุจจาระไม่ได้ เล็ดราด');
   if (warnSigns.includes('leg_weakness_both')) posList.push('ขาอ่อนแรงทั้งสองข้าง เดินไม่ไหว');
   if (warnSigns.includes('foot_drop_single')) posList.push('ปลายเท้าตก (Foot drop)');
+  if (warnSigns.includes('numbness_leg_foot')) posList.push('ชาตามแนวขา น่อง หรือหลังเท้า');
+  if (warnSigns.includes('ischemic_limb_pain')) posList.push('ปวดรุนแรงเหมือนเนื้อจะระเบิดลึกๆ ในน่อง/เท้า (Limb Ischemia risk)');
+  if (warnSigns.includes('ischemic_limb_numbness')) posList.push('ไม่รู้สึกถึงความรู้สึกใดๆ ที่ขาหรือเท้า (Profound limb anesthesia)');
+  if (warnSigns.includes('dysuria_hematuria')) posList.push('ปัสสาวะแสบขัด หรือปัสสาวะเป็นเลือด');
+  if (warnSigns.includes('gravel_sand_urine')) posList.push('ปัสสาวะปนตะกอน คล้ายกรวดทราย (Urolithiasis/Gravel)');
   if (warnSigns.includes('fever_chills')) posList.push('มีไข้สูง หนาวสั่นสะท้าน');
   if (warnSigns.includes('syncope_hypotension')) posList.push('หน้ามืด วูบ หรือความดันโลหิตตก');
   if (warnSigns.includes('pulsatile_abd_mass')) posList.push('คลำได้ก้อนเต้นตุบๆ ในช่องท้อง');
+  if (warnSigns.includes('weight_loss_anorexia')) posList.push('น้ำหนักลดลงฮวบผิดปกติ เบื่ออาหาร');
 
   // Trauma positives
   if (patient.backpainTraumaMaster === 'yes') {
@@ -1465,6 +1552,12 @@ function renderBackpainRapidHpi(patient) {
   }
   if (!warnSigns.includes('leg_weakness_both') && !warnSigns.includes('foot_drop_single')) {
     negList.push('ขาไม่อ่อนแรงทั้งสองข้าง ปลายเท้าไม่ตก');
+  }
+  if (!warnSigns.includes('ischemic_limb_pain') && !warnSigns.includes('ischemic_limb_numbness')) {
+    negList.push('ปฏิเสธปวดรุนแรงเหมือนระเบิดหรือชาหมดความรู้สึกที่ขา/เท้า (No acute limb ischemia signs)');
+  }
+  if (!warnSigns.includes('dysuria_hematuria') && !warnSigns.includes('gravel_sand_urine')) {
+    negList.push('ปฏิเสธปัสสาวะแสบขัด เลือดปน หรือปนตะกอนกรวดทราย');
   }
   if (!warnSigns.includes('fever_chills')) negList.push('ปฏิเสธไข้หนาวสั่น');
   if (!warnSigns.includes('syncope_hypotension')) negList.push('ปฏิเสธหน้ามืดหรือวูบหมดสติ');
@@ -1515,12 +1608,18 @@ function renderBackpainNarrative(patient) {
     if (warnSigns.includes('bowel_incontinence')) warnTexts.push('กลั้นอุจจาระไม่ได้');
     if (warnSigns.includes('leg_weakness_both')) warnTexts.push('ขาอ่อนแรงทั้งสองข้าง');
     if (warnSigns.includes('foot_drop_single')) warnTexts.push('ปลายเท้าตก');
+    if (warnSigns.includes('numbness_leg_foot')) warnTexts.push('ชาตามแนวขาหรือหลังเท้า');
+    if (warnSigns.includes('ischemic_limb_pain')) warnTexts.push('ปวดรุนแรงเหมือนเนื้อจะระเบิดลึกๆ ในน่องหรือเท้า');
+    if (warnSigns.includes('ischemic_limb_numbness')) warnTexts.push('ไม่รู้สึกถึงความรู้สึกใดๆ ที่ขาหรือเท้า');
+    if (warnSigns.includes('dysuria_hematuria')) warnTexts.push('ปัสสาวะแสบขัดหรือเป็นเลือด');
+    if (warnSigns.includes('gravel_sand_urine')) warnTexts.push('ปัสสาวะปนตะกอนกรวดทราย');
     if (warnSigns.includes('fever_chills')) warnTexts.push('มีไข้สูงหนาวสั่น');
     if (warnSigns.includes('syncope_hypotension')) warnTexts.push('มีอาการหน้ามืดหรือวูบ');
     if (warnSigns.includes('pulsatile_abd_mass')) warnTexts.push('คลำได้ก้อนเต้นในท้อง');
+    if (warnSigns.includes('weight_loss_anorexia')) warnTexts.push('น้ำหนักลดลงฮวบผิดปกติ');
     note += ` ร่วมกับมีอาการสำคัญ: ${warnTexts.join(', ')}`;
   } else {
-    note += ' ผู้ป่วยปฏิเสธอาการชาบริเวณก้นหรือหว่างขา (No saddle anesthesia) การขับถ่ายปัสสาวะและอุจจาระปกติ ขาทั้งสองข้างไม่อ่อนแรง และไม่มีไข้หนาวสั่น';
+    note += ' ผู้ป่วยปฏิเสธอาการชาบริเวณก้นหรือหว่างขา (No saddle anesthesia) การขับถ่ายปัสสาวะและอุจจาระปกติ ขาทั้งสองข้างไม่อ่อนแรง ไม่มีความรู้สึกขาขาดเลือดเฉียบพลัน และไม่มีไข้หนาวสั่น';
   }
 
   if (patient.backpainTraumaMaster === 'yes') {

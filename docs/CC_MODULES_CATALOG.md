@@ -29,7 +29,7 @@
 | **17**<br>`urinary_retention` | `17_urinary_retention.js` | **ปัสสาวะไม่ออก / ปัสสาวะคั่ง**<br>(Urinary retention) | 6 การ์ด | • Cauda Equina Syndrome (ปัสสาวะไม่ออกร่วมกับชาอานม้า ขาอ่อนแรงสองข้าง)<br>• Clot Retention with Severe Hematuria (ปัสสาวะไม่ออกเพราะมีลิ่มเลือดอุดกั้นท่อ)<br>• Acute Retention with Sepsis (ไข้สูง หนาวสั่น ปวดบั้นเอว ช็อก)<br>• ปวดท้องน้อยรุนแรงจนทนไม่ไหว กระสับกระส่าย (Tense Palpable Bladder) | 4 เคส |
 | **18**<br>`dysuria` | `18_dysuria.js` | **ปัสสาวะแสบขัด**<br>(Dysuria / UTI) | 7 การ์ด | • Acute Pyelonephritis (ไข้สูง หนาวสั่นสะท้าน ปวดเคาะเจ็บบั้นเอว CVA Tenderness)<br>• Urosepsis (ปัสสาวะแสบขัดร่วมกับซึมลง หายใจเร็ว ความดันโลหิตตก)<br>• Acute Prostatitis ในผู้ชาย (ปวดแสบทรมาน ปัสสาวะลำบาก ไข้สูง ปวดฝีเย็บ)<br>• หญิงตั้งครรภ์มีไข้ร่วมกับปัสสาวะแสบขัด (เสี่ยงคลอดก่อนกำหนด / ภาวะติดเชื้อ) | 4 เคส |
 | **19**<br>`hematuria` | `19_hematuria.js` | **ปัสสาวะเป็นเลือด**<br>(Hematuria) | 6 การ์ด | • Massive Gross Hematuria with Clot Retention (เลือดออกมากจนอุดท่อ ปัสสาวะไม่ออก)<br>• Renal Trauma / Bladder Rupture (ประวัติอุบัติเหตุกระแทกบั้นเอวหรือเชิงกราน)<br>• Hematuria with Hemodynamic Shock (ชีพจรเร็ว ความดันตก หน้ามืด วูบ)<br>• Severe Flank Pain radiating to Groin with Fever (Infected Obstructive Urolithiasis) | 4 เคส |
-| **20**<br>`back_pain` | `20_back_pain.js` | **ปวดหลัง**<br>(Back pain / Lumbago) | 5 การ์ด | • Cauda Equina Syndrome (ชาบริเวณอานม้า ขาอ่อนแรง กลั้นปัสสาวะ/อุจจาระไม่ได้)<br>• Ruptured / Leaking AAA (ปวดหลังร้าวทะลุหน้าท้อง คลำได้ก้อนเต้นตุบๆ หน้ามืด ช็อก)<br>• Spinal Epidural Abscess / Spondylodiscitis (ไข้สูง + เคาะเจ็บแนวกระดูกสันหลัง + ประวัติฉีดยาบล็อกหลัง/ฟอกไต/เบาหวาน)<br>• Spinal Cord Compression from Malignancy (ปวดรุนแรงเวลานอนกลางคืน ขาชาอ่อนแรง) | 4 เคส |
+| **20**<br>`back_pain` | `20_back_pain.js` | **ปวดหลัง**<br>(Back pain / Lumbago) | 5 การ์ด | • Aortic Dissection with Acute Limb Ischemia (ESI 1: ปวดระเบิดลึกๆ/หมดความรู้สึกที่ขา/เท้า)<br>• Ruptured / Leaking AAA (ESI 1: ปวดหลังร้าวทะลุหน้าท้อง คลำได้ก้อนเต้นตุบๆ หน้ามืด ช็อก)<br>• Cauda Equina Syndrome (ESI 1-2: ชาบริเวณอานม้า ขาอ่อนแรงสองข้าง กลั้นปัสสาวะ/อุจจาระไม่ได้)<br>• Spinal Epidural Abscess / Spondylodiscitis (ESI 2: ไข้สูง + ประวัติฉีดยาบล็อกหลัง/ฟอกไต/เบาหวาน)<br>• Traumatic / Osteoporotic Spinal Fracture (ESI 2-3)<br>• Urinary Tract Calculus / Renal Colic (ESI 3: ปัสสาวะปนตะกอนกรวดทราย ปวดสีข้างร้าวบั้นเอว) | 4 เคส |
 
 ---
 
@@ -65,9 +65,11 @@
 * **โมดูลที่ผูกไว้:** `01_abdpain.js`, `11_vomiting.js`, `12_diarrhea.js`, `17_urinary_retention.js`, `18_dysuria.js`
 * **ตรรกะ:** เมื่อระบบตรวจพบว่าคนไข้เป็น **เพศหญิง** และมีอายุระหว่าง **12–55 ปี** ระบบจะเปิดกิ่งคำถามเรื่องประจำเดือน (LMP) และเลือดออกทางช่องคลอดให้อัตโนมัติ เพื่อคัดแยกภาวะ **Ectopic Pregnancy (ท้องนอกมดลูกแตก)** และ **Ovarian Torsion** เสมอ
 
-### 2.6 Anatomical Laterality with Center Option (`20_back_pain.js`)
-* **ตรรกะ:** เมื่อคนไข้เลือกตำแหน่งที่ปวดหลัง (เช่น บั้นเอว, หลังช่วงกลาง, หลังช่วงบน, ก้นกบ) ระบบจะเปิดตัวเลือกข้าง **`ซ้าย` / `ขวา` / `ตรงกลาง`** ขึ้นมาทันที
+### 2.6 Anatomical Ordering, Laterality & Progressive Warning Signs (`20_back_pain.js`)
+* **การเรียงลำดับตาม Anatomy จากบนลงล่าง:** เรียงจาก `หลังช่วงกลาง/สะบัก` -> `สีข้าง/บั้นเอวด้านข้าง` -> `บั้นเอว/หลังช่วงล่าง` -> `ก้นกบ/สะโพก` -> `ปวดระบมทั่วแผ่นหลัง` (ตัดหลังช่วงบน/ต้นคอออกเพื่อเตรียมสร้างเป็น CC เฉพาะทางในอนาคต)
+* **ตรรกะ Laterality:** เมื่อคนไข้เลือกตำแหน่งที่ปวดหลัง (เช่น บั้นเอว, หลังช่วงกลาง, ก้นกบ) ระบบจะเปิดตัวเลือกข้าง **`ซ้าย` / `ขวา` / `ตรงกลาง`** ขึ้นมาทันที
 * **ข้อยกเว้น:** ในข้อ **สีข้าง (Flank)** จะมีให้เลือกเฉพาะ **`ซ้าย`** และ **`ขวา`** เท่านั้น (ไม่มีตรงกลาง) เพื่อความถูกต้องตามกายวิภาคศาสตร์ไตและท่อไต
+* **Progressive Warning Signs Architecture:** ยกเลิก Radio ถามนำแบบมี/ไม่มีสัญญาณเตือน และเปลี่ยนเป็นการเลือกอิสระ โดยมีกิ่งขยายเฉพาะกลุ่มอาการซับซ้อน (ระบบประสาท/ขา และระบบการขับถ่าย) ร่วมกับ Standalone Checkboxes คัดกรองภาวะหลอดเลือดฉีกขาดเฉียบพลัน (Aortic Dissection with Acute Limb Ischemia - ESI 1), นิ่วท่อไต (Renal Colic - ESI 3), ภาวะติดเชื้อในช่องไขสันหลัง และก้อนเต้นในช่องท้อง
 
 ### 2.7 Pain Score Touch State Tracking (Universal Pattern)
 * **โมดูลที่ผูกไว้:** `01`, `02`, `06`, `17`, `18`, `19`, `20`

@@ -1511,16 +1511,10 @@
                 <i data-lucide="cpu" class="w-4 h-4 mr-1.5 text-violet-600"></i>
                 <span>2. ผลการวิเคราะห์ & แผนคำสั่งห้องฉุกเฉิน (AI / CDS Output)</span>
               </label>
-              <div class="flex items-center space-x-2">
-                <button type="button" id="runAiAnalysisBtn" onclick="runDirectAiConsultation()" class="px-3.5 py-1.5 bg-violet-600 hover:bg-violet-700 text-white font-semibold rounded-xl shadow-xs transition flex items-center space-x-1.5 cursor-pointer">
-                  <i data-lucide="zap" class="w-3.5 h-3.5"></i>
-                  <span>วิเคราะห์ด้วย AI</span>
-                </button>
-                <button type="button" onclick="applyAiResultToDoctorAddendum('both')" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl shadow-xs transition flex items-center space-x-1.5 cursor-pointer">
-                  <i data-lucide="corner-down-left" class="w-3.5 h-3.5"></i>
-                  <span>นำผลวิเคราะห์เข้าบันทึกแพทย์</span>
-                </button>
-              </div>
+              <button type="button" id="runAiAnalysisBtn" onclick="runDirectAiConsultation()" class="px-3.5 py-1.5 bg-violet-600 hover:bg-violet-700 text-white font-semibold rounded-xl shadow-xs transition flex items-center space-x-1.5 cursor-pointer">
+                <i data-lucide="zap" class="w-3.5 h-3.5"></i>
+                <span>วิเคราะห์ด้วย AI</span>
+              </button>
             </div>
             <p id="aiApiStatusMsg" class="text-[11px] text-slate-500">💡 ระบบสร้างคำแนะนำเบื้องต้นจาก Built-in CDS ให้ทันที หรือกดปุ่มด้านบนเพื่อเรียก AI</p>
 
