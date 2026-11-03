@@ -330,9 +330,9 @@ assert(dateInput.value === '26/10/2026', `Universal Date descriptor converts ISO
 timeInput.value = '3:30 PM';
 assert(timeInput.value === '15:30', `Universal Time descriptor converts '3:30 PM' -> '${timeInput.value}' (24-hour HH:mm)`);
 
-console.log('\n=== มิติที่ (ง): DOCTOR UI RENDER, JSON SCHEMA & BUILT-IN CDS (ALL 85 SEED CASES) ===');
+console.log('\n=== มิติที่ (ง): DOCTOR UI RENDER, JSON SCHEMA & BUILT-IN CDS (ALL 89 SEED CASES) ===');
 const patients = sandbox.getSeedPatients();
-assert(patients.length === 85, `Seed database has all 85 clinical cases across 23 Chief Complaints (found ${patients.length})`);
+assert(patients.length === 89, `Seed database has all 89 clinical cases across 24 Chief Complaints (found ${patients.length})`);
 
 let renderErrors = 0;
 let cdsErrors = 0;
@@ -479,7 +479,7 @@ assert(rapidDeDuplicationErrors === 0, `Zero De-duplication, Clean Negative Synt
 
 console.log('\n=== มิติที่ (ข): SAVE PERSISTENCE CHECK (PATIENT SUBMIT -> STATE & LOCALSTORAGE -> STATUS VIEW) ===');
 let saveErrors = 0;
-const testSubmitCases = ['case-043', 'case-046', 'case-051', 'case-040', 'case-061', 'case-071', 'case-081', 'case-091', 'case-095', 'case-101', 'case-105', 'case-120', 'case-130', 'case-140', 'case-150', 'case-160', 'case-170', 'case-180', 'seed-hematuria-01', 'case-backpain-01', 'case-neck-01', 'case-hemo-01', 'case-epistaxis-01'];
+const testSubmitCases = ['case-043', 'case-046', 'case-051', 'case-040', 'case-061', 'case-071', 'case-081', 'case-091', 'case-095', 'case-101', 'case-105', 'case-120', 'case-130', 'case-140', 'case-150', 'case-160', 'case-170', 'case-180', 'seed-hematuria-01', 'case-backpain-01', 'case-neck-01', 'case-hemo-01', 'case-epistaxis-01', 'case-htn-01'];
 for (const caseId of testSubmitCases) {
   const seedCase = patients.find(x => x.id === caseId);
   sandbox.switchUserRole('patient', { silent: true });
@@ -510,7 +510,7 @@ for (const caseId of testSubmitCases) {
     saveErrors++;
   }
 }
-assert(saveErrors === 0, `Save Persistence verified across all 23 active Chief Complaints (State + localStorage + #patientStatusView)`);
+assert(saveErrors === 0, `Save Persistence verified across all 24 active Chief Complaints (State + localStorage + #patientStatusView)`);
 
 console.log('\n=== มิติที่ (ค): PATIENT ISOLATION & CONTEXT SWITCHING CHECK (PATIENT A <-> PATIENT B) ===');
 sandbox.switchUserRole('doctor', { silent: true });
@@ -779,6 +779,27 @@ assert(epiRf3.some(r => r.key === 'rf_suspected_npc_mass'), 'Epistaxis Case 3 tr
 
 const epiRf4 = ccModEpi.evaluateRedFlags(epiCase4);
 assert(epiRf4.length === 0, 'Epistaxis Case 4 (Simple Anterior Digital Trauma) triggers Zero Red Flags (Low-Risk)');
+
+// === CC #24 HYPERTENSION SCREEN CLINICAL RED FLAG & TRIAGE VALIDATION ===
+const htnCase1 = patients.find(p => p.id === 'case-htn-01');
+const htnCase2 = patients.find(p => p.id === 'case-htn-02');
+const htnCase3 = patients.find(p => p.id === 'case-htn-03');
+const htnCase4 = patients.find(p => p.id === 'case-htn-04');
+
+const ccModHtn = sandbox.getCcModule('hypertension');
+assert(ccModHtn !== null, 'Module hypertension successfully registered');
+
+const htnRf1 = ccModHtn.evaluateRedFlags(htnCase1);
+assert(htnRf1.some(r => r.key === 'rf_aortic_dissection_htn'), 'Hypertension Case 1 triggers Aortic Dissection Red Flag (ESI 1)');
+
+const htnRf2 = ccModHtn.evaluateRedFlags(htnCase2);
+assert(htnRf2.some(r => r.key === 'rf_acute_pulmonary_edema_htn'), 'Hypertension Case 2 triggers Acute Pulmonary Edema Red Flag (ESI 1)');
+
+const htnRf3 = ccModHtn.evaluateRedFlags(htnCase3);
+assert(htnRf3.some(r => r.key === 'rf_preeclampsia_severe'), 'Hypertension Case 3 triggers Severe Preeclampsia Red Flag (ESI 2)');
+
+const htnRf4 = ccModHtn.evaluateRedFlags(htnCase4);
+assert(htnRf4.length === 0, 'Hypertension Case 4 (Asymptomatic Hypertensive Urgency) triggers Zero Red Flags (Low-Risk)');
 
 // === AI CONSULTANT PERSISTENCE & RESILIENT RETRY/FALLBACK TESTS ===
 // Test 4: AI Consult Result Persistence across modal close & reopen
