@@ -60,7 +60,7 @@ const CHIEF_COMPLAINTS = [
   { id: 'hematuria', schemaCode: 'hematuria', titleTh: 'ปัสสาวะเป็นเลือด', titleEn: 'Hematuria / Blood in urine', icon: 'droplets', active: true, phase: 9 },
   { id: 'back_pain', schemaCode: 'back_pain', titleTh: 'ปวดหลัง', titleEn: 'Back pain / Lumbago', icon: 'activity', active: true, phase: 9 },
   { id: 'neck_shoulder_pain', schemaCode: 'neck_shoulder_pain', titleTh: 'ปวดต้นคอ / บ่า / หลังช่วงบน', titleEn: 'Neck / Shoulder / Upper back pain', icon: 'activity', active: true, phase: 9 },
-  { id: 'hemoptysis', schemaCode: 'hemoptysis', titleTh: 'ไอเป็นเลือด', titleEn: 'Hemoptysis / Coughing up blood', icon: 'droplet', active: false, phase: 10 },
+  { id: 'hemoptysis', schemaCode: 'hemoptysis', titleTh: 'ไอเป็นเลือด', titleEn: 'Hemoptysis / Coughing up blood', icon: 'droplet', active: true, phase: 10 },
   { id: 'epistaxis', schemaCode: 'epistaxis', titleTh: 'เลือดกำเดาไหล', titleEn: 'Epistaxis / Nosebleed', icon: 'droplets', active: false, phase: 10 },
   { id: 'physical_assault', schemaCode: 'physical_assault', titleTh: 'ถูกทำร้ายร่างกาย', titleEn: 'Physical assault / Violence injury', icon: 'shield-alert', active: false, phase: 10 },
   { id: 'self_harm', schemaCode: 'self_harm', titleTh: 'ทำร้ายตนเอง / พยายามฆ่าตัวตาย', titleEn: 'Self-harm / Suicidal attempt', icon: 'heart-crack', active: false, phase: 10 },

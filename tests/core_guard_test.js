@@ -330,9 +330,9 @@ assert(dateInput.value === '26/10/2026', `Universal Date descriptor converts ISO
 timeInput.value = '3:30 PM';
 assert(timeInput.value === '15:30', `Universal Time descriptor converts '3:30 PM' -> '${timeInput.value}' (24-hour HH:mm)`);
 
-console.log('\n=== มิติที่ (ง): DOCTOR UI RENDER, JSON SCHEMA & BUILT-IN CDS (ALL 77 SEED CASES) ===');
+console.log('\n=== มิติที่ (ง): DOCTOR UI RENDER, JSON SCHEMA & BUILT-IN CDS (ALL 81 SEED CASES) ===');
 const patients = sandbox.getSeedPatients();
-assert(patients.length === 77, `Seed database has all 77 clinical cases across 21 Chief Complaints (found ${patients.length})`);
+assert(patients.length === 81, `Seed database has all 81 clinical cases across 22 Chief Complaints (found ${patients.length})`);
 
 let renderErrors = 0;
 let cdsErrors = 0;
@@ -472,10 +472,10 @@ for (const p of patients) {
   }
 }
 
-assert(renderErrors === 0, 'All 77 seed cases render Rapid Note, Narrative Note & JSON Schema on Doctor Dashboard with 0 errors');
-assert(cdsErrors === 0, 'All 77 seed cases generate Built-in CDS Analysis with 0 errors');
-assert(formatViolations === 0, 'Zero Date/Time format violations across all 77 seed cases');
-assert(rapidDeDuplicationErrors === 0, 'Zero De-duplication, Clean Negative Syntax & Score Offloading violations across all 77 seed cases');
+assert(renderErrors === 0, `All ${patients.length} seed cases render Rapid Note, Narrative Note & JSON Schema on Doctor Dashboard with 0 errors`);
+assert(cdsErrors === 0, `All ${patients.length} seed cases generate Built-in CDS Analysis with 0 errors`);
+assert(formatViolations === 0, `Zero Date/Time format violations across all ${patients.length} seed cases`);
+assert(rapidDeDuplicationErrors === 0, `Zero De-duplication, Clean Negative Syntax & Score Offloading violations across all ${patients.length} seed cases`);
 
 console.log('\n=== มิติที่ (ข): SAVE PERSISTENCE CHECK (PATIENT SUBMIT -> STATE & LOCALSTORAGE -> STATUS VIEW) ===');
 let saveErrors = 0;
@@ -510,7 +510,7 @@ for (const caseId of testSubmitCases) {
     saveErrors++;
   }
 }
-assert(saveErrors === 0, `Save Persistence verified across all 21 active Chief Complaints (State + localStorage + #patientStatusView)`);
+assert(saveErrors === 0, `Save Persistence verified across all 22 active Chief Complaints (State + localStorage + #patientStatusView)`);
 
 console.log('\n=== มิติที่ (ค): PATIENT ISOLATION & CONTEXT SWITCHING CHECK (PATIENT A <-> PATIENT B) ===');
 sandbox.switchUserRole('doctor', { silent: true });
@@ -625,7 +625,7 @@ patients.forEach(pt => {
     pdpaLeaks++;
   }
 });
-assert(pdpaLeaks === 0, `PDPA Shield 100% compliant: Zero leaks of Name, HN, Queue, or Hospital name across all 77 patients (leaks: ${pdpaLeaks})`);
+assert(pdpaLeaks === 0, `PDPA Shield 100% compliant: Zero leaks of Name, HN, Queue, or Hospital name across all ${patients.length} patients (leaks: ${pdpaLeaks})`);
 
 // Test 2: AI Response Parser correctly separates [PROVISIONAL_DDX] and [ER_ORDERS]
 const mockAiResponse = `[PROVISIONAL_DDX]
@@ -735,6 +735,27 @@ assert(neckRf3.some(r => r.key === 'rf_cervical_radiculopathy_motor'), 'Neck Pai
 
 const neckRf4 = ccModNeck.evaluateRedFlags(neckCase4);
 assert(neckRf4.length === 0, 'Neck Pain Case 4 (Office Syndrome / Trapezius Myalgia) triggers Zero Red Flags (Low-Risk)');
+
+// === CC #22 HEMOPTYSIS CLINICAL RED FLAG & TRIAGE VALIDATION ===
+const hemoCase1 = patients.find(p => p.id === 'case-hemo-01');
+const hemoCase2 = patients.find(p => p.id === 'case-hemo-02');
+const hemoCase3 = patients.find(p => p.id === 'case-hemo-03');
+const hemoCase4 = patients.find(p => p.id === 'case-hemo-04');
+
+const ccModHemo = sandbox.getCcModule('hemoptysis');
+assert(ccModHemo !== null, 'Module hemoptysis successfully registered');
+
+const hemoRf1 = ccModHemo.evaluateRedFlags(hemoCase1);
+assert(hemoRf1.some(r => r.key === 'rf_massive_asphyxiation'), 'Hemoptysis Case 1 triggers Massive Hemoptysis / Asphyxiation Red Flag (ESI 1)');
+
+const hemoRf2 = ccModHemo.evaluateRedFlags(hemoCase2);
+assert(hemoRf2.some(r => r.key === 'rf_suspected_pe_dvt'), 'Hemoptysis Case 2 triggers Pulmonary Embolism Red Flag (ESI 2)');
+
+const hemoRf3 = ccModHemo.evaluateRedFlags(hemoCase3);
+assert(hemoRf3.some(r => r.key === 'rf_cavitary_tb'), 'Hemoptysis Case 3 triggers Cavitary TB Red Flag (ESI 2)');
+
+const hemoRf4 = ccModHemo.evaluateRedFlags(hemoCase4);
+assert(hemoRf4.length === 0, 'Hemoptysis Case 4 (Acute Bronchitis) triggers Zero Red Flags (Low-Risk)');
 
 // === AI CONSULTANT PERSISTENCE & RESILIENT RETRY/FALLBACK TESTS ===
 // Test 4: AI Consult Result Persistence across modal close & reopen
