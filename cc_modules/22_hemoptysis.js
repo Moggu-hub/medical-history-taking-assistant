@@ -365,7 +365,7 @@ function renderHemoptysisRapidHpi(patient) {
   if (warnSigns.includes('warn_unilateral_leg_swelling')) posList.push('ขาบวมโต หรือปวดตึงน่องข้างใดข้างหนึ่งชัดเจน (Suspected DVT) 🚩');
   if (warnSigns.includes('warn_long_travel_immobility')) posList.push('ประวัตินั่งรถยนต์หรือเครื่องบินเดินทางไกลต่อเนื่องเกิน 4-6 ชม.');
   if (warnSigns.includes('warn_post_op_bedridden')) posList.push('เพิ่งผ่านการผ่าตัดใหญ่หรือนอนพักรักษาตัวติดเตียงเกิน 3 วัน');
-  if (warnSigns.includes('warn_history_dvt_pe')) posList.push('มีประวัติเคยเป็นโรคลิ่มเลือดอุดตันในเส้นเลือดมาก่อน');
+  if (warnSigns.includes('warn_history_dvt_pe')) posList.push('มีประวัติเคยเป็นโรคลิ่มเลือดอุดตันในเส้นเลือดที่แขนหรือขามาก่อน');
   if (warnSigns.includes('warn_high_fever_chills')) posList.push('มีไข้สูง หนาวสั่นสะท้านจับไข้');
   if (warnSigns.includes('warn_fever_afternoon_night_sweat')) posList.push('มีไข้ต่ำๆ รุมๆ ตอนบ่าย ร่วมกับเหงื่อออกท่วมตัวตอนกลางคืน (B-symptoms / TB)');
   if (warnSigns.includes('warn_unintentional_weight_loss')) posList.push('น้ำหนักตัวลดลงฮวบผิดปกติโดยไม่ได้ตั้งใจลด หรือเบื่ออาหารมาก');
@@ -1105,14 +1105,14 @@ const hemoptysisModule = {
             </div>
           </div>
 
-          <!-- กลุ่ม 2: มีอาการผิดปกติที่ขา หรือมีประวัติต้องอยู่นิ่งๆ / เดินทางไกล -->
+          <!-- กลุ่ม 2: มีอาการผิดปกติที่ขา หรือมีประวัติต้องอยู่นิ่งๆนานๆ / เดินทางไกล -->
           <div class="border border-slate-200 rounded-xl p-3 bg-white hover:border-medical-300 transition">
             <label class="flex items-start cursor-pointer">
               <input type="checkbox" id="hemoWarningDvtPeParent"
                 onchange="toggleHemoWarningGroup('hemoWarningDvtPeSub', this.checked)"
                 class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0 mt-0.5">
               <div class="ml-3">
-                <span class="text-xs sm:text-sm font-semibold text-slate-800 block">มีอาการผิดปกติที่ขา หรือมีประวัติต้องอยู่นิ่งๆ / เดินทางไกล</span>
+                <span class="text-xs sm:text-sm font-semibold text-slate-800 block">มีอาการผิดปกติที่ขา หรือมีประวัติต้องอยู่นิ่งๆนานๆ / เดินทางไกล</span>
                 <span class="text-[11px] text-slate-500 font-normal block mt-0.5">คัดกรองภาวะลิ่มเลือดในหลอดเลือดดำและหลอดเลือดปอด</span>
               </div>
             </label>
@@ -1131,7 +1131,7 @@ const hemoptysisModule = {
               </label>
               <label class="flex items-center p-2 rounded-lg bg-slate-50 hover:bg-slate-100 cursor-pointer">
                 <input type="checkbox" name="hemoWarningSigns" value="warn_history_dvt_pe" class="text-medical-600 mr-2 rounded">
-                <span>เคยมีประวัติเป็นโรคลิ่มเลือดอุดตันในเส้นเลือดมาก่อน</span>
+                <span>เคยมีประวัติเป็นโรคลิ่มเลือดอุดตันในเส้นเลือดที่แขนหรือขามาก่อน</span>
               </label>
             </div>
           </div>
@@ -1360,10 +1360,24 @@ const hemoptysisModule = {
     const otherSymptomsFree = document.getElementById('hemoptysis_other_free')?.value?.trim() || ctx.otherSymptomsFree || '';
 
     const rec = {
-      ...ctx,
+      id: ctx.recordId || ctx.id,
+      queue_number: ctx.queueNumber || ctx.queue_number,
+      hn: ctx.randomHn || ctx.hn,
+      name: ctx.patientName || ctx.name,
+      age: ctx.patientAge !== undefined ? ctx.patientAge : ctx.age,
+      gender: ctx.gender,
       chief_complaint: 'hemoptysis',
+      chief_complaint_title: 'ไอเป็นเลือด',
+      timestamp: new Date().toISOString(),
+      status: ctx.recordStatus || ctx.status || 'waiting',
       durationVal: !isNaN(durVal) ? durVal : null,
       durationUnit: durUnit,
+      hospRecordStatus: ctx.hospRecordStatus || 'unspecified',
+      underlying: ctx.underlying || [],
+      drugAllergy: ctx.drugAllergy || 'ไม่ได้ระบุ',
+      currentMeds: ctx.currentMeds || 'ไม่ได้ระบุ',
+      otherSymptomsFree,
+      doctor_notes: ctx.preservedDoctorNotes || ctx.doctor_notes || { additional_hpi: '', physical_exam: '', preliminary_dx: '', plan: '' },
       hemoBloodChar,
       hemoBloodVolume,
       hemoEpisodeCount,
@@ -1381,12 +1395,10 @@ const hemoptysisModule = {
       hemoSmokingStatus,
       hemoSmokingYears,
       hemoSmokingPacks,
-      hemoBleedingMeds,
-      otherSymptomsFree,
-      doctor_notes: ctx.preservedDoctorNotes || ctx.doctor_notes || { additional_hpi: '', physical_exam: '', preliminary_dx: '', plan: '' }
+      hemoBleedingMeds
     };
 
-    rec.redFlags = evaluateHemoptysisRedFlags(rec);
+    updateHemoptysisOutputs(rec);
     return rec;
   },
 

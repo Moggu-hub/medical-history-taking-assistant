@@ -1,6 +1,6 @@
 # 🕵️‍♂️ รายงานการตรวจสอบคุณภาพโค้ดและสถาปัตยกรรม (AUTOMATED & AI AUDIT REPORT)
 
-- **วันที่ตรวจสอบ:** `03/11/2026` เวลา `12:48` น. (24-Hour Format)
+- **วันที่ตรวจสอบ:** `03/11/2026` เวลา `15:57` น. (24-Hour Format)
 - **สถานะภาพรวม (Overall Verdict):** **✅ PASS (ผ่านการตรวจสอบครบทุกมิติ)**
 - **จำนวนหัวข้อที่ผ่าน (Passed Checks):** 7 รายการ
 - **จำนวนคำเตือน (Warnings):** 0 รายการ
@@ -12,7 +12,7 @@
 
 | ไฟล์ (File Path) | จำนวนบรรทัด (Lines) | เพดานสูงสุด (Max Limit) | สถานะ (Status) |
 | :--- | :---: | :---: | :---: |
-| `index.html` | 1,984 | 2,000 | ✅ ปกติ (Safe) |
+| `index.html` | 1,985 | 2,000 | ✅ ปกติ (Safe) |
 | `clinical_knowledge_core.js` | 992 | 1,000 | ✅ ปกติ (Safe) |
 | `core_engine.js` | 2,949 | 3,200 | ✅ ปกติ (Safe) |
 | `cc_modules/01_abdpain.js` | 1,251 | 2,000 | ✅ ปกติ (Safe) |
@@ -36,17 +36,18 @@
 | `cc_modules/19_hematuria.js` | 1,660 | 2,000 | ✅ ปกติ (Safe) |
 | `cc_modules/20_back_pain.js` | 1,756 | 2,000 | ✅ ปกติ (Safe) |
 | `cc_modules/21_neck_shoulder_pain.js` | 1,676 | 2,000 | ✅ ปกติ (Safe) |
-| `cc_modules/22_hemoptysis.js` | 1,678 | 2,000 | ✅ ปกติ (Safe) |
+| `cc_modules/22_hemoptysis.js` | 1,690 | 2,000 | ✅ ปกติ (Safe) |
+| `cc_modules/23_epistaxis.js` | 1,240 | 2,000 | ✅ ปกติ (Safe) |
 
 ---
 
 ## 2. สรุปรายการที่ตรวจผ่าน (Passed Verification Checks)
 
-- ✅ index.html: 1984 บรรทัด (อยู่ในเกณฑ์ปลอดภัย <= 2000 บรรทัด)
+- ✅ index.html: 1985 บรรทัด (อยู่ในเกณฑ์ปลอดภัย <= 2000 บรรทัด)
 - ✅ clinical_knowledge_core.js: 992 บรรทัด (อยู่ในเกณฑ์ปลอดภัย <= 1000 บรรทัด)
 - ✅ core_engine.js: 2949 บรรทัด (อยู่ในเกณฑ์ปลอดภัย <= 3200 บรรทัด)
-- ✅ Core System Freeze: core_engine.js ไม่ถูกแก้ไขนับจากจุดเซฟ 'v2.47' (SHA-256 ตรงกัน 100%)
-- ✅ พบไฟล์โมดูลรายอาการใน cc_modules/ จำนวน 22 โมดูล
+- ✅ Core System Freeze: core_engine.js ไม่ถูกแก้ไขนับจากจุดเซฟ 'v2.48' (SHA-256 ตรงกัน 100%)
+- ✅ พบไฟล์โมดูลรายอาการใน cc_modules/ จำนวน 23 โมดูล
 - ✅ ทุกโมดูลใน cc_modules/ ผ่านเกณฑ์โครงสร้าง Lifecycle Hooks, ความปลอดภัย UI คนไข้ และมาตรฐานวันที่ dd/mm/yyyy + เวลา 24 ชั่วโมง HH:mm
 - ✅ ชุดทดสอบ Mandatory 4-Dimension Core Guard TDD (tests/core_guard_test.js) ผ่านครบ 100% ทั้ง 4 มิติ!
 
@@ -65,7 +66,7 @@
 === มิติที่ (ก): ARCHITECTURE, DOM INTEGRITY, UX HYGIENE & UNIVERSAL DATE/TIME ===
 ✅ PASS: index.html โหลด clinical_knowledge_core.js
 ✅ PASS: index.html โหลด core_engine.js
-✅ PASS: index.html โหลดโมดูลอาการนำจาก cc_modules/ ครบ 22 โมดูล
+✅ PASS: index.html โหลดโมดูลอาการนำจาก cc_modules/ ครบ 23 โมดูล
 ✅ PASS: Zero missing static DOM IDs across all modules (found: none)
 ✅ PASS: Zero 🚩 emojis inside #patientView & all cc_modules formHtml
 ✅ PASS: Zero pre-checked inputs inside #patientView (Zero Default Bias) (found: 0)
@@ -74,15 +75,15 @@
 ✅ PASS: Universal Date descriptor converts ISO '2026-10-26' -> '26/10/2026' (dd/mm/yyyy)
 ✅ PASS: Universal Time descriptor converts '3:30 PM' -> '15:30' (24-hour HH:mm)
 
-=== มิติที่ (ง): DOCTOR UI RENDER, JSON SCHEMA & BUILT-IN CDS (ALL 81 SEED CASES) ===
-✅ PASS: Seed database has all 81 clinical cases across 22 Chief Complaints (found 81)
-✅ PASS: All 81 seed cases render Rapid Note, Narrative Note & JSON Schema on Doctor Dashboard with 0 errors
-✅ PASS: All 81 seed cases generate Built-in CDS Analysis with 0 errors
-✅ PASS: Zero Date/Time format violations across all 81 seed cases
-✅ PASS: Zero De-duplication, Clean Negative Syntax & Score Offloading violations across all 81 seed cases
+=== มิติที่ (ง): DOCTOR UI RENDER, JSON SCHEMA & BUILT-IN CDS (ALL 85 SEED CASES) ===
+✅ PASS: Seed database has all 85 clinical cases across 23 Chief Complaints (found 85)
+✅ PASS: All 85 seed cases render Rapid Note, Narrative Note & JSON Schema on Doctor Dashboard with 0 errors
+✅ PASS: All 85 seed cases generate Built-in CDS Analysis with 0 errors
+✅ PASS: Zero Date/Time format violations across all 85 seed cases
+✅ PASS: Zero De-duplication, Clean Negative Syntax & Score Offloading violations across all 85 seed cases
 
 === มิติที่ (ข): SAVE PERSISTENCE CHECK (PATIENT SUBMIT -> STATE & LOCALSTORAGE -> STATUS VIEW) ===
-✅ PASS: Save Persistence verified across all 22 active Chief Complaints (State + localStorage + #patientStatusView)
+✅ PASS: Save Persistence verified across all 23 active Chief Complaints (State + localStorage + #patientStatusView)
 
 === มิติที่ (ค): PATIENT ISOLATION & CONTEXT SWITCHING CHECK (PATIENT A <-> PATIENT B) ===
 ✅ PASS: Switching to Patient B cleanly isolates Patient B context from Patient A
@@ -96,7 +97,7 @@
 ✅ PASS: Zero seed patients stuck on legacy dummy vital signs (found: 0)
 ✅ PASS: Empty patient submission records age='ไม่ระบุ' and durationVal=null instead of fake defaults (got age=ไม่ระบุ, durationVal=null)
 ✅ PASS: Empty patient submission displays "ไม่ระบุ" in Doctor Rapid Note without fabricated age or duration
-✅ PASS: PDPA Shield 100% compliant: Zero leaks of Name, HN, Queue, or Hospital name across all 81 patients (leaks: 0)
+✅ PASS: PDPA Shield 100% compliant: Zero leaks of Name, HN, Queue, or Hospital name across all 85 patients (leaks: 0)
 ✅ PASS: parseAiConsultantResponse isolates Provisional & Differential Diagnosis cleanly
 ✅ PASS: parseAiConsultantResponse isolates ER Orders checklist with "- [ ]" cleanly
 ✅ PASS: 1-Click Apply populates both Dx and Plan fields directly when empty
@@ -117,6 +118,13 @@
 ✅ PASS: Hemoptysis Case 2 triggers Pulmonary Embolism Red Flag (ESI 2)
 ✅ PASS: Hemoptysis Case 3 triggers Cavitary TB Red Flag (ESI 2)
 ✅ PASS: Hemoptysis Case 4 (Acute Bronchitis) triggers Zero Red Flags (Low-Risk)
+✅ PASS: Module epistaxis successfully registered
+✅ PASS: Epistaxis Case 1 triggers Posterior Epistaxis Red Flag (ESI 2)
+✅ PASS: Epistaxis Case 1 triggers Anticoagulant Bleeding Red Flag (ESI 3)
+✅ PASS: Epistaxis Case 1 triggers Hypertensive Urgency Red Flag (ESI 3)
+✅ PASS: Epistaxis Case 2 triggers Basilar Skull Trauma with CSF Leak Red Flag (ESI 2)
+✅ PASS: Epistaxis Case 3 triggers Suspected NPC Mass Red Flag (ESI 3)
+✅ PASS: Epistaxis Case 4 (Simple Anterior Digital Trauma) triggers Zero Red Flags (Low-Risk)
 ✅ PASS: openAiConsultantModal preserves and restores saved AI consult diagnosis instead of overwriting with CDS
 ✅ PASS: openAiConsultantModal preserves and restores saved AI consult orders checklist
 ✅ PASS: openAiConsultantModal displays saved AI status banner indicating persisted consultation

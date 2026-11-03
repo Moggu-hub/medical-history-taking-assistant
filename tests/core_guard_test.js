@@ -330,9 +330,9 @@ assert(dateInput.value === '26/10/2026', `Universal Date descriptor converts ISO
 timeInput.value = '3:30 PM';
 assert(timeInput.value === '15:30', `Universal Time descriptor converts '3:30 PM' -> '${timeInput.value}' (24-hour HH:mm)`);
 
-console.log('\n=== มิติที่ (ง): DOCTOR UI RENDER, JSON SCHEMA & BUILT-IN CDS (ALL 81 SEED CASES) ===');
+console.log('\n=== มิติที่ (ง): DOCTOR UI RENDER, JSON SCHEMA & BUILT-IN CDS (ALL 85 SEED CASES) ===');
 const patients = sandbox.getSeedPatients();
-assert(patients.length === 81, `Seed database has all 81 clinical cases across 22 Chief Complaints (found ${patients.length})`);
+assert(patients.length === 85, `Seed database has all 85 clinical cases across 23 Chief Complaints (found ${patients.length})`);
 
 let renderErrors = 0;
 let cdsErrors = 0;
@@ -479,7 +479,7 @@ assert(rapidDeDuplicationErrors === 0, `Zero De-duplication, Clean Negative Synt
 
 console.log('\n=== มิติที่ (ข): SAVE PERSISTENCE CHECK (PATIENT SUBMIT -> STATE & LOCALSTORAGE -> STATUS VIEW) ===');
 let saveErrors = 0;
-const testSubmitCases = ['case-043', 'case-046', 'case-051', 'case-040', 'case-061', 'case-071', 'case-081', 'case-091', 'case-095', 'case-101', 'case-105', 'case-120', 'case-130', 'case-140', 'case-150', 'case-160', 'case-170', 'case-180', 'seed-hematuria-01', 'case-backpain-01', 'case-neck-01'];
+const testSubmitCases = ['case-043', 'case-046', 'case-051', 'case-040', 'case-061', 'case-071', 'case-081', 'case-091', 'case-095', 'case-101', 'case-105', 'case-120', 'case-130', 'case-140', 'case-150', 'case-160', 'case-170', 'case-180', 'seed-hematuria-01', 'case-backpain-01', 'case-neck-01', 'case-hemo-01', 'case-epistaxis-01'];
 for (const caseId of testSubmitCases) {
   const seedCase = patients.find(x => x.id === caseId);
   sandbox.switchUserRole('patient', { silent: true });
@@ -510,7 +510,7 @@ for (const caseId of testSubmitCases) {
     saveErrors++;
   }
 }
-assert(saveErrors === 0, `Save Persistence verified across all 22 active Chief Complaints (State + localStorage + #patientStatusView)`);
+assert(saveErrors === 0, `Save Persistence verified across all 23 active Chief Complaints (State + localStorage + #patientStatusView)`);
 
 console.log('\n=== มิติที่ (ค): PATIENT ISOLATION & CONTEXT SWITCHING CHECK (PATIENT A <-> PATIENT B) ===');
 sandbox.switchUserRole('doctor', { silent: true });
@@ -756,6 +756,29 @@ assert(hemoRf3.some(r => r.key === 'rf_cavitary_tb'), 'Hemoptysis Case 3 trigger
 
 const hemoRf4 = ccModHemo.evaluateRedFlags(hemoCase4);
 assert(hemoRf4.length === 0, 'Hemoptysis Case 4 (Acute Bronchitis) triggers Zero Red Flags (Low-Risk)');
+
+// === CC #23 EPISTAXIS CLINICAL RED FLAG & TRIAGE VALIDATION ===
+const epiCase1 = patients.find(p => p.id === 'case-epistaxis-01');
+const epiCase2 = patients.find(p => p.id === 'case-epistaxis-02');
+const epiCase3 = patients.find(p => p.id === 'case-epistaxis-03');
+const epiCase4 = patients.find(p => p.id === 'case-epistaxis-04');
+
+const ccModEpi = sandbox.getCcModule('epistaxis');
+assert(ccModEpi !== null, 'Module epistaxis successfully registered');
+
+const epiRf1 = ccModEpi.evaluateRedFlags(epiCase1);
+assert(epiRf1.some(r => r.key === 'rf_posterior_epistaxis'), 'Epistaxis Case 1 triggers Posterior Epistaxis Red Flag (ESI 2)');
+assert(epiRf1.some(r => r.key === 'rf_anticoagulant_bleeding'), 'Epistaxis Case 1 triggers Anticoagulant Bleeding Red Flag (ESI 3)');
+assert(epiRf1.some(r => r.key === 'rf_hypertensive_urgency'), 'Epistaxis Case 1 triggers Hypertensive Urgency Red Flag (ESI 3)');
+
+const epiRf2 = ccModEpi.evaluateRedFlags(epiCase2);
+assert(epiRf2.some(r => r.key === 'rf_basilar_skull_trauma_csf'), 'Epistaxis Case 2 triggers Basilar Skull Trauma with CSF Leak Red Flag (ESI 2)');
+
+const epiRf3 = ccModEpi.evaluateRedFlags(epiCase3);
+assert(epiRf3.some(r => r.key === 'rf_suspected_npc_mass'), 'Epistaxis Case 3 triggers Suspected NPC Mass Red Flag (ESI 3)');
+
+const epiRf4 = ccModEpi.evaluateRedFlags(epiCase4);
+assert(epiRf4.length === 0, 'Epistaxis Case 4 (Simple Anterior Digital Trauma) triggers Zero Red Flags (Low-Risk)');
 
 // === AI CONSULTANT PERSISTENCE & RESILIENT RETRY/FALLBACK TESTS ===
 // Test 4: AI Consult Result Persistence across modal close & reopen

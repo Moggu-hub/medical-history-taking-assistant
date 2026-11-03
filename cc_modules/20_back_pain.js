@@ -801,7 +801,7 @@ registerCcModule({
                 </label>
                 <label class="selectable-card flex items-center p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer hover:bg-slate-50">
                   <input type="checkbox" name="backpainWarningSigns" value="ischemic_limb_numbness" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
-                  <span class="ml-2.5 text-xs font-medium text-slate-800">ไม่รู้สึกถึงความรู้สึกใดๆที่ขา หรือเท้าเลย</span>
+                  <span class="ml-2.5 text-xs font-medium text-slate-800">ไม่สามารถรู้สึกถึงสัมผัสใดๆที่ขาหรือปลายเท้าได้เลย</span>
                 </label>
               </div>
             </div>
