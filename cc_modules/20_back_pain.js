@@ -1482,9 +1482,10 @@ function formatBackpainBehavior(patient) {
 
 // --- Rapid Note HPI Renderer (Doctor View) ---
 function renderBackpainRapidHpi(patient) {
-  const durStr = patient.durationVal
-    ? `ปวดมา ${patient.durationVal} ${patient.durationUnit === 'hours' ? 'ชั่วโมง' : (patient.durationUnit === 'weeks' ? 'สัปดาห์' : (patient.durationUnit === 'months' ? 'เดือน' : (patient.durationUnit === 'years' ? 'ปี' : 'วัน')))}`
-    : 'ระยะเวลาไม่ระบุ';
+  const durVal = patient.durationVal;
+  const durUnitMap = { minutes: 'นาที', hours: 'ชั่วโมง', days: 'วัน', weeks: 'สัปดาห์', months: 'เดือน', years: 'ปี' };
+  const durUnit = durUnitMap[patient.durationUnit] || 'วัน';
+  const durationStr = durVal ? `${durVal} ${durUnit}` : 'ไม่ระบุ';
 
   const onsetMap = {
     sudden_severe: 'ปวดรุนแรงทันทีทันใด (ฉับพลัน)',
@@ -1545,6 +1546,10 @@ function renderBackpainRapidHpi(patient) {
     }
   }
 
+  if (patient.otherSymptomsFree) {
+    posList.push(patient.otherSymptomsFree);
+  }
+
   // Negatives
   if (!warnSigns.includes('saddle_anesthesia')) negList.push('ปฏิเสธชาบริเวณก้น/หว่างขา (No saddle anesthesia)');
   if (!warnSigns.includes('urinary_retention') && !warnSigns.includes('bowel_incontinence')) {
@@ -1568,22 +1573,61 @@ function renderBackpainRapidHpi(patient) {
     negList.push('ปฏิเสธประวัติอุบัติเหตุหรือหัตถการนำมาก่อน');
   }
 
-  let text = `• ระยะเวลาที่มีอาการ: ${durStr}\n`;
-  text += `• ตำแหน่งที่ปวด: ${formatBackpainLocations(patient)}\n`;
-  text += `• ลักษณะการเริ่มปวด: ${onsetStr}\n`;
-  text += `• ลักษณะอาการปวด: ${formatBackpainChars(patient)}\n`;
-  text += `• การปวดร้าว: ${formatBackpainRadiation(patient)}\n`;
-  text += `• พฤติกรรมกับอาการ: ${formatBackpainBehavior(patient)}\n`;
-  text += `• ระดับความเจ็บปวด (Pain Score): ${pScore}\n`;
+  const hospLabel = {
+    complete: 'มีประวัติกับ รพ.ราชบุรี ครบถ้วน (ดึงข้อมูลเดิมจากระบบ)',
+    additional: 'มีประวัติกับ รพ.ราชบุรี และขอให้ข้อมูลเพิ่มเติม',
+    self: 'ขอให้ข้อมูลด้วยตนเองทั้งหมด',
+    unspecified: 'ไม่ได้ระบุ'
+  }[patient.hospRecordStatus] || 'ไม่ได้ระบุ';
 
-  if (posList.length > 0) {
-    text += `\n• Pertinent Positives:\n  - ${posList.join('\n  - ')}\n`;
+  let udDisplay = 'ปฏิเสธ';
+  if (patient.underlying && patient.underlying.length > 0) {
+    const filteredUd = (Array.isArray(patient.underlying) ? patient.underlying : [patient.underlying])
+      .filter(u => u && !u.includes('ปฏิเสธ') && u !== 'ไม่มี' && u !== 'ไม่มีโรคประจำตัว');
+    if (filteredUd.length > 0) udDisplay = filteredUd.join(', ');
   }
-  if (negList.length > 0) {
-    text += `\n• Pertinent Negatives:\n  - ${negList.join('\n  - ')}\n`;
-  }
+  const allergyDisplay = (!patient.drugAllergy || patient.drugAllergy.includes('ปฏิเสธ') || patient.drugAllergy === 'ไม่มี') ? 'ปฏิเสธ' : patient.drugAllergy;
+  const medsText = (!patient.currentMeds || patient.currentMeds === 'ไม่ได้ระบุ' || patient.currentMeds === 'ไม่มี') ? 'ไม่มี' : patient.currentMeds;
+  const docNotes = patient.doctor_notes || {};
+  const redFlags = evaluateBackpainRedFlags(patient);
 
-  return text.trim();
+  const defaultRapid =
+`[Chief Complaint (CC)]
+ปวดหลัง (Back pain / Lumbago) มา ${durationStr}
+
+[History of Present Illness (HPI)]
+• ระยะเวลาที่มีอาการ: ${durVal ? `ปวดมา ${durationStr}` : 'ไม่ระบุ'}
+• ตำแหน่งที่ปวด: ${formatBackpainLocations(patient)}
+• ลักษณะการเริ่มปวด: ${onsetStr}
+• ลักษณะอาการปวด: ${formatBackpainChars(patient)}
+• การปวดร้าว: ${formatBackpainRadiation(patient)}
+• พฤติกรรมกับอาการ: ${formatBackpainBehavior(patient)}
+• ระดับความเจ็บปวด (Pain Score): ${pScore}
+
+• Pertinent Positives:
+${posList.length > 0 ? posList.map(p => `  - ${p}`).join('\n') : '  - ไม่มีอาการร่วมอื่นที่เด่นชัด'}
+
+• Pertinent Negatives:
+${negList.map(n => `  - ${n}`).join('\n')}
+
+[Past Medical History & Medications]
+• สถานะประวัติ รพ.ราชบุรี: ${hospLabel}
+• โรคประจำตัว (U/D): ${udDisplay}
+• ยาประจำตัว (Current Meds): ${medsText}
+• ประวัติแพ้ยา/แพ้อาหาร (Allergies): ${allergyDisplay}
+
+[Emergency Risk Assessment (Red Flags)]
+${redFlags.length > 0
+  ? `🚩 RED FLAGS DETECTED:\n${redFlags.map(rf => `  * ${rf.textTh}`).join('\n')}`
+  : '✓ ไม่พบสัญญาณเตือนวิกฤตเฉียบพลันเบื้องต้น'}
+
+[Doctor's Clinical Addendum & Exam]
+• ประวัติเพิ่มเติม/แก้ไขโดยแพทย์: ${docNotes.additional_hpi || '-'}
+• สัญญาณชีพและการตรวจร่างกาย: ${docNotes.physical_exam || '-'}
+• การวินิจฉัยเบื้องต้น (Impression): ${docNotes.preliminary_dx || '-'}
+• แผนการรักษา (Plan/Orders): ${docNotes.plan || '-'}`;
+
+  return defaultRapid;
 }
 
 // --- Narrative Note Generator (Doctor View) ---
@@ -1641,13 +1685,14 @@ function renderBackpainDoctorHpi(patient) {
 }
 
 function updateBackpainOutputs(rec) {
+  if (!rec) return;
   const rapidText = renderBackpainRapidHpi(rec);
   const narrativeText = renderBackpainNarrative(rec);
 
   const rapidEl = document.getElementById('rapidTextView');
   const narrativeEl = document.getElementById('narrativeTextView');
-  if (rapidEl) rapidEl.value = rapidText;
-  if (narrativeEl) narrativeEl.value = narrativeText;
+  if (rapidEl) rapidEl.value = rec.custom_rapid_note || rapidText;
+  if (narrativeEl) narrativeEl.value = rec.custom_narrative_note || narrativeText;
 
   const posMatch = rapidText.match(/• Pertinent Positives:\n((?:\s*-[^\n]+\n?)+)/);
   if (posMatch) {
@@ -1663,5 +1708,48 @@ function updateBackpainOutputs(rec) {
     rec.pertinentNegatives = [];
   }
 
-  rec.redFlags = evaluateBackpainRedFlags(rec);
+  const redFlags = evaluateBackpainRedFlags(rec);
+  rec.redFlags = redFlags;
+
+  const jsonOutput = {
+    encounter: {
+      chief_complaint: 'back_pain',
+      chief_complaint_title_th: 'ปวดหลัง',
+      timestamp: rec.timestamp || new Date().toISOString(),
+      duration_val: rec.durationVal || null,
+      duration_unit: rec.durationUnit || 'days'
+    },
+    patient_identification: {
+      id: rec.id || null,
+      queue_number: rec.queue_number || null,
+      hn: rec.hn || null,
+      name: rec.name || null,
+      age: rec.age || null,
+      gender: rec.gender || null
+    },
+    triage_assessment: {
+      locations: rec.backpainLocations || [],
+      onset_mode: rec.backpainOnsetMode || null,
+      pain_characteristics: rec.backpainChars || [],
+      radiation: rec.backpainRadLoc || [],
+      behavior: rec.backpainBehavior || [],
+      pain_score: rec.painScore !== null && rec.painScore !== undefined ? rec.painScore : null,
+      warning_signs: Array.isArray(rec.backpainWarningSigns) ? rec.backpainWarningSigns : [],
+      trauma_master: rec.backpainTraumaMaster || 'no',
+      trauma_types: Array.isArray(rec.backpainTraumaTypes) ? rec.backpainTraumaTypes : [],
+      other_symptoms_free: rec.otherSymptomsFree || ''
+    },
+    safety_and_red_flags: {
+      red_flags_detected: redFlags.map(rf => ({
+        key: rf.key,
+        level: rf.level,
+        title_th: rf.textTh,
+        clinical_risk: rf.risk,
+        action: rf.suggestedAction
+      })),
+      total_red_flags: redFlags.length
+    }
+  };
+  const jsonEl = document.getElementById('jsonViewer');
+  if (jsonEl) jsonEl.textContent = JSON.stringify(jsonOutput, null, 2);
 }
