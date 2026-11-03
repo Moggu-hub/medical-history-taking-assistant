@@ -330,9 +330,9 @@ assert(dateInput.value === '26/10/2026', `Universal Date descriptor converts ISO
 timeInput.value = '3:30 PM';
 assert(timeInput.value === '15:30', `Universal Time descriptor converts '3:30 PM' -> '${timeInput.value}' (24-hour HH:mm)`);
 
-console.log('\n=== มิติที่ (ง): DOCTOR UI RENDER, JSON SCHEMA & BUILT-IN CDS (ALL 73 SEED CASES) ===');
+console.log('\n=== มิติที่ (ง): DOCTOR UI RENDER, JSON SCHEMA & BUILT-IN CDS (ALL 77 SEED CASES) ===');
 const patients = sandbox.getSeedPatients();
-assert(patients.length === 73, `Seed database has all 73 clinical cases across 20 Chief Complaints (found ${patients.length})`);
+assert(patients.length === 77, `Seed database has all 77 clinical cases across 21 Chief Complaints (found ${patients.length})`);
 
 let renderErrors = 0;
 let cdsErrors = 0;
@@ -472,14 +472,14 @@ for (const p of patients) {
   }
 }
 
-assert(renderErrors === 0, 'All 73 seed cases render Rapid Note, Narrative Note & JSON Schema on Doctor Dashboard with 0 errors');
-assert(cdsErrors === 0, 'All 73 seed cases generate Built-in CDS Analysis with 0 errors');
-assert(formatViolations === 0, 'Zero Date/Time format violations across all 73 seed cases');
-assert(rapidDeDuplicationErrors === 0, 'Zero De-duplication, Clean Negative Syntax & Score Offloading violations across all 73 seed cases');
+assert(renderErrors === 0, 'All 77 seed cases render Rapid Note, Narrative Note & JSON Schema on Doctor Dashboard with 0 errors');
+assert(cdsErrors === 0, 'All 77 seed cases generate Built-in CDS Analysis with 0 errors');
+assert(formatViolations === 0, 'Zero Date/Time format violations across all 77 seed cases');
+assert(rapidDeDuplicationErrors === 0, 'Zero De-duplication, Clean Negative Syntax & Score Offloading violations across all 77 seed cases');
 
 console.log('\n=== มิติที่ (ข): SAVE PERSISTENCE CHECK (PATIENT SUBMIT -> STATE & LOCALSTORAGE -> STATUS VIEW) ===');
 let saveErrors = 0;
-const testSubmitCases = ['case-043', 'case-046', 'case-051', 'case-040', 'case-061', 'case-071', 'case-081', 'case-091', 'case-095', 'case-101', 'case-105', 'case-120', 'case-130', 'case-140', 'case-150', 'case-160', 'case-170', 'case-180', 'seed-hematuria-01', 'case-backpain-01'];
+const testSubmitCases = ['case-043', 'case-046', 'case-051', 'case-040', 'case-061', 'case-071', 'case-081', 'case-091', 'case-095', 'case-101', 'case-105', 'case-120', 'case-130', 'case-140', 'case-150', 'case-160', 'case-170', 'case-180', 'seed-hematuria-01', 'case-backpain-01', 'case-neck-01'];
 for (const caseId of testSubmitCases) {
   const seedCase = patients.find(x => x.id === caseId);
   sandbox.switchUserRole('patient', { silent: true });
@@ -510,7 +510,7 @@ for (const caseId of testSubmitCases) {
     saveErrors++;
   }
 }
-assert(saveErrors === 0, `Save Persistence verified across all 20 active Chief Complaints (State + localStorage + #patientStatusView)`);
+assert(saveErrors === 0, `Save Persistence verified across all 21 active Chief Complaints (State + localStorage + #patientStatusView)`);
 
 console.log('\n=== มิติที่ (ค): PATIENT ISOLATION & CONTEXT SWITCHING CHECK (PATIENT A <-> PATIENT B) ===');
 sandbox.switchUserRole('doctor', { silent: true });
@@ -625,7 +625,7 @@ patients.forEach(pt => {
     pdpaLeaks++;
   }
 });
-assert(pdpaLeaks === 0, `PDPA Shield 100% compliant: Zero leaks of Name, HN, Queue, or Hospital name across all 73 patients (leaks: ${pdpaLeaks})`);
+assert(pdpaLeaks === 0, `PDPA Shield 100% compliant: Zero leaks of Name, HN, Queue, or Hospital name across all 77 patients (leaks: ${pdpaLeaks})`);
 
 // Test 2: AI Response Parser correctly separates [PROVISIONAL_DDX] and [ER_ORDERS]
 const mockAiResponse = `[PROVISIONAL_DDX]
@@ -714,6 +714,27 @@ const bpCalculusPt = {
 };
 const bpRfCalculus = ccModBp.evaluateRedFlags(bpCalculusPt);
 assert(bpRfCalculus.some(r => r.key === 'rf_urinary_calculus_colic'), 'Back Pain with gravel/sand in urine triggers Urinary Calculus / Renal Colic (ESI 3)');
+
+// === CC #21 NECK & SHOULDER PAIN CLINICAL RED FLAG & TRIAGE VALIDATION ===
+const neckCase1 = patients.find(p => p.id === 'case-neck-01');
+const neckCase2 = patients.find(p => p.id === 'case-neck-02');
+const neckCase3 = patients.find(p => p.id === 'case-neck-03');
+const neckCase4 = patients.find(p => p.id === 'case-neck-04');
+
+const ccModNeck = sandbox.getCcModule('neck_shoulder_pain');
+assert(ccModNeck !== null, 'Module neck_shoulder_pain successfully registered');
+
+const neckRf1 = ccModNeck.evaluateRedFlags(neckCase1);
+assert(neckRf1.some(r => r.key === 'rf_cervical_myelopathy'), 'Neck Pain Case 1 triggers Cervical Myelopathy (CSM) Red Flag (ESI 2)');
+
+const neckRf2 = ccModNeck.evaluateRedFlags(neckCase2);
+assert(neckRf2.some(r => r.key === 'rf_vertebral_carotid_dissection'), 'Neck Pain Case 2 triggers Vertebral/Carotid Dissection Red Flag (ESI 1)');
+
+const neckRf3 = ccModNeck.evaluateRedFlags(neckCase3);
+assert(neckRf3.some(r => r.key === 'rf_cervical_radiculopathy_motor'), 'Neck Pain Case 3 triggers Cervical Radiculopathy Motor Deficit Red Flag (ESI 3)');
+
+const neckRf4 = ccModNeck.evaluateRedFlags(neckCase4);
+assert(neckRf4.length === 0, 'Neck Pain Case 4 (Office Syndrome / Trapezius Myalgia) triggers Zero Red Flags (Low-Risk)');
 
 // === AI CONSULTANT PERSISTENCE & RESILIENT RETRY/FALLBACK TESTS ===
 // Test 4: AI Consult Result Persistence across modal close & reopen
