@@ -330,9 +330,9 @@ assert(dateInput.value === '26/10/2026', `Universal Date descriptor converts ISO
 timeInput.value = '3:30 PM';
 assert(timeInput.value === '15:30', `Universal Time descriptor converts '3:30 PM' -> '${timeInput.value}' (24-hour HH:mm)`);
 
-console.log('\n=== มิติที่ (ง): DOCTOR UI RENDER, JSON SCHEMA & BUILT-IN CDS (ALL 89 SEED CASES) ===');
+console.log('\n=== มิติที่ (ง): DOCTOR UI RENDER, JSON SCHEMA & BUILT-IN CDS (ALL 93 SEED CASES) ===');
 const patients = sandbox.getSeedPatients();
-assert(patients.length === 89, `Seed database has all 89 clinical cases across 24 Chief Complaints (found ${patients.length})`);
+assert(patients.length === 93, `Seed database has all 93 clinical cases across 25 Chief Complaints (found ${patients.length})`);
 
 let renderErrors = 0;
 let cdsErrors = 0;
@@ -510,7 +510,7 @@ for (const caseId of testSubmitCases) {
     saveErrors++;
   }
 }
-assert(saveErrors === 0, `Save Persistence verified across all 24 active Chief Complaints (State + localStorage + #patientStatusView)`);
+assert(saveErrors === 0, `Save Persistence verified across all 25 active Chief Complaints (State + localStorage + #patientStatusView)`);
 
 console.log('\n=== มิติที่ (ค): PATIENT ISOLATION & CONTEXT SWITCHING CHECK (PATIENT A <-> PATIENT B) ===');
 sandbox.switchUserRole('doctor', { silent: true });
@@ -800,6 +800,29 @@ assert(htnRf3.some(r => r.key === 'rf_preeclampsia_severe'), 'Hypertension Case 
 
 const htnRf4 = ccModHtn.evaluateRedFlags(htnCase4);
 assert(htnRf4.length === 0, 'Hypertension Case 4 (Asymptomatic Hypertensive Urgency) triggers Zero Red Flags (Low-Risk)');
+
+// === CC #25 PSYCHIATRIC EMERGENCY CLINICAL RED FLAG & TRIAGE VALIDATION ===
+const psychCase1 = patients.find(p => p.id === 'case-psych-01');
+const psychCase2 = patients.find(p => p.id === 'case-psych-02');
+const psychCase3 = patients.find(p => p.id === 'case-psych-03');
+const psychCase4 = patients.find(p => p.id === 'case-psych-04');
+
+const ccModPsych = sandbox.getCcModule('psychiatric_emergency');
+assert(ccModPsych !== null, 'Module psychiatric_emergency successfully registered');
+
+const psychRf1 = ccModPsych.evaluateRedFlags(psychCase1);
+assert(psychRf1.some(r => r.key === 'rf_psych_active_violence_weapon'), 'Psychiatric Case 1 triggers Active Violence with Weapon Red Flag (ESI 1/2)');
+assert(psychRf1.some(r => r.key === 'rf_psych_sympathomimetic_hyperthermia'), 'Psychiatric Case 1 triggers Sympathomimetic Toxicity Red Flag (ESI 2)');
+
+const psychRf2 = ccModPsych.evaluateRedFlags(psychCase2);
+assert(psychRf2.some(r => r.key === 'rf_psych_organic_delirium_cns'), 'Psychiatric Case 2 triggers Organic Delirium / CNS Infection Red Flag (ESI 2)');
+
+const psychRf3 = ccModPsych.evaluateRedFlags(psychCase3);
+assert(psychRf3.some(r => r.key === 'rf_psych_command_hallucination'), 'Psychiatric Case 3 triggers Command Hallucinations Red Flag (ESI 3)');
+assert(psychRf3.some(r => r.key === 'rf_psych_high_suicidal_intent'), 'Psychiatric Case 3 triggers High-Lethality Suicidal Intent Red Flag (ESI 2)');
+
+const psychRf4 = ccModPsych.evaluateRedFlags(psychCase4);
+assert(psychRf4.some(r => r.key === 'rf_psych_alcohol_delirium_tremens'), 'Psychiatric Case 4 triggers Alcohol Withdrawal Delirium Tremens Red Flag (ESI 2)');
 
 // === AI CONSULTANT PERSISTENCE & RESILIENT RETRY/FALLBACK TESTS ===
 // Test 4: AI Consult Result Persistence across modal close & reopen
