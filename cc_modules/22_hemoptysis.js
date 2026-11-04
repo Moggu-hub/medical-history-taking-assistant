@@ -716,7 +716,7 @@ const hemoptysisModule = {
       <!-- CARD 1: ระยะเวลา ลักษณะเลือด ปริมาณ และสถานะเลือดออก -->
       <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
         <div class="flex items-center space-x-3 mb-4 pb-3 border-b border-slate-100">
-          <div class="bg-rose-100 text-rose-700 p-2 rounded-xl">
+          <div class="bg-medical-100 text-medical-700 p-2 rounded-xl">
             <i data-lucide="droplet" class="w-5 h-5"></i>
           </div>
           <div>
@@ -838,21 +838,21 @@ const hemoptysisModule = {
                 1.4 จำนวนครั้งที่ไอเป็นเลือด
               </label>
               <div class="space-y-1.5 text-xs">
-                <label class="flex items-center p-2.5 bg-slate-50 hover:bg-slate-100 rounded-lg border border-slate-200 cursor-pointer">
-                  <input type="radio" name="hemoEpisodeCount" value="episodes_single" class="text-medical-600 mr-2">
-                  <span>เป็นเพียงครั้งเดียวแล้วหยุด</span>
+                <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+                  <input type="radio" name="hemoEpisodeCount" value="episodes_single" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4">
+                  <span class="text-xs text-slate-800">เป็นเพียงครั้งเดียวแล้วหยุด</span>
                 </label>
-                <label class="flex items-center p-2.5 bg-slate-50 hover:bg-slate-100 rounded-lg border border-slate-200 cursor-pointer">
-                  <input type="radio" name="hemoEpisodeCount" value="episodes_two_four" class="text-medical-600 mr-2">
-                  <span>เป็น 2 - 4 ครั้ง</span>
+                <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+                  <input type="radio" name="hemoEpisodeCount" value="episodes_two_four" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4">
+                  <span class="text-xs text-slate-800">เป็น 2 - 4 ครั้ง</span>
                 </label>
-                <label class="flex items-center p-2.5 bg-slate-50 hover:bg-slate-100 rounded-lg border border-slate-200 cursor-pointer">
-                  <input type="radio" name="hemoEpisodeCount" value="episodes_over_5" class="text-medical-600 mr-2">
-                  <span>เป็นมากกว่า 5 ครั้งขึ้นไป</span>
+                <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+                  <input type="radio" name="hemoEpisodeCount" value="episodes_over_5" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4">
+                  <span class="text-xs text-slate-800">เป็นมากกว่า 5 ครั้งขึ้นไป</span>
                 </label>
-                <label class="flex items-center p-2.5 bg-slate-50 hover:bg-slate-100 rounded-lg border border-slate-200 cursor-pointer">
-                  <input type="radio" name="hemoEpisodeCount" value="episodes_frequent_continuous" class="text-medical-600 mr-2">
-                  <span class="font-semibold text-slate-800">ไอเป็นเลือดแทบทุกครั้ง / ต่อเนื่องตลอด</span>
+                <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+                  <input type="radio" name="hemoEpisodeCount" value="episodes_frequent_continuous" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4">
+                  <span class="text-xs font-semibold text-slate-800">ไอเป็นเลือดแทบทุกครั้ง / ต่อเนื่องตลอด</span>
                 </label>
               </div>
             </div>
@@ -862,17 +862,17 @@ const hemoptysisModule = {
                 1.5 สถานะการมีเลือดออกในปัจจุบัน
               </label>
               <div class="space-y-1.5 text-xs">
-                <label class="flex items-center p-2.5 bg-slate-50 hover:bg-slate-100 rounded-lg border border-slate-200 cursor-pointer">
-                  <input type="radio" name="hemoActiveStatus" value="status_active_bleeding" class="text-medical-600 mr-2">
-                  <span class="font-semibold text-slate-800">ยังมีอาการไอเป็นเลือดสดอยู่เรื่อยๆ</span>
+                <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+                  <input type="radio" name="hemoActiveStatus" value="status_active_bleeding" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4">
+                  <span class="text-xs font-semibold text-slate-800">ยังมีอาการไอเป็นเลือดสดอยู่เรื่อยๆ</span>
                 </label>
-                <label class="flex items-center p-2.5 bg-slate-50 hover:bg-slate-100 rounded-lg border border-slate-200 cursor-pointer">
-                  <input type="radio" name="hemoActiveStatus" value="status_streaks_only" class="text-medical-600 mr-2">
-                  <span>เลือดหยุดแล้ว เหลือเพียงเสมหะปนเลือดจางๆ</span>
+                <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+                  <input type="radio" name="hemoActiveStatus" value="status_streaks_only" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4">
+                  <span class="text-xs text-slate-800">เลือดหยุดแล้ว เหลือเพียงเสมหะปนเลือดจางๆ</span>
                 </label>
-                <label class="flex items-center p-2.5 bg-slate-50 hover:bg-slate-100 rounded-lg border border-slate-200 cursor-pointer">
-                  <input type="radio" name="hemoActiveStatus" value="status_stopped_completely" class="text-medical-600 mr-2">
-                  <span>เลือดหยุดไหลสนิทแล้ว</span>
+                <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+                  <input type="radio" name="hemoActiveStatus" value="status_stopped_completely" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4">
+                  <span class="text-xs text-slate-800">เลือดหยุดไหลสนิทแล้ว</span>
                 </label>
               </div>
             </div>
@@ -1068,7 +1068,7 @@ const hemoptysisModule = {
       <!-- CARD 3: สัญญาณเตือนอันตรายในมุมมองคนไข้ (Warning Signs) -->
       <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
         <div class="flex items-center space-x-3 mb-4 pb-3 border-b border-slate-100">
-          <div class="bg-amber-100 text-amber-700 p-2 rounded-xl">
+          <div class="bg-medical-100 text-medical-700 p-2 rounded-xl">
             <i data-lucide="shield-alert" class="w-5 h-5"></i>
           </div>
           <div>
@@ -1301,24 +1301,6 @@ const hemoptysisModule = {
         </div>
       </div>
 
-      <!-- CARD 5: ข้อมูลเพิ่มเติมจากผู้ป่วยหรือญาติ -->
-      <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
-        <div class="flex items-center space-x-3 mb-4 pb-3 border-b border-slate-100">
-          <div class="bg-medical-100 text-medical-700 p-2 rounded-xl">
-            <i data-lucide="message-square" class="w-5 h-5"></i>
-          </div>
-          <div>
-            <h2 class="text-base font-bold text-slate-900">5. ข้อมูลและข้อสังเกตเพิ่มเติม (Free-Text Observations)</h2>
-            <p class="text-xs text-slate-500">ระบุรายละเอียดเพิ่มเติมที่ท่านหรือญาติสังเกตเห็น</p>
-          </div>
-        </div>
-        <div>
-          <textarea id="hemoptysis_other_free" rows="2"
-            class="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-xs sm:text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-medical-500 focus:bg-white"
-            placeholder="ระบุข้อสังเกตอื่นๆ เช่น ไอแรงหลังสำลักสิ่งแปลกปลอม, มีน้ำหนักลดชัดเจน, หรือข้อกังวลเพิ่มเติม..."></textarea>
-        </div>
-      </div>
-
     </div>
   `,
 
@@ -1357,7 +1339,7 @@ const hemoptysisModule = {
     const hemoSmokingYears = parseInt(document.getElementById('hemoSmokingYears')?.value, 10) || null;
     const hemoSmokingPacks = parseFloat(document.getElementById('hemoSmokingPacks')?.value) || null;
     const hemoBleedingMeds = getChecks('hemoBleedingMeds');
-    const otherSymptomsFree = document.getElementById('hemoptysis_other_free')?.value?.trim() || ctx.otherSymptomsFree || '';
+    const otherSymptomsFree = document.getElementById('sx_other_free')?.value?.trim() || ctx.otherSymptomsFree || '';
 
     const rec = {
       id: ctx.recordId || ctx.id,
@@ -1474,11 +1456,10 @@ const hemoptysisModule = {
     setVal('hemoSmokingPacks', patient.hemoSmokingPacks);
 
     setChecks('hemoBleedingMeds', patient.hemoBleedingMeds);
-    setVal('hemoptysis_other_free', patient.otherSymptomsFree);
   },
 
   clearForm: function() {
-    ['hemoDurationVal', 'hemoPreCoughDurVal', 'hemoSmokingYears', 'hemoSmokingPacks', 'hemoptysis_other_free'].forEach(id => {
+    ['hemoDurationVal', 'hemoPreCoughDurVal', 'hemoSmokingYears', 'hemoSmokingPacks'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.value = '';
     });

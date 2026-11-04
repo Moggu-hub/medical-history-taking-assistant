@@ -519,395 +519,454 @@ const epistaxisModule = {
   sectionDomId: 'cc-epistaxis-section',
 
   formHtml: `
-    <div id="cc-epistaxis-section" class="cc-module-card border border-slate-200 rounded-2xl bg-white shadow-sm p-4 sm:p-6 mb-6">
-      <div class="flex items-center space-x-3 mb-5 border-b border-slate-100 pb-3">
-        <div class="p-2.5 bg-rose-50 text-rose-600 rounded-xl">
-          <i data-lucide="droplets" class="w-6 h-6"></i>
+    <div id="cc-epistaxis-section" class="hidden space-y-6">
+
+      <!-- คำแนะนำการปฐมพยาบาลเบื้องต้นอย่างถูกวิธี (Triage First-Aid Guidance Banner) -->
+      <div class="bg-amber-50 border border-amber-200 rounded-2xl p-4 sm:p-5 flex items-start gap-3.5 shadow-xs">
+        <div class="bg-amber-100 text-amber-800 p-2.5 rounded-xl flex-shrink-0 mt-0.5">
+          <i data-lucide="alert-circle" class="w-5 h-5"></i>
         </div>
         <div>
-          <h2 class="text-base sm:text-lg font-bold text-slate-800">แบบประเมินอาการเลือดกำเดาไหล (Epistaxis)</h2>
-          <p class="text-xs text-slate-500">กรุณาระบุข้อมูลเพื่อการคัดกรองและประเมินความเร่งด่วนเบื้องต้น</p>
+          <h3 class="text-sm font-bold text-amber-900 mb-1 flex items-center gap-1.5">
+            <span>ข้อแนะนำการปฐมพยาบาลเบื้องต้นอย่างถูกวิธีระหว่างรอตรวจ</span>
+          </h3>
+          <p class="text-xs text-amber-800 leading-relaxed">
+            <strong>วิธีที่ถูกต้อง:</strong> นั่งตัวตรงและโน้มตัวไปข้างหน้าเล็กน้อย ก้มหน้าเล็กน้อย บีบปีกจมูกทั้ง 2 ข้างค้างไว้ต่อเนื่อง 10–15 นาทีเต็ม โดยหายใจทางปากแทน และ<strong>ห้ามปล่อยนิ้วออกมาดูบ่อย ๆ ห้ามเงยหน้าเด็ดขาด เพราะเสี่ยงต่อการสำลักเลือดลงหลอดลม</strong>
+          </p>
         </div>
       </div>
 
-      <!-- ส่วนที่ 1: ข้อมูลอาการเริ่มต้นและลักษณะการไหล -->
-      <div class="space-y-4 mb-6">
-        <h3 class="text-sm font-semibold text-slate-800 flex items-center">
-          <span class="w-2 h-2 rounded-full bg-rose-500 mr-2"></span>
-          1. ข้อมูลอาการเริ่มต้นและลักษณะการไหล
-        </h3>
-
-        <!-- 1.1 ระยะเวลาที่เป็นมา -->
-        <div>
-          <label class="block text-xs font-semibold text-slate-700 mb-1.5">ระยะเวลาที่เป็นมา (Duration)</label>
-          <div class="flex items-center space-x-2">
-            <input type="number" id="epistaxisDurationVal" min="1" max="999" placeholder="ระบุตัวเลข"
-              class="w-32 px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-medical-500">
-            <select id="epistaxisDurationUnit" class="px-3 py-2 border border-slate-300 rounded-xl text-sm bg-white focus:ring-2 focus:ring-medical-500">
-              <option value="minutes">นาที</option>
-              <option value="hours">ชั่วโมง</option>
-              <option value="days">วัน</option>
-              <option value="weeks">สัปดาห์</option>
-              <option value="months">เดือน</option>
-              <option value="years">ปี</option>
-            </select>
+      <!-- CARD 1: ข้อมูลอาการเริ่มต้นและลักษณะการไหล -->
+      <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+        <div class="flex items-center space-x-3 mb-4 pb-3 border-b border-slate-100">
+          <div class="bg-medical-100 text-medical-700 p-2 rounded-xl">
+            <i data-lucide="clock" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <h2 class="text-base font-bold text-slate-900">1. ข้อมูลอาการเริ่มต้นและลักษณะการไหล (Bleeding Profile)</h2>
+            <p class="text-xs text-slate-500">ข้อมูลระยะเวลา ข้างที่เลือดออก สถานะการไหล ปริมาณและความแรงของเลือด</p>
           </div>
         </div>
 
-        <!-- 1.2 ข้างที่มีเลือดกำเดาไหล -->
-        <div>
-          <label class="block text-xs font-semibold text-slate-700 mb-1.5">ข้างที่มีเลือดกำเดาไหล (Side Affected)</label>
-          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
-            <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white cursor-pointer hover:bg-slate-50 transition">
-              <input type="radio" name="epistaxisSide" value="left" class="text-medical-600 focus:ring-medical-500 h-4 w-4">
-              <span class="ml-2.5 text-xs sm:text-sm font-medium text-slate-800">ข้างซ้ายข้างเดียว</span>
+        <div class="space-y-4">
+          <!-- 1.1 ระยะเวลาที่เป็นมา -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
+              1.1 ระยะเวลาที่มีเลือดกำเดาไหลมานานเท่าไรแล้ว? <span class="text-rose-500">*</span>
             </label>
-            <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white cursor-pointer hover:bg-slate-50 transition">
-              <input type="radio" name="epistaxisSide" value="right" class="text-medical-600 focus:ring-medical-500 h-4 w-4">
-              <span class="ml-2.5 text-xs sm:text-sm font-medium text-slate-800">ข้างขวาข้างเดียว</span>
-            </label>
-            <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white cursor-pointer hover:bg-slate-50 transition">
-              <input type="radio" name="epistaxisSide" value="bilateral" class="text-medical-600 focus:ring-medical-500 h-4 w-4">
-              <span class="ml-2.5 text-xs sm:text-sm font-medium text-slate-800">ไหลทั้งสองข้างพร้อมกัน</span>
-            </label>
-          </div>
-        </div>
-
-        <!-- 1.3 สถานะการไหลในปัจจุบัน -->
-        <div>
-          <label class="block text-xs font-semibold text-slate-700 mb-1.5">สถานะการไหลในขณะนี้</label>
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white cursor-pointer hover:bg-slate-50 transition">
-              <input type="radio" name="epistaxisActiveStatus" value="active" class="text-medical-600 focus:ring-medical-500 h-4 w-4">
-              <div class="ml-2.5">
-                <span class="text-xs sm:text-sm font-medium text-slate-800 block">ยังมีเลือดไหลอยู่ขณะนี้</span>
-                <span class="text-[11px] text-slate-500">เลือดยังไม่ยอมหยุด หรือไหลซึมต่อเนื่อง</span>
+            <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              <div class="col-span-1 sm:col-span-2">
+                <input type="number" id="epistaxisDurationVal" min="1" max="1000" placeholder="ระบุตัวเลข เช่น 20"
+                  class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-slate-800 font-semibold focus:outline-none focus:ring-2 focus:ring-medical-500 focus:bg-white text-sm placeholder:text-slate-400 placeholder:font-normal">
               </div>
-            </label>
-            <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white cursor-pointer hover:bg-slate-50 transition">
-              <input type="radio" name="epistaxisActiveStatus" value="stopped" class="text-medical-600 focus:ring-medical-500 h-4 w-4">
-              <div class="ml-2.5">
-                <span class="text-xs sm:text-sm font-medium text-slate-800 block">เลือดหยุดไหลแล้ว</span>
-                <span class="text-[11px] text-slate-500">เลือดหยุดไหลแล้วก่อนมาถึงโรงพยาบาล</span>
+              <div class="col-span-1">
+                <select id="epistaxisDurationUnit"
+                  class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 text-slate-800 font-medium focus:outline-none focus:ring-2 focus:ring-medical-500 focus:bg-white text-sm">
+                  <option value="minutes" selected>นาที</option>
+                  <option value="hours">ชั่วโมง</option>
+                  <option value="days">วัน</option>
+                  <option value="weeks">สัปดาห์</option>
+                  <option value="months">เดือน</option>
+                  <option value="years">ปี</option>
+                </select>
               </div>
-            </label>
-          </div>
-        </div>
-
-        <!-- 1.4 การเกิดซ้ำหรือความรุนแรง -->
-        <div>
-          <label class="block text-xs font-semibold text-slate-700 mb-1.5">ประวัติความรุนแรงและการเป็นซ้ำ</label>
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white cursor-pointer hover:bg-slate-50 transition">
-              <input type="radio" name="epistaxisRecurrence" value="highest_in_life" class="text-medical-600 focus:ring-medical-500 h-4 w-4">
-              <span class="ml-2.5 text-xs sm:text-sm font-medium text-slate-800">ไหลมากที่สุดในชีวิต</span>
-            </label>
-            <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white cursor-pointer hover:bg-slate-50 transition">
-              <input type="radio" name="epistaxisRecurrence" value="recurrent_episodes" class="text-medical-600 focus:ring-medical-500 h-4 w-4">
-              <span class="ml-2.5 text-xs sm:text-sm font-medium text-slate-800">เคยมีเลือดกำเดาไหลซ้ำๆแบบนี้ มาก่อน</span>
-            </label>
-          </div>
-        </div>
-
-        <!-- 1.5 ปริมาณและความแรงของเลือดที่ออก -->
-        <div>
-          <label class="block text-xs font-semibold text-slate-700 mb-1.5">ปริมาณและความแรงของเลือดที่ออก</label>
-          <div class="space-y-2">
-            <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white cursor-pointer hover:bg-slate-50 transition">
-              <input type="radio" name="epistaxisVolume" value="mild_oozing" class="text-medical-600 focus:ring-medical-500 h-4 w-4">
-              <div class="ml-2.5">
-                <span class="text-xs sm:text-sm font-medium text-slate-800 block">ไหลซึมๆ หยดช้าๆ หรือเปื้อนกระดาษทิชชู</span>
-                <span class="text-[11px] text-slate-500">ปริมาณเล็กน้อย เลือดออกเพียงเล็กน้อย</span>
-              </div>
-            </label>
-            <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white cursor-pointer hover:bg-slate-50 transition">
-              <input type="radio" name="epistaxisVolume" value="moderate_flow" class="text-medical-600 focus:ring-medical-500 h-4 w-4">
-              <div class="ml-2.5">
-                <span class="text-xs sm:text-sm font-medium text-slate-800 block">ไหลเป็นสายต่อเนื่อง ชุ่มกระดาษ/ผ้าหลายผืน</span>
-                <span class="text-[11px] text-slate-500">ปริมาณปานกลาง ไหลไม่หยุดทันที</span>
-              </div>
-            </label>
-            <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white cursor-pointer hover:bg-slate-50 transition">
-              <input type="radio" name="epistaxisVolume" value="heavy_clots" class="text-medical-600 focus:ring-medical-500 h-4 w-4">
-              <div class="ml-2.5">
-                <span class="text-xs sm:text-sm font-medium text-slate-800 block">ไหลทะลักปริมาณมาก หรือมีก้อนลิ่มเลือดขนาดใหญ่หลุดออกมา</span>
-                <span class="text-[11px] text-slate-500">ปริมาณมาก มีก้อนเลือดลิ่มขนาดใหญ่ หรือสำลักเลือด</span>
-              </div>
-            </label>
-          </div>
-        </div>
-      </div>
-
-      <!-- ส่วนที่ 2: อาการแสดงและทิศทางการไหล -->
-      <div class="space-y-4 mb-6 border-t border-slate-100 pt-5">
-        <h3 class="text-sm font-semibold text-slate-800 flex items-center">
-          <span class="w-2 h-2 rounded-full bg-rose-500 mr-2"></span>
-          2. อาการแสดงและทิศทางการไหล
-        </h3>
-
-        <!-- 2.1 ทิศทางและการตอบสนองต่อการบีบจมูก และปฐมพยาบาลเบื้องต้นอย่างถูกวิธี -->
-        <div class="space-y-2">
-          <!-- การ์ดแนะนำการปฐมพยาบาลอย่างถูกวิธีระหว่างรอตรวจ -->
-          <div class="p-3 bg-amber-50 rounded-xl border border-amber-200 text-xs text-amber-900 leading-relaxed">
-            <div class="font-semibold flex items-center text-amber-800 mb-1">
-              <i data-lucide="info" class="w-3.5 h-3.5 mr-1.5 flex-shrink-0"></i>
-              ข้อแนะนำการปฐมพยาบาลเบื้องต้นอย่างถูกวิธี:
             </div>
-            นั่งตัวตรงและโน้มตัวไปข้างหน้าเล็กน้อย ก้มหน้าเล็กน้อย บีบปีกจมูกทั้ง 2 ข้างค้างไว้ต่อเนื่อง 10–15 นาทีเต็ม โดยหายใจทางปากแทน และห้ามปล่อยนิ้วออกมาดูบ่อย ๆ ห้ามเงยหน้าเด็ดขาด เพราะเสี่ยงต่อการสำลักเลือดลงหลอดลม
           </div>
 
-          <label class="selectable-card flex items-center p-2.5 rounded-xl border border-slate-200 bg-white cursor-pointer hover:bg-slate-50 transition">
-            <input type="checkbox" name="epistaxisDirection" value="dripping_throat" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
-            <div class="ml-2.5">
-              <span class="text-xs sm:text-sm font-medium text-slate-800 block">รู้สึกมีเลือดไหลรินลงคอ หรือต้องคอยกลืนเลือดตลอดเวลา</span>
-              <span class="text-[11px] text-slate-500">รู้สึกเหมือนมีน้ำหรือเลือดไหลย้อนลงไปในลำคอ</span>
+          <!-- 1.2 ข้างที่มีเลือดกำเดาไหล -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
+              1.2 ข้างที่มีเลือดกำเดาไหล (Side Affected) <span class="text-rose-500">*</span>
+            </label>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+              <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white cursor-pointer hover:border-medical-300 transition">
+                <input type="radio" name="epistaxisSide" value="left" class="text-medical-600 focus:ring-medical-500 h-4 w-4">
+                <span class="ml-2.5 text-xs sm:text-sm font-medium text-slate-800">ข้างซ้ายข้างเดียว</span>
+              </label>
+              <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white cursor-pointer hover:border-medical-300 transition">
+                <input type="radio" name="epistaxisSide" value="right" class="text-medical-600 focus:ring-medical-500 h-4 w-4">
+                <span class="ml-2.5 text-xs sm:text-sm font-medium text-slate-800">ข้างขวาข้างเดียว</span>
+              </label>
+              <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white cursor-pointer hover:border-medical-300 transition">
+                <input type="radio" name="epistaxisSide" value="bilateral" class="text-medical-600 focus:ring-medical-500 h-4 w-4">
+                <span class="ml-2.5 text-xs sm:text-sm font-medium text-slate-800">ไหลทั้งสองข้างพร้อมกัน</span>
+              </label>
             </div>
-          </label>
-          <label class="selectable-card flex items-center p-2.5 rounded-xl border border-slate-200 bg-white cursor-pointer hover:bg-slate-50 transition">
-            <input type="checkbox" name="epistaxisDirection" value="failed_compression" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
-            <div class="ml-2.5">
-              <span class="text-xs sm:text-sm font-medium text-slate-800 block">บีบปีกจมูกแน่นๆ ติดต่อกันเกิน 15-20 นาทีแล้ว เลือดยังไม่ยอมหยุดไหล</span>
-              <span class="text-[11px] text-slate-500">บีบปีกจมูกค้างไว้นานแล้วเลือดยังคงทะลักออกต่อเนื่อง</span>
-            </div>
-          </label>
-          <label class="selectable-card flex items-center p-2.5 rounded-xl border border-slate-200 bg-white cursor-pointer hover:bg-slate-50 transition">
-            <input type="checkbox" name="epistaxisDirection" value="vomited_blood_clots" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
-            <div class="ml-2.5">
-              <span class="text-xs sm:text-sm font-medium text-slate-800 block">มีอาการไอ หรืออาเจียนออกมาเป็นลิ่มเลือด/สีกาแฟ</span>
-              <span class="text-[11px] text-slate-500">เนื่องจากกลืนเลือดกำเดาลงกระเพาะอาหาร</span>
-            </div>
-          </label>
-        </div>
+          </div>
 
-        <!-- 2.2 อาการเฉียบพลันร่วมทางศีรษะและความดันโลหิต -->
-        <div>
-          <label class="selectable-card flex items-center p-2.5 rounded-xl border border-slate-200 bg-white cursor-pointer hover:bg-slate-50 transition">
-            <input type="checkbox" name="epistaxisAcuteCranial" value="severe_headache" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
-            <div class="ml-2.5">
-              <span class="text-xs sm:text-sm font-medium text-slate-800 block">มีอาการปวดศีรษะรุนแรง ตามัว ตาพร่า หรือแน่นหน้าอกร่วมด้วย</span>
-              <span class="text-[11px] text-slate-500">คัดกรองภาวะความดันโลหิตสูงรุนแรงเฉียบพลัน</span>
+          <!-- 1.3 สถานะการไหลในปัจจุบัน -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
+              1.3 สถานะการไหลในขณะนี้
+            </label>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white cursor-pointer hover:border-medical-300 transition">
+                <input type="radio" name="epistaxisActiveStatus" value="active" class="text-medical-600 focus:ring-medical-500 h-4 w-4">
+                <div class="ml-2.5">
+                  <span class="text-xs sm:text-sm font-semibold text-slate-800 block">ยังมีเลือดไหลอยู่ขณะนี้</span>
+                  <span class="text-[11px] text-slate-500">เลือดยังไม่ยอมหยุด หรือไหลซึมต่อเนื่อง</span>
+                </div>
+              </label>
+              <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white cursor-pointer hover:border-medical-300 transition">
+                <input type="radio" name="epistaxisActiveStatus" value="stopped" class="text-medical-600 focus:ring-medical-500 h-4 w-4">
+                <div class="ml-2.5">
+                  <span class="text-xs sm:text-sm font-semibold text-slate-800 block">เลือดหยุดไหลแล้ว</span>
+                  <span class="text-[11px] text-slate-500">เลือดหยุดไหลแล้วก่อนมาถึงโรงพยาบาล</span>
+                </div>
+              </label>
             </div>
-          </label>
-        </div>
+          </div>
 
-        <!-- 2.3 ประวัติอุบัติเหตุกระแทก (Progressive Disclosure) -->
-        <div class="border border-slate-200 rounded-xl p-3 bg-white hover:border-medical-300 transition">
-          <label class="flex items-start cursor-pointer">
-            <input type="checkbox" id="epistaxisTraumaParent"
-              onchange="toggleEpistaxisGroup('epistaxisTraumaSub', this.checked)"
-              class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0 mt-0.5">
-            <div class="ml-3">
-              <span class="text-xs sm:text-sm font-semibold text-slate-800 block">มีประวัติได้รับอุบัติเหตุกระแทกที่ใบหน้าหรือศีรษะก่อนเลือดออก</span>
-              <span class="text-[11px] text-slate-500 font-normal block mt-0.5">เช่น ถูกชกต่อย รถล้ม ตกจากที่สูง หรือของแข็งกระแทกใบหน้า</span>
+          <!-- 1.4 การเกิดซ้ำหรือความรุนแรง -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
+              1.4 ประวัติความรุนแรงและการเป็นซ้ำ
+            </label>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white cursor-pointer hover:border-medical-300 transition">
+                <input type="radio" name="epistaxisRecurrence" value="highest_in_life" class="text-medical-600 focus:ring-medical-500 h-4 w-4">
+                <span class="ml-2.5 text-xs sm:text-sm font-medium text-slate-800">ไหลมากที่สุดในชีวิต</span>
+              </label>
+              <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white cursor-pointer hover:border-medical-300 transition">
+                <input type="radio" name="epistaxisRecurrence" value="recurrent_episodes" class="text-medical-600 focus:ring-medical-500 h-4 w-4">
+                <span class="ml-2.5 text-xs sm:text-sm font-medium text-slate-800">เคยมีเลือดกำเดาไหลซ้ำๆแบบนี้ มาก่อน</span>
+              </label>
             </div>
-          </label>
-          <div id="epistaxisTraumaSub" class="hidden pl-7 pt-2.5 mt-2 border-t border-slate-100 space-y-2.5 text-xs">
-            <div>
-              <label class="block text-slate-700 font-medium mb-1">ระบุเหตุการณ์อุบัติเหตุ (ช่องกรอกอิสระ):</label>
-              <input type="text" id="epistaxisTraumaDetails" placeholder="เช่น ถูกชกต่อย, รถจักรยานยนต์ล้ม, ของแข็งกระแทกหน้า"
-                class="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs focus:ring-2 focus:ring-medical-500">
+          </div>
+
+          <!-- 1.5 ปริมาณและความแรงของเลือดที่ออก -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
+              1.5 ปริมาณและความแรงของเลือดที่ออก
+            </label>
+            <div class="space-y-2">
+              <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white cursor-pointer hover:border-medical-300 transition">
+                <input type="radio" name="epistaxisVolume" value="mild_oozing" class="text-medical-600 focus:ring-medical-500 h-4 w-4">
+                <div class="ml-2.5">
+                  <span class="text-xs sm:text-sm font-semibold text-slate-800 block">ไหลซึมๆ หยดช้าๆ หรือเปื้อนกระดาษทิชชู</span>
+                  <span class="text-[11px] text-slate-500">ปริมาณเล็กน้อย เลือดออกเพียงเล็กน้อย</span>
+                </div>
+              </label>
+              <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white cursor-pointer hover:border-medical-300 transition">
+                <input type="radio" name="epistaxisVolume" value="moderate_flow" class="text-medical-600 focus:ring-medical-500 h-4 w-4">
+                <div class="ml-2.5">
+                  <span class="text-xs sm:text-sm font-semibold text-slate-800 block">ไหลเป็นสายต่อเนื่อง ชุ่มกระดาษ/ผ้าหลายผืน</span>
+                  <span class="text-[11px] text-slate-500">ปริมาณปานกลาง ไหลไม่หยุดทันที</span>
+                </div>
+              </label>
+              <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white cursor-pointer hover:border-medical-300 transition">
+                <input type="radio" name="epistaxisVolume" value="heavy_clots" class="text-medical-600 focus:ring-medical-500 h-4 w-4">
+                <div class="ml-2.5">
+                  <span class="text-xs sm:text-sm font-semibold text-slate-800 block">ไหลทะลักปริมาณมาก หรือมีก้อนลิ่มเลือดขนาดใหญ่หลุดออกมา</span>
+                  <span class="text-[11px] text-slate-500">ปริมาณมาก มีก้อนเลือดลิ่มขนาดใหญ่ หรือสำลักเลือด</span>
+                </div>
+              </label>
             </div>
-            <label class="flex items-center p-2 rounded-lg bg-slate-50 hover:bg-slate-100 cursor-pointer">
-              <input type="checkbox" name="epistaxisTraumaSigns" value="trauma_csf_leak_rhinorrhea" class="text-medical-600 mr-2 rounded">
-              <span>มีน้ำใสๆ ไหลปนออกมาจากจมูกคล้ายน้ำมูกแต่ไม่ข้น</span>
-            </label>
-            <label class="flex items-center p-2 rounded-lg bg-slate-50 hover:bg-slate-100 cursor-pointer">
-              <input type="checkbox" name="epistaxisTraumaSigns" value="trauma_raccoon_eyes" class="text-medical-600 mr-2 rounded">
-              <span>มีรอยฟกช้ำม่วงคล้ำรอบตาทั้งสองข้าง หรือหลังใบหู</span>
-            </label>
-            <label class="flex items-center p-2 rounded-lg bg-slate-50 hover:bg-slate-100 cursor-pointer">
-              <input type="checkbox" name="epistaxisTraumaSigns" value="trauma_nasal_deformity" class="text-medical-600 mr-2 rounded">
-              <span>กระดูกดั้งจมูกเบี้ยว ผิดรูป</span>
-            </label>
           </div>
         </div>
       </div>
 
-      <!-- ส่วนที่ 3: สัญญาณเตือน สภาวะอันตราย (Progressive Parent Checkboxes) -->
-      <div class="space-y-3 mb-6 border-t border-slate-100 pt-5">
-        <h3 class="text-sm font-semibold text-slate-800 flex items-center">
-          <span class="w-2 h-2 rounded-full bg-rose-500 mr-2"></span>
-          3. สัญญาณเตือน สภาวะอันตราย
-        </h3>
-        <p class="text-xs text-slate-500 mb-2">แตะเลือกหัวข้อหลักหากท่านมีอาการในกลุ่มดังกล่าว</p>
-
-        <!-- กลุ่ม 1: อาการผิดปกติเกี่ยวกับการหายใจ หรือการกลืน -->
-        <div class="border border-slate-200 rounded-xl p-3 bg-white hover:border-medical-300 transition">
-          <label class="flex items-start cursor-pointer">
-            <input type="checkbox" id="epistaxisWarnAirwayParent"
-              onchange="toggleEpistaxisGroup('epistaxisWarnAirwaySub', this.checked)"
-              class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0 mt-0.5">
-            <div class="ml-3">
-              <span class="text-xs sm:text-sm font-semibold text-slate-800 block">มีปัญหาการหายใจ หรือสำลักเลือด</span>
-              <span class="text-[11px] text-slate-500 font-normal block mt-0.5">สำลักเลือด หายใจติดขัด หรือรู้สึกแน่นคอ</span>
-            </div>
-          </label>
-          <div id="epistaxisWarnAirwaySub" class="hidden pl-7 pt-2.5 mt-2 border-t border-slate-100 space-y-2 text-xs">
-            <label class="flex items-center p-2 rounded-lg bg-slate-50 hover:bg-slate-100 cursor-pointer">
-              <input type="checkbox" name="epistaxisWarningSigns" value="warn_choking_swallow" class="text-medical-600 mr-2 rounded">
-              <span>สำลักเลือด หรือกลืนลำบาก</span>
-            </label>
-            <label class="flex items-center p-2 rounded-lg bg-slate-50 hover:bg-slate-100 cursor-pointer">
-              <input type="checkbox" name="epistaxisWarningSigns" value="warn_stridor_airway_tight" class="text-medical-600 mr-2 rounded">
-              <span>หายใจติดขัด หายใจมีเสียงหวีด หรือรู้สึกแน่นคอแทบหายใจไม่ออก</span>
-            </label>
+      <!-- CARD 2: อาการแสดงและทิศทางการไหล -->
+      <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+        <div class="flex items-center space-x-3 mb-4 pb-3 border-b border-slate-100">
+          <div class="bg-medical-100 text-medical-700 p-2 rounded-xl">
+            <i data-lucide="activity" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <h2 class="text-base font-bold text-slate-900">2. อาการแสดงและทิศทางการไหล (Bleeding Direction & Cranial Signs)</h2>
+            <p class="text-xs text-slate-500">ทิศทางการไหล การตอบสนองต่อการบีบจมูก และประวัติอุบัติเหตุกระแทก</p>
           </div>
         </div>
 
-        <!-- กลุ่ม 2: อาการหน้ามืด วูบ หรือมีอาการช็อก -->
-        <div class="border border-slate-200 rounded-xl p-3 bg-white hover:border-medical-300 transition">
-          <label class="flex items-start cursor-pointer">
-            <input type="checkbox" id="epistaxisWarnShockParent"
-              onchange="toggleEpistaxisGroup('epistaxisWarnShockSub', this.checked)"
-              class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0 mt-0.5">
-            <div class="ml-3">
-              <span class="text-xs sm:text-sm font-semibold text-slate-800 block">หน้ามืด เวียนศีรษะรุนแรง หรือตัวเย็น</span>
-              <span class="text-[11px] text-slate-500 font-normal block mt-0.5">อาการจากการสูญเสียเลือดมากหรือความดันตก</span>
-            </div>
-          </label>
-          <div id="epistaxisWarnShockSub" class="hidden pl-7 pt-2.5 mt-2 border-t border-slate-100 space-y-2 text-xs">
-            <label class="flex items-center p-2 rounded-lg bg-slate-50 hover:bg-slate-100 cursor-pointer">
-              <input type="checkbox" name="epistaxisWarningSigns" value="warn_dizziness_presyncope" class="text-medical-600 mr-2 rounded">
-              <span>หน้ามืด เวียนศีรษะ วูบ หรือหมดสติไปชั่วขณะ</span>
+        <div class="space-y-4">
+          <!-- 2.1 ทิศทางและการตอบสนองต่อการบีบจมูก -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
+              2.1 ทิศทางการไหลและการตอบสนองต่อการบีบจมูก (เลือกได้หลายข้อ)
             </label>
-            <label class="flex items-center p-2 rounded-lg bg-slate-50 hover:bg-slate-100 cursor-pointer">
-              <input type="checkbox" name="epistaxisWarningSigns" value="warn_profuse_sweat_cold_shock" class="text-medical-600 mr-2 rounded">
-              <span>เหงื่อแตกท่วมตัว ผิวหนังซีดเย็น หรือใจสั่นรัวเร็วผิดปกติ</span>
+            <div class="space-y-2">
+              <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white cursor-pointer hover:border-medical-300 transition">
+                <input type="checkbox" name="epistaxisDirection" value="dripping_throat" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
+                <div class="ml-2.5">
+                  <span class="text-xs sm:text-sm font-semibold text-slate-800 block">รู้สึกมีเลือดไหลรินลงคอ หรือต้องคอยกลืนเลือดตลอดเวลา</span>
+                  <span class="text-[11px] text-slate-500">รู้สึกเหมือนมีน้ำหรือเลือดไหลย้อนลงไปในลำคอ</span>
+                </div>
+              </label>
+              <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white cursor-pointer hover:border-medical-300 transition">
+                <input type="checkbox" name="epistaxisDirection" value="failed_compression" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
+                <div class="ml-2.5">
+                  <span class="text-xs sm:text-sm font-semibold text-slate-800 block">บีบปีกจมูกแน่นๆ ติดต่อกันเกิน 15-20 นาทีแล้ว เลือดยังไม่ยอมหยุดไหล</span>
+                  <span class="text-[11px] text-slate-500">บีบปีกจมูกค้างไว้นานแล้วเลือดยังคงทะลักออกต่อเนื่อง</span>
+                </div>
+              </label>
+              <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white cursor-pointer hover:border-medical-300 transition">
+                <input type="checkbox" name="epistaxisDirection" value="vomited_blood_clots" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
+                <div class="ml-2.5">
+                  <span class="text-xs sm:text-sm font-semibold text-slate-800 block">มีอาการไอ หรืออาเจียนออกมาเป็นลิ่มเลือด/สีกาแฟ</span>
+                  <span class="text-[11px] text-slate-500">เนื่องจากกลืนเลือดกำเดาลงกระเพาะอาหาร</span>
+                </div>
+              </label>
+            </div>
+          </div>
+
+          <!-- 2.2 อาการเฉียบพลันร่วมทางศีรษะและความดันโลหิต -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
+              2.2 อาการเฉียบพลันร่วมทางศีรษะและความดันโลหิต
+            </label>
+            <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white cursor-pointer hover:border-medical-300 transition">
+              <input type="checkbox" name="epistaxisAcuteCranial" value="severe_headache" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
+              <div class="ml-2.5">
+                <span class="text-xs sm:text-sm font-semibold text-slate-800 block">มีอาการปวดศีรษะรุนแรง ตามัว ตาพร่า หรือแน่นหน้าอกร่วมด้วย</span>
+                <span class="text-[11px] text-slate-500">คัดกรองภาวะความดันโลหิตสูงรุนแรงเฉียบพลัน</span>
+              </div>
             </label>
           </div>
-        </div>
 
-        <!-- กลุ่ม 3: กลุ่มอาการเลือดออกผิดปกติที่ตำแหน่งอื่น -->
-        <div class="border border-slate-200 rounded-xl p-3 bg-white hover:border-medical-300 transition">
-          <label class="flex items-start cursor-pointer">
-            <input type="checkbox" id="epistaxisWarnBleedingParent"
-              onchange="toggleEpistaxisGroup('epistaxisWarnBleedingSub', this.checked)"
-              class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0 mt-0.5">
-            <div class="ml-3">
-              <span class="text-xs sm:text-sm font-semibold text-slate-800 block">มีเลือดออกผิดปกติที่ตำแหน่งอื่นร่วมด้วย</span>
-              <span class="text-[11px] text-slate-500 font-normal block mt-0.5">จุดจ้ำเลือด เลือดออกตามไรฟัน ปัสสาวะหรืออุจจาระผิดปกติ</span>
+          <!-- 2.3 ประวัติอุบัติเหตุกระแทก (Progressive Disclosure) -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
+              2.3 ประวัติอุบัติเหตุหรือการบาดเจ็บ
+            </label>
+            <div class="border border-slate-200 rounded-xl p-3.5 bg-white hover:border-medical-300 transition">
+              <label class="flex items-start cursor-pointer">
+                <input type="checkbox" id="epistaxisTraumaParent"
+                  onchange="toggleEpistaxisGroup('epistaxisTraumaSub', this.checked)"
+                  class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0 mt-0.5">
+                <div class="ml-3">
+                  <span class="text-xs sm:text-sm font-semibold text-slate-800 block">มีประวัติได้รับอุบัติเหตุกระแทกที่ใบหน้าหรือศีรษะก่อนเลือดออก</span>
+                  <span class="text-[11px] text-slate-500 font-normal block mt-0.5">เช่น ถูกชกต่อย รถล้ม ตกจากที่สูง หรือของแข็งกระแทกใบหน้า</span>
+                </div>
+              </label>
+              <div id="epistaxisTraumaSub" class="hidden pl-7 pt-3 mt-2.5 border-t border-slate-100 space-y-2.5 text-xs">
+                <div>
+                  <label class="block text-slate-700 font-medium mb-1">ระบุเหตุการณ์อุบัติเหตุ (ช่องกรอกอิสระ):</label>
+                  <input type="text" id="epistaxisTraumaDetails" placeholder="เช่น ถูกชกต่อย, รถจักรยานยนต์ล้ม, ของแข็งกระแทกหน้า"
+                    class="w-full bg-slate-50 px-3.5 py-2 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-medical-500 focus:bg-white focus:outline-none">
+                </div>
+                <label class="flex items-center p-2.5 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-200 cursor-pointer">
+                  <input type="checkbox" name="epistaxisTraumaSigns" value="trauma_csf_leak_rhinorrhea" class="text-medical-600 focus:ring-medical-500 mr-2 rounded">
+                  <span>มีน้ำใสๆ ไหลปนออกมาจากจมูกคล้ายน้ำมูกแต่ไม่ข้น</span>
+                </label>
+                <label class="flex items-center p-2.5 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-200 cursor-pointer">
+                  <input type="checkbox" name="epistaxisTraumaSigns" value="trauma_raccoon_eyes" class="text-medical-600 focus:ring-medical-500 mr-2 rounded">
+                  <span>มีรอยฟกช้ำม่วงคล้ำรอบตาทั้งสองข้าง หรือหลังใบหู</span>
+                </label>
+                <label class="flex items-center p-2.5 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-200 cursor-pointer">
+                  <input type="checkbox" name="epistaxisTraumaSigns" value="trauma_nasal_deformity" class="text-medical-600 focus:ring-medical-500 mr-2 rounded">
+                  <span>กระดูกดั้งจมูกเบี้ยว ผิดรูป</span>
+                </label>
+              </div>
             </div>
-          </label>
-          <div id="epistaxisWarnBleedingSub" class="hidden pl-7 pt-2.5 mt-2 border-t border-slate-100 space-y-2 text-xs">
-            <label class="flex items-center p-2 rounded-lg bg-slate-50 hover:bg-slate-100 cursor-pointer">
-              <input type="checkbox" name="epistaxisWarningSigns" value="warn_petechiae_purpura" class="text-medical-600 mr-2 rounded">
-              <span>มีจุดเลือดออกสีแดงเล็กๆ หรือรอยช้ำจ้ำเลือดตามแขนขาและลำตัว</span>
-            </label>
-            <label class="flex items-center p-2 rounded-lg bg-slate-50 hover:bg-slate-100 cursor-pointer">
-              <input type="checkbox" name="epistaxisWarningSigns" value="warn_mucosal_or_melena" class="text-medical-600 mr-2 rounded">
-              <span>มีเลือดออกตามไรฟัน ปัสสาวะเป็นเลือด หรือถ่ายอุจจาระเป็นสีดำสนิท</span>
-            </label>
-          </div>
-        </div>
-
-        <!-- กลุ่ม 4: อาการผิดปกติเรื้อรังบริเวณใบหน้า คอ หรือการได้ยิน -->
-        <div class="border border-slate-200 rounded-xl p-3 bg-white hover:border-medical-300 transition">
-          <label class="flex items-start cursor-pointer">
-            <input type="checkbox" id="epistaxisWarnHeadNeckParent"
-              onchange="toggleEpistaxisGroup('epistaxisWarnHeadNeckSub', this.checked)"
-              class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0 mt-0.5">
-            <div class="ml-3">
-              <span class="text-xs sm:text-sm font-semibold text-slate-800 block">มีก้อนที่คอ หรืออาการผิดปกติเรื้อรังที่ใบหน้าและหู</span>
-              <span class="text-[11px] text-slate-500 font-normal block mt-0.5">คลำได้ก้อน คัดจมูกข้างเดียวเรื้อรัง หรือหูอื้อข้างเดียว</span>
-            </div>
-          </label>
-          <div id="epistaxisWarnHeadNeckSub" class="hidden pl-7 pt-2.5 mt-2 border-t border-slate-100 space-y-2 text-xs">
-            <label class="flex items-center p-2 rounded-lg bg-slate-50 hover:bg-slate-100 cursor-pointer">
-              <input type="checkbox" name="epistaxisWarningSigns" value="warn_cervical_lymph_node" class="text-medical-600 mr-2 rounded">
-              <span>คลำได้ก้อนบวมแข็งที่ลำคอ หรือบริเวณข้างกราม</span>
-            </label>
-            <label class="flex items-center p-2 rounded-lg bg-slate-50 hover:bg-slate-100 cursor-pointer">
-              <input type="checkbox" name="epistaxisWarningSigns" value="warn_unilateral_obstruction" class="text-medical-600 mr-2 rounded">
-              <span>คัดจมูกข้างเดียวเรื้อรัง หรือมีน้ำมูกปนเลือดกลิ่นเหม็น</span>
-            </label>
-            <label class="flex items-center p-2 rounded-lg bg-slate-50 hover:bg-slate-100 cursor-pointer">
-              <input type="checkbox" name="epistaxisWarningSigns" value="warn_unilateral_tinnitus" class="text-medical-600 mr-2 rounded">
-              <span>มีอาการหูอื้อ หรือการได้ยินลดลงข้างเดียวกับที่มีเลือดออก</span>
-            </label>
           </div>
         </div>
       </div>
 
-      <!-- ส่วนที่ 4: ปัจจัยกระตุ้นและประวัติการใช้ยา -->
-      <div class="space-y-4 mb-6 border-t border-slate-100 pt-5">
-        <h3 class="text-sm font-semibold text-slate-800 flex items-center">
-          <span class="w-2 h-2 rounded-full bg-rose-500 mr-2"></span>
-          4. ปัจจัยกระตุ้นและประวัติการใช้ยา
-        </h3>
-
-        <!-- 4.1 ปัจจัยกระตุ้นเฉพาะที่ -->
-        <div>
-          <label class="block text-xs font-semibold text-slate-700 mb-1.5">ปัจจัยกระตุ้นเฉพาะที่</label>
-          <div class="space-y-1.5">
-            <label class="selectable-card flex items-center p-2.5 rounded-xl border border-slate-200 bg-white cursor-pointer hover:bg-slate-50 transition">
-              <input type="checkbox" name="epistaxisTriggers" value="trig_nose_picking" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
-              <span class="ml-2.5 text-xs sm:text-sm font-medium text-slate-800">ล้วง แคะ แกะ เกา หรือสั่งน้ำมูกแรงๆ ในโพรงจมูก</span>
-            </label>
-            <label class="selectable-card flex items-center p-2.5 rounded-xl border border-slate-200 bg-white cursor-pointer hover:bg-slate-50 transition">
-              <input type="checkbox" name="epistaxisTriggers" value="trig_nasal_spray_dry_air" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
-              <span class="ml-2.5 text-xs sm:text-sm font-medium text-slate-800">เพิ่งใช้ยาพ่นจมูก หรือสัมผัสอากาศแห้ง/เย็นจัด</span>
-            </label>
-            <label class="selectable-card flex items-center p-2.5 rounded-xl border border-slate-200 bg-white cursor-pointer hover:bg-slate-50 transition">
-              <input type="checkbox" name="epistaxisTriggers" value="trig_spontaneous" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
-              <span class="ml-2.5 text-xs sm:text-sm font-medium text-slate-800">ไม่มีปัจจัยกระตุ้นชัดเจน (อยู่ดีๆ เลือดก็ไหลออกมาเอง)</span>
-            </label>
+      <!-- CARD 3: สัญญาณเตือน สภาวะอันตราย -->
+      <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+        <div class="flex items-center space-x-3 mb-4 pb-3 border-b border-slate-100">
+          <div class="bg-medical-100 text-medical-700 p-2 rounded-xl">
+            <i data-lucide="shield-alert" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <h2 class="text-base font-bold text-slate-900">3. สัญญาณเตือน สภาวะอันตราย (Warning Signs)</h2>
+            <p class="text-xs text-slate-500">คัดกรองปัญหาทางเดินหายใจ ภาวะช็อก เลือดออกผิดปกติ หรือก้อนที่คอ</p>
           </div>
         </div>
 
-        <!-- 4.2 การใช้ยาที่มีผลต่อการแข็งตัวของเลือด -->
-        <div>
-          <label class="block text-xs font-semibold text-slate-700 mb-1.5">การใช้ยาที่มีผลต่อการแข็งตัวของเลือด</label>
-          <div class="space-y-1.5">
-            <label class="selectable-card flex items-center p-2.5 rounded-xl border border-slate-200 bg-white cursor-pointer hover:bg-slate-50 transition">
-              <input type="checkbox" name="epistaxisMeds" value="anticoagulant_warfarin"
-                onchange="handleEpistaxisMedChange(this)"
-                class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
-              <span class="ml-2.5 text-xs sm:text-sm font-medium text-slate-800">ยาต้านการแข็งตัวของเลือด (เช่น Warfarin, Eliquis, Xarelto, Pradaxa)</span>
+        <div class="space-y-3">
+          <!-- กลุ่ม 1: อาการผิดปกติเกี่ยวกับการหายใจ หรือการกลืน -->
+          <div class="border border-slate-200 rounded-xl p-3.5 bg-white hover:border-medical-300 transition">
+            <label class="flex items-start cursor-pointer">
+              <input type="checkbox" id="epistaxisWarnAirwayParent"
+                onchange="toggleEpistaxisGroup('epistaxisWarnAirwaySub', this.checked)"
+                class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0 mt-0.5">
+              <div class="ml-3">
+                <span class="text-xs sm:text-sm font-semibold text-slate-800 block">มีปัญหาการหายใจ หรือสำลักเลือด</span>
+                <span class="text-[11px] text-slate-500 font-normal block mt-0.5">สำลักเลือด หายใจติดขัด หรือรู้สึกแน่นคอ</span>
+              </div>
             </label>
-            <label class="selectable-card flex items-center p-2.5 rounded-xl border border-slate-200 bg-white cursor-pointer hover:bg-slate-50 transition">
-              <input type="checkbox" name="epistaxisMeds" value="antiplatelet_aspirin"
-                onchange="handleEpistaxisMedChange(this)"
-                class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
-              <span class="ml-2.5 text-xs sm:text-sm font-medium text-slate-800">ยาต้านเกล็ดเลือด (เช่น Aspirin, Clopidogrel / Plavix)</span>
-            </label>
-            <label class="selectable-card flex items-center p-2.5 rounded-xl border border-slate-200 bg-white cursor-pointer hover:bg-slate-50 transition">
-              <input type="checkbox" name="epistaxisMeds" value="meds_unknown"
-                onchange="handleEpistaxisMedChange(this)"
-                class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
-              <span class="ml-2.5 text-xs sm:text-sm font-medium text-slate-800">มียาประจำตัว แต่ไม่แน่ใจ / ไม่ทราบชื่อยาที่ใช้</span>
-            </label>
-            <label class="selectable-card flex items-center p-2.5 rounded-xl border border-slate-200 bg-white cursor-pointer hover:bg-slate-50 transition">
-              <input type="checkbox" name="epistaxisMeds" value="none"
-                onchange="handleEpistaxisMedChange(this)"
-                class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
-              <span class="ml-2.5 text-xs sm:text-sm font-medium text-slate-800">ไม่ได้รับประทานยากลุ่มนี้</span>
-            </label>
+            <div id="epistaxisWarnAirwaySub" class="hidden pl-7 pt-2.5 mt-2 border-t border-slate-100 space-y-2 text-xs">
+              <label class="flex items-center p-2.5 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-200 cursor-pointer">
+                <input type="checkbox" name="epistaxisWarningSigns" value="warn_choking_swallow" class="text-medical-600 focus:ring-medical-500 mr-2 rounded">
+                <span>สำลักเลือด หรือกลืนลำบาก</span>
+              </label>
+              <label class="flex items-center p-2.5 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-200 cursor-pointer">
+                <input type="checkbox" name="epistaxisWarningSigns" value="warn_stridor_airway_tight" class="text-medical-600 focus:ring-medical-500 mr-2 rounded">
+                <span>หายใจติดขัด หายใจมีเสียงหวีด หรือรู้สึกแน่นคอแทบหายใจไม่ออก</span>
+              </label>
+            </div>
           </div>
-        </div>
 
-        <!-- 4.3 โรคประจำตัวที่เกี่ยวข้อง -->
-        <div>
-          <label class="block text-xs font-semibold text-slate-700 mb-1.5">โรคประจำตัวที่เกี่ยวข้อง</label>
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            <label class="selectable-card flex items-center p-2.5 rounded-xl border border-slate-200 bg-white cursor-pointer hover:bg-slate-50 transition">
-              <input type="checkbox" name="epistaxisUnderlying" value="htn" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
-              <span class="ml-2.5 text-xs sm:text-sm font-medium text-slate-800">โรคความดันโลหิตสูง</span>
+          <!-- กลุ่ม 2: อาการหน้ามืด วูบ หรือมีอาการช็อก -->
+          <div class="border border-slate-200 rounded-xl p-3.5 bg-white hover:border-medical-300 transition">
+            <label class="flex items-start cursor-pointer">
+              <input type="checkbox" id="epistaxisWarnShockParent"
+                onchange="toggleEpistaxisGroup('epistaxisWarnShockSub', this.checked)"
+                class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0 mt-0.5">
+              <div class="ml-3">
+                <span class="text-xs sm:text-sm font-semibold text-slate-800 block">หน้ามืด เวียนศีรษะรุนแรง หรือตัวเย็น</span>
+                <span class="text-[11px] text-slate-500 font-normal block mt-0.5">อาการจากการสูญเสียเลือดมากหรือความดันตก</span>
+              </div>
             </label>
-            <label class="selectable-card flex items-center p-2.5 rounded-xl border border-slate-200 bg-white cursor-pointer hover:bg-slate-50 transition">
-              <input type="checkbox" name="epistaxisUnderlying" value="cirrhosis" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
-              <span class="ml-2.5 text-xs sm:text-sm font-medium text-slate-800">โรคตับแข็ง หรือภาวะตับวายเรื้อรัง</span>
+            <div id="epistaxisWarnShockSub" class="hidden pl-7 pt-2.5 mt-2 border-t border-slate-100 space-y-2 text-xs">
+              <label class="flex items-center p-2.5 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-200 cursor-pointer">
+                <input type="checkbox" name="epistaxisWarningSigns" value="warn_dizziness_presyncope" class="text-medical-600 focus:ring-medical-500 mr-2 rounded">
+                <span>หน้ามืด เวียนศีรษะ วูบ หรือหมดสติไปชั่วขณะ</span>
+              </label>
+              <label class="flex items-center p-2.5 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-200 cursor-pointer">
+                <input type="checkbox" name="epistaxisWarningSigns" value="warn_profuse_sweat_cold_shock" class="text-medical-600 focus:ring-medical-500 mr-2 rounded">
+                <span>เหงื่อแตกท่วมตัว ผิวหนังซีดเย็น หรือใจสั่นรัวเร็วผิดปกติ</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- กลุ่ม 3: กลุ่มอาการเลือดออกผิดปกติที่ตำแหน่งอื่น -->
+          <div class="border border-slate-200 rounded-xl p-3.5 bg-white hover:border-medical-300 transition">
+            <label class="flex items-start cursor-pointer">
+              <input type="checkbox" id="epistaxisWarnBleedingParent"
+                onchange="toggleEpistaxisGroup('epistaxisWarnBleedingSub', this.checked)"
+                class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0 mt-0.5">
+              <div class="ml-3">
+                <span class="text-xs sm:text-sm font-semibold text-slate-800 block">มีเลือดออกผิดปกติที่ตำแหน่งอื่นร่วมด้วย</span>
+                <span class="text-[11px] text-slate-500 font-normal block mt-0.5">จุดจ้ำเลือด เลือดออกตามไรฟัน ปัสสาวะหรืออุจจาระผิดปกติ</span>
+              </div>
             </label>
-            <label class="selectable-card flex items-center p-2.5 rounded-xl border border-slate-200 bg-white cursor-pointer hover:bg-slate-50 transition">
-              <input type="checkbox" name="epistaxisUnderlying" value="esrd" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
-              <span class="ml-2.5 text-xs sm:text-sm font-medium text-slate-800">โรคไตเรื้อรัง หรือกำลังฟอกไต</span>
+            <div id="epistaxisWarnBleedingSub" class="hidden pl-7 pt-2.5 mt-2 border-t border-slate-100 space-y-2 text-xs">
+              <label class="flex items-center p-2.5 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-200 cursor-pointer">
+                <input type="checkbox" name="epistaxisWarningSigns" value="warn_petechiae_purpura" class="text-medical-600 focus:ring-medical-500 mr-2 rounded">
+                <span>มีจุดเลือดออกสีแดงเล็กๆ หรือรอยช้ำจ้ำเลือดตามแขนขาและลำตัว</span>
+              </label>
+              <label class="flex items-center p-2.5 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-200 cursor-pointer">
+                <input type="checkbox" name="epistaxisWarningSigns" value="warn_mucosal_or_melena" class="text-medical-600 focus:ring-medical-500 mr-2 rounded">
+                <span>มีเลือดออกตามไรฟัน ปัสสาวะเป็นเลือด หรือถ่ายอุจจาระเป็นสีดำสนิท</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- กลุ่ม 4: อาการผิดปกติเรื้อรังบริเวณใบหน้า คอ หรือการได้ยิน -->
+          <div class="border border-slate-200 rounded-xl p-3.5 bg-white hover:border-medical-300 transition">
+            <label class="flex items-start cursor-pointer">
+              <input type="checkbox" id="epistaxisWarnHeadNeckParent"
+                onchange="toggleEpistaxisGroup('epistaxisWarnHeadNeckSub', this.checked)"
+                class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0 mt-0.5">
+              <div class="ml-3">
+                <span class="text-xs sm:text-sm font-semibold text-slate-800 block">มีก้อนที่คอ หรืออาการผิดปกติเรื้อรังที่ใบหน้าและหู</span>
+                <span class="text-[11px] text-slate-500 font-normal block mt-0.5">คลำได้ก้อน คัดจมูกข้างเดียวเรื้อรัง หรือหูอื้อข้างเดียว</span>
+              </div>
             </label>
-            <label class="selectable-card flex items-center p-2.5 rounded-xl border border-slate-200 bg-white cursor-pointer hover:bg-slate-50 transition">
-              <input type="checkbox" name="epistaxisUnderlying" value="coagulopathy" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
-              <span class="ml-2.5 text-xs sm:text-sm font-medium text-slate-800">โรคเลือดผิดปกติ หรือเกล็ดเลือดต่ำ</span>
-            </label>
+            <div id="epistaxisWarnHeadNeckSub" class="hidden pl-7 pt-2.5 mt-2 border-t border-slate-100 space-y-2 text-xs">
+              <label class="flex items-center p-2.5 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-200 cursor-pointer">
+                <input type="checkbox" name="epistaxisWarningSigns" value="warn_cervical_lymph_node" class="text-medical-600 focus:ring-medical-500 mr-2 rounded">
+                <span>คลำได้ก้อนบวมแข็งที่ลำคอ หรือบริเวณข้างกราม</span>
+              </label>
+              <label class="flex items-center p-2.5 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-200 cursor-pointer">
+                <input type="checkbox" name="epistaxisWarningSigns" value="warn_unilateral_obstruction" class="text-medical-600 focus:ring-medical-500 mr-2 rounded">
+                <span>คัดจมูกข้างเดียวเรื้อรัง หรือมีน้ำมูกปนเลือดกลิ่นเหม็น</span>
+              </label>
+              <label class="flex items-center p-2.5 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-200 cursor-pointer">
+                <input type="checkbox" name="epistaxisWarningSigns" value="warn_unilateral_tinnitus" class="text-medical-600 focus:ring-medical-500 mr-2 rounded">
+                <span>มีอาการหูอื้อ หรือการได้ยินลดลงข้างเดียวกับที่มีเลือดออก</span>
+              </label>
+            </div>
           </div>
         </div>
       </div>
+
+      <!-- CARD 4: ปัจจัยกระตุ้นและประวัติการใช้ยา -->
+      <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+        <div class="flex items-center space-x-3 mb-4 pb-3 border-b border-slate-100">
+          <div class="bg-medical-100 text-medical-700 p-2 rounded-xl">
+            <i data-lucide="pill" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <h2 class="text-base font-bold text-slate-900">4. ปัจจัยกระตุ้นและประวัติการใช้ยา (Triggers & Medications)</h2>
+            <p class="text-xs text-slate-500">ปัจจัยกระตุ้นเฉพาะที่ การใช้ยาต้านการแข็งตัวของเลือด และโรคประจำตัวร่วม</p>
+          </div>
+        </div>
+
+        <div class="space-y-4">
+          <!-- 4.1 ปัจจัยกระตุ้นเฉพาะที่ -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
+              4.1 ปัจจัยกระตุ้นเฉพาะที่
+            </label>
+            <div class="space-y-2">
+              <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white cursor-pointer hover:border-medical-300 transition">
+                <input type="checkbox" name="epistaxisTriggers" value="trig_nose_picking" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
+                <span class="ml-2.5 text-xs sm:text-sm font-medium text-slate-800">ล้วง แคะ แกะ เกา หรือสั่งน้ำมูกแรงๆ ในโพรงจมูก</span>
+              </label>
+              <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white cursor-pointer hover:border-medical-300 transition">
+                <input type="checkbox" name="epistaxisTriggers" value="trig_nasal_spray_dry_air" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
+                <span class="ml-2.5 text-xs sm:text-sm font-medium text-slate-800">เพิ่งใช้ยาพ่นจมูก หรือสัมผัสอากาศแห้ง/เย็นจัด</span>
+              </label>
+              <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white cursor-pointer hover:border-medical-300 transition">
+                <input type="checkbox" name="epistaxisTriggers" value="trig_spontaneous" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
+                <span class="ml-2.5 text-xs sm:text-sm font-medium text-slate-800">ไม่มีปัจจัยกระตุ้นชัดเจน (อยู่ดีๆ เลือดก็ไหลออกมาเอง)</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- 4.2 การใช้ยาที่มีผลต่อการแข็งตัวของเลือด -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
+              4.2 การใช้ยาที่มีผลต่อการแข็งตัวของเลือด
+            </label>
+            <div class="space-y-2">
+              <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white cursor-pointer hover:border-medical-300 transition">
+                <input type="checkbox" name="epistaxisMeds" value="anticoagulant_warfarin"
+                  onchange="handleEpistaxisMedChange(this)"
+                  class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
+                <span class="ml-2.5 text-xs sm:text-sm font-medium text-slate-800">ยาต้านการแข็งตัวของเลือด (เช่น Warfarin, Eliquis, Xarelto, Pradaxa)</span>
+              </label>
+              <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white cursor-pointer hover:border-medical-300 transition">
+                <input type="checkbox" name="epistaxisMeds" value="antiplatelet_aspirin"
+                  onchange="handleEpistaxisMedChange(this)"
+                  class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
+                <span class="ml-2.5 text-xs sm:text-sm font-medium text-slate-800">ยาต้านเกล็ดเลือด (เช่น Aspirin, Clopidogrel / Plavix)</span>
+              </label>
+              <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white cursor-pointer hover:border-medical-300 transition">
+                <input type="checkbox" name="epistaxisMeds" value="meds_unknown"
+                  onchange="handleEpistaxisMedChange(this)"
+                  class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
+                <span class="ml-2.5 text-xs sm:text-sm font-medium text-slate-800">มียาประจำตัว แต่ไม่แน่ใจ / ไม่ทราบชื่อยาที่ใช้</span>
+              </label>
+              <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white cursor-pointer hover:border-medical-300 transition">
+                <input type="checkbox" name="epistaxisMeds" value="none"
+                  onchange="handleEpistaxisMedChange(this)"
+                  class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
+                <span class="ml-2.5 text-xs sm:text-sm font-medium text-slate-800">ไม่ได้รับประทานยากลุ่มนี้</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- 4.3 โรคประจำตัวที่เกี่ยวข้อง -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
+              4.3 โรคประจำตัวที่เกี่ยวข้อง
+            </label>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white cursor-pointer hover:border-medical-300 transition">
+                <input type="checkbox" name="epistaxisUnderlying" value="htn" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
+                <span class="ml-2.5 text-xs sm:text-sm font-medium text-slate-800">โรคความดันโลหิตสูง</span>
+              </label>
+              <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white cursor-pointer hover:border-medical-300 transition">
+                <input type="checkbox" name="epistaxisUnderlying" value="cirrhosis" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
+                <span class="ml-2.5 text-xs sm:text-sm font-medium text-slate-800">โรคตับแข็ง หรือภาวะตับวายเรื้อรัง</span>
+              </label>
+              <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white cursor-pointer hover:border-medical-300 transition">
+                <input type="checkbox" name="epistaxisUnderlying" value="esrd" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
+                <span class="ml-2.5 text-xs sm:text-sm font-medium text-slate-800">โรคไตเรื้อรัง หรือกำลังฟอกไต</span>
+              </label>
+              <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white cursor-pointer hover:border-medical-300 transition">
+                <input type="checkbox" name="epistaxisUnderlying" value="coagulopathy" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
+                <span class="ml-2.5 text-xs sm:text-sm font-medium text-slate-800">โรคเลือดผิดปกติ หรือเกล็ดเลือดต่ำ</span>
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+
     </div>
   `,
 
