@@ -46,10 +46,6 @@ function handlePsychPriorBaselineChange(value) {
   togglePsychGroup('psychPriorBaselineSubContainer', value === 'known_psych_history');
 }
 
-function handlePsychKnownDiagChange(cb) {
-  togglePsychGroup('psychKnownDiagDetailContainer', cb.checked);
-}
-
 function handlePsychBehaviorOtherChange(cb) {
   togglePsychGroup('psychBehaviorOtherDetailContainer', cb.checked);
 }
@@ -71,15 +67,17 @@ function evaluatePsychiatricRedFlags(patient) {
   const delusions = Array.isArray(patient.psychDelusions) ? patient.psychDelusions : [];
   const substances = Array.isArray(patient.psychSubstances) ? patient.psychSubstances : [];
   const organicSigns = Array.isArray(patient.psychOrganicSigns) ? patient.psychOrganicSigns : [];
+  const pastViolence = Array.isArray(patient.psychPastViolence) ? patient.psychPastViolence : [];
 
   // 1. Active Extreme Violence with Weapon / Imminent Danger (ESI 1 / 2)
-  const hasWeapon = behaviors.includes('weapon_possession');
-  const hasPhysicalViolenceWithThreat = behaviors.includes('physical_assault_property') && harmRisks.includes('threat_harm_others');
-  if (hasWeapon || hasPhysicalViolenceWithThreat) {
+  const hasWeapon = harmRisks.includes('weapon_possession') || behaviors.includes('weapon_possession');
+  const hasPhysicalAssault = harmRisks.includes('physical_assault_others');
+  const hasPhysicalViolenceWithThreat = (hasPhysicalAssault || behaviors.includes('property_destruction')) && harmRisks.includes('threat_harm_others');
+  if (hasWeapon || hasPhysicalAssault || hasPhysicalViolenceWithThreat) {
     rfs.push({
       key: 'rf_psych_active_violence_weapon',
       level: 1,
-      textTh: 'Active Extreme Violence with Weapon / ภาวะก้าวร้าวรุนแรงเฉียบพลันพร้อมอาวุธคุกคามความปลอดภัย',
+      textTh: 'ภาวะก้าวร้าวรุนแรงเฉียบพลัน ทำร้ายร่างกายผู้อื่น หรือมีอาวุธในครอบครอง (Active Extreme Violence with Weapon)',
       risk: 'Severe physical injury or fatality to staff, patient, or bystanders; acute destruction of emergency department property.',
       suggestedAction: 'Immediate Code White Activation (ระงับเหตุฉุกเฉิน). Police/Security perimeter lockdown. Isolate patient in quiet seclusion room. Stat Chemical Restraint (e.g. Haloperidol 5 mg + Lorazepam 2 mg IM or Midazolam 5 mg IM) with standard 4-point physical restraints under continuous medical supervision.'
     });
@@ -97,7 +95,7 @@ function evaluatePsychiatricRedFlags(patient) {
     rfs.push({
       key: 'rf_psych_organic_delirium_cns',
       level: 2,
-      textTh: 'Suspected Organic Delirium or CNS Infection / ภาวะสับสนเพ้อคลั่งจากโรคทางกายหรือติดเชื้อในระบบประสาท',
+      textTh: 'สงสัยภาวะสับสนเพ้อคลั่งจากสาเหตุทางกายหรือติดเชื้อในระบบประสาท (Suspected Organic Delirium or CNS Infection)',
       risk: 'Meningitis, encephalitis, intracranial hemorrhage, severe hypoglycemia, or neuroleptic malignant syndrome (NMS) leading to coma, brain herniation, or death.',
       suggestedAction: 'Medical Clearance First! Stat Bedside DTX to rule out hypoglycemia. Stat CBC, BUN, Cr, Electrolytes, Hemoculture, Stat Non-contrast CT Brain. If febrile with meningismus, perform stat Lumbar Puncture. DO NOT refer to psychiatric hospital until organic medical clearance is secured.'
     });
@@ -106,12 +104,17 @@ function evaluatePsychiatricRedFlags(patient) {
   // 3. Severe Substance Intoxication / Sympathomimetic Crisis (ESI 2)
   const hasMethStimulant = substances.includes('meth_stimulants');
   const isHyperdynamic = (pr !== null && pr >= 110) || (bt !== null && bt >= 38.0) || organicSigns.includes('high_fever_hyperthermia');
-  const isAggressiveWithMeth = hasMethStimulant && (behaviors.includes('verbal_aggression') || behaviors.includes('physical_assault_property') || isHyperdynamic);
+  const isAggressiveWithMeth = hasMethStimulant && (
+    behaviors.includes('verbal_aggression') ||
+    behaviors.includes('property_destruction') ||
+    harmRisks.includes('physical_assault_others') ||
+    isHyperdynamic
+  );
   if (isAggressiveWithMeth) {
     rfs.push({
       key: 'rf_psych_sympathomimetic_hyperthermia',
       level: 2,
-      textTh: 'Severe Sympathomimetic Toxicity / ภาวะเป็นพิษจากสารกระตุ้นประสาท (ยาบ้า/ยาไอซ์) ร่วมกับความร้อนในร่างกายสูง',
+      textTh: 'ภาวะเป็นพิษจากสารกระตุ้นประสาท (ยาบ้า/ยาไอซ์) ร่วมกับไข้สูงหรือหัวใจเต้นเร็ว (Severe Sympathomimetic Toxicity)',
       risk: 'Lethal hyperthermia, rhabdomyolysis, acute renal failure, malignant ventricular arrhythmias, and disseminated intravascular coagulation (DIC).',
       suggestedAction: 'Aggressive IV fluid resuscitation (Normal Saline 1-2 L), active external cooling. Titrate IV Diazepam 5-10 mg or Lorazepam 2-4 mg every 10-15 minutes to control agitation and tachycardia. Stat Urine Tox screen, CPK, Troponin, 12-lead ECG, and monitor core body temperature.'
     });
@@ -122,18 +125,18 @@ function evaluatePsychiatricRedFlags(patient) {
     rfs.push({
       key: 'rf_psych_alcohol_delirium_tremens',
       level: 2,
-      textTh: 'Severe Alcohol Withdrawal / Delirium Tremens (DT) / ภาวะถอนสุราขั้นวิกฤต',
+      textTh: 'ภาวะถอนสุราขั้นรุนแรง หรือเพ้อคลั่งสับสน (Severe Alcohol Withdrawal / Delirium Tremens)',
       risk: 'Status epilepticus, severe autonomic instability, aspiration pneumonia, cardiovascular collapse, and high mortality (5-15% if untreated).',
       suggestedAction: 'Admission to monitored intermediate bed. Immediate symptom-triggered IV Diazepam protocol (CIWA-Ar titration, e.g. Diazepam 10 mg IV every 1-2 hrs until calm). Administer IV Thiamine 100-200 mg BEFORE any glucose. Correct potassium, magnesium, and hydration.'
     });
   }
 
   // 5. High-Lethality Suicidal Intent or High-Risk Elopement (ESI 2)
-  if (harmRisks.includes('threat_self_harm') || harmRisks.includes('elopement_high_risk')) {
+  if (harmRisks.includes('threat_self_harm') || harmRisks.includes('elopement_high_risk') || pastViolence.includes('past_suicide_attempt')) {
     rfs.push({
       key: 'rf_psych_high_suicidal_intent',
       level: 2,
-      textTh: 'High-Lethality Suicidal Intent or Elopement Risk / ภาวะคุกคามจากการพยายามทำร้ายตนเองหรือฆ่าตัวตายขั้นรุนแรง',
+      textTh: 'มีความเสี่ยงสูงต่อการพยายามฆ่าตัวตาย ทำร้ายตนเอง หรือกระโดดตึกหลบหนี (High-Lethality Suicidal Intent or Elopement Risk)',
       risk: 'Completed suicide, jumping from heights, severe laceration, hanging, or wandering into traffic.',
       suggestedAction: 'Immediate strict 1:1 Nursing/Security Observation. Remove all belts, shoelaces, cords, sharps, and medication from patient belongings. Secure windows and exit doors. Stat emergency psychiatric crisis consultation.'
     });
@@ -144,7 +147,7 @@ function evaluatePsychiatricRedFlags(patient) {
     rfs.push({
       key: 'rf_psych_command_hallucination',
       level: 3,
-      textTh: 'Command Auditory Hallucinations with Severe Paranoia / เสียงแว่วสั่งการร่วมกับหวาดระแวงรุนแรง',
+      textTh: 'ได้ยินเสียงแว่วสั่งการ หรือมีความคิดหวาดระแวงปองร้ายรุนแรง (Command Auditory Hallucinations with Severe Paranoia)',
       risk: 'Unpredictable impulsive violence or self-harm driven by command auditory voices or intense persecutory delusion.',
       suggestedAction: 'Provide calm, low-stimulation environment with non-confrontational communication. Administer second-generation antipsychotic (e.g. Risperidone 1-2 mg or Olanzapine 5-10 mg po/IM) under physician order. Ensure patient is not left isolated without monitoring.'
     });
@@ -157,7 +160,7 @@ function evaluatePsychiatricRedFlags(patient) {
     rfs.push({
       key: 'rf_psych_first_episode_late_onset',
       level: 3,
-      textTh: 'New-Onset Psychosis or Agitation in Adult (First in Life) / อาการจิตเวชหรือโวยวายครั้งแรกในชีวิตในผู้ใหญ่หรือผู้สูงอายุ',
+      textTh: 'อาการทางจิตเวชหรือเอะอะโวยวายเกิดขึ้นเป็นครั้งแรกในชีวิตในผู้ใหญ่ (New-Onset Psychosis or Agitation in Adult)',
       risk: 'Underlying structural brain lesion (tumor, subdural hematoma, stroke), autoimmune encephalitis, or metabolic/endocrine derangement.',
       suggestedAction: 'Full neurologic examination, Basic blood workup (CBC, LFT, BUN, Cr, Electrolytes), Thyroid Function Test (TSH/Free T4), VDRL, Anti-HIV. Schedule emergent non-contrast CT or MRI Brain.'
     });
@@ -166,7 +169,7 @@ function evaluatePsychiatricRedFlags(patient) {
   return rfs;
 }
 
-// --- Formatters for Doctor Rapid Note ---
+// --- Formatters for Doctor Rapid Note (Thai-Centric) ---
 function formatPsychInformant(patient) {
   const map = {
     family_relative: 'ญาติสายตรง หรือบุคคลในครอบครัว',
@@ -195,16 +198,7 @@ function formatPsychBaselineStatus(patient) {
       baseline_chronic_confusion: 'เดิมมีอาการสับสน หลงลืม หรือวุ่นวายอยู่เป็นประจำ แต่ไม่เคยรุนแรงขนาดนี้',
       baseline_intermittent_agitation: 'เดิมมีพฤติกรรมก้าวร้าว หงุดหงิด หรือควบคุมอารมณ์ได้ยากเป็นระยะๆ อยู่แล้ว'
     };
-    const sText = statusMap[patient.psychBaselineStatus] || 'มีประวัติโรคจิตเวชเดิม';
-    const extras = [];
-    const knownConds = Array.isArray(patient.psychKnownConditions) ? patient.psychKnownConditions : [];
-    if (knownConds.includes('has_medical_diagnosis')) {
-      extras.push(patient.psychKnownDiagDetail ? `แพทย์เคยวินิจฉัย: ${patient.psychKnownDiagDetail}` : 'เคยได้รับการวินิจฉัยจากแพทย์');
-    }
-    if (knownConds.includes('prior_psych_hospitalization')) {
-      extras.push('เคย admit รพ. จากโรคทางจิตเวช');
-    }
-    return extras.length > 0 ? `${sText} [${extras.join(', ')}]` : sText;
+    return statusMap[patient.psychBaselineStatus] || 'มีประวัติโรคจิตเวชเดิม (ไม่ระบุระดับอาการเดิม)';
   }
   return 'ไม่ได้ระบุ';
 }
@@ -237,60 +231,91 @@ function renderPsychiatricRapidHpi(patient) {
   const organicSigns = Array.isArray(patient.psychOrganicSigns) ? patient.psychOrganicSigns : [];
   const pastViolence = Array.isArray(patient.psychPastViolence) ? patient.psychPastViolence : [];
 
+  const behaviorMap = {
+    verbal_aggression: 'ส่งเสียงดัง เอะอะโวยวาย หรือก้าวร้าวทางวาจา',
+    property_destruction: 'ขว้างปา หรือทำลายข้าวของ 🚩',
+    restless_pacing: 'กระสับกระส่าย เดินวนไปมา หงุดหงิดฉุนเฉียว',
+    talking_alone: 'พูดคนเดียว',
+    paranoia_behavior: 'หวาดระแวง',
+    spaced_out_withdrawn: 'เหม่อลอย',
+    other_behavior: patient.psychBehaviorOtherDetail ? `พฤติกรรมผิดปกติอื่น: ${patient.psychBehaviorOtherDetail}` : 'มีพฤติกรรมผิดปกติอื่นๆ'
+  };
+  const behaviorsTh = behaviors.map(b => behaviorMap[b] || b).join(', ');
+
+  const harmRiskMap = {
+    physical_assault_others: 'ทุบตี ทำร้ายร่างกายผู้อื่น 🚩',
+    weapon_possession: 'มีอาวุธในครอบครอง หรือพยายามหยิบจับสิ่งของรอบตัวมาเป็นอาวุธ 🚩',
+    threat_harm_others: 'มีพฤติกรรมหรือคำพูดข่มขู่ว่าจะทำร้ายผู้อื่น หรือจะเอาชีวิตผู้อื่น 🚩',
+    threat_self_harm: 'มีพฤติกรรมหรือคำพูดว่าจะทำร้ายตนเอง หรือพยายามฆ่าตัวตาย 🚩',
+    elopement_high_risk: 'พยายามวิ่งหนี เตลิด หรือปีนป่ายที่สูง/กระโดดออกนอกอาคาร 🚩',
+    no_harm_threat: 'ปฏิเสธความคิดทำร้ายตนเองหรือผู้อื่น'
+  };
+  const harmRisksTh = harmRisks.map(h => harmRiskMap[h] || h).join(', ');
+
   const posList = [];
   const negList = [];
 
   // Behavior & Agitation Positives
-  if (behaviors.includes('verbal_aggression')) posList.push('ส่งเสียงดัง เอะอะโวยวาย พูดจาข่มขู่ หรือก้าวร้าวทางวาจา');
-  if (behaviors.includes('physical_assault_property')) posList.push('ทุบตี ทำร้ายร่างกายผู้อื่น ขว้างปา หรือทำลายข้าวของ 🚩');
-  if (behaviors.includes('weapon_possession')) posList.push('มีอาวุธในครอบครอง หรือพยายามหยิบจับสิ่งของรอบตัวมาเป็นอาวุธ 🚩');
+  if (behaviors.includes('verbal_aggression')) posList.push('ส่งเสียงดัง เอะอะโวยวาย หรือก้าวร้าวทางวาจา');
+  if (behaviors.includes('property_destruction')) posList.push('ขว้างปา หรือทำลายข้าวของ 🚩');
   if (behaviors.includes('restless_pacing')) posList.push('กระสับกระส่าย เดินวนไปมา หงุดหงิดฉุนเฉียว');
-  if (behaviors.includes('withdrawn_talking_alone')) posList.push('พูดคนเดียว หวาดระแวง หรือมีอาการเหม่อลอย');
+  if (behaviors.includes('talking_alone')) posList.push('พูดคนเดียว');
+  if (behaviors.includes('paranoia_behavior')) posList.push('มีพฤติกรรมหวาดระแวง');
+  if (behaviors.includes('spaced_out_withdrawn')) posList.push('เหม่อลอย แยกตัว');
   if (behaviors.includes('other_behavior') && patient.psychBehaviorOtherDetail) {
     posList.push(`พฤติกรรมผิดปกติอื่น: ${patient.psychBehaviorOtherDetail}`);
   }
 
   // Harm Risks Positives
-  if (harmRisks.includes('threat_harm_others')) posList.push('มีพฤติกรรมหรือคำพูดข่มขู่ว่าจะทำร้ายผู้อื่น หรือเอาชีวิตผู้อื่น 🚩');
+  if (harmRisks.includes('physical_assault_others')) posList.push('ทุบตี ทำร้ายร่างกายผู้อื่น 🚩');
+  if (harmRisks.includes('weapon_possession')) posList.push('มีอาวุธในครอบครอง หรือพยายามหยิบจับสิ่งของรอบตัวมาเป็นอาวุธ 🚩');
+  if (harmRisks.includes('threat_harm_others')) posList.push('มีพฤติกรรมหรือคำพูดข่มขู่ว่าจะทำร้ายผู้อื่น หรือจะเอาชีวิตผู้อื่น 🚩');
   if (harmRisks.includes('threat_self_harm')) posList.push('มีพฤติกรรมหรือคำพูดว่าจะทำร้ายตนเอง หรือพยายามฆ่าตัวตาย 🚩');
   if (harmRisks.includes('elopement_high_risk')) posList.push('พยายามวิ่งหนี เตลิด หรือปีนป่ายที่สูง/กระโดดออกนอกอาคาร 🚩');
 
   // Hallucination Positives
-  if (hallucinations.includes('auditory_command')) posList.push('ได้ยินเสียงแว่ว (เสียงคนพูดคุย/ด่าทอ หรือเสียงสั่งให้ทำสิ่งต่างๆ) 🚩');
-  if (hallucinations.includes('visual_hallucination')) posList.push('มองเห็นภาพหลอน (เงาดำ, คน, สัตว์ หรือแมลง)');
-  if (hallucinations.includes('tactile_hallucination')) posList.push('มีความรู้สึกสัมผัสผิดปกติ (เหมือนมีแมลงไต่ตามผิวหนัง)');
+  if (hallucinations.includes('auditory_command')) posList.push('ได้ยินเสียงแว่ว (เสียงคนพูดคุย/ด่าทอ หรือเสียงสั่งการ) 🚩');
+  if (hallucinations.includes('visual_hallucination')) posList.push('มองเห็นภาพหลอน (เงาดำ คน สัตว์ หรือสิ่งไม่มีจริง)');
+  if (hallucinations.includes('tactile_hallucination')) posList.push('มีความรู้สึกสัมผัสผิดปกติ (เหมือนมีแมลงไต่ตามผิวหนัง หรือกระแสไฟ)');
 
   // Delusion Positives
-  if (delusions.includes('persecutory_paranoia')) posList.push('หวาดระแวงอย่างรุนแรงว่าจะมีคนมาทำร้าย ปองร้าย หรือสะกดรอยตาม 🚩');
-  if (delusions.includes('grandiosity_delusion')) posList.push('มีความคิดหลงผิดว่าตนเองเป็นบุคคลพิเศษ มีอำนาจวิเศษ หรือร่ำรวยผิดปกติ');
+  if (delusions.includes('persecutory_paranoia')) posList.push('หวาดระแวงอย่างรุนแรงว่าจะมีคนมาทำร้าย ปองร้าย ลอบวางยา หรือสะกดรอยตาม 🚩');
+  if (delusions.includes('grandiosity_delusion')) posList.push('มีความคิดหลงผิดว่าตนเองเป็นบุคคลพิเศษ มีอำนาจวิเศษ ร่ำรวย หรือมีภารกิจลับ');
   if (delusions.includes('mind_control_thought')) posList.push('มีความคิดว่ามีคนกำลังควบคุมสมอง ดักฟัง หรือส่งสัญญาณความคิดเข้ามา');
 
   // Mood & Sleep Positives
-  if (moodSigns.includes('mania_hyperactive')) posList.push('อารมณ์ครื้นเครงผิดปกติ พูดเร็ว พูดไม่หยุด มีพลังงานล้นเหลือ (Mania)');
+  if (moodSigns.includes('mania_hyperactive')) posList.push('อารมณ์ครื้นเครงผิดปกติ พูดเร็ว พูดไม่หยุด มีพลังงานล้นเหลือ ไม่ยอมอยู่นิ่ง');
   if (moodSigns.includes('irritability_aggression')) posList.push('หงุดหงิด อารมณ์ฉุนเฉียว ก้าวร้าว ระเบิดอารมณ์ง่ายผิดปกติ');
   if (moodSigns.includes('severe_depression_crying')) posList.push('ซึมเศร้า ร้องไห้ เก็บตัว ไม่ยอมทานอาหารและน้ำ ไม่อยากมีชีวิตอยู่');
   if (moodSigns.includes('flat_blunted_affect')) posList.push('อารมณ์ทื่อเฉย ไม่แสดงอารมณ์ หรืออารมณ์ไม่เข้ากับสถานการณ์');
 
   if (sleepSigns.includes('insomnia_decreased_need')) posList.push('นอนไม่หลับติดต่อกันหลายคืน โดยที่ไม่มีอาการง่วงและยังดูกระปรี้กระเปร่า');
   if (sleepSigns.includes('insomnia_anxiety_paranoia')) posList.push('นอนไม่หลับจากความเครียด วิตกกังวล หรือหวาดระแวงตลอดคืน');
-  if (sleepSigns.includes('sundowning_day_night_reversal')) posList.push('นอนสลับกลางวันกลางคืน หรือตื่นขึ้นมาเอะอะสับสนช่วงหัวค่ำ/กลางดึก (Sundowning)');
+  if (sleepSigns.includes('insomnia_fatigue_day_drowsy')) posList.push('นอนไม่หลับ ง่วงกลางวัน อ่อนเพลีย เหม่อลอย');
+  if (sleepSigns.includes('sundowning_day_night_reversal')) posList.push('นอนสลับกลางวันกลางคืน หรือตื่นขึ้นมาเอะอะสับสนช่วงหัวค่ำ/กลางดึก');
 
   // Substance Positives
   if (substances.includes('meth_stimulants')) posList.push('มีประวัติใช้ยาบ้า, ยาไอซ์, โคเคน หรือสารกระตุ้นประสาท 🚩');
-  if (substances.includes('alcohol_withdrawal')) posList.push('มีประวัติดื่มสุราหนักเป็นประจำ หรือเพิ่งหยุด/อดดื่มสุรามา 1-3 วัน (เสี่ยง DT) 🚩');
-  if (substances.includes('cannabis_kratom_cough')) posList.push('มีประวัติใช้กัญชา, น้ำกระท่อม, ยาแก้ไอผสม หรือสารระเหย');
+  if (substances.includes('alcohol_withdrawal')) posList.push('มีประวัติดื่มสุราหนักเป็นประจำ หรือเพิ่งหยุด/อดดื่มสุรามา 1-3 วัน (เสี่ยงถอนสุรา DT) 🚩');
+  if (substances.includes('cannabis_kratom_cough')) posList.push('มีประวัติใช้กัญชา, น้ำกระท่อม, ยาแก้ไอผสม หรือสารระเหย/ดมกาว');
   if (substances.includes('sedative_overdose')) posList.push('มีประวัติรับประทานยานอนหลับ หรือยากดประสาทเกินขนาด 🚩');
+  if (patient.psychSubstanceDetail) {
+    posList.push(`รายละเอียดสารเสพติด/การดื่ม: ${patient.psychSubstanceDetail}`);
+  }
 
   // Organic Signs Positives
   if (organicSigns.includes('high_fever_hyperthermia')) posList.push('มีไข้สูง ตัวร้อนจัด เหงื่อแตกพลั่ก หรือตัวสั่นรุนแรง 🚩');
   if (organicSigns.includes('head_trauma_fall')) posList.push('มีประวัติได้รับอุบัติเหตุศีรษะกระแทก หรือหกล้มก่อนมีอาการ 🚩');
   if (organicSigns.includes('seizure_tongue_bite')) posList.push('มีอาการชักเกร็ง ตาค้าง กัดลิ้น หรือปัสสาวะราดก่อนจะเริ่มเอะอะโวยวาย 🚩');
-  if (organicSigns.includes('diabetes_hypoglycemia_risk')) posList.push('มีโรคเบาหวาน ทานอาหารได้น้อย หรือใช้ยาเบาหวาน (เสี่ยง Hypoglycemia) 🚩');
+  if (organicSigns.includes('diabetes_hypoglycemia_risk')) posList.push('มีโรคประจำตัวเป็นเบาหวาน ทานอาหารได้น้อย หรือใช้ยาเบาหวาน (เสี่ยงน้ำตาลในเลือดต่ำ) 🚩');
   if (organicSigns.includes('severe_headache_stiff_neck')) posList.push('มีอาการปวดศีรษะรุนแรงเฉียบพลัน คอแข็งเกร็ง หรือแขนขาอ่อนแรง 🚩');
   if (organicSigns.includes('muscle_rigidity_lead_pipe')) posList.push('มีอาการกล้ามเนื้อเกร็งแข็งทั่วตัว หรือขากรรไกรเกร็งค้าง (เสี่ยง NMS) 🚩');
 
   if (pastViolence.includes('history_violence_assault')) {
     posList.push('เคยมีประวัติทำร้ายร่างกายผู้อื่น หรือมีคดีความเกี่ยวกับความรุนแรงในอดีต 🚩');
+  }
+  if (pastViolence.includes('past_suicide_attempt')) {
+    posList.push('เคยลงมือ พยายามฆ่าตัวตายมาก่อนในอดีต 🚩');
   }
 
   if (patient.otherSymptomsFree) {
@@ -298,8 +323,11 @@ function renderPsychiatricRapidHpi(patient) {
   }
 
   // Negatives evaluation
-  if (!behaviors.includes('weapon_possession')) {
+  if (!harmRisks.includes('weapon_possession') && !behaviors.includes('weapon_possession')) {
     negList.push('ไม่มีอาวุธในครอบครอง');
+  }
+  if (!harmRisks.includes('physical_assault_others')) {
+    negList.push('ไม่มีประวัติทำร้ายร่างกายผู้อื่นในครั้งนี้');
   }
   if (!harmRisks.includes('threat_self_harm') && !harmRisks.includes('threat_harm_others')) {
     negList.push('ปฏิเสธความคิดทำร้ายตนเอง และปฏิเสธความคิดทำร้ายผู้อื่น');
@@ -311,10 +339,13 @@ function renderPsychiatricRapidHpi(patient) {
     negList.push('ไม่มีความคิดหลงผิด หรือหวาดระแวงปองร้าย');
   }
   if (substances.length === 0) {
-    negList.push('ปฏิเสธการใช้สารเสพติด ยาบ้า กัญชา และปฏิเสธการถอนสุรา');
+    negList.push('ปฏิเสธประวัติการใช้สารเสพติด ยาบ้า กัญชา และปฏิเสธการถอนสุรา');
   }
   if (!organicSigns.includes('high_fever_hyperthermia') && !organicSigns.includes('head_trauma_fall') && !organicSigns.includes('seizure_tongue_bite')) {
-    negList.push('ปฏิเสธไข้สูง, ปฏิเสธอุบัติเหตุศีรษะ และปฏิเสธประวัติชักเกร็งก่อนหน้า');
+    negList.push('ปฏิเสธไข้สูง, ปฏิเสธอุบัติเหตุศีรษะ และปฏิเสธประวัติชักเกร็งนำมาก่อน');
+  }
+  if (!pastViolence.includes('history_violence_assault') && !pastViolence.includes('past_suicide_attempt')) {
+    negList.push('ไม่มีประวัติความรุนแรงหรือพยายามฆ่าตัวตายในอดีต');
   }
 
   const hospLabel = {
@@ -337,14 +368,14 @@ function renderPsychiatricRapidHpi(patient) {
 
   const defaultRapid =
 `[Chief Complaint (CC)]
-เอะอะโวยวาย / อาการทางจิตเวชฉุกเฉิน (Acute Agitation / Psychiatric Emergency) เริ่มมีอาการ/กำเริบมา ${durationStr}
+เอะอะโวยวาย / อาการทางจิตเวชฉุกเฉิน เริ่มมีอาการหรือกำเริบขึ้นมา ${durationStr}
 
 [History of Present Illness (HPI)]
-• ข้อมูลเหตุการณ์และผู้ให้ประวัติ: ผู้ให้ประวัติคือ ${formatPsychInformant(patient)} | เริ่มมีอาการ/กำเริบมา ${durationStr}
-• ระดับอาการเดิมก่อนกำเริบ (Baseline Status): ${formatPsychBaselineStatus(patient)}
+• ข้อมูลเหตุการณ์และผู้ให้ประวัติ: ผู้ให้ประวัติคือ ${formatPsychInformant(patient)} | เริ่มมีอาการหรือกำเริบขึ้นมา ${durationStr}
+• ระดับอาการและสถานะเดิมก่อนกำเริบ: ${formatPsychBaselineStatus(patient)}
 • การรับประทานยาจิตเวช: ${formatPsychCompliance(patient)}
-• พฤติกรรมและความรุนแรงในขณะนี้: ${behaviors.length > 0 ? behaviors.join(', ') : 'ไม่ได้ระบุ'}
-• ความเสี่ยงต่อการทำร้ายตนเอง/ผู้อื่น: ${harmRisks.length > 0 ? harmRisks.join(', ') : 'ปฏิเสธความคิดทำร้าย'}
+• พฤติกรรมและความรุนแรงที่ตรวจพบในขณะนี้: ${behaviorsTh || 'ไม่ได้ระบุ'}
+• ความเสี่ยงต่อการทำร้ายตนเองหรือผู้อื่น: ${harmRisksTh || 'ปฏิเสธความคิดทำร้ายตนเองหรือผู้อื่น'}
 
 • Pertinent Positives:
 ${posList.length > 0 ? posList.map(p => `  - ${p}`).join('\n') : '  - ไม่มีพฤติกรรมก้าวร้าวรุนแรง'}
@@ -360,19 +391,19 @@ ${negList.map(n => `  - ${n}`).join('\n')}
 
 [Emergency Risk Assessment (Red Flags)]
 ${redFlags.length > 0
-  ? `🚩 RED FLAGS DETECTED:\n${redFlags.map(rf => `  * ${rf.textTh}`).join('\n')}`
+  ? `🚩 สัญญาณเตือนฉุกเฉินที่ตรวจพบ:\n${redFlags.map(rf => `  * ${rf.textTh}`).join('\n')}`
   : '✓ ไม่พบสัญญาณเตือนความรุนแรงวิกฤตเฉียบพลันเบื้องต้น'}
 
 [Doctor's Clinical Addendum & Exam]
-• ประวัติเพิ่มเติม/แก้ไขโดยแพทย์: ${docNotes.additional_hpi || '-'}
+• บันทึกประวัติเพิ่มเติมหรือแก้ไขโดยแพทย์: ${docNotes.additional_hpi || '-'}
 • สัญญาณชีพและการตรวจร่างกาย: ${docNotes.physical_exam || '-'}
 • การวินิจฉัยเบื้องต้น (Impression): ${docNotes.preliminary_dx || '-'}
-• แผนการรักษา (Plan/Orders): ${docNotes.plan || '-'}`;
+• แผนการรักษาและคำสั่งการรักษา (Plan/Orders): ${docNotes.plan || '-'}`;
 
   return defaultRapid;
 }
 
-// --- Narrative Note Generator (Doctor View) ---
+// --- Narrative Note Generator (Doctor View - Thai-Centric) ---
 function renderPsychiatricNarrative(patient) {
   const durVal = patient.durationVal;
   const durUnitMap = { minutes: 'นาที', hours: 'ชั่วโมง', days: 'วัน', weeks: 'สัปดาห์', months: 'เดือน', years: 'ปี' };
@@ -383,7 +414,7 @@ function renderPsychiatricNarrative(patient) {
   const baselineStr = formatPsychBaselineStatus(patient);
   const compStr = formatPsychCompliance(patient);
 
-  let note = `ผู้ป่วย${patient.gender || ''} อายุ ${patient.age || 'ไม่ระบุ'} ปี มารับการตรวจที่ห้องฉุกเฉินด้วยอาการเอะอะโวยวาย / อาการทางจิตเวชฉุกเฉิน เริ่มมีอาการหรือกำเริบขึ้นมา ${durStr} ก่อนมารพ. ผู้ให้ข้อมูลคือ${informantStr} ประวัติสถานะเดิมคือ${baselineStr} ด้านการรับประทานยาจิตเวชคือ${compStr}`;
+  let note = `ผู้ป่วย${patient.gender || ''} อายุ ${patient.age || 'ไม่ระบุ'} ปี มารับการตรวจที่ห้องฉุกเฉินด้วยอาการเอะอะโวยวาย / อาการทางจิตเวชฉุกเฉิน เริ่มมีอาการหรือกำเริบขึ้นมา ${durStr} ก่อนมารพ. ผู้ให้ข้อมูลคือ${informantStr} ประวัติสถานะเดิมก่อนกำเริบคือ${baselineStr} ประวัติการรับประทานยาจิตเวชคือ${compStr}`;
 
   const behaviors = Array.isArray(patient.psychBehaviors) ? patient.psychBehaviors : [];
   const harmRisks = Array.isArray(patient.psychHarmRisks) ? patient.psychHarmRisks : [];
@@ -391,21 +422,30 @@ function renderPsychiatricNarrative(patient) {
   const delusions = Array.isArray(patient.psychDelusions) ? patient.psychDelusions : [];
   const substances = Array.isArray(patient.psychSubstances) ? patient.psychSubstances : [];
   const organicSigns = Array.isArray(patient.psychOrganicSigns) ? patient.psychOrganicSigns : [];
+  const pastViolence = Array.isArray(patient.psychPastViolence) ? patient.psychPastViolence : [];
 
   const syms = [];
-  if (behaviors.includes('weapon_possession')) syms.push('มีอาวุธในครอบครอง');
-  if (behaviors.includes('physical_assault_property')) syms.push('ทำร้ายร่างกายและทำลายข้าวของ');
-  if (harmRisks.includes('threat_self_harm')) syms.push('มีพฤติกรรมขู่ฆ่าตัวตาย');
+  if (harmRisks.includes('weapon_possession')) syms.push('มีอาวุธในครอบครอง');
+  if (harmRisks.includes('physical_assault_others')) syms.push('ทำร้ายร่างกายผู้อื่น');
+  if (behaviors.includes('property_destruction')) syms.push('ขว้างปาหรือทำลายข้าวของ');
+  if (behaviors.includes('verbal_aggression')) syms.push('เอะอะโวยวายหรือก้าวร้าวทางวาจา');
+  if (harmRisks.includes('threat_self_harm')) syms.push('มีพฤติกรรมขู่ทำร้ายตนเองหรือฆ่าตัวตาย');
+  if (harmRisks.includes('elopement_high_risk')) syms.push('เสี่ยงต่อการหลบหนีหรือกระโดดที่สูง');
   if (hallucinations.includes('auditory_command')) syms.push('ได้ยินเสียงแว่วสั่งการ');
   if (delusions.includes('persecutory_paranoia')) syms.push('หวาดระแวงปองร้าย');
-  if (substances.includes('meth_stimulants')) syms.push('ใช้สารกระตุ้นยาบ้า');
-  if (substances.includes('alcohol_withdrawal')) syms.push('เพิ่งหยุดดื่มสุรา');
+  if (substances.includes('meth_stimulants')) syms.push('มีประวัติใช้ยาบ้า/สารกระตุ้น');
+  if (substances.includes('alcohol_withdrawal')) syms.push('เพิ่งหยุดดื่มสุรา (เสี่ยงถอนสุรา DT)');
   if (organicSigns.includes('high_fever_hyperthermia')) syms.push('มีไข้สูงตัวร้อนจัด');
+  if (pastViolence.includes('past_suicide_attempt')) syms.push('เคยพยายามฆ่าตัวตายในอดีต');
 
   if (syms.length > 0) {
     note += ` ร่วมกับมีอาการสำคัญ: ${syms.join(', ')}`;
   } else {
     note += ' ผู้ป่วยไม่มีอาวุธ ปฏิเสธความคิดทำร้ายตนเองหรือผู้อื่น และไม่มีอาการชักหรือไข้สูงนำมาก่อน';
+  }
+
+  if (patient.psychSubstanceDetail) {
+    note += ` (รายละเอียดสารเสพติด/แอลกอฮอล์: ${patient.psychSubstanceDetail})`;
   }
 
   return note;
@@ -464,8 +504,6 @@ function updatePsychiatricOutputs(rec) {
       informant_detail: rec.psychInformantRel || '',
       prior_baseline_type: rec.psychPriorBaseline || null,
       baseline_status: rec.psychBaselineStatus || null,
-      known_conditions: Array.isArray(rec.psychKnownConditions) ? rec.psychKnownConditions : [],
-      known_diagnosis_detail: rec.psychKnownDiagDetail || '',
       behaviors: Array.isArray(rec.psychBehaviors) ? rec.psychBehaviors : [],
       behavior_other_detail: rec.psychBehaviorOtherDetail || '',
       harm_risks: Array.isArray(rec.psychHarmRisks) ? rec.psychHarmRisks : [],
@@ -474,6 +512,7 @@ function updatePsychiatricOutputs(rec) {
       mood_signs: Array.isArray(rec.psychMoodSigns) ? rec.psychMoodSigns : [],
       sleep_signs: Array.isArray(rec.psychSleepSigns) ? rec.psychSleepSigns : [],
       substances: Array.isArray(rec.psychSubstances) ? rec.psychSubstances : [],
+      substance_detail: rec.psychSubstanceDetail || '',
       organic_signs: Array.isArray(rec.psychOrganicSigns) ? rec.psychOrganicSigns : [],
       compliance: rec.psychCompliance || null,
       missed_days: rec.psychMissedDays || null,
@@ -677,47 +716,26 @@ const PSYCHIATRIC_FORM_HTML = `
         </label>
       </div>
 
-      <!-- Progressive disclosure for prior baseline details -->
-      <div id="psychPriorBaselineSubContainer" class="hidden pl-4 sm:pl-6 space-y-4 border-l-2 border-medical-200 pt-2 pb-2">
-        <div>
-          <p class="text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">ระดับอาการและการใช้ชีวิตเดิมของผู้ป่วยก่อนกำเริบ (Baseline Status):</p>
-          <div class="space-y-2">
-            <label class="selectable-card flex items-start p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-              <input type="radio" name="psychBaselineStatus" value="baseline_normal_asymptomatic" class="text-medical-600 focus:ring-medical-500 mr-2.5 mt-0.5 h-4 w-4 flex-shrink-0">
-              <span class="text-xs sm:text-sm text-slate-800">เดิมอาการสงบดี ใช้ชีวิตประจำวันและทำงานได้เหมือนคนปกติ</span>
-            </label>
-            <label class="selectable-card flex items-start p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-              <input type="radio" name="psychBaselineStatus" value="baseline_mild_independent" class="text-medical-600 focus:ring-medical-500 mr-2.5 mt-0.5 h-4 w-4 flex-shrink-0">
-              <span class="text-xs sm:text-sm text-slate-800">เดิมมีอาการผิดปกติอยู่บ้าง แต่ยังดูแลช่วยเหลือตัวเองและใช้ชีวิตประจำวันได้ปกติ (เช่น มีเก็บตัว พูดคนเดียวบ้าง แต่ยังทานข้าว อาบน้ำ สื่อสารรู้เรื่อง)</span>
-            </label>
-            <label class="selectable-card flex items-start p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-              <input type="radio" name="psychBaselineStatus" value="baseline_chronic_confusion" class="text-medical-600 focus:ring-medical-500 mr-2.5 mt-0.5 h-4 w-4 flex-shrink-0">
-              <span class="text-xs sm:text-sm text-slate-800">เดิมมีอาการสับสน หลงลืม หรือวุ่นวายอยู่เป็นประจำ แต่ไม่เคยรุนแรงขนาดนี้ (เช่น ผู้สูงอายุสมองเสื่อม หรือผู้ป่วยจิตเวชเรื้อรังที่ญาติต้องช่วยดูแล)</span>
-            </label>
-            <label class="selectable-card flex items-start p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-              <input type="radio" name="psychBaselineStatus" value="baseline_intermittent_agitation" class="text-medical-600 focus:ring-medical-500 mr-2.5 mt-0.5 h-4 w-4 flex-shrink-0">
-              <span class="text-xs sm:text-sm text-slate-800">เดิมมีพฤติกรรมก้าวร้าว หงุดหงิด หรือควบคุมอารมณ์ได้ยากเป็นระยะๆ อยู่แล้ว</span>
-            </label>
-          </div>
-        </div>
-
-        <div>
-          <p class="text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">ข้อมูลโรคจิตเวชเดิมและการรักษา (เลือกได้หลายข้อหากทราบ):</p>
-          <div class="space-y-2">
-            <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-              <input type="checkbox" name="psychKnownConditions" value="has_medical_diagnosis" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4 rounded flex-shrink-0"
-                onchange="handlePsychKnownDiagChange(this)">
-              <span class="text-xs sm:text-sm text-slate-800">เคยได้รับการวินิจฉัยว่าเป็นโรคทางจิตเวชจากแพทย์</span>
-            </label>
-            <div id="psychKnownDiagDetailContainer" class="hidden pl-4">
-              <input type="text" id="psychKnownDiagDetail" placeholder="ระบุโรค เช่น จิตเภท, ไบโพลาร์, ซึมเศร้า, สมองเสื่อม..."
-                class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2 text-slate-900 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-medical-500 focus:bg-white transition">
-            </div>
-            <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-              <input type="checkbox" name="psychKnownConditions" value="prior_psych_hospitalization" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4 rounded flex-shrink-0">
-              <span class="text-xs sm:text-sm text-slate-800">เคยมีประวัติเข้ารับการรักษาใน รพ. จากโรคทางจิตเวชมาก่อน</span>
-            </label>
-          </div>
+      <!-- Progressive disclosure for prior baseline details (Baseline Status Only) -->
+      <div id="psychPriorBaselineSubContainer" class="hidden pl-4 sm:pl-6 space-y-3 border-l-2 border-medical-200 pt-2 pb-2">
+        <p class="text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">ระดับอาการและการใช้ชีวิตเดิมของผู้ป่วยก่อนกำเริบ (Baseline Status):</p>
+        <div class="space-y-2">
+          <label class="selectable-card flex items-start p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+            <input type="radio" name="psychBaselineStatus" value="baseline_normal_asymptomatic" class="text-medical-600 focus:ring-medical-500 mr-2.5 mt-0.5 h-4 w-4 flex-shrink-0">
+            <span class="text-xs sm:text-sm text-slate-800">เดิมอาการสงบดี ใช้ชีวิตประจำวันและทำงานได้เหมือนคนปกติ</span>
+          </label>
+          <label class="selectable-card flex items-start p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+            <input type="radio" name="psychBaselineStatus" value="baseline_mild_independent" class="text-medical-600 focus:ring-medical-500 mr-2.5 mt-0.5 h-4 w-4 flex-shrink-0">
+            <span class="text-xs sm:text-sm text-slate-800">เดิมมีอาการผิดปกติอยู่บ้าง แต่ยังดูแลช่วยเหลือตัวเองและใช้ชีวิตประจำวันได้ปกติ (เช่น มีเก็บตัว พูดคนเดียวบ้าง แต่ยังทานข้าว อาบน้ำ สื่อสารรู้เรื่อง)</span>
+          </label>
+          <label class="selectable-card flex items-start p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+            <input type="radio" name="psychBaselineStatus" value="baseline_chronic_confusion" class="text-medical-600 focus:ring-medical-500 mr-2.5 mt-0.5 h-4 w-4 flex-shrink-0">
+            <span class="text-xs sm:text-sm text-slate-800">เดิมมีอาการสับสน หลงลืม หรือวุ่นวายอยู่เป็นประจำ แต่ไม่เคยรุนแรงขนาดนี้ (เช่น ผู้สูงอายุสมองเสื่อม หรือผู้ป่วยจิตเวชเรื้อรังที่ญาติต้องช่วยดูแล)</span>
+          </label>
+          <label class="selectable-card flex items-start p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+            <input type="radio" name="psychBaselineStatus" value="baseline_intermittent_agitation" class="text-medical-600 focus:ring-medical-500 mr-2.5 mt-0.5 h-4 w-4 flex-shrink-0">
+            <span class="text-xs sm:text-sm text-slate-800">เดิมมีพฤติกรรมก้าวร้าว หงุดหงิด หรือควบคุมอารมณ์ได้ยากเป็นระยะๆ อยู่แล้ว</span>
+          </label>
         </div>
       </div>
     </div>
@@ -730,25 +748,29 @@ const PSYCHIATRIC_FORM_HTML = `
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
         <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
           <input type="checkbox" name="psychBehaviors" value="verbal_aggression" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4 rounded flex-shrink-0">
-          <span class="text-xs sm:text-sm text-slate-800">ส่งเสียงดัง เอะอะโวยวาย พูดจาข่มขู่ หรือก้าวร้าวทางวาจา</span>
+          <span class="text-xs sm:text-sm text-slate-800">ส่งเสียงดัง เอะอะโวยวาย หรือก้าวร้าวทางวาจา</span>
         </label>
         <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-          <input type="checkbox" name="psychBehaviors" value="physical_assault_property" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4 rounded flex-shrink-0">
-          <span class="text-xs sm:text-sm text-slate-800">ทุบตี ทำร้ายร่างกายผู้อื่น ขว้างปา หรือทำลายข้าวของ</span>
-        </label>
-        <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-          <input type="checkbox" name="psychBehaviors" value="weapon_possession" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4 rounded flex-shrink-0">
-          <span class="text-xs sm:text-sm text-slate-800">มีอาวุธในครอบครอง หรือพยายามหยิบจับสิ่งของรอบตัวมาเป็นอาวุธ</span>
+          <input type="checkbox" name="psychBehaviors" value="property_destruction" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4 rounded flex-shrink-0">
+          <span class="text-xs sm:text-sm text-slate-800">ขว้างปา หรือทำลายข้าวของ</span>
         </label>
         <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
           <input type="checkbox" name="psychBehaviors" value="restless_pacing" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4 rounded flex-shrink-0">
-          <span class="text-xs sm:text-sm text-slate-800">กระสับกระส่าย เดินวนไปมา หงุดหงิดฉุนเฉียว แต่ยังไม่ใช้ความรุนแรง</span>
+          <span class="text-xs sm:text-sm text-slate-800">กระสับกระส่าย เดินวนไปมา หงุดหงิดฉุนเฉียว</span>
         </label>
         <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-          <input type="checkbox" name="psychBehaviors" value="withdrawn_talking_alone" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4 rounded flex-shrink-0">
-          <span class="text-xs sm:text-sm text-slate-800">พูดคนเดียว หวาดระแวง หรือมีอาการเหม่อลอย โดยไม่มีพฤติกรรมก้าวร้าว</span>
+          <input type="checkbox" name="psychBehaviors" value="talking_alone" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4 rounded flex-shrink-0">
+          <span class="text-xs sm:text-sm text-slate-800">พูดคนเดียว</span>
         </label>
         <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+          <input type="checkbox" name="psychBehaviors" value="paranoia_behavior" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4 rounded flex-shrink-0">
+          <span class="text-xs sm:text-sm text-slate-800">หวาดระแวง</span>
+        </label>
+        <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+          <input type="checkbox" name="psychBehaviors" value="spaced_out_withdrawn" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4 rounded flex-shrink-0">
+          <span class="text-xs sm:text-sm text-slate-800">เหม่อลอย</span>
+        </label>
+        <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer sm:col-span-2">
           <input type="checkbox" name="psychBehaviors" value="other_behavior" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4 rounded flex-shrink-0"
             onchange="handlePsychBehaviorOtherChange(this)">
           <span class="text-xs sm:text-sm text-slate-800">มีพฤติกรรมผิดปกติอื่นๆ</span>
@@ -772,8 +794,16 @@ const PSYCHIATRIC_FORM_HTML = `
       </label>
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
         <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+          <input type="checkbox" name="psychHarmRisks" value="physical_assault_others" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4 rounded flex-shrink-0">
+          <span class="text-xs sm:text-sm text-slate-800">ทุบตี ทำร้ายร่างกายผู้อื่น</span>
+        </label>
+        <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+          <input type="checkbox" name="psychHarmRisks" value="weapon_possession" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4 rounded flex-shrink-0">
+          <span class="text-xs sm:text-sm text-slate-800">มีอาวุธในครอบครอง หรือพยายามหยิบจับสิ่งของรอบตัวมาเป็นอาวุธ</span>
+        </label>
+        <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
           <input type="checkbox" name="psychHarmRisks" value="threat_harm_others" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4 rounded flex-shrink-0">
-          <span class="text-xs sm:text-sm text-slate-800">มีพฤติกรรมหรือคำพูดข่มขู่ว่าจะทำร้ายผู้อื่น หรือเอาชีวิตผู้อื่น</span>
+          <span class="text-xs sm:text-sm text-slate-800">มีพฤติกรรมหรือคำพูดข่มขู่ว่าจะทำร้ายผู้อื่น หรือจะเอาชีวิตผู้อื่น</span>
         </label>
         <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
           <input type="checkbox" name="psychHarmRisks" value="threat_self_harm" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4 rounded flex-shrink-0">
@@ -916,7 +946,11 @@ const PSYCHIATRIC_FORM_HTML = `
               <input type="checkbox" name="psychSleepSigns" value="insomnia_anxiety_paranoia" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4 rounded flex-shrink-0">
               <span class="text-xs sm:text-sm text-slate-800">นอนไม่หลับจากความเครียด วิตกกังวล หรือหวาดระแวงตลอดคืน</span>
             </label>
-            <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer sm:col-span-2">
+            <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+              <input type="checkbox" name="psychSleepSigns" value="insomnia_fatigue_day_drowsy" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4 rounded flex-shrink-0">
+              <span class="text-xs sm:text-sm text-slate-800">นอนไม่หลับ ง่วงกลางวัน อ่อนเพลีย เหม่อลอย</span>
+            </label>
+            <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
               <input type="checkbox" name="psychSleepSigns" value="sundowning_day_night_reversal" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4 rounded flex-shrink-0">
               <span class="text-xs sm:text-sm text-slate-800">นอนสลับกลางวันกลางคืน หรือตื่นขึ้นมาเอะอะสับสนช่วงหัวค่ำ/กลางดึก</span>
             </label>
@@ -948,7 +982,7 @@ const PSYCHIATRIC_FORM_HTML = `
           <p class="text-xs text-slate-500">ติ๊กเลือกหากมีประวัติใช้ยาบ้า ยาไอซ์ กัญชา หรือดื่มสุราหนัก/เพิ่งหยุดดื่ม</p>
         </div>
       </label>
-      <div id="psychSubstanceSubGroup" class="hidden pl-4 sm:pl-6 space-y-2 border-l-2 border-medical-200">
+      <div id="psychSubstanceSubGroup" class="hidden pl-4 sm:pl-6 space-y-3 border-l-2 border-medical-200">
         <p class="text-xs text-slate-600 font-medium mb-1">เลือกสารที่ตรวจพบประวัติการใช้ (เลือกได้หลายข้อ):</p>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
           <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
@@ -967,6 +1001,15 @@ const PSYCHIATRIC_FORM_HTML = `
             <input type="checkbox" name="psychSubstances" value="sedative_overdose" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4 rounded flex-shrink-0">
             <span class="text-xs sm:text-sm text-slate-800">มีประวัติรับประทานยานอนหลับ หรือยากดประสาทเกินขนาด</span>
           </label>
+        </div>
+
+        <!-- กล่องพิมพ์ระบุรายละเอียดสารเสพติด/แอลกอฮอล์เพิ่มเติม -->
+        <div id="psychSubstanceDetailContainer" class="mt-3 pt-2 border-t border-slate-100">
+          <label class="block text-xs font-medium text-slate-600 mb-1">
+            ระบุรายละเอียดสารเสพติด ปริมาณ หรือการดื่มเพิ่มเติม (ถ้ามี):
+          </label>
+          <input type="text" id="psychSubstanceDetail" placeholder="ระบุ เช่น ยาบ้า 2 เม็ด/วัน, ดื่มเหล้าขาว 1 ขวด/วัน มา 5 ปี, กัญชา..."
+            class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2 text-slate-900 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-medical-500 focus:bg-white transition">
         </div>
       </div>
     </div>
@@ -1072,6 +1115,10 @@ const PSYCHIATRIC_FORM_HTML = `
           <span class="text-xs sm:text-sm text-slate-800">เคยมีประวัติทำร้ายร่างกายผู้อื่น หรือมีคดีความเกี่ยวกับความรุนแรง</span>
         </label>
         <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+          <input type="checkbox" name="psychPastViolence" value="past_suicide_attempt" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4 rounded flex-shrink-0">
+          <span class="text-xs sm:text-sm text-slate-800">เคยลงมือ พยายามฆ่าตัวตายมาก่อนในอดีต</span>
+        </label>
+        <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer sm:col-span-2">
           <input type="checkbox" name="psychPastViolence" value="no_past_violence" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4 rounded flex-shrink-0">
           <span class="text-xs sm:text-sm text-slate-800">ไม่มีประวัติความรุนแรงในอดีต</span>
         </label>
@@ -1112,8 +1159,6 @@ const psychiatricEmergencyModule = {
 
     const priorBaseline = getRadio('psychPriorBaseline');
     const baselineStatus = (priorBaseline === 'known_psych_history') ? getRadio('psychBaselineStatus') : null;
-    const knownConditions = (priorBaseline === 'known_psych_history') ? getChecks('psychKnownConditions') : [];
-    const knownDiagDetail = document.getElementById('psychKnownDiagDetail')?.value?.trim() || '';
 
     const behaviors = getChecks('psychBehaviors');
     const behaviorOtherDetail = document.getElementById('psychBehaviorOtherDetail')?.value?.trim() || '';
@@ -1133,6 +1178,7 @@ const psychiatricEmergencyModule = {
 
     const parentSubstance = document.getElementById('psychParentSubstance')?.checked;
     const substances = parentSubstance ? getChecks('psychSubstances') : [];
+    const substanceDetail = document.getElementById('psychSubstanceDetail')?.value?.trim() || '';
 
     const organicSigns = getChecks('psychOrganicSigns');
     const compliance = getRadio('psychCompliance');
@@ -1165,8 +1211,6 @@ const psychiatricEmergencyModule = {
       psychInformantRel: informantRel,
       psychPriorBaseline: priorBaseline,
       psychBaselineStatus: baselineStatus,
-      psychKnownConditions: knownConditions,
-      psychKnownDiagDetail: knownDiagDetail,
       psychBehaviors: behaviors,
       psychBehaviorOtherDetail: behaviorOtherDetail,
       psychHarmRisks: harmRisks,
@@ -1175,6 +1219,7 @@ const psychiatricEmergencyModule = {
       psychMoodSigns: moodSigns,
       psychSleepSigns: sleepSigns,
       psychSubstances: substances,
+      psychSubstanceDetail: substanceDetail,
       psychOrganicSigns: organicSigns,
       psychCompliance: compliance,
       psychMissedDays: !isNaN(missedDaysVal) ? missedDaysVal : null,
@@ -1227,13 +1272,6 @@ const psychiatricEmergencyModule = {
     }
     setRadio('psychBaselineStatus', data.psychBaselineStatus);
 
-    setChecks('psychKnownConditions', data.psychKnownConditions);
-    if (Array.isArray(data.psychKnownConditions) && data.psychKnownConditions.includes('has_medical_diagnosis')) {
-      togglePsychGroup('psychKnownDiagDetailContainer', true);
-      const dEl = document.getElementById('psychKnownDiagDetail');
-      if (dEl) dEl.value = data.psychKnownDiagDetail || '';
-    }
-
     setChecks('psychBehaviors', data.psychBehaviors);
     if (Array.isArray(data.psychBehaviors) && data.psychBehaviors.includes('other_behavior')) {
       togglePsychGroup('psychBehaviorOtherDetailContainer', true);
@@ -1278,6 +1316,11 @@ const psychiatricEmergencyModule = {
       setChecks('psychSubstances', data.psychSubstances);
     }
 
+    if (data.psychSubstanceDetail) {
+      const sDetEl = document.getElementById('psychSubstanceDetail');
+      if (sDetEl) sDetEl.value = data.psychSubstanceDetail;
+    }
+
     setChecks('psychOrganicSigns', data.psychOrganicSigns);
 
     setRadio('psychCompliance', data.psychCompliance);
@@ -1293,7 +1336,7 @@ const psychiatricEmergencyModule = {
   },
 
   clearForm: function() {
-    ['psychDurationVal', 'psychInformantRel', 'psychKnownDiagDetail', 'psychBehaviorOtherDetail', 'psychMissedDays'].forEach(id => {
+    ['psychDurationVal', 'psychInformantRel', 'psychBehaviorOtherDetail', 'psychSubstanceDetail', 'psychMissedDays'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.value = '';
     });
@@ -1309,7 +1352,6 @@ const psychiatricEmergencyModule = {
     [
       'psychInformantRelContainer',
       'psychPriorBaselineSubContainer',
-      'psychKnownDiagDetailContainer',
       'psychBehaviorOtherDetailContainer',
       'psychHallucinationSubGroup',
       'psychDelusionSubGroup',
@@ -1370,16 +1412,15 @@ const psychiatricEmergencyModule = {
       psychInformantRel: 'สภ.เมืองราชบุรี',
       psychPriorBaseline: 'known_psych_history',
       psychBaselineStatus: 'baseline_normal_asymptomatic',
-      psychKnownConditions: [],
-      psychKnownDiagDetail: '',
-      psychBehaviors: ['verbal_aggression', 'physical_assault_property', 'weapon_possession'],
+      psychBehaviors: ['verbal_aggression', 'property_destruction'],
       psychBehaviorOtherDetail: '',
-      psychHarmRisks: ['threat_harm_others'],
+      psychHarmRisks: ['physical_assault_others', 'weapon_possession', 'threat_harm_others'],
       psychHallucinations: ['auditory_command'],
       psychDelusions: ['persecutory_paranoia'],
       psychMoodSigns: ['irritability_aggression'],
       psychSleepSigns: ['insomnia_decreased_need'],
       psychSubstances: ['meth_stimulants'],
+      psychSubstanceDetail: 'เสพยาบ้าต่อเนื่อง 3 วัน',
       psychOrganicSigns: [],
       psychCompliance: 'no_prior_rx',
       psychMissedDays: null,
@@ -1413,16 +1454,15 @@ const psychiatricEmergencyModule = {
       psychInformantRel: 'บุตรสาว',
       psychPriorBaseline: 'known_psych_history',
       psychBaselineStatus: 'baseline_chronic_confusion',
-      psychKnownConditions: ['has_medical_diagnosis'],
-      psychKnownDiagDetail: 'สมองเสื่อมระยะเริ่มต้น (Dementia)',
       psychBehaviors: ['verbal_aggression', 'restless_pacing'],
       psychBehaviorOtherDetail: '',
-      psychHarmRisks: [],
+      psychHarmRisks: ['no_harm_threat'],
       psychHallucinations: ['visual_hallucination', 'tactile_hallucination'],
       psychDelusions: [],
       psychMoodSigns: ['irritability_aggression'],
       psychSleepSigns: ['sundowning_day_night_reversal'],
       psychSubstances: [],
+      psychSubstanceDetail: '',
       psychOrganicSigns: ['high_fever_hyperthermia', 'diabetes_hypoglycemia_risk'],
       psychCompliance: 'regular',
       psychMissedDays: null,
@@ -1456,9 +1496,7 @@ const psychiatricEmergencyModule = {
       psychInformantRel: 'มารดา',
       psychPriorBaseline: 'known_psych_history',
       psychBaselineStatus: 'baseline_mild_independent',
-      psychKnownConditions: ['has_medical_diagnosis', 'prior_psych_hospitalization'],
-      psychKnownDiagDetail: 'โรคจิตเภท (Schizophrenia)',
-      psychBehaviors: ['withdrawn_talking_alone'],
+      psychBehaviors: ['talking_alone', 'spaced_out_withdrawn'],
       psychBehaviorOtherDetail: '',
       psychHarmRisks: ['threat_self_harm', 'elopement_high_risk'],
       psychHallucinations: ['auditory_command'],
@@ -1466,10 +1504,11 @@ const psychiatricEmergencyModule = {
       psychMoodSigns: ['severe_depression_crying'],
       psychSleepSigns: ['insomnia_anxiety_paranoia'],
       psychSubstances: [],
+      psychSubstanceDetail: '',
       psychOrganicSigns: [],
       psychCompliance: 'missed_days',
       psychMissedDays: 30,
-      psychPastViolence: ['no_past_violence']
+      psychPastViolence: ['past_suicide_attempt']
     },
 
     // Case 4: Severe Alcohol Withdrawal / Impending Delirium Tremens (ESI 2 / 3)
@@ -1499,8 +1538,6 @@ const psychiatricEmergencyModule = {
       psychInformantRel: 'เพื่อนบ้าน',
       psychPriorBaseline: 'known_psych_history',
       psychBaselineStatus: 'baseline_mild_independent',
-      psychKnownConditions: [],
-      psychKnownDiagDetail: '',
       psychBehaviors: ['restless_pacing', 'verbal_aggression'],
       psychBehaviorOtherDetail: '',
       psychHarmRisks: ['no_harm_threat'],
@@ -1509,6 +1546,7 @@ const psychiatricEmergencyModule = {
       psychMoodSigns: ['irritability_aggression'],
       psychSleepSigns: ['insomnia_anxiety_paranoia'],
       psychSubstances: ['alcohol_withdrawal'],
+      psychSubstanceDetail: 'หยุดดื่มเหล้าขาวกะทันหันมาได้ 2 วัน',
       psychOrganicSigns: [],
       psychCompliance: 'no_prior_rx',
       psychMissedDays: null,

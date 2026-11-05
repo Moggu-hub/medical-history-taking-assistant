@@ -1,6 +1,6 @@
 # 🕵️‍♂️ รายงานการตรวจสอบคุณภาพโค้ดและสถาปัตยกรรม (AUTOMATED & AI AUDIT REPORT)
 
-- **วันที่ตรวจสอบ:** `04/11/2026` เวลา `22:43` น. (24-Hour Format)
+- **วันที่ตรวจสอบ:** `05/11/2026` เวลา `10:59` น. (24-Hour Format)
 - **สถานะภาพรวม (Overall Verdict):** **✅ PASS (ผ่านการตรวจสอบครบทุกมิติ)**
 - **จำนวนหัวข้อที่ผ่าน (Passed Checks):** 7 รายการ
 - **จำนวนคำเตือน (Warnings):** 0 รายการ
@@ -39,7 +39,7 @@
 | `cc_modules/22_hemoptysis.js` | 1,671 | 2,000 | ✅ ปกติ (Safe) |
 | `cc_modules/23_epistaxis.js` | 1,299 | 2,000 | ✅ ปกติ (Safe) |
 | `cc_modules/24_hypertension.js` | 1,520 | 2,000 | ✅ ปกติ (Safe) |
-| `cc_modules/25_psychiatric_emergency.js` | 1,530 | 2,000 | ✅ ปกติ (Safe) |
+| `cc_modules/25_psychiatric_emergency.js` | 1,568 | 2,000 | ✅ ปกติ (Safe) |
 
 ---
 
@@ -48,7 +48,7 @@
 - ✅ index.html: 1987 บรรทัด (อยู่ในเกณฑ์ปลอดภัย <= 2000 บรรทัด)
 - ✅ clinical_knowledge_core.js: 992 บรรทัด (อยู่ในเกณฑ์ปลอดภัย <= 1000 บรรทัด)
 - ✅ core_engine.js: 2949 บรรทัด (อยู่ในเกณฑ์ปลอดภัย <= 3200 บรรทัด)
-- ✅ Core System Freeze: core_engine.js ไม่ถูกแก้ไขนับจากจุดเซฟ 'v2.51' (SHA-256 ตรงกัน 100%)
+- ✅ Core System Freeze: core_engine.js ไม่ถูกแก้ไขนับจากจุดเซฟ 'v2.52' (SHA-256 ตรงกัน 100%)
 - ✅ พบไฟล์โมดูลรายอาการใน cc_modules/ จำนวน 25 โมดูล
 - ✅ ทุกโมดูลใน cc_modules/ ผ่านเกณฑ์โครงสร้าง Lifecycle Hooks, ความปลอดภัย UI คนไข้ และมาตรฐานวันที่ dd/mm/yyyy + เวลา 24 ชั่วโมง HH:mm
 - ✅ ชุดทดสอบ Mandatory 4-Dimension Core Guard TDD (tests/core_guard_test.js) ผ่านครบ 100% ทั้ง 4 มิติ!
