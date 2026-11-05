@@ -69,16 +69,31 @@ function evaluatePsychiatricRedFlags(patient) {
   const organicSigns = Array.isArray(patient.psychOrganicSigns) ? patient.psychOrganicSigns : [];
   const pastViolence = Array.isArray(patient.psychPastViolence) ? patient.psychPastViolence : [];
 
-  // 1. Active Extreme Violence with Weapon / Imminent Danger (ESI 1 / 2)
+  // 1. Active Extreme Violence / Physical Assault / Weapon Threat (ESI 1 / 2)
   const hasWeapon = harmRisks.includes('weapon_possession') || behaviors.includes('weapon_possession');
   const hasPhysicalAssault = harmRisks.includes('physical_assault_others');
   const hasPhysicalViolenceWithThreat = (hasPhysicalAssault || behaviors.includes('property_destruction')) && harmRisks.includes('threat_harm_others');
   if (hasWeapon || hasPhysicalAssault || hasPhysicalViolenceWithThreat) {
+    let redFlagTitle = '';
+    let redFlagRisk = '';
+    if (hasWeapon) {
+      redFlagTitle = hasPhysicalAssault
+        ? 'ภาวะก้าวร้าวรุนแรงเฉียบพลัน ทำร้ายร่างกายผู้อื่น และมีอาวุธในครอบครอง (Active Physical Assault with Weapon Threat)'
+        : 'ภาวะก้าวร้าวรุนแรงเฉียบพลัน และมีอาวุธในครอบครอง (Active Extreme Violence with Weapon Threat)';
+      redFlagRisk = 'เสี่ยงต่อการบาดเจ็บร้ายแรงหรือเสียชีวิตจากอาวุธต่อบุคลากร ผู้ป่วย หรือผู้พบเห็น (Severe physical injury or fatality with weapon).';
+    } else if (hasPhysicalAssault) {
+      redFlagTitle = 'ภาวะก้าวร้าวรุนแรงเฉียบพลัน และทำร้ายร่างกายผู้อื่น (Active Physical Assault / Severe Violence)';
+      redFlagRisk = 'เสี่ยงต่อการบาดเจ็บทางร่างกายต่อบุคลากรทางการแพทย์ ผู้ป่วยข้างเคียง หรือทำลายทรัพย์สินในห้องฉุกเฉิน (Severe physical injury or assault to staff/bystanders).';
+    } else {
+      redFlagTitle = 'ภาวะก้าวร้าวรุนแรงเฉียบพลัน และข่มขู่ทำร้ายผู้อื่น (Active Severe Agitation / Threat of Violence)';
+      redFlagRisk = 'เสี่ยงต่อการระเบิดอารมณ์ทำร้ายร่างกายหรือทำลายทรัพย์สินในห้องฉุกเฉิน (Severe escalation to violence or property destruction).';
+    }
+
     rfs.push({
       key: 'rf_psych_active_violence_weapon',
       level: 1,
-      textTh: 'ภาวะก้าวร้าวรุนแรงเฉียบพลัน ทำร้ายร่างกายผู้อื่น หรือมีอาวุธในครอบครอง (Active Extreme Violence with Weapon)',
-      risk: 'Severe physical injury or fatality to staff, patient, or bystanders; acute destruction of emergency department property.',
+      textTh: redFlagTitle,
+      risk: redFlagRisk,
       suggestedAction: 'Immediate Code White Activation (ระงับเหตุฉุกเฉิน). Police/Security perimeter lockdown. Isolate patient in quiet seclusion room. Stat Chemical Restraint (e.g. Haloperidol 5 mg + Lorazepam 2 mg IM or Midazolam 5 mg IM) with standard 4-point physical restraints under continuous medical supervision.'
     });
   }
@@ -546,7 +561,14 @@ function generatePsychiatricCds(patient, { rfs, ddxList = [], workupList = [], m
   const hasSuicide = redFlags.some(r => r.key === 'rf_psych_high_suicidal_intent');
 
   if (hasWeaponViolence) {
-    ddxList.push('1. 🚨 Acute Behavioral Emergency with Extreme Violence / Weapon Threat');
+    const harmRisks = Array.isArray(patient.psychHarmRisks) ? patient.psychHarmRisks : [];
+    const behaviors = Array.isArray(patient.psychBehaviors) ? patient.psychBehaviors : [];
+    const hasWeapon = harmRisks.includes('weapon_possession') || behaviors.includes('weapon_possession');
+    if (hasWeapon) {
+      ddxList.push('1. 🚨 Acute Behavioral Emergency with Weapon Threat (ภาวะก้าวร้าวรุนแรงเฉียบพลันพร้อมอาวุธ)');
+    } else {
+      ddxList.push('1. 🚨 Acute Behavioral Emergency with Physical Violence / Assault (ภาวะก้าวร้าวรุนแรงเฉียบพลันทำร้ายร่างกาย)');
+    }
     ddxList.push('2. Substance-Induced Psychosis (Methamphetamine / Sympathomimetic)');
     ddxList.push('3. Acute Exacerbation of Schizophrenia / Bipolar Mania');
     workupList.push('Emergency Code White activation and security team perimeter control');
