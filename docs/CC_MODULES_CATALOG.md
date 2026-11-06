@@ -1,7 +1,7 @@
 # 📚 สารบัญและข้อกำหนดอาการนำทางคลินิก (Chief Complaints Master Catalog & Clinical Logic)
 **Project:** ระบบผู้ช่วยซักประวัติและคัดกรองอัจฉริยะสำหรับห้องฉุกเฉิน (Smart Triage & Clinical Intake Web Assistant)  
 **Target Facility:** ห้องฉุกเฉิน โรงพยาบาลราชบุรี (Ratchaburi Hospital ER)  
-**Status:** 26 Active Modules Completed | 97 Seed Cases Verified | 5 Upcoming Modules Planned  
+**Status:** 27 Active Modules Completed | 101 Seed Cases Verified | 4 Upcoming Modules Planned  
 **Purpose:** เอกสารอ้างอิงกลาง (Single Clinical Reference) รวบรวมข้อกำหนด สัญญาณเตือนวิกฤต (Red Flags) ตรรกะการประเมินแยกโรค และเคสจำลองของทั้ง 20 อาการ โดยไม่ต้องใส่คอมเมนต์ยาวในไฟล์ `.js` เพื่อรักษาโควตาความยาวไฟล์ (`Line Quota <= 2,000 บรรทัด`)
 
 ---
@@ -36,6 +36,7 @@
 | **24**<br>`hypertension` | `24_hypertension.js` | **ตรวจพบความดันโลหิตสูง**<br>(Severe Hypertension Screen) | 4 การ์ด | • Acute Aortic Dissection with Severe HTN (ESI 1: เจ็บแปล๊บรุนแรงฉีกขาดในอกทะลุหลัง SBP < 120 ใน 20 นาที)<br>• Acute Pulmonary Edema / Flash Pulmonary Edema (ESI 1: นอนราบไม่ได้ หอบเหนื่อยรุนแรง ฟองเสมหะชมพู SpO2 ตก)<br>• Acute Stroke / Intracranial Hemorrhage (ESI 2: ปากเบี้ยว อ่อนแรงครึ่งซีก ปวดหัวรุนแรง อาเจียนพุ่ง)<br>• Preeclampsia with Severe Features (ESI 2: ตั้งครรภ์ > 20 สัปดาห์/หลังคลอด $\le$ 6 สัปดาห์ + BP $\ge$ 160/110 จุกแน่นลิ้นปี่/ชายโครงขวา แสงวับวาบ)<br>• Acute Coronary Syndrome with Severe HTN (ESI 2: เจ็บแน่นกลางอกร้าวกราม/แขนซ้าย)<br>• Hypertensive Encephalopathy / AKI (ESI 2: ซึมสับสนชัก หรือ ปัสสาวะไม่ออก/สีโค้ก)<br>• Hypertensive Urgency / Asymptomatic Severe HTN (ESI 3: SBP $\ge 180$ หรือ DBP $\ge 110$ แต่ไม่มี acute TOD ห้ามใช้ Sublingual Nifedipine เด็ดขาด) | 4 เคส |
 | **25**<br>`psychiatric_emergency` | `25_psychiatric_emergency.js` | **เอะอะโวยวาย / จิตเวช**<br>(Acute Agitation / Psychiatric Emergency) | 4 การ์ด | • Active Extreme Violence with Weapon (ESI 1-2: มีอาวุธ/ทำร้ายร่างกาย Code White)<br>• Suspected Organic Delirium / CNS Infection (ESI 2: สับสนเพ้อคลั่งจากโรคทางกาย ไข้สูง DTX ต่ำ ชัก อุบัติเหตุศีรษะ Medical Clearance First)<br>• Severe Sympathomimetic Toxicity (ESI 2: ยาบ้า/ไอซ์ ตัวร้อนจัด Tachycardia เสี่ยง Rhabdomyolysis)<br>• Severe Alcohol Withdrawal / Delirium Tremens (ESI 2: หยุดสุรา มือสั่น สับสน เห็นภาพหลอนสัตว์/แมลง CIWA protocol)<br>• High-Lethality Suicidal Intent / Elopement Risk (ESI 2: ขู่ฆ่าตัวตาย วิ่งเตลิด 1:1 observation)<br>• Command Auditory Hallucinations with Paranoia (ESI 3: เสียงแว่วสั่งการ หวาดระแวงปองร้าย)<br>• New-Onset Psychosis in Adult (ESI 3: เพิ่งเป็นครั้งแรกในชีวิต อายุ $\ge$ 45 ปี) | 4 เคส |
 | **26**<br>`laceration_bleeding` | `26_laceration_bleeding.js` | **บาดแผลฉีกขาด / มีเลือดออก**<br>(Laceration / Active Bleeding) | 4 การ์ด | • Arterial Hemorrhagic Shock / Active Spurting (ESI 1: เลือดพุ่งตามชีพจร/ช็อก)<br>• Penetrating Neck / Torso / Open Pneumothorax / Evisceration (ESI 1: แผลแทงคอ/อก/ท้อง ลมดูด ไส้ทะลัก)<br>• Open Fracture / Major Tendon-Nerve Transection / Amputation (ESI 2: กระดูกโผล่ เส้นเอ็นขาด ชาปลายนิ้ว อวัยวะขาด)<br>• Head TBI / Skull Fracture / Ocular Trauma (ESI 2: สลบ ปวดหัวรุนแรง อาเจียน แผลถูกลูกตา น้ำใสไหลจากหู/จมูก)<br>• Retained FB / High Contamination / Anticoagulant Bleeding (ESI 3: สิ่งแปลกปลอมปักคา/ยาละลายลิ่มเลือด) | 4 เคส |
+| **27**<br>`fall_trauma` | `27_fall_trauma.js` | **พลัดตกหกล้ม / ได้รับบาดเจ็บทางกายภาพ**<br>(Falls / Blunt Trauma) | 4 การ์ด | • High-Energy Blunt Trauma with Shock (ESI 1: ตกจากที่สูง > 3 ม. / ช็อก SBP < 90)<br>• C-Spine / Spinal Cord Injury Precautions (ESI 1: ปวดคอรุนแรง / ชาแขนขาขยับไม่ได้)<br>• Elderly Head Trauma on Antithrombotic (ESI 2: ล้มศีรษะกระแทก ทานยาวาร์ฟาริน/ยาละลายลิ่มเลือด สลบ/ซึมอาเจียน)<br>• Syncopal / Medical Cause Fall (ESI 2: มีอาการวูบ ใจสั่น แน่นหน้าอกนำมาก่อนล้ม)<br>• Femoral Neck / Hip / Pelvic Fracture (ESI 2: ขาหดสั้นบิดออกนอก ลงน้ำหนักไม่ได้)<br>• Extremity Fracture / Compartment Syndrome / Nerve Deficit (ESI 3: แขนขาผิดรูป ชา ปลายมือเท้าเขียวซีด) | 4 เคส |
 
 ---
 
@@ -136,16 +137,37 @@
   - **Anticoagulant Risk / Retained Foreign Body (ESI 3):** เลือดหยุดยากจากยาวาร์ฟาริน/DOACs หรือมีเศษแก้ว/เหล็ก/สิ่งสกปรกปักคา
 * **Tetanus Prophylaxis Profile:** ประเมินประวัติการฉีดวัคซีนบาดทะยัก ($\le 5$ ปี, 5–10 ปี, $> 10$ ปี, หรือไม่เคย/ไม่แน่ใจ) เพื่อให้คำแนะนำ Tetanus Toxoid / TIG ตามมาตรฐาน
 
+### 2.14 High-Energy Mechanism, Syncopal Fall & Hip/Spine Precautions (`27_fall_trauma.js`)
+* **First-Aid Immobilization Guidance:** ข้อแนะนำการดูแลตนเองเบื้องต้น: ห้ามขยับ ดึง หรือดัดส่วนที่ปวดบวมผิดรูปหรือต้นคอ ให้อยู่นิ่งๆ ในท่าที่สบายที่สุด, กดห้ามเลือดโดยตรงหากมีแผล, และควรงดน้ำและอาหารเผื่อกรณีผ่าตัดฉุกเฉิน
+* **Mechanical Fall vs Syncopal / Medical Fall:**
+  - มีตัวเลือกคัดกรองอาการนำก่อนเกิดเหตุอย่างชัดเจน: ลื่นล้ม/สะดุดล้มปกติ (Mechanical) vs มีอาการวูบ หน้ามืด ใจสั่น เจ็บแน่นหน้าอก หรือหมดสตินำมาก่อนแล้วล้มลง (Syncopal / Medical cause)
+  - หากมีอาการนำ ระบบจะเปิดสัญญาณเตือนสีแดงคัดกรองสาเหตุหัวใจหรือหลอดเลือดสมองกำเริบฉับพลัน (Cardiogenic Syncope / ACS / Acute Stroke) ทันที
+* **High-Energy Fall Threshold (ATLS Criteria):**
+  - ระดับความสูงที่ตกลงมา: ระดับพื้นราบ, ตกบันได 1-3 ขั้น, ตกบันได > 3 ขั้น / โต๊ะ / เก้าอี้, ตกจากที่สูง 1-3 เมตร, และตกจากที่สูง > 3 เมตร / ชั้น 2 ขึ้นไป
+  - เมื่อตกจากที่สูง > 3 เมตร หรือมีความดันโลหิตตก ระบบจะกระตุ้นรหัสฉุกเฉิน High-Energy Trauma Activation / Hemorrhagic Shock (ESI 1)
+* **6 Anatomical Body Regions with Laterality:**
+  - ศีรษะและใบหน้า (หนังศีรษะ, ใบหน้า, เบ้าตา, ใบหู, จมูก/ปาก)
+  - ลำคอ (กระดูกต้นคอด้านหลัง, ลำคอด้านหน้า, ลำคอด้านข้าง)
+  - ทรวงอกและหลังส่วนบน (ซี่โครง/หน้าอก, ไหปลาร้า, หลังส่วนบน/สะบัก)
+  - ช่องท้อง หลังส่วนล่าง และเชิงกราน (หน้าท้อง, สีข้าง, บั้นเอว/หลังส่วนล่าง, เชิงกราน/สะโพก, อวัยวะเพศ)
+  - ร่างกายท่อนบน / แขน (หัวไหล่, ข้อศอก/ต้นแขน, ข้อมือ/ปลายแขน, ฝ่ามือ/นิ้วมือ)
+  - ร่างกายท่อนล่าง / ขา (ต้นขา, หัวเข่า/หน้าแข้ง, ข้อเท้า/หลังเท้า, นิ้วเท้า)
+  - แต่ละตำแหน่งย่อยมีกล่องเลือกข้าง `ซ้าย` / `ขวา` / `ตรงกลาง` เฉพาะตัว
+* **Classic Hip Fracture & C-Spine Sign Detection:**
+  - ตรวจจับลักษณะขาข้างที่เจ็บสั้นลงและบิดออกนอก (Shortened & Externally Rotated Leg) และปวดสะโพกจนยืนลงน้ำหนักไม่ได้ เพื่อสงสัย Femoral Neck / Intertrochanteric Fracture
+  - ตรวจจับอาการปวดเกร็งต้นคอรุนแรง ขยับคอไม่ได้ หรือมีอาการชาเหมือนไฟช็อตแล่นลงแขนขา เพื่อให้สวม Rigid Cervical Collar และทำ Full Spinal Motion Restriction (Log-roll)
+* **Elderly Head Trauma on Anticoagulants:**
+  - ประเมินผู้ป่วยที่ศีรษะกระแทกหรือมีอาการทางสมองร่วมกับการรับประทานยาต้านการแข็งตัวของเลือด (Warfarin/DOACs) เพื่อส่งทำ Stat Non-contrast CT Brain ดักจับ Delayed Intracranial Hemorrhage / SDH
+
 ---
 
-## 3. Roadmap Placeholder สำหรับ 10 โมดูลถัดไป (Trauma, Toxicology & New ER CCs)
+## 3. Roadmap Placeholder สำหรับโมดูลถัดไป (Trauma, Toxicology & New ER CCs)
 
 โครงสร้างและข้อกำหนดเบื้องต้นสำหรับอาการสำคัญกลุ่มอุบัติเหตุ สารพิษ กุมารเวชศาสตร์ และอาการทางอายุรศาสตร์/จิตเวชฉุกเฉินใหม่ ที่พร้อมพัฒนาต่อ:
 
 | รหัสไฟล์ / ID | อาการนำ (Planned Chief Complaint) | กลุ่มโรค (Category) | ประเด็นคำถามหลักที่ต้องครอบคลุม (Key Question Scope) | สัญญาณเตือนวิกฤต ESI 1–2 ที่ต้องดักจับ (Anticipated Red Flags) |
 | :---: | :--- | :---: | :--- | :--- |
 | **22**<br>`22_traffic_accident.js`<br>`traffic_accident` | **ได้รับบาดเจ็บจากอุบัติเหตุจราจร**<br>(Traffic Accident Injury) | Trauma | • กลไกการเกิดเหตุ (High-Energy: ชนแล้วกระเด็น, รถคว่ำ, ผู้โดยสารในคันเดียวกันเสียชีวิต)<br>• อุปกรณ์ป้องกัน (หมวกกันน็อก, เข็มขัดนิรภัย)<br>• อาการสลบ/ความจำเสื่อมชั่วขณะ (Loss of consciousness / Amnesia) | • Hemodynamic Instability / Pelvic Fracture<br>• Airway Compromise / Flail Chest<br>• Cervical Spine Injury / แขนขาขยับไม่ได้<br>• Severe Head Trauma (GCS ดิ่งลง, ม่านตาไม่เท่ากัน) |
-| **23**<br>`23_fall_trauma.js`<br>`fall_trauma` | **พลัดตกหกล้ม / ได้รับบาดเจ็บทางกายภาพ**<br>(Falls / Blunt Trauma) | Trauma | • ความสูงที่ตกลงมา (เมตร / ชั้น)<br>• กลไกการล้ม (ลื่นล้ม vs วูบหมดสตินำมาก่อนล้ม)<br>• ประวัติการทานยาละลายลิ่มเลือด (Warfarin / NOACs)<br>• อาการปวดสะโพก ขยับขาไม่ได้ เดินไม่ได้ | • Intracranial Hemorrhage จากการหกล้มในผู้สูงอายุ<br>• Femoral Neck / Hip Fracture (ขาข้างที่เจ็บสั้นลงและบิดออกนอก)<br>• Spinal Cord Injury จากการตกจากที่สูง |
 | **25**<br>`25_pediatric_seizure.js`<br>`pediatric_seizure` | **ชักเกร็งในเด็กอายุ < 6 ปี**<br>(Pediatric / Febrile Seizure) | Pediatric | • อายุของเด็ก (เดือน/ปี)<br>• มีไข้นำมาก่อนหรือไม่ และอุณหภูมิเท่าไร<br>• ลักษณะการชัก (เกร็งกระตุกทั้งตัว Generalized vs ชักกระตุกครึ่งซีก Focal)<br>• ระยะเวลาที่ชัก (< 15 นาที Simple vs > 15 นาที Complex)<br>• เด็กชักซ้ำภายใน 24 ชั่วโมงหรือไม่ | • Status Epilepticus ในเด็ก (ชักต่อเนื่อง > 5 นาที)<br>• Suspected Bacterial Meningitis (กระหม่อมโป่งตึง คอแข็ง ไม่ยอมสบตา ร้องคราง)<br>• Complex Febrile Seizure (ชักเฉพาะที่ หรือชักซ้ำ)<br>• ซึมมาก ไม่ยอมดูดนม หรือหายใจลำบากหลังชัก |
 | **27**<br>`27_animal_bite.js`<br>`animal_bite` | **สัตว์กัด / ข่วน (เสี่ยงพิษสุนัขบ้า)**<br>(Animal / Dog / Cat Bites) | Toxicology | • ชนิดของสัตว์ (สุนัข, แมว, ลิง, ค้างคาว, หนู)<br>• สถานะสัตว์ (มีเจ้าของ, จรจัด, กักดูอาการ 10 วันได้หรือไม่)<br>• บาดแผลฉีกขาด เลือดออกรุนแรง หรือแผลบริเวณใบหน้า/คอ | • WHO Category III Exposure (แผลเลือดออก แผลลึก สัมผัสค้างคาว)<br>• Severe Laceration / Hemorrhagic risk<br>• สัตว์มีอาการดุร้ายผิดปกติ ชัดเจนว่าเป็นโรคพิษสุนัขบ้า |
 | **28**<br>`28_venomous_bite.js`<br>`venomous_bite_sting` | **แมลง / งู / สัตว์มีพิษกัดต่อย**<br>(Venomous Creature Bites / Stings) | Toxicology | • ชนิดของสัตว์ (งูพิษ, ผึ้ง, ต่อ, แตน, แมงป่อง, ตะขาบ, แมงกะพรุน)<br>• อาการระบบประสาท (หนังตาตก กลืนลำบาก แขนขาอ่อนแรง หายใจลำบาก)<br>• อาการระบบเลือด (เลือดออกตามไรฟัน แผลบวมเขียวช้ำ เลือดไหลไม่หยุด) | • Respiratory Muscle Paralysis (หายใจล้มเหลว กลืนน้ำลายไม่ได้ - ESI 1)<br>• Severe Bleeding / DIC (เลือดออกในช่องปาก ปัสสาวะเป็นเลือด - ESI 2)<br>• Severe Anaphylaxis จากผึ้ง/ต่อ/แตนต่อย (หลอดลมตีบ ช็อก) |

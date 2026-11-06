@@ -330,9 +330,9 @@ assert(dateInput.value === '26/10/2026', `Universal Date descriptor converts ISO
 timeInput.value = '3:30 PM';
 assert(timeInput.value === '15:30', `Universal Time descriptor converts '3:30 PM' -> '${timeInput.value}' (24-hour HH:mm)`);
 
-console.log('\n=== มิติที่ (ง): DOCTOR UI RENDER, JSON SCHEMA & BUILT-IN CDS (ALL 97 SEED CASES) ===');
+console.log('\n=== มิติที่ (ง): DOCTOR UI RENDER, JSON SCHEMA & BUILT-IN CDS (ALL 101 SEED CASES) ===');
 const patients = sandbox.getSeedPatients();
-assert(patients.length === 97, `Seed database has all 97 clinical cases across 26 Chief Complaints (found ${patients.length})`);
+assert(patients.length === 101, `Seed database has all 101 clinical cases across 27 Chief Complaints (found ${patients.length})`);
 
 let renderErrors = 0;
 let cdsErrors = 0;
@@ -479,7 +479,7 @@ assert(rapidDeDuplicationErrors === 0, `Zero De-duplication, Clean Negative Synt
 
 console.log('\n=== มิติที่ (ข): SAVE PERSISTENCE CHECK (PATIENT SUBMIT -> STATE & LOCALSTORAGE -> STATUS VIEW) ===');
 let saveErrors = 0;
-const testSubmitCases = ['case-043', 'case-046', 'case-051', 'case-040', 'case-061', 'case-071', 'case-081', 'case-091', 'case-095', 'case-101', 'case-105', 'case-120', 'case-130', 'case-140', 'case-150', 'case-160', 'case-170', 'case-180', 'seed-hematuria-01', 'case-backpain-01', 'case-neck-01', 'case-hemo-01', 'case-epistaxis-01', 'case-htn-01', 'case-psych-01', 'case-lac-01'];
+const testSubmitCases = ['case-043', 'case-046', 'case-051', 'case-040', 'case-061', 'case-071', 'case-081', 'case-091', 'case-095', 'case-101', 'case-105', 'case-120', 'case-130', 'case-140', 'case-150', 'case-160', 'case-170', 'case-180', 'seed-hematuria-01', 'case-backpain-01', 'case-neck-01', 'case-hemo-01', 'case-epistaxis-01', 'case-htn-01', 'case-psych-01', 'case-lac-01', 'case-fall-01'];
 for (const caseId of testSubmitCases) {
   const seedCase = patients.find(x => x.id === caseId);
   sandbox.switchUserRole('patient', { silent: true });
@@ -510,7 +510,7 @@ for (const caseId of testSubmitCases) {
     saveErrors++;
   }
 }
-assert(saveErrors === 0, `Save Persistence verified across all 26 active Chief Complaints (State + localStorage + #patientStatusView)`);
+assert(saveErrors === 0, `Save Persistence verified across all 27 active Chief Complaints (State + localStorage + #patientStatusView)`);
 
 console.log('\n=== มิติที่ (ค): PATIENT ISOLATION & CONTEXT SWITCHING CHECK (PATIENT A <-> PATIENT B) ===');
 sandbox.switchUserRole('doctor', { silent: true });
@@ -846,6 +846,30 @@ assert(lacRf3.some(r => r.key === 'rf_lac_retained_fb_anticoagulant'), 'Lacerati
 
 const lacRf4 = ccModLac.evaluateRedFlags(lacCase4);
 assert(lacRf4.length === 0, 'Laceration Case 4 (Clean Finger Cut) triggers Zero Red Flags (Low-Risk)');
+
+// === CC #27 FALLS & BLUNT TRAUMA CLINICAL RED FLAG & TRIAGE VALIDATION ===
+const fallCase1 = patients.find(p => p.id === 'case-fall-01');
+const fallCase2 = patients.find(p => p.id === 'case-fall-02');
+const fallCase3 = patients.find(p => p.id === 'case-fall-03');
+const fallCase4 = patients.find(p => p.id === 'case-fall-04');
+
+const ccModFall = sandbox.getCcModule('fall_trauma');
+assert(ccModFall !== null, 'Module fall_trauma successfully registered');
+
+const fallRf1 = ccModFall.evaluateRedFlags(fallCase1);
+assert(fallRf1.some(r => r.key === 'rf_fall_high_energy_shock_internal_bleed'), 'Fall Case 1 triggers High Energy Shock Red Flag (ESI 1)');
+assert(fallRf1.some(r => r.key === 'rf_fall_cspine_spinal_cord_injury'), 'Fall Case 1 triggers C-Spine/Spinal Cord Injury Red Flag (ESI 1)');
+
+const fallRf2 = ccModFall.evaluateRedFlags(fallCase2);
+assert(fallRf2.some(r => r.key === 'rf_fall_tbi_anticoagulant_head'), 'Fall Case 2 triggers Head TBI Anticoagulant Red Flag (ESI 2)');
+assert(fallRf2.some(r => r.key === 'rf_fall_syncopal_medical_cause'), 'Fall Case 2 triggers Syncopal Medical Fall Red Flag (ESI 2)');
+assert(fallRf2.some(r => r.key === 'rf_fall_open_fracture_neurovascular_hip'), 'Fall Case 2 triggers Hip Fracture Red Flag (ESI 2)');
+
+const fallRf3 = ccModFall.evaluateRedFlags(fallCase3);
+assert(fallRf3.some(r => r.key === 'rf_fall_extremity_fracture_inability_to_bear_weight'), 'Fall Case 3 triggers Extremity Fracture Red Flag (ESI 3)');
+
+const fallRf4 = ccModFall.evaluateRedFlags(fallCase4);
+assert(fallRf4.length === 0, 'Fall Case 4 (Minor Ankle Twist) triggers Zero Red Flags (Low-Risk ESI 4)');
 
 // === AI CONSULTANT PERSISTENCE & RESILIENT RETRY/FALLBACK TESTS ===
 // Test 4: AI Consult Result Persistence across modal close & reopen
