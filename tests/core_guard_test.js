@@ -330,9 +330,9 @@ assert(dateInput.value === '26/10/2026', `Universal Date descriptor converts ISO
 timeInput.value = '3:30 PM';
 assert(timeInput.value === '15:30', `Universal Time descriptor converts '3:30 PM' -> '${timeInput.value}' (24-hour HH:mm)`);
 
-console.log('\n=== มิติที่ (ง): DOCTOR UI RENDER, JSON SCHEMA & BUILT-IN CDS (ALL 93 SEED CASES) ===');
+console.log('\n=== มิติที่ (ง): DOCTOR UI RENDER, JSON SCHEMA & BUILT-IN CDS (ALL 97 SEED CASES) ===');
 const patients = sandbox.getSeedPatients();
-assert(patients.length === 93, `Seed database has all 93 clinical cases across 25 Chief Complaints (found ${patients.length})`);
+assert(patients.length === 97, `Seed database has all 97 clinical cases across 26 Chief Complaints (found ${patients.length})`);
 
 let renderErrors = 0;
 let cdsErrors = 0;
@@ -479,7 +479,7 @@ assert(rapidDeDuplicationErrors === 0, `Zero De-duplication, Clean Negative Synt
 
 console.log('\n=== มิติที่ (ข): SAVE PERSISTENCE CHECK (PATIENT SUBMIT -> STATE & LOCALSTORAGE -> STATUS VIEW) ===');
 let saveErrors = 0;
-const testSubmitCases = ['case-043', 'case-046', 'case-051', 'case-040', 'case-061', 'case-071', 'case-081', 'case-091', 'case-095', 'case-101', 'case-105', 'case-120', 'case-130', 'case-140', 'case-150', 'case-160', 'case-170', 'case-180', 'seed-hematuria-01', 'case-backpain-01', 'case-neck-01', 'case-hemo-01', 'case-epistaxis-01', 'case-htn-01'];
+const testSubmitCases = ['case-043', 'case-046', 'case-051', 'case-040', 'case-061', 'case-071', 'case-081', 'case-091', 'case-095', 'case-101', 'case-105', 'case-120', 'case-130', 'case-140', 'case-150', 'case-160', 'case-170', 'case-180', 'seed-hematuria-01', 'case-backpain-01', 'case-neck-01', 'case-hemo-01', 'case-epistaxis-01', 'case-htn-01', 'case-psych-01', 'case-lac-01'];
 for (const caseId of testSubmitCases) {
   const seedCase = patients.find(x => x.id === caseId);
   sandbox.switchUserRole('patient', { silent: true });
@@ -510,7 +510,7 @@ for (const caseId of testSubmitCases) {
     saveErrors++;
   }
 }
-assert(saveErrors === 0, `Save Persistence verified across all 25 active Chief Complaints (State + localStorage + #patientStatusView)`);
+assert(saveErrors === 0, `Save Persistence verified across all 26 active Chief Complaints (State + localStorage + #patientStatusView)`);
 
 console.log('\n=== มิติที่ (ค): PATIENT ISOLATION & CONTEXT SWITCHING CHECK (PATIENT A <-> PATIENT B) ===');
 sandbox.switchUserRole('doctor', { silent: true });
@@ -823,6 +823,29 @@ assert(psychRf3.some(r => r.key === 'rf_psych_high_suicidal_intent'), 'Psychiatr
 
 const psychRf4 = ccModPsych.evaluateRedFlags(psychCase4);
 assert(psychRf4.some(r => r.key === 'rf_psych_alcohol_delirium_tremens'), 'Psychiatric Case 4 triggers Alcohol Withdrawal Delirium Tremens Red Flag (ESI 2)');
+
+// === CC #26 LACERATION & ACTIVE BLEEDING CLINICAL RED FLAG & TRIAGE VALIDATION ===
+const lacCase1 = patients.find(p => p.id === 'case-lac-01');
+const lacCase2 = patients.find(p => p.id === 'case-lac-02');
+const lacCase3 = patients.find(p => p.id === 'case-lac-03');
+const lacCase4 = patients.find(p => p.id === 'case-lac-04');
+
+const ccModLac = sandbox.getCcModule('laceration_bleeding');
+assert(ccModLac !== null, 'Module laceration_bleeding successfully registered');
+
+const lacRf1 = ccModLac.evaluateRedFlags(lacCase1);
+assert(lacRf1.some(r => r.key === 'rf_lac_arterial_hemorrhagic_shock'), 'Laceration Case 1 triggers Arterial Hemorrhagic Shock Red Flag (ESI 1)');
+assert(lacRf1.some(r => r.key === 'rf_lac_open_fracture_tendon_nerve'), 'Laceration Case 1 triggers Tendon/Nerve Injury Red Flag');
+
+const lacRf2 = ccModLac.evaluateRedFlags(lacCase2);
+assert(lacRf2.some(r => r.key === 'rf_lac_penetrating_neck_torso'), 'Laceration Case 2 triggers Penetrating Torso Red Flag (ESI 1)');
+
+const lacRf3 = ccModLac.evaluateRedFlags(lacCase3);
+assert(lacRf3.some(r => r.key === 'rf_lac_head_ocular_trauma'), 'Laceration Case 3 triggers Head TBI Red Flag (ESI 2)');
+assert(lacRf3.some(r => r.key === 'rf_lac_retained_fb_anticoagulant'), 'Laceration Case 3 triggers Anticoagulant Risk Red Flag (ESI 3)');
+
+const lacRf4 = ccModLac.evaluateRedFlags(lacCase4);
+assert(lacRf4.length === 0, 'Laceration Case 4 (Clean Finger Cut) triggers Zero Red Flags (Low-Risk)');
 
 // === AI CONSULTANT PERSISTENCE & RESILIENT RETRY/FALLBACK TESTS ===
 // Test 4: AI Consult Result Persistence across modal close & reopen

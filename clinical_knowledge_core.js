@@ -43,7 +43,7 @@ const CHIEF_COMPLAINTS = [
   { id: 'headache', schemaCode: 'headache', titleTh: 'ปวดศีรษะ', titleEn: 'Headache', icon: 'frown', active: true, phase: 6 },
   { id: 'traffic_accident', schemaCode: 'traffic_accident', titleTh: 'ได้รับบาดเจ็บจากอุบัติเหตุจราจร', titleEn: 'Traffic accident injury', icon: 'car', active: false, phase: 6 },
   { id: 'fall_trauma', schemaCode: 'fall_trauma', titleTh: 'พลัดตกหกล้ม / ได้รับบาดเจ็บทางกายภาพ', titleEn: 'Falls / Blunt trauma', icon: 'user-x', active: false, phase: 6 },
-  { id: 'laceration_bleeding', schemaCode: 'laceration_bleeding', titleTh: 'บาดแผลฉีกขาด / มีเลือดออก', titleEn: 'Laceration / Active bleeding', icon: 'bandage', active: false, phase: 6 },
+  { id: 'laceration_bleeding', schemaCode: 'laceration_bleeding', titleTh: 'บาดแผลฉีกขาด / มีเลือดออก', titleEn: 'Laceration / Active bleeding', icon: 'bandage', active: true, phase: 6 },
   { id: 'stroke_deficit', schemaCode: 'stroke_deficit', titleTh: 'ปากเบี้ยว อ่อนแรง ชา ข้างใดข้างหนึ่ง พูดไม่ชัด', titleEn: 'Focal neurological deficit / Hemiparesis / Dysarthria', icon: 'brain', active: true, phase: 5 },
   { id: 'seizure', schemaCode: 'seizure', titleTh: 'ชัก / เกร็งกระตุก', titleEn: 'Seizure / Convulsion', icon: 'zap', active: true, phase: 5 },
   { id: 'pediatric_seizure', schemaCode: 'pediatric_seizure', titleTh: 'ชักเกร็งในเด็กอายุ < 6 ปี', titleEn: 'Pediatric seizure / Febrile seizure (< 6 years)', icon: 'baby', active: false, phase: 6 },
