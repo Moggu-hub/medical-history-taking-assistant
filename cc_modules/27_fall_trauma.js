@@ -22,33 +22,50 @@ function toggleFallGroup(subId, show) {
   }
 }
 
-function handleFallPainSliderTouch(val) {
-  fallPainScoreTouched = true;
-  const slider = document.getElementById('fallPainScoreSlider');
-  const display = document.getElementById('fallPainScoreDisplay');
-  const status = document.getElementById('fallPainScoreStatus');
-  const num = parseInt(val !== undefined ? val : slider?.value, 10);
-  if (slider) slider.value = num;
-
-  if (display) display.textContent = `${num}/10`;
-  if (status) {
-    if (num === 0) status.textContent = 'ไม่ปวดเลย (No pain)';
-    else if (num <= 3) status.textContent = 'ปวดเล็กน้อย (Mild pain)';
-    else if (num <= 6) status.textContent = 'ปวดปานกลาง (Moderate pain)';
-    else if (num <= 9) status.textContent = 'ปวดรุนแรงมาก (Severe pain)';
-    else status.textContent = 'ปวดรุนแรงที่สุดในชีวิต (Worst possible pain)';
-  }
-}
-
 function clearFallPainScore() {
   fallPainScoreTouched = false;
-  const slider = document.getElementById('fallPainScoreSlider');
-  const display = document.getElementById('fallPainScoreDisplay');
-  const status = document.getElementById('fallPainScoreStatus');
+  const slider = document.getElementById('fallPainScore');
   if (slider) slider.value = 0;
-  if (display) display.textContent = '-';
-  if (status) status.textContent = 'ยังไม่ได้ระบุ (แตะแถบเพื่อระบุ)';
+  const emojiEl = document.getElementById('fallPainScoreEmoji');
+  const textEl = document.getElementById('fallPainScoreText');
+  const badgeEl = document.getElementById('fallPainScoreBadge');
+  const clearBtn = document.getElementById('fallPainScoreClearBtn');
+  if (emojiEl) emojiEl.textContent = '⚪';
+  if (textEl) textEl.textContent = 'ยังไม่ได้ระบุ (แตะแถบเพื่อระบุ)';
+  if (badgeEl) badgeEl.className = 'inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-600 border border-slate-300 self-start sm:self-auto transition-all';
+  if (clearBtn) clearBtn.classList.add('hidden');
 }
+
+function handleFallPainScoreChange(val) {
+  fallPainScoreTouched = true;
+  const num = parseInt(val, 10);
+  const slider = document.getElementById('fallPainScore');
+  if (slider) slider.value = num;
+  const emojiEl = document.getElementById('fallPainScoreEmoji');
+  const textEl = document.getElementById('fallPainScoreText');
+  const badgeEl = document.getElementById('fallPainScoreBadge');
+  const clearBtn = document.getElementById('fallPainScoreClearBtn');
+  if (clearBtn) clearBtn.classList.remove('hidden');
+  if (!emojiEl || !textEl || !badgeEl) return;
+
+  let emoji = '😐', label = 'ปวดปานกลาง', badgeClass = 'bg-amber-100 text-amber-800 border-amber-300';
+  if (num === 0) {
+    emoji = '😊'; label = 'สบายดี (ไม่ปวดเลย)'; badgeClass = 'bg-emerald-100 text-emerald-800 border-emerald-300';
+  } else if (num <= 3) {
+    emoji = '🙂'; label = 'ปวดเล็กน้อย (ทนได้)'; badgeClass = 'bg-lime-100 text-lime-800 border-lime-300';
+  } else if (num <= 6) {
+    emoji = '😐'; label = 'ปวดปานกลาง (รบกวนสมาธิ)'; badgeClass = 'bg-amber-100 text-amber-800 border-amber-300';
+  } else if (num <= 8) {
+    emoji = '😣'; label = 'ปวดรุนแรง (ทนแทบไม่ไหว)'; badgeClass = 'bg-orange-100 text-orange-800 border-orange-300';
+  } else {
+    emoji = '😫'; label = 'ปวดรุนแรงที่สุดในชีวิต'; badgeClass = 'bg-rose-100 text-rose-800 border-rose-300';
+  }
+
+  emojiEl.textContent = emoji;
+  textEl.textContent = `${num}/10 คะแนน - ${label}`;
+  badgeEl.className = `inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-bold border self-start sm:self-auto transition-all ${badgeClass}`;
+}
+const handleFallPainSliderTouch = handleFallPainScoreChange;
 
 // --- Clinical Decision Support & Evaluation Functions ---
 function evaluateFallRedFlags(patient) {
@@ -1352,26 +1369,26 @@ const FALL_TRAUMA_FORM_HTML = `
 
     <!-- 3.2 Pain Score Slider -->
     <div>
-      <div class="flex justify-between items-center mb-2">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-2">
         <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider">
           3.2 ระดับความปวดในขณะนี้ (Pain Score 0–10):
         </label>
-        <button type="button" onclick="clearFallPainScore()" class="text-xs text-slate-400 hover:text-slate-600 underline">
-          ล้างค่า
-        </button>
-      </div>
-      <div class="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-3">
-        <div class="flex items-center justify-between">
-          <span id="fallPainScoreDisplay" class="text-2xl font-black text-medical-600">-</span>
-          <span id="fallPainScoreStatus" class="text-xs font-medium text-slate-500">ยังไม่ได้ระบุ (แตะแถบเพื่อระบุ)</span>
+        <div class="flex items-center space-x-2">
+          <span id="fallPainScoreBadge" class="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-600 border border-slate-300 self-start sm:self-auto transition-all">
+            <span id="fallPainScoreEmoji" class="text-base">⚪</span>
+            <span id="fallPainScoreText">ยังไม่ได้ระบุ (แตะแถบเพื่อระบุ)</span>
+          </span>
+          <button type="button" id="fallPainScoreClearBtn" onclick="clearFallPainScore()" class="hidden text-xs text-slate-400 hover:text-slate-600 underline">ล้างค่า</button>
         </div>
-        <input type="range" id="fallPainScoreSlider" min="0" max="10" value="0" step="1"
-          oninput="handleFallPainSliderTouch(this.value)"
-          class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-medical-600">
-        <div class="flex justify-between text-[10px] text-slate-400 px-1">
-          <span>0 (ไม่ปวด)</span>
-          <span>5 (ปานกลาง)</span>
-          <span>10 (รุนแรงที่สุด)</span>
+      </div>
+      <div class="pt-2 px-1">
+        <input type="range" id="fallPainScore" min="0" max="10" value="0"
+          oninput="handleFallPainScoreChange(this.value)"
+          class="w-full h-2.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-medical-600">
+        <div class="flex justify-between text-[11px] text-slate-400 mt-1 font-medium">
+          <span>0 ไม่ปวดเลย</span>
+          <span>5 ปวดปานกลาง</span>
+          <span>10 ปวดมากที่สุด</span>
         </div>
       </div>
     </div>
@@ -1534,7 +1551,7 @@ const fallTraumaModule = {
     const lowerSigns = parentLowerExt ? getChecks('fallLowerExtSigns') : [];
 
     const systemicSigns = getChecks('fallSystemicSigns');
-    const painScore = fallPainScoreTouched ? parseInt(document.getElementById('fallPainScoreSlider')?.value || 0, 10) : null;
+    const painScore = fallPainScoreTouched ? parseInt(document.getElementById('fallPainScore')?.value || 0, 10) : null;
     const antithrombotic = getRadio('fallAntithrombotic');
     const tetanusHx = getRadio('fallTetanusHx');
 
@@ -1785,7 +1802,9 @@ const fallTraumaModule = {
     setChecks('fallSystemicSigns', data.fallSystemicSigns);
 
     if (data.painScore !== null && data.painScore !== undefined) {
-      handleFallPainSliderTouch(data.painScore);
+      const slider = document.getElementById('fallPainScore');
+      if (slider) slider.value = data.painScore;
+      handleFallPainScoreChange(data.painScore);
     } else {
       clearFallPainScore();
     }

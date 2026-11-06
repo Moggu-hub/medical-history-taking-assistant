@@ -24,35 +24,50 @@ function toggleLacGroup(subId, show) {
   }
 }
 
-function handleLacPainSliderTouch(val) {
-  lacPainScoreTouched = true;
-  const slider = document.getElementById('lacPainScoreSlider');
-  const display = document.getElementById('lacPainScoreDisplay');
-  const status = document.getElementById('lacPainScoreStatus');
-  const num = parseInt(val !== undefined ? val : slider?.value, 10);
-  if (slider) slider.value = num;
-
-  if (display) {
-    display.textContent = `${num}/10`;
-  }
-  if (status) {
-    if (num === 0) status.textContent = 'ไม่ปวดเลย (No pain)';
-    else if (num <= 3) status.textContent = 'ปวดเล็กน้อย (Mild pain)';
-    else if (num <= 6) status.textContent = 'ปวดปานกลาง (Moderate pain)';
-    else if (num <= 9) status.textContent = 'ปวดรุนแรงมาก (Severe pain)';
-    else status.textContent = 'ปวดรุนแรงที่สุดในชีวิต (Worst possible pain)';
-  }
-}
-
 function clearLacPainScore() {
   lacPainScoreTouched = false;
-  const slider = document.getElementById('lacPainScoreSlider');
-  const display = document.getElementById('lacPainScoreDisplay');
-  const status = document.getElementById('lacPainScoreStatus');
+  const slider = document.getElementById('lacPainScore');
   if (slider) slider.value = 0;
-  if (display) display.textContent = '-';
-  if (status) status.textContent = 'ยังไม่ได้ระบุ (แตะแถบเพื่อระบุ)';
+  const emojiEl = document.getElementById('lacPainScoreEmoji');
+  const textEl = document.getElementById('lacPainScoreText');
+  const badgeEl = document.getElementById('lacPainScoreBadge');
+  const clearBtn = document.getElementById('lacPainScoreClearBtn');
+  if (emojiEl) emojiEl.textContent = '⚪';
+  if (textEl) textEl.textContent = 'ยังไม่ได้ระบุ (แตะแถบเพื่อระบุ)';
+  if (badgeEl) badgeEl.className = 'inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-600 border border-slate-300 self-start sm:self-auto transition-all';
+  if (clearBtn) clearBtn.classList.add('hidden');
 }
+
+function handleLacPainScoreChange(val) {
+  lacPainScoreTouched = true;
+  const num = parseInt(val, 10);
+  const slider = document.getElementById('lacPainScore');
+  if (slider) slider.value = num;
+  const emojiEl = document.getElementById('lacPainScoreEmoji');
+  const textEl = document.getElementById('lacPainScoreText');
+  const badgeEl = document.getElementById('lacPainScoreBadge');
+  const clearBtn = document.getElementById('lacPainScoreClearBtn');
+  if (clearBtn) clearBtn.classList.remove('hidden');
+  if (!emojiEl || !textEl || !badgeEl) return;
+
+  let emoji = '😐', label = 'ปวดปานกลาง', badgeClass = 'bg-amber-100 text-amber-800 border-amber-300';
+  if (num === 0) {
+    emoji = '😊'; label = 'สบายดี (ไม่ปวดเลย)'; badgeClass = 'bg-emerald-100 text-emerald-800 border-emerald-300';
+  } else if (num <= 3) {
+    emoji = '🙂'; label = 'ปวดเล็กน้อย (ทนได้)'; badgeClass = 'bg-lime-100 text-lime-800 border-lime-300';
+  } else if (num <= 6) {
+    emoji = '😐'; label = 'ปวดปานกลาง (รบกวนสมาธิ)'; badgeClass = 'bg-amber-100 text-amber-800 border-amber-300';
+  } else if (num <= 8) {
+    emoji = '😣'; label = 'ปวดรุนแรง (ทนแทบไม่ไหว)'; badgeClass = 'bg-orange-100 text-orange-800 border-orange-300';
+  } else {
+    emoji = '😫'; label = 'ปวดรุนแรงที่สุดในชีวิต'; badgeClass = 'bg-rose-100 text-rose-800 border-rose-300';
+  }
+
+  emojiEl.textContent = emoji;
+  textEl.textContent = `${num}/10 คะแนน - ${label}`;
+  badgeEl.className = `inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-bold border self-start sm:self-auto transition-all ${badgeClass}`;
+}
+const handleLacPainSliderTouch = handleLacPainScoreChange;
 
 // --- Clinical Decision Support & Evaluation Functions ---
 function evaluateLacerationRedFlags(patient) {
@@ -1404,25 +1419,27 @@ const LACERATION_FORM_HTML = `
 
     <!-- 3.2 ระดับความปวดบริเวณบาดแผล -->
     <div>
-      <div class="flex justify-between items-center mb-2">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-2">
         <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider">
           3.2 ระดับความปวดบริเวณบาดแผลในขณะนี้ (Pain Score 0–10):
         </label>
-        <span id="lacPainScoreDisplay" class="text-sm font-bold text-medical-600">-</span>
+        <div class="flex items-center space-x-2">
+          <span id="lacPainScoreBadge" class="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-600 border border-slate-300 self-start sm:self-auto transition-all">
+            <span id="lacPainScoreEmoji" class="text-base">⚪</span>
+            <span id="lacPainScoreText">ยังไม่ได้ระบุ (แตะแถบเพื่อระบุ)</span>
+          </span>
+          <button type="button" id="lacPainScoreClearBtn" onclick="clearLacPainScore()" class="hidden text-xs text-slate-400 hover:text-slate-600 underline">ล้างค่า</button>
+        </div>
       </div>
-      <p id="lacPainScoreStatus" class="text-xs text-slate-500 mb-3">ยังไม่ได้ระบุ (แตะแถบเพื่อระบุ)</p>
-      <input type="range" id="lacPainScoreSlider" min="0" max="10" value="0"
-        oninput="handleLacPainSliderTouch(this.value)"
-        class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-medical-600">
-      <div class="flex justify-between text-[10px] text-slate-400 mt-1">
-        <span>0 (ไม่ปวด)</span>
-        <span>5 (ปานกลาง)</span>
-        <span>10 (ปวดมากที่สุด)</span>
-      </div>
-      <div class="mt-2 text-right">
-        <button type="button" onclick="clearLacPainScore()" class="text-xs text-slate-500 hover:text-slate-700 underline">
-          ล้างค่าระดับความปวด
-        </button>
+      <div class="pt-2 px-1">
+        <input type="range" id="lacPainScore" min="0" max="10" value="0"
+          oninput="handleLacPainScoreChange(this.value)"
+          class="w-full h-2.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-medical-600">
+        <div class="flex justify-between text-[11px] text-slate-400 mt-1 font-medium">
+          <span>0 ไม่ปวดเลย</span>
+          <span>5 ปวดปานกลาง</span>
+          <span>10 ปวดมากที่สุด</span>
+        </div>
       </div>
     </div>
   </div>
@@ -1577,7 +1594,7 @@ const lacerationBleedingModule = {
     const lowerExtSigns = parentLowerExt ? getChecks('lacLowerExtSigns') : [];
 
     const systemicSigns = getChecks('lacSystemicSigns');
-    const painScore = lacPainScoreTouched ? parseInt(document.getElementById('lacPainScoreSlider')?.value || 0, 10) : null;
+    const painScore = lacPainScoreTouched ? parseInt(document.getElementById('lacPainScore')?.value || 0, 10) : null;
     const antithrombotic = getRadio('lacAntithrombotic');
     const tetanusHx = getRadio('lacTetanusHx');
 
@@ -1821,7 +1838,9 @@ const lacerationBleedingModule = {
     setChecks('lacSystemicSigns', data.lacSystemicSigns);
 
     if (data.painScore !== null && data.painScore !== undefined) {
-      handleLacPainSliderTouch(data.painScore);
+      const slider = document.getElementById('lacPainScore');
+      if (slider) slider.value = data.painScore;
+      handleLacPainScoreChange(data.painScore);
     } else {
       clearLacPainScore();
     }
@@ -1832,8 +1851,7 @@ const lacerationBleedingModule = {
 
   clearForm: function() {
     ['lacDurationVal', 'lacCauseSharpDetail', 'lacCauseMachineryDetail', 'lacCauseBluntDetail', 'lacCausePunctureDetail', 'lacCauseOtherDetail'].forEach(id => {
-      const el = document.getElementById(id);
-      if (el) el.value = '';
+      const el = document.getElementById(id); if (el) el.value = '';
     });
     const durUnit = document.getElementById('lacDurationUnit');
     if (durUnit) durUnit.value = 'hours';
@@ -1847,10 +1865,7 @@ const lacerationBleedingModule = {
       'lacAbdomenSubGroup', 'lacAbdWallSidesContainer', 'lacAbdFlankSidesContainer', 'lacAbdLowerBackSidesContainer', 'lacAbdButtockSidesContainer', 'lacAbdGenitaliaSidesContainer',
       'lacUpperExtSubGroup', 'lacArmShoulderSidesContainer', 'lacArmElbowSidesContainer', 'lacArmWristSidesContainer', 'lacArmFingersSidesContainer',
       'lacLowerExtSubGroup', 'lacLegThighSidesContainer', 'lacLegKneeShinSidesContainer', 'lacLegAnkleFootSidesContainer', 'lacLegToesSidesContainer'
-    ].forEach(id => {
-      const el = document.getElementById(id);
-      if (el) el.classList.add('hidden');
-    });
+    ].forEach(id => { const el = document.getElementById(id); if (el) el.classList.add('hidden'); });
 
     const radios = document.querySelectorAll('#cc-laceration-bleeding-section input[type="radio"]');
     radios.forEach(r => { r.checked = false; });
