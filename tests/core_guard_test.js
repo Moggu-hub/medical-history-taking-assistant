@@ -330,9 +330,9 @@ assert(dateInput.value === '26/10/2026', `Universal Date descriptor converts ISO
 timeInput.value = '3:30 PM';
 assert(timeInput.value === '15:30', `Universal Time descriptor converts '3:30 PM' -> '${timeInput.value}' (24-hour HH:mm)`);
 
-console.log('\n=== มิติที่ (ง): DOCTOR UI RENDER, JSON SCHEMA & BUILT-IN CDS (ALL 105 SEED CASES) ===');
+console.log('\n=== มิติที่ (ง): DOCTOR UI RENDER, JSON SCHEMA & BUILT-IN CDS (ALL 109 SEED CASES) ===');
 const patients = sandbox.getSeedPatients();
-assert(patients.length === 105, `Seed database has all 105 clinical cases across 28 Chief Complaints (found ${patients.length})`);
+assert(patients.length === 109, `Seed database has all 109 clinical cases across 29 Chief Complaints (found ${patients.length})`);
 
 let renderErrors = 0;
 let cdsErrors = 0;
@@ -485,7 +485,7 @@ assert(rapidDeDuplicationErrors === 0, `Zero De-duplication, Clean Negative Synt
 
 console.log('\n=== มิติที่ (ข): SAVE PERSISTENCE CHECK (PATIENT SUBMIT -> STATE & LOCALSTORAGE -> STATUS VIEW) ===');
 let saveErrors = 0;
-const testSubmitCases = ['case-043', 'case-046', 'case-051', 'case-040', 'case-061', 'case-071', 'case-081', 'case-091', 'case-095', 'case-101', 'case-105', 'case-120', 'case-130', 'case-140', 'case-150', 'case-160', 'case-170', 'case-180', 'seed-hematuria-01', 'case-backpain-01', 'case-neck-01', 'case-hemo-01', 'case-epistaxis-01', 'case-htn-01', 'case-psych-01', 'case-lac-01', 'case-fall-01', 'case-bite-01'];
+const testSubmitCases = ['case-043', 'case-046', 'case-051', 'case-040', 'case-061', 'case-071', 'case-081', 'case-091', 'case-095', 'case-101', 'case-105', 'case-120', 'case-130', 'case-140', 'case-150', 'case-160', 'case-170', 'case-180', 'seed-hematuria-01', 'case-backpain-01', 'case-neck-01', 'case-hemo-01', 'case-epistaxis-01', 'case-htn-01', 'case-psych-01', 'case-lac-01', 'case-fall-01', 'case-bite-01', 'case-venom-01'];
 for (const caseId of testSubmitCases) {
   const seedCase = patients.find(x => x.id === caseId);
   sandbox.switchUserRole('patient', { silent: true });
@@ -516,7 +516,7 @@ for (const caseId of testSubmitCases) {
     saveErrors++;
   }
 }
-assert(saveErrors === 0, `Save Persistence verified across all 28 active Chief Complaints (State + localStorage + #patientStatusView)`);
+assert(saveErrors === 0, `Save Persistence verified across all 29 active Chief Complaints (State + localStorage + #patientStatusView)`);
 
 console.log('\n=== มิติที่ (ค): PATIENT ISOLATION & CONTEXT SWITCHING CHECK (PATIENT A <-> PATIENT B) ===');
 sandbox.switchUserRole('doctor', { silent: true });
@@ -957,6 +957,45 @@ assert(splitFallText.includes('ซ้าย: นิ้วนาง, นิ้ว
 assert(splitFallText.includes('ซ้าย: นิ้วโป้ง') && splitFallText.includes('ขวา: นิ้วกลาง'), 'Fall trauma renders toe digits split by left and right');
 assert(splitFallText.includes('ฟกช้ำบริเวณสะโพกด้านหลัง'), 'Fall trauma renders 2.7 other location in Rapid Note');
 
+// === CC #29 VENOMOUS BITES & STINGS CLINICAL RED FLAG & TRIAGE VALIDATION ===
+const venomCase1 = patients.find(p => p.id === 'case-venom-01');
+const venomCase2 = patients.find(p => p.id === 'case-venom-02');
+const venomCase3 = patients.find(p => p.id === 'case-venom-03');
+const venomCase4 = patients.find(p => p.id === 'case-venom-04');
+
+const ccModVenom = sandbox.getCcModule('venomous_bite');
+assert(ccModVenom !== null, 'Module venomous_bite successfully registered');
+
+const venomRf1 = ccModVenom.evaluateRedFlags(venomCase1);
+assert(venomRf1.some(r => r.key === 'rf_venom_anaphylaxis_airway_shock'), 'Venom Case 1 triggers Anaphylaxis / Airway Shock Red Flag (ESI 1)');
+
+const venomRf2 = ccModVenom.evaluateRedFlags(venomCase2);
+assert(venomRf2.some(r => r.key === 'rf_venom_neurotoxic_snake_ptosis_resp'), 'Venom Case 2 triggers Neurotoxic Snake Ptosis / Resp Red Flag (ESI 1)');
+assert(venomRf2.some(r => r.key === 'rf_venom_hematotoxic_snake_bleeding_vicc'), 'Venom Case 2 triggers Hemato / Necrosis Red Flag (ESI 2)');
+
+const venomRf3 = ccModVenom.evaluateRedFlags(venomCase3);
+assert(venomRf3.some(r => r.key === 'rf_venom_hematotoxic_snake_bleeding_vicc'), 'Venom Case 3 triggers Hematotoxic Snake Bleeding / VICC Red Flag (ESI 2)');
+
+const venomRf4 = ccModVenom.evaluateRedFlags(venomCase4);
+assert(venomRf4.length === 0, 'Venom Case 4 (Centipede Great Toe) triggers Zero Red Flags (Low-Risk ESI 4)');
+
+// Test split digits by side and 2.7 other location for venomous bite
+const testVenomCase = JSON.parse(JSON.stringify(venomCase4));
+testVenomCase.venomParentUpperExtremity = true;
+testVenomCase.venomArmFingers = true;
+testVenomCase.venomArmFingersLeftDigits = ['middle', 'ring'];
+testVenomCase.venomArmFingersRightDigits = ['thumb', 'index'];
+testVenomCase.venomParentLowerExtremity = true;
+testVenomCase.venomLegToes = true;
+testVenomCase.venomLegToesLeftDigits = ['little'];
+testVenomCase.venomLegToesRightDigits = ['thumb'];
+testVenomCase.venomParentOther = true;
+testVenomCase.venomOtherLocationDetail = 'ซอกคอด้านขวา';
+const splitVenomText = ccModVenom.renderRapidHpi(testVenomCase);
+assert(splitVenomText.includes('ซ้าย: นิ้วกลาง, นิ้วนาง') && splitVenomText.includes('ขวา: นิ้วโป้ง, นิ้วชี้'), 'Venomous bite renders finger digits split by left and right');
+assert(splitVenomText.includes('ซ้าย: นิ้วก้อย') && splitVenomText.includes('ขวา: นิ้วโป้ง'), 'Venomous bite renders toe digits split by left and right');
+assert(splitVenomText.includes('ซอกคอด้านขวา'), 'Venomous bite renders 2.7 other location in Rapid Note');
+
 // Test doctorCcBadgeHtml presence across all registered CC modules
 const allCcMods = vm.runInContext('CC_MODULES', sandbox);
 Object.values(allCcMods).forEach(mod => {
@@ -984,6 +1023,13 @@ const ccDisplayLac = elementsById.get('activeCcDisplay').innerHTML;
 assert(
   ccDisplayLac.includes('ฉีกขาด') || ccDisplayLac.includes('bandage'),
   'Patient case-lac-01 updates activeCcDisplay to laceration badge'
+);
+
+sandbox.selectPatient('case-venom-01');
+const ccDisplayVenom = elementsById.get('activeCcDisplay').innerHTML;
+assert(
+  ccDisplayVenom.includes('แมลง') || ccDisplayVenom.includes('bug'),
+  'Patient case-venom-01 updates activeCcDisplay to venomous bite badge'
 );
 
 // === AI CONSULTANT PERSISTENCE & RESILIENT RETRY/FALLBACK TESTS ===

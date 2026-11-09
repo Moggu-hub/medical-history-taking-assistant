@@ -1,6 +1,6 @@
 # 🕵️‍♂️ รายงานการตรวจสอบคุณภาพโค้ดและสถาปัตยกรรม (AUTOMATED & AI AUDIT REPORT)
 
-- **วันที่ตรวจสอบ:** `09/11/2026` เวลา `10:54` น. (24-Hour Format)
+- **วันที่ตรวจสอบ:** `09/11/2026` เวลา `15:17` น. (24-Hour Format)
 - **สถานะภาพรวม (Overall Verdict):** **✅ PASS (ผ่านการตรวจสอบครบทุกมิติ)**
 - **จำนวนหัวข้อที่ผ่าน (Passed Checks):** 7 รายการ
 - **จำนวนคำเตือน (Warnings):** 0 รายการ
@@ -12,7 +12,7 @@
 
 | ไฟล์ (File Path) | จำนวนบรรทัด (Lines) | เพดานสูงสุด (Max Limit) | สถานะ (Status) |
 | :--- | :---: | :---: | :---: |
-| `index.html` | 1,990 | 2,000 | ✅ ปกติ (Safe) |
+| `index.html` | 1,991 | 2,000 | ✅ ปกติ (Safe) |
 | `clinical_knowledge_core.js` | 997 | 1,000 | ✅ ปกติ (Safe) |
 | `core_engine.js` | 2,949 | 3,200 | ✅ ปกติ (Safe) |
 | `cc_modules/01_abdpain.js` | 1,251 | 2,000 | ✅ ปกติ (Safe) |
@@ -43,16 +43,17 @@
 | `cc_modules/26_laceration_bleeding.js` | 1,998 | 2,000 | ✅ ปกติ (Safe) |
 | `cc_modules/27_fall_trauma.js` | 1,992 | 2,000 | ✅ ปกติ (Safe) |
 | `cc_modules/28_animal_bite.js` | 1,996 | 2,000 | ✅ ปกติ (Safe) |
+| `cc_modules/29_venomous_bite.js` | 1,850 | 2,000 | ✅ ปกติ (Safe) |
 
 ---
 
 ## 2. สรุปรายการที่ตรวจผ่าน (Passed Verification Checks)
 
-- ✅ index.html: 1990 บรรทัด (อยู่ในเกณฑ์ปลอดภัย <= 2000 บรรทัด)
+- ✅ index.html: 1991 บรรทัด (อยู่ในเกณฑ์ปลอดภัย <= 2000 บรรทัด)
 - ✅ clinical_knowledge_core.js: 997 บรรทัด (อยู่ในเกณฑ์ปลอดภัย <= 1000 บรรทัด)
 - ✅ core_engine.js: 2949 บรรทัด (อยู่ในเกณฑ์ปลอดภัย <= 3200 บรรทัด)
-- ✅ Core System Freeze: core_engine.js ไม่ถูกแก้ไขนับจากจุดเซฟ 'v2.60' (SHA-256 ตรงกัน 100%)
-- ✅ พบไฟล์โมดูลรายอาการใน cc_modules/ จำนวน 28 โมดูล
+- ✅ Core System Freeze: core_engine.js ไม่ถูกแก้ไขนับจากจุดเซฟ 'v2.61' (SHA-256 ตรงกัน 100%)
+- ✅ พบไฟล์โมดูลรายอาการใน cc_modules/ จำนวน 29 โมดูล
 - ✅ ทุกโมดูลใน cc_modules/ ผ่านเกณฑ์โครงสร้าง Lifecycle Hooks, ความปลอดภัย UI คนไข้ และมาตรฐานวันที่ dd/mm/yyyy + เวลา 24 ชั่วโมง HH:mm
 - ✅ ชุดทดสอบ Mandatory 4-Dimension Core Guard TDD (tests/core_guard_test.js) ผ่านครบ 100% ทั้ง 4 มิติ!
 
@@ -71,7 +72,7 @@
 === มิติที่ (ก): ARCHITECTURE, DOM INTEGRITY, UX HYGIENE & UNIVERSAL DATE/TIME ===
 ✅ PASS: index.html โหลด clinical_knowledge_core.js
 ✅ PASS: index.html โหลด core_engine.js
-✅ PASS: index.html โหลดโมดูลอาการนำจาก cc_modules/ ครบ 28 โมดูล
+✅ PASS: index.html โหลดโมดูลอาการนำจาก cc_modules/ ครบ 29 โมดูล
 ✅ PASS: Zero missing static DOM IDs across all modules (found: none)
 ✅ PASS: Zero 🚩 emojis inside #patientView & all cc_modules formHtml
 ✅ PASS: Zero pre-checked inputs inside #patientView (Zero Default Bias) (found: 0)
@@ -80,15 +81,15 @@
 ✅ PASS: Universal Date descriptor converts ISO '2026-10-26' -> '26/10/2026' (dd/mm/yyyy)
 ✅ PASS: Universal Time descriptor converts '3:30 PM' -> '15:30' (24-hour HH:mm)
 
-=== มิติที่ (ง): DOCTOR UI RENDER, JSON SCHEMA & BUILT-IN CDS (ALL 105 SEED CASES) ===
-✅ PASS: Seed database has all 105 clinical cases across 28 Chief Complaints (found 105)
-✅ PASS: All 105 seed cases render Rapid Note, Narrative Note & JSON Schema on Doctor Dashboard with 0 errors
-✅ PASS: All 105 seed cases generate Built-in CDS Analysis with 0 errors
-✅ PASS: Zero Date/Time format violations across all 105 seed cases
-✅ PASS: Zero De-duplication, Clean Negative Syntax & Score Offloading violations across all 105 seed cases
+=== มิติที่ (ง): DOCTOR UI RENDER, JSON SCHEMA & BUILT-IN CDS (ALL 109 SEED CASES) ===
+✅ PASS: Seed database has all 109 clinical cases across 29 Chief Complaints (found 109)
+✅ PASS: All 109 seed cases render Rapid Note, Narrative Note & JSON Schema on Doctor Dashboard with 0 errors
+✅ PASS: All 109 seed cases generate Built-in CDS Analysis with 0 errors
+✅ PASS: Zero Date/Time format violations across all 109 seed cases
+✅ PASS: Zero De-duplication, Clean Negative Syntax & Score Offloading violations across all 109 seed cases
 
 === มิติที่ (ข): SAVE PERSISTENCE CHECK (PATIENT SUBMIT -> STATE & LOCALSTORAGE -> STATUS VIEW) ===
-✅ PASS: Save Persistence verified across all 28 active Chief Complaints (State + localStorage + #patientStatusView)
+✅ PASS: Save Persistence verified across all 29 active Chief Complaints (State + localStorage + #patientStatusView)
 
 === มิติที่ (ค): PATIENT ISOLATION & CONTEXT SWITCHING CHECK (PATIENT A <-> PATIENT B) ===
 ✅ PASS: Switching to Patient B cleanly isolates Patient B context from Patient A
@@ -102,7 +103,7 @@
 ✅ PASS: Zero seed patients stuck on legacy dummy vital signs (found: 0)
 ✅ PASS: Empty patient submission records age='ไม่ระบุ' and durationVal=null instead of fake defaults (got age=ไม่ระบุ, durationVal=null)
 ✅ PASS: Empty patient submission displays "ไม่ระบุ" in Doctor Rapid Note without fabricated age or duration
-✅ PASS: PDPA Shield 100% compliant: Zero leaks of Name, HN, Queue, or Hospital name across all 105 patients (leaks: 0)
+✅ PASS: PDPA Shield 100% compliant: Zero leaks of Name, HN, Queue, or Hospital name across all 109 patients (leaks: 0)
 ✅ PASS: parseAiConsultantResponse isolates Provisional & Differential Diagnosis cleanly
 ✅ PASS: parseAiConsultantResponse isolates ER Orders checklist with "- [ ]" cleanly
 ✅ PASS: 1-Click Apply populates both Dx and Plan fields directly when empty
@@ -177,6 +178,15 @@
 ✅ PASS: Fall trauma renders finger digits split by left and right
 ✅ PASS: Fall trauma renders toe digits split by left and right
 ✅ PASS: Fall trauma renders 2.7 other location in Rapid Note
+✅ PASS: Module venomous_bite successfully registered
+✅ PASS: Venom Case 1 triggers Anaphylaxis / Airway Shock Red Flag (ESI 1)
+✅ PASS: Venom Case 2 triggers Neurotoxic Snake Ptosis / Resp Red Flag (ESI 1)
+✅ PASS: Venom Case 2 triggers Hemato / Necrosis Red Flag (ESI 2)
+✅ PASS: Venom Case 3 triggers Hematotoxic Snake Bleeding / VICC Red Flag (ESI 2)
+✅ PASS: Venom Case 4 (Centipede Great Toe) triggers Zero Red Flags (Low-Risk ESI 4)
+✅ PASS: Venomous bite renders finger digits split by left and right
+✅ PASS: Venomous bite renders toe digits split by left and right
+✅ PASS: Venomous bite renders 2.7 other location in Rapid Note
 ✅ PASS: Module abdpain has valid non-empty doctorCcBadgeHtml
 ✅ PASS: Module abdpain has valid non-empty doctorCcBadgeHtml
 ✅ PASS: Module chestpain has valid non-empty doctorCcBadgeHtml
@@ -212,9 +222,11 @@
 ✅ PASS: Module laceration_bleeding has valid non-empty doctorCcBadgeHtml
 ✅ PASS: Module fall_trauma has valid non-empty doctorCcBadgeHtml
 ✅ PASS: Module animal_bite has valid non-empty doctorCcBadgeHtml
+✅ PASS: Module venomous_bite has valid non-empty doctorCcBadgeHtml
 ✅ PASS: Patient case-040 shows Fever CC badge
 ✅ PASS: Patient case-bite-01 updates activeCcDisplay to animal bite badge instead of keeping previous CC
 ✅ PASS: Patient case-lac-01 updates activeCcDisplay to laceration badge
+✅ PASS: Patient case-venom-01 updates activeCcDisplay to venomous bite badge
 ✅ PASS: openAiConsultantModal preserves and restores saved AI consult diagnosis instead of overwriting with CDS
 ✅ PASS: openAiConsultantModal preserves and restores saved AI consult orders checklist
 ✅ PASS: openAiConsultantModal displays saved AI status banner indicating persisted consultation
