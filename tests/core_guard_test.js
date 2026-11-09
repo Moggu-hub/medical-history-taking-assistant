@@ -330,9 +330,9 @@ assert(dateInput.value === '26/10/2026', `Universal Date descriptor converts ISO
 timeInput.value = '3:30 PM';
 assert(timeInput.value === '15:30', `Universal Time descriptor converts '3:30 PM' -> '${timeInput.value}' (24-hour HH:mm)`);
 
-console.log('\n=== มิติที่ (ง): DOCTOR UI RENDER, JSON SCHEMA & BUILT-IN CDS (ALL 101 SEED CASES) ===');
+console.log('\n=== มิติที่ (ง): DOCTOR UI RENDER, JSON SCHEMA & BUILT-IN CDS (ALL 105 SEED CASES) ===');
 const patients = sandbox.getSeedPatients();
-assert(patients.length === 101, `Seed database has all 101 clinical cases across 27 Chief Complaints (found ${patients.length})`);
+assert(patients.length === 105, `Seed database has all 105 clinical cases across 28 Chief Complaints (found ${patients.length})`);
 
 let renderErrors = 0;
 let cdsErrors = 0;
@@ -479,7 +479,7 @@ assert(rapidDeDuplicationErrors === 0, `Zero De-duplication, Clean Negative Synt
 
 console.log('\n=== มิติที่ (ข): SAVE PERSISTENCE CHECK (PATIENT SUBMIT -> STATE & LOCALSTORAGE -> STATUS VIEW) ===');
 let saveErrors = 0;
-const testSubmitCases = ['case-043', 'case-046', 'case-051', 'case-040', 'case-061', 'case-071', 'case-081', 'case-091', 'case-095', 'case-101', 'case-105', 'case-120', 'case-130', 'case-140', 'case-150', 'case-160', 'case-170', 'case-180', 'seed-hematuria-01', 'case-backpain-01', 'case-neck-01', 'case-hemo-01', 'case-epistaxis-01', 'case-htn-01', 'case-psych-01', 'case-lac-01', 'case-fall-01'];
+const testSubmitCases = ['case-043', 'case-046', 'case-051', 'case-040', 'case-061', 'case-071', 'case-081', 'case-091', 'case-095', 'case-101', 'case-105', 'case-120', 'case-130', 'case-140', 'case-150', 'case-160', 'case-170', 'case-180', 'seed-hematuria-01', 'case-backpain-01', 'case-neck-01', 'case-hemo-01', 'case-epistaxis-01', 'case-htn-01', 'case-psych-01', 'case-lac-01', 'case-fall-01', 'case-bite-01'];
 for (const caseId of testSubmitCases) {
   const seedCase = patients.find(x => x.id === caseId);
   sandbox.switchUserRole('patient', { silent: true });
@@ -510,7 +510,7 @@ for (const caseId of testSubmitCases) {
     saveErrors++;
   }
 }
-assert(saveErrors === 0, `Save Persistence verified across all 27 active Chief Complaints (State + localStorage + #patientStatusView)`);
+assert(saveErrors === 0, `Save Persistence verified across all 28 active Chief Complaints (State + localStorage + #patientStatusView)`);
 
 console.log('\n=== มิติที่ (ค): PATIENT ISOLATION & CONTEXT SWITCHING CHECK (PATIENT A <-> PATIENT B) ===');
 sandbox.switchUserRole('doctor', { silent: true });
@@ -870,6 +870,30 @@ assert(fallRf3.some(r => r.key === 'rf_fall_extremity_fracture_inability_to_bear
 
 const fallRf4 = ccModFall.evaluateRedFlags(fallCase4);
 assert(fallRf4.length === 0, 'Fall Case 4 (Minor Ankle Twist) triggers Zero Red Flags (Low-Risk ESI 4)');
+
+// === CC #28 ANIMAL & MAMMALIAN BITES CLINICAL RED FLAG & TRIAGE VALIDATION ===
+const biteCase1 = patients.find(p => p.id === 'case-bite-01');
+const biteCase2 = patients.find(p => p.id === 'case-bite-02');
+const biteCase3 = patients.find(p => p.id === 'case-bite-03');
+const biteCase4 = patients.find(p => p.id === 'case-bite-04');
+
+const ccModBite = sandbox.getCcModule('animal_bite');
+assert(ccModBite !== null, 'Module animal_bite successfully registered');
+
+const biteRf1 = ccModBite.evaluateRedFlags(biteCase1);
+assert(biteRf1.some(r => r.key === 'rf_bite_severe_neck_face_hemorrhagic_shock'), 'Bite Case 1 triggers Severe Neck/Face Mauling Red Flag (ESI 1/2)');
+assert(biteRf1.some(r => r.key === 'rf_bite_who_cat3_rig_indicated'), 'Bite Case 1 triggers WHO Cat III RIG Indicated Red Flag (ESI 2)');
+
+const biteRf2 = ccModBite.evaluateRedFlags(biteCase2);
+assert(biteRf2.some(r => r.key === 'rf_bite_deep_hand_tendon_joint_infection'), 'Bite Case 2 triggers High-Risk Hand Bite Red Flag (ESI 2)');
+assert(biteRf2.some(r => r.key === 'rf_bite_infected_wound_sepsis_immunocompromised'), 'Bite Case 2 triggers Infected Bite Sepsis Red Flag (ESI 2)');
+assert(biteRf2.some(r => r.key === 'rf_bite_who_cat2_or_booster_regimen'), 'Bite Case 2 triggers Booster Regimen Red Flag (ESI 3)');
+
+const biteRf3 = ccModBite.evaluateRedFlags(biteCase3);
+assert(biteRf3.some(r => r.key === 'rf_bite_who_cat3_rig_indicated'), 'Bite Case 3 triggers WHO Cat III RIG Indicated Red Flag (ESI 2)');
+
+const biteRf4 = ccModBite.evaluateRedFlags(biteCase4);
+assert(biteRf4.some(r => r.key === 'rf_bite_who_cat2_or_booster_regimen'), 'Bite Case 4 triggers WHO Cat II / Booster Regimen Red Flag (ESI 3/4)');
 
 // === AI CONSULTANT PERSISTENCE & RESILIENT RETRY/FALLBACK TESTS ===
 // Test 4: AI Consult Result Persistence across modal close & reopen

@@ -66,7 +66,7 @@ const CHIEF_COMPLAINTS = [
   { id: 'self_harm', schemaCode: 'self_harm', titleTh: 'ทำร้ายตนเอง / พยายามฆ่าตัวตาย', titleEn: 'Self-harm / Suicidal attempt', icon: 'heart-crack', active: false, phase: 10 },
   { id: 'psychiatric_emergency', schemaCode: 'psychiatric_emergency', titleTh: 'เอะอะโวยวาย / จิตเวช', titleEn: 'Acute agitation / Psychiatric emergency', icon: 'alert-octagon', active: true, phase: 10 },
   { id: 'hypertension', schemaCode: 'hypertension_detected', titleTh: 'ตรวจพบความดันโลหิตสูง', titleEn: 'Asymptomatic severe hypertension / High BP screen', icon: 'activity', active: true, phase: 9 },
-  { id: 'animal_bite', schemaCode: 'mammalian_bite', titleTh: 'สุนัข แมว สัตว์เลี้ยงลูกด้วยนมกัด', titleEn: 'Animal / Dog / Cat bites (Rabies risk)', icon: 'paw-print', active: false, phase: 10 },
+  { id: 'animal_bite', schemaCode: 'mammalian_bite', titleTh: 'สุนัข แมว สัตว์เลี้ยงลูกด้วยนมกัด', titleEn: 'Animal / Dog / Cat bites (Rabies risk)', icon: 'paw-print', active: true, phase: 10 },
   { id: 'venomous_bite', schemaCode: 'venomous_bite_sting', titleTh: 'แมลง / งู / สัตว์มีพิษกัดต่อย', titleEn: 'Insect sting / Snake & Venomous creature bites', icon: 'bug', active: false, phase: 10 },
   { id: 'poisoning', schemaCode: 'poisoning_overdose', titleTh: 'ได้รับสารพิษ / กินยาเกินขนาด', titleEn: 'Poisoning / Drug overdose', icon: 'skull', active: false, phase: 10 }
 ];
