@@ -178,7 +178,9 @@ function evaluateVenomRedFlags(patient) {
 
   // 3. HEMATOTOXIC SNAKE ENVENOMATION & VICC (ESI 2)
   const isHematoSnake = ['green_pit_viper', 'malayan_pit_viper', 'russells_viper'].includes(snakeType);
-  const hasBleedingSigns = snakeSigns.includes('systemic_bleeding_vicc') || localSigns.includes('fang_marks_active_bleeding');
+  const hasBleedingSigns = snakeSigns.includes('systemic_bleeding_vicc') ||
+                           localSigns.includes('active_bleeding_from_wound') ||
+                           localSigns.includes('fang_marks_active_bleeding');
   const hasLocalNecrosis = localSigns.includes('necrosis_hemorrhagic_blebs') || (isHematoSnake && localSigns.includes('severe_rapid_spreading_swelling'));
 
   if (isHematoSnake || hasBleedingSigns || (creatures.includes('snake') && hasLocalNecrosis)) {
@@ -403,6 +405,8 @@ function renderVenomRapidHpi(patient) {
   const anatomyStr = formatVenomAnatomy(patient);
 
   const localMap = {
+    fang_marks: 'มีรอยเขี้ยวชัดเจน (1-2 รอย)',
+    active_bleeding_from_wound: 'มีเลือดไหลซึมออกจากรอยแผลไม่หยุด',
     fang_marks_active_bleeding: 'มีรอยเขี้ยว/เลือดไหลซึมไม่หยุด',
     retained_stinger_spine: 'มีเหล็กใน/เงี่ยงหักฝังค้างในแผล',
     severe_rapid_spreading_swelling: 'ปวดบวมรุนแรงลามเร็ว',
@@ -438,7 +442,7 @@ function renderVenomRapidHpi(patient) {
   if (snakeSigns.includes('ptosis_diplopia_blurred_vision')) positives.push('หนังตาตก ลืมตาไม่ขึ้น มองเห็นภาพซ้อน');
   if (snakeSigns.includes('dysarthria_bulbar_palsy')) positives.push('พูดไม่ชัด ลิ้นแข็ง กลืนน้ำลายลำบาก');
   if (snakeSigns.includes('motor_weakness_resp_depression')) positives.push('แขนขาอ่อนแรง หายใจไม่อิ่ม');
-  if (snakeSigns.includes('systemic_bleeding_vicc')) positives.push('มีเลือดออกผิดปกติ (เลือดออกตามไรฟัน/จ้ำเลือด/ปัสสาวะเป็นเลือด)');
+  if (snakeSigns.includes('systemic_bleeding_vicc')) positives.push('มีเลือดออกผิดปกติ (เลือดออกตามไรฟัน/จ้ำเลือด/ปัสสาวะเป็นเลือด/อาเจียนหรือถ่ายดำปนเลือด)');
   if (snakeSigns.includes('severe_myalgia_dark_coke_urine')) positives.push('ปวดกล้ามเนื้อรุนแรง ปัสสาวะสีโค้ก/เข้มผิดปกติ');
   if (snakeSigns.includes('no_snake_systemic_signs')) negatives.push('ไม่มีอาการหนังตาตก พูดไม่ชัด แขนขาอ่อนแรง หรือเลือดออกผิดปกติ');
 
@@ -621,7 +625,7 @@ const VENOMOUS_BITE_FORM_HTML = `
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs sm:text-sm">
         <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50">
           <input type="checkbox" name="venomCreatureTypes" value="snake" onchange="handleVenomCreatureChange()" class="rounded text-medical-600 h-4 w-4">
-          <span class="ml-2.5 font-bold text-rose-800">งู (มีพิษ / ไม่มีพิษ)</span>
+          <span class="ml-2.5 font-medium text-slate-800">งู (มีพิษ / ไม่มีพิษ)</span>
         </label>
         <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50">
           <input type="checkbox" name="venomCreatureTypes" value="bee_wasp_hornet" onchange="handleVenomCreatureChange()" class="rounded text-medical-600 h-4 w-4">
@@ -723,7 +727,7 @@ const VENOMOUS_BITE_FORM_HTML = `
         </label>
         <label class="selectable-card flex items-center p-2.5 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50">
           <input type="radio" name="venomStingsCount" value="massive" class="text-medical-600 h-4 w-4">
-          <span class="ml-2 font-bold text-rose-700">รุมต่อยมาก (>= 10 จุด)</span>
+          <span class="ml-2 text-slate-800">รุมต่อยมาก (>= 10 จุด)</span>
         </label>
       </div>
     </div>
@@ -744,13 +748,13 @@ const VENOMOUS_BITE_FORM_HTML = `
           <input type="checkbox" name="venomFirstAid" value="vinegar_rinse" class="rounded text-medical-600 h-4 w-4">
           <span class="ml-2 text-slate-800">ราดแผลด้วยน้ำส้มสายชู (กรณีถูกแมงกะพรุน)</span>
         </label>
-        <label class="selectable-card flex items-center p-2.5 rounded-xl border border-rose-200 bg-rose-50/40 cursor-pointer hover:bg-rose-50">
-          <input type="checkbox" name="venomFirstAid" value="tourniquet_applied" class="rounded text-rose-600 h-4 w-4">
-          <span class="ml-2 font-medium text-rose-900">ใช้เชือก ผ้า หรือสายรัด มัดรัดเหนือแผลไว้ (ขันชะเนาะ) <span class="font-bold text-rose-700">(เป็นวิธีที่ผิด ไม่ควรทำ)</span></span>
+        <label class="selectable-card flex items-center p-2.5 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50">
+          <input type="checkbox" name="venomFirstAid" value="tourniquet_applied" class="rounded text-medical-600 h-4 w-4">
+          <span class="ml-2 text-slate-800">ใช้เชือก ผ้า หรือสายรัด มัดรัดเหนือแผลไว้ (ขันชะเนาะ) <span class="text-xs text-slate-500">(เป็นวิธีที่ผิด ไม่ควรทำ)</span></span>
         </label>
-        <label class="selectable-card flex items-center p-2.5 rounded-xl border border-rose-200 bg-rose-50/40 cursor-pointer hover:bg-rose-50">
-          <input type="checkbox" name="venomFirstAid" value="incision_suction_herbal" class="rounded text-rose-600 h-4 w-4">
-          <span class="ml-2 font-medium text-rose-900">กรีดแผล ใช้ปากดูดพิษ หรือนำสมุนไพร/สิ่งแปลกปลอมพอกแผล <span class="font-bold text-rose-700">(เป็นวิธีที่ผิด ไม่ควรทำ)</span></span>
+        <label class="selectable-card flex items-center p-2.5 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50">
+          <input type="checkbox" name="venomFirstAid" value="incision_suction_herbal" class="rounded text-medical-600 h-4 w-4">
+          <span class="ml-2 text-slate-800">กรีดแผล ใช้ปากดูดพิษ หรือนำสมุนไพร/สิ่งแปลกปลอมพอกแผล <span class="text-xs text-slate-500">(เป็นวิธีที่ผิด ไม่ควรทำ)</span></span>
         </label>
         <label class="selectable-card flex items-center p-2.5 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50">
           <input type="checkbox" name="venomFirstAid" value="no_first_aid" class="rounded text-medical-600 h-4 w-4">
@@ -826,8 +830,8 @@ const VENOMOUS_BITE_FORM_HTML = `
         </div>
         <div class="pt-2 border-t border-slate-100 space-y-1.5">
           <span class="font-semibold text-slate-700 block">อาการสำคัญที่พบร่วมด้วย:</span>
-          <label class="flex items-center"><input type="checkbox" name="venomHeadSigns" value="venom_in_eye_pain_blurred" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 font-medium text-rose-800">ถูกพิษงูหรือพิษแมลงเข้าตา มีอาการปวดแสบตารุนแรง น้ำตาไหล หรือตามัว</span></label>
-          <label class="flex items-center"><input type="checkbox" name="venomHeadSigns" value="stung_in_mouth_tongue_swelling" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 font-medium text-rose-800">ถูกต่อยในปาก ลิ้น หรือริมฝีปาก จนเริ่มบวมคับปาก</span></label>
+          <label class="flex items-center"><input type="checkbox" name="venomHeadSigns" value="venom_in_eye_pain_blurred" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">ถูกพิษงูหรือพิษแมลงเข้าตา มีอาการปวดแสบตารุนแรง น้ำตาไหล หรือตามัว</span></label>
+          <label class="flex items-center"><input type="checkbox" name="venomHeadSigns" value="stung_in_mouth_tongue_swelling" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">ถูกต่อยในปาก ลิ้น หรือริมฝีปาก จนเริ่มบวมคับปาก</span></label>
         </div>
       </div>
     </div>
@@ -869,7 +873,7 @@ const VENOMOUS_BITE_FORM_HTML = `
         </div>
         <div class="pt-2 border-t border-slate-100 space-y-1.5">
           <span class="font-semibold text-slate-700 block">อาการสำคัญที่พบร่วมด้วย:</span>
-          <label class="flex items-center"><input type="checkbox" name="venomNeckSigns" value="rapid_neck_swelling_stridor_dysphagia" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 font-medium text-rose-800">คอบวมโตขึ้นอย่างรวดเร็ว อึดอัดแน่นคอ หรือกลืนลำบาก</span></label>
+          <label class="flex items-center"><input type="checkbox" name="venomNeckSigns" value="rapid_neck_swelling_stridor_dysphagia" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">คอบวมโตขึ้นอย่างรวดเร็ว อึดอัดแน่นคอ หรือกลืนลำบาก</span></label>
         </div>
       </div>
     </div>
@@ -1021,7 +1025,7 @@ const VENOMOUS_BITE_FORM_HTML = `
         </div>
         <div class="pt-2 border-t border-slate-100 space-y-1.5">
           <span class="font-semibold text-slate-700 block">อาการสำคัญที่พบร่วมด้วย:</span>
-          <label class="flex items-center"><input type="checkbox" name="venomUpperExtSigns" value="arm_tense_compartment_ischemia" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 font-medium text-rose-800">แขน มือ หรือนิ้วมือบวมตึงมาก ขยับนิ้วแล้วปวดรุนแรง หรือมีอาการชา/ปลายนิ้วซีดเย็น</span></label>
+          <label class="flex items-center"><input type="checkbox" name="venomUpperExtSigns" value="arm_tense_compartment_ischemia" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">แขน มือ หรือนิ้วมือบวมตึงมาก ขยับนิ้วแล้วปวดรุนแรง หรือมีอาการชา/ปลายนิ้วซีดเย็น</span></label>
         </div>
       </div>
     </div>
@@ -1083,7 +1087,7 @@ const VENOMOUS_BITE_FORM_HTML = `
         </div>
         <div class="pt-2 border-t border-slate-100 space-y-1.5">
           <span class="font-semibold text-slate-700 block">อาการสำคัญที่พบร่วมด้วย:</span>
-          <label class="flex items-center"><input type="checkbox" name="venomLowerExtSigns" value="leg_tense_compartment_ischemia" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 font-medium text-rose-800">ขา ข้อเท้า หรือเท้าบวมตึงมาก เดินลงน้ำหนักไม่ได้ หรือมีอาการชา/ปลายเท้าซีดเย็น</span></label>
+          <label class="flex items-center"><input type="checkbox" name="venomLowerExtSigns" value="leg_tense_compartment_ischemia" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">ขา ข้อเท้า หรือเท้าบวมตึงมาก เดินลงน้ำหนักไม่ได้ หรือมีอาการชา/ปลายเท้าซีดเย็น</span></label>
         </div>
       </div>
     </div>
@@ -1104,37 +1108,41 @@ const VENOMOUS_BITE_FORM_HTML = `
       <label class="block text-xs sm:text-sm font-semibold text-slate-800 mb-2">2.8 ลักษณะบาดแผลและอาการเฉพาะที่ในขณะนี้ (เลือกได้หลายข้อหากมีอาการ):</label>
       <div class="space-y-2 text-xs sm:text-sm">
         <label class="selectable-card flex items-center p-2.5 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50">
-          <input type="checkbox" name="venomLocalSigns" value="fang_marks_active_bleeding" class="rounded text-medical-600 h-4 w-4">
-          <span class="ml-2 font-bold text-rose-800">มีรอยเขี้ยวชัดเจน (1-2 รอย) หรือมีเลือดไหลซึมออกจากรอยแผลไม่หยุด</span>
+          <input type="checkbox" name="venomLocalSigns" value="fang_marks" class="rounded text-medical-600 h-4 w-4">
+          <span class="ml-2 text-slate-800">มีรอยเขี้ยวชัดเจน (1-2 รอย)</span>
+        </label>
+        <label class="selectable-card flex items-center p-2.5 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50">
+          <input type="checkbox" name="venomLocalSigns" value="active_bleeding_from_wound" class="rounded text-medical-600 h-4 w-4">
+          <span class="ml-2 text-slate-800">มีเลือดไหลซึมออกจากรอยแผลไม่หยุด</span>
         </label>
         <div>
           <label class="selectable-card flex items-center p-2.5 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50">
             <input type="checkbox" name="venomLocalSigns" value="retained_stinger_spine" onchange="handleVenomLocalSignsChange()" class="rounded text-medical-600 h-4 w-4">
-            <span class="ml-2 font-medium text-slate-800">มีเหล็กในแมลง หรือเงี่ยงปลา/หนามสัตว์มีพิษ หักฝังค้างอยู่ในแผล</span>
+            <span class="ml-2 text-slate-800">มีเหล็กในแมลง หรือเงี่ยงปลา/หนามสัตว์มีพิษ หักฝังค้างอยู่ในแผล</span>
           </label>
           <div id="venomStingerStatusContainer" class="hidden ml-6 mt-2 p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs space-y-1.5">
             <span class="font-bold text-slate-700 block">สถานะของเหล็กในหรือเงี่ยงสัตว์มีพิษในขณะนี้:</span>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              <label class="flex items-center cursor-pointer"><input type="radio" name="venomStingerStatus" value="not_removed" class="text-rose-600 h-3.5 w-3.5"><span class="ml-1.5 font-medium text-rose-800">ยังไม่ได้เอาออก (ยังคงฝังค้างอยู่ในแผล)</span></label>
+              <label class="flex items-center cursor-pointer"><input type="radio" name="venomStingerStatus" value="not_removed" class="text-medical-600 h-3.5 w-3.5"><span class="ml-1.5 text-slate-800">ยังไม่ได้เอาออก (ยังคงฝังค้างอยู่ในแผล)</span></label>
               <label class="flex items-center cursor-pointer"><input type="radio" name="venomStingerStatus" value="already_removed" class="text-medical-600 h-3.5 w-3.5"><span class="ml-1.5 text-slate-700">เอาออกเรียบร้อยแล้ว</span></label>
             </div>
           </div>
         </div>
         <label class="selectable-card flex items-center p-2.5 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50">
           <input type="checkbox" name="venomLocalSigns" value="severe_rapid_spreading_swelling" class="rounded text-medical-600 h-4 w-4">
-          <span class="ml-2 font-medium text-slate-800">ปวดบวมรุนแรงและบวมลามเร็ว</span>
+          <span class="ml-2 text-slate-800">ปวดบวมรุนแรงและบวมลามเร็ว</span>
         </label>
         <label class="selectable-card flex items-center p-2.5 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50">
           <input type="checkbox" name="venomLocalSigns" value="necrosis_hemorrhagic_blebs" class="rounded text-medical-600 h-4 w-4">
-          <span class="ml-2 font-bold text-rose-800">ผิวหนังรอบแผลเปลี่ยนเป็นสีม่วงคล้ำ ดำ หรือมีตุ่มน้ำพองใส/ตุ่มน้ำปนเลือด</span>
-        </label>
-        <label class="selectable-card flex items-center p-2.5 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50">
-          <input type="checkbox" name="venomLocalSigns" value="whip_like_burn_tracks" class="rounded text-medical-600 h-4 w-4">
-          <span class="ml-2 font-medium text-slate-800">มีรอยไหม้เป็นเส้นนูนแดงคล้ายรอยแส้ฟาด (พบบ่อยจากแมงกะพรุน)</span>
+          <span class="ml-2 text-slate-800">ผิวหนังรอบแผลเปลี่ยนเป็นสีม่วงคล้ำ ดำ หรือมีตุ่มน้ำพองใส/ตุ่มน้ำปนเลือด</span>
         </label>
         <label class="selectable-card flex items-center p-2.5 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50">
           <input type="checkbox" name="venomLocalSigns" value="secondary_infection_pus" class="rounded text-medical-600 h-4 w-4">
-          <span class="ml-2 font-medium text-slate-800">แผลบวมแดงร้อน มีหนองซึม หรือมีรอยแดงลามตามเส้นเลือด</span>
+          <span class="ml-2 text-slate-800">แผลบวมแดงร้อน มีหนองซึม หรือมีรอยแดงลามตามเส้นเลือด</span>
+        </label>
+        <label class="selectable-card flex items-center p-2.5 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50">
+          <input type="checkbox" name="venomLocalSigns" value="mild_local_pain_only" class="rounded text-medical-600 h-4 w-4">
+          <span class="ml-2 text-slate-600">มีอาการปวด บวม แดง หรือคันเฉพาะจุดเพียงเล็กน้อย</span>
         </label>
         <label class="selectable-card flex items-center p-2.5 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50">
           <input type="checkbox" name="venomLocalSigns" value="mild_local_pain_only" class="rounded text-medical-600 h-4 w-4">
@@ -1166,19 +1174,19 @@ const VENOMOUS_BITE_FORM_HTML = `
         </label>
         <label class="selectable-card flex items-center p-2.5 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50">
           <input type="checkbox" name="venomSystemicAllergySigns" value="facial_angioedema" class="rounded text-medical-600 h-4 w-4">
-          <span class="ml-2 font-medium text-rose-800">หน้าบวม ตาบวม หรือริมฝีปากบวม</span>
+          <span class="ml-2 text-slate-800">หน้าบวม ตาบวม หรือริมฝีปากบวม</span>
         </label>
         <label class="selectable-card flex items-center p-2.5 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50">
           <input type="checkbox" name="venomSystemicAllergySigns" value="laryngeal_edema_hoarseness" class="rounded text-medical-600 h-4 w-4">
-          <span class="ml-2 font-bold text-rose-800">แน่นในลำคอ กลืนลำบาก เสียงแหบ คอตีบตัน</span>
+          <span class="ml-2 text-slate-800">แน่นในลำคอ กลืนลำบาก เสียงแหบ คอตีบตัน</span>
         </label>
         <label class="selectable-card flex items-center p-2.5 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50">
           <input type="checkbox" name="venomSystemicAllergySigns" value="bronchospasm_dyspnea_wheezing" class="rounded text-medical-600 h-4 w-4">
-          <span class="ml-2 font-bold text-rose-800">หายใจหอบเหนื่อย มีเสียงหวีด หรือแน่นหน้าอก</span>
+          <span class="ml-2 text-slate-800">หายใจหอบเหนื่อย มีเสียงหวีด หรือแน่นหน้าอก</span>
         </label>
         <label class="selectable-card flex items-center p-2.5 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50">
           <input type="checkbox" name="venomSystemicAllergySigns" value="hypotensive_syncope_shock" class="rounded text-medical-600 h-4 w-4">
-          <span class="ml-2 font-bold text-rose-800">หน้ามืด เวียนศีรษะ วูบจะเป็นลม หรือเหงื่อแตกตัวเย็น</span>
+          <span class="ml-2 text-slate-800">หน้ามืด เวียนศีรษะ วูบจะเป็นลม หรือเหงื่อแตกตัวเย็น</span>
         </label>
         <label class="selectable-card flex items-center p-2.5 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50">
           <input type="checkbox" name="venomSystemicAllergySigns" value="gi_cramps_vomiting" class="rounded text-medical-600 h-4 w-4">
@@ -1201,23 +1209,23 @@ const VENOMOUS_BITE_FORM_HTML = `
       <div class="space-y-1.5 text-xs sm:text-sm">
         <label class="selectable-card flex items-center p-2 bg-white rounded-lg border border-slate-200 cursor-pointer">
           <input type="checkbox" name="venomSnakeSigns" value="ptosis_diplopia_blurred_vision" class="rounded text-medical-600 h-4 w-4">
-          <span class="ml-2 font-bold text-rose-800">หนังตาตก ลืมตาไม่ค่อยขึ้น มองเห็นภาพซ้อน หรือตาพร่ามัว <span class="text-xs font-normal text-slate-500">(เตือนพิษงูเห่า/จงอาง/สามเหลี่ยม/ทับสมิงคลา)</span></span>
+          <span class="ml-2 text-slate-800">หนังตาตก ลืมตาไม่ค่อยขึ้น มองเห็นภาพซ้อน หรือตาพร่ามัว <span class="text-xs font-normal text-slate-500">(เตือนพิษงูเห่า/จงอาง/สามเหลี่ยม/ทับสมิงคลา)</span></span>
         </label>
         <label class="selectable-card flex items-center p-2 bg-white rounded-lg border border-slate-200 cursor-pointer">
           <input type="checkbox" name="venomSnakeSigns" value="dysarthria_bulbar_palsy" class="rounded text-medical-600 h-4 w-4">
-          <span class="ml-2 font-bold text-rose-800">พูดไม่ชัด ลิ้นแข็ง อ้าปากหรือกลืนน้ำลายลำบาก ชารอบปาก</span>
+          <span class="ml-2 text-slate-800">พูดไม่ชัด ลิ้นแข็ง อ้าปากหรือกลืนน้ำลายลำบาก ชารอบปาก</span>
         </label>
         <label class="selectable-card flex items-center p-2 bg-white rounded-lg border border-slate-200 cursor-pointer">
           <input type="checkbox" name="venomSnakeSigns" value="motor_weakness_resp_depression" class="rounded text-medical-600 h-4 w-4">
-          <span class="ml-2 font-bold text-rose-800">แขนขาอ่อนแรง ยกแขนขาไม่ขึ้น หรือรู้สึกหายใจเข้าได้ไม่เต็มอิ่ม</span>
+          <span class="ml-2 text-slate-800">แขนขาอ่อนแรง ยกแขนขาไม่ขึ้น หรือรู้สึกหายใจเข้าได้ไม่เต็มอิ่ม</span>
         </label>
         <label class="selectable-card flex items-center p-2 bg-white rounded-lg border border-slate-200 cursor-pointer">
           <input type="checkbox" name="venomSnakeSigns" value="systemic_bleeding_vicc" class="rounded text-medical-600 h-4 w-4">
-          <span class="ml-2 font-bold text-rose-800">มีเลือดออกผิดปกติ เช่น เลือดออกตามไรฟัน เลือดกำเดา จ้ำเลือด ปัสสาวะเป็นเลือด <span class="text-xs font-normal text-slate-500">(เตือนพิษงูกะปะ/เขียวหางไหม้/แมวเซา)</span></span>
+          <span class="ml-2 text-slate-800">มีเลือดออกผิดปกติ เช่น เลือดออกตามไรฟัน เลือดกำเดา จ้ำเลือด ปัสสาวะเป็นเลือด อาเจียนหรือถ่ายดำปนเลือด <span class="text-xs font-normal text-slate-500">(เตือนพิษงูกะปะ/เขียวหางไหม้/แมวเซา)</span></span>
         </label>
         <label class="selectable-card flex items-center p-2 bg-white rounded-lg border border-slate-200 cursor-pointer">
           <input type="checkbox" name="venomSnakeSigns" value="severe_myalgia_dark_coke_urine" class="rounded text-medical-600 h-4 w-4">
-          <span class="ml-2 font-medium text-slate-800">ปวดเมื่อยกล้ามเนื้อทั่วตัวมาก หรือปัสสาวะสีเข้มผิดปกติ (สีโค้ก/น้ำตาลคล้ำ)</span>
+          <span class="ml-2 text-slate-800">ปวดเมื่อยกล้ามเนื้อทั่วตัวมาก หรือปัสสาวะสีเข้มผิดปกติ (สีโค้ก/น้ำตาลคล้ำ)</span>
         </label>
         <label class="selectable-card flex items-center p-2 bg-white rounded-lg border border-slate-200 cursor-pointer">
           <input type="checkbox" name="venomSnakeSigns" value="no_snake_systemic_signs" class="rounded text-medical-600 h-4 w-4">
@@ -1312,7 +1320,7 @@ const VENOMOUS_BITE_FORM_HTML = `
         </label>
         <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50">
           <input type="radio" name="venomPriorAllergyHx" value="has_prior_allergy" onchange="handleVenomPriorAllergyChange(this.value)" class="text-medical-600 h-4 w-4">
-          <span class="ml-2 font-bold text-rose-800">เคยมีอาการแพ้มาก่อน</span>
+          <span class="ml-2 text-slate-800">เคยมีอาการแพ้มาก่อน</span>
         </label>
       </div>
       <div id="venomPriorAllergyDetailContainer" class="hidden mt-2">
@@ -1784,7 +1792,7 @@ const venomousBiteModule = {
       venomArmFingers: true, venomArmFingersLeftDigits: ['index'], venomArmFingersRightDigits: [],
       venomUpperExtSigns: ['arm_tense_compartment_ischemia'],
       venomParentLowerExtremity: false, venomParentOther: false,
-      venomLocalSigns: ['fang_marks_active_bleeding', 'severe_rapid_spreading_swelling', 'necrosis_hemorrhagic_blebs'],
+      venomLocalSigns: ['fang_marks', 'active_bleeding_from_wound', 'severe_rapid_spreading_swelling', 'necrosis_hemorrhagic_blebs'],
       venomSystemicAllergySigns: ['no_systemic_allergy_signs'],
       venomSnakeSigns: ['ptosis_diplopia_blurred_vision', 'dysarthria_bulbar_palsy', 'motor_weakness_resp_depression'],
       venomHymenopteraSigns: [], venomArthropodSigns: [], venomMarineSigns: [],
@@ -1808,7 +1816,7 @@ const venomousBiteModule = {
       venomParentLowerExtremity: true, venomLegThigh: false, venomLegKneeShinCalf: false, venomLegAnkleFoot: true, venomLegAnkleFootSides: ['right'], venomLegToes: false,
       venomLowerExtSigns: [],
       venomParentOther: false,
-      venomLocalSigns: ['fang_marks_active_bleeding', 'severe_rapid_spreading_swelling', 'necrosis_hemorrhagic_blebs'],
+      venomLocalSigns: ['fang_marks', 'active_bleeding_from_wound', 'severe_rapid_spreading_swelling', 'necrosis_hemorrhagic_blebs'],
       venomSystemicAllergySigns: ['no_systemic_allergy_signs'],
       venomSnakeSigns: ['systemic_bleeding_vicc'],
       venomHymenopteraSigns: [], venomArthropodSigns: [], venomMarineSigns: [],
