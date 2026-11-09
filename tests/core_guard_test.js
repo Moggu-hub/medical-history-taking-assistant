@@ -366,6 +366,12 @@ for (const p of patients) {
       cdsErrors++;
     }
 
+    const rfListHtml = elementsById.get('redFlagList')?.innerHTML || '';
+    if (rfListHtml.includes('<strong class="text-rose-900"></strong>') || rfListHtml.includes('<span class="text-rose-700 font-normal"></span>')) {
+      console.error(`❌ Empty Red Flag text or risk detected in Doctor banner for ${p.id} (${p.chief_complaint})`);
+      renderErrors++;
+    }
+
     // Strict De-duplication, Clean Negative Syntax & Score Offloading Guard
     const hpiMatch = rapid.match(/\[History of Present Illness \(HPI\)\]([\s\S]*?)\[Past Medical History/);
     if (hpiMatch) {
@@ -894,6 +900,17 @@ assert(biteRf3.some(r => r.key === 'rf_bite_who_cat3_rig_indicated'), 'Bite Case
 
 const biteRf4 = ccModBite.evaluateRedFlags(biteCase4);
 assert(biteRf4.some(r => r.key === 'rf_bite_who_cat2_or_booster_regimen'), 'Bite Case 4 triggers WHO Cat II / Booster Regimen Red Flag (ESI 3/4)');
+
+assert(biteRf1.every(r => typeof r.textTh === 'string' && r.textTh.length > 0 && typeof r.risk === 'string' && r.risk.length > 0), 'Bite Red Flags have non-empty textTh and risk strings');
+assert(fallRf1.every(r => typeof r.textTh === 'string' && r.textTh.length > 0 && typeof r.risk === 'string' && r.risk.length > 0), 'Fall Trauma Red Flags have non-empty textTh and risk strings');
+
+// Test 2.7 other location and fingers/toes digits
+biteCase2.biteArmFingersDigits = ['index'];
+biteCase2.biteParentOther = true;
+biteCase2.biteOtherLocationDetail = 'ซอกคอด้านซ้าย';
+const locText = ccModBite.renderRapidHpi(biteCase2);
+assert(locText.includes('นิ้วชี้'), 'Animal bite renders finger digit (นิ้วชี้) in Rapid Note');
+assert(locText.includes('ซอกคอด้านซ้าย'), 'Animal bite renders other location in Rapid Note');
 
 // === AI CONSULTANT PERSISTENCE & RESILIENT RETRY/FALLBACK TESTS ===
 // Test 4: AI Consult Result Persistence across modal close & reopen

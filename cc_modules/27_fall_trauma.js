@@ -101,13 +101,10 @@ function evaluateFallRedFlags(patient) {
     woundStatus === 'active_spurting';
 
   if (isHighEnergy || (hasShock && (patient.fallParentChest || patient.fallParentAbdomen || patient.fallParentNeck)) || isBluntTorsoThreat) {
-    rfs.push({
-      key: 'rf_fall_high_energy_shock_internal_bleed',
-      level: (sbp !== null && sbp < 90) || woundStatus === 'active_spurting' || heightLevel === 'over_3m' ? 'ESI 1' : 'ESI 2',
-      title: 'อุบัติเหตุตกจากที่สูงรุนแรง หรือมีภาวะช็อก/สงสัยเลือดออกภายในช่องอก-ช่องท้อง (High-Energy Fall / Internal Hemorrhage / Shock)',
-      detail: 'ผู้ป่วยมีประวัติตกจากที่สูง > 3 เมตร, มีภาวะช็อก/สงสัยเลือดออกในช่องอกหรือช่องท้อง หรือมีแผลเลือดพุ่ง เสี่ยงต่อการเสียเลือดเฉียบพลันและภาวะการหายใจล้มเหลว',
-      action: 'ประเมิน ABCDE ตามแนวทาง ATLS, ตรวจ Bedside eFAST, เปิดเส้น IV เบอร์ใหญ่ 2 เส้น, จองเลือด, ส่ง Chest/Pelvis X-ray และปรึกษาศัลยแพทย์ด่วน'
-    });
+    const t = 'อุบัติเหตุตกจากที่สูงรุนแรง หรือมีภาวะช็อก/สงสัยเลือดออกภายในช่องอก-ช่องท้อง (High-Energy Fall / Internal Hemorrhage / Shock)';
+    const d = 'ผู้ป่วยมีประวัติตกจากที่สูง > 3 เมตร, มีภาวะช็อก/สงสัยเลือดออกในช่องอกหรือช่องท้อง หรือมีแผลเลือดพุ่ง เสี่ยงต่อการเสียเลือดเฉียบพลันและภาวะการหายใจล้มเหลว';
+    const a = 'ประเมิน ABCDE ตามแนวทาง ATLS, ตรวจ Bedside eFAST, เปิดเส้น IV เบอร์ใหญ่ 2 เส้น, จองเลือด, ส่ง Chest/Pelvis X-ray และปรึกษาศัลยแพทย์ด่วน';
+    rfs.push({ key: 'rf_fall_high_energy_shock_internal_bleed', level: (sbp !== null && sbp < 90) || woundStatus === 'active_spurting' || heightLevel === 'over_3m' ? 'ESI 1' : 'ESI 2', textTh: t, title: t, risk: d, detail: d, suggestedAction: a, action: a });
   }
 
   // RED FLAG 2: Suspected Cervical / Thoracolumbar Spine or Spinal Cord Injury (ESI 1 / 2)
@@ -115,13 +112,10 @@ function evaluateFallRedFlags(patient) {
     (patient.fallParentAbdomen && abdSigns.includes('sciatica_numbness_cauda_equina'));
 
   if (hasSpineThreat) {
-    rfs.push({
-      key: 'rf_fall_cspine_spinal_cord_injury',
-      level: neckSigns.includes('radicular_shock_numbness_weakness') || abdSigns.includes('sciatica_numbness_cauda_equina') ? 'ESI 1' : 'ESI 2',
-      title: 'สงสัยการบาดเจ็บกระดูกต้นคอหรือไขสันหลัง (Suspected Cervical / Spinal Cord Injury)',
-      detail: 'พบอาการปวดแนวกระดูกต้นคอรุนแรง ขยับคอไม่ได้ หรือมีอาการชา/ไฟช็อต/อ่อนแรงร้าวลงแขนขา หรือสูญเสียการควบคุมการขับถ่าย เสี่ยงต่อภาวะอัมพาตถาวร',
-      action: 'ใส่ Hard Cervical Collar และจัดให้นอนราบบน Long Spinal Board ทันทีด้วยเทคนิค Log-roll, งอข้อ/ดัดคอไม่ได้เด็ดขาด, ตรวจ Motor/Sensory และส่ง Stat CT Spine'
-    });
+    const t = 'สงสัยการบาดเจ็บกระดูกต้นคอหรือไขสันหลัง (Suspected Cervical / Spinal Cord Injury)';
+    const d = 'พบอาการปวดแนวกระดูกต้นคอรุนแรง ขยับคอไม่ได้ หรือมีอาการชา/ไฟช็อต/อ่อนแรงร้าวลงแขนขา หรือสูญเสียการควบคุมการขับถ่าย เสี่ยงต่อภาวะอัมพาตถาวร';
+    const a = 'ใส่ Hard Cervical Collar และจัดให้นอนราบบน Long Spinal Board ทันทีด้วยเทคนิค Log-roll, งอข้อ/ดัดคอไม่ได้เด็ดขาด, ตรวจ Motor/Sensory และส่ง Stat CT Spine';
+    rfs.push({ key: 'rf_fall_cspine_spinal_cord_injury', level: neckSigns.includes('radicular_shock_numbness_weakness') || abdSigns.includes('sciatica_numbness_cauda_equina') ? 'ESI 1' : 'ESI 2', textTh: t, title: t, risk: d, detail: d, suggestedAction: a, action: a });
   }
 
   // RED FLAG 3: Head Injury with TBI Warning / Head Trauma on Anticoagulant (ESI 2)
@@ -131,24 +125,18 @@ function evaluateFallRedFlags(patient) {
   const isOnBloodThinner = antithrombotic === 'on_anticoagulant_antiplatelet' || antithrombotic === 'coagulopathy_history';
 
   if (isHeadInjured && (hasTbiSigns || (isOnBloodThinner && age >= 50) || age >= 65)) {
-    rfs.push({
-      key: 'rf_fall_tbi_anticoagulant_head',
-      level: 'ESI 2',
-      title: 'บาดเจ็บที่ศีรษะร่วมกับอาการทางสมอง หรือศีรษะกระแทกในผู้ที่ใช้ยาละลายลิ่มเลือด (Head Injury with TBI Warning / Anticoagulant Risk)',
-      detail: 'พบการบาดเจ็บที่ศีรษะร่วมกับประวัติสลบ/อาเจียน/มึนงงสับสน/น้ำใสออกหูจมูก หรือเป็นผู้สูงอายุที่ใช้ยาละลายลิ่มเลือด เสี่ยงต่อภาวะเลือดออกในกะโหลกศีรษะ (ICH / SDH)',
-      action: 'ประเมิน GCS และรูม่านตาทันที, ส่งตรวจ Stat Non-contrast CT Brain ตามเกณฑ์ Canadian CT Head Rule, ตรวจระดับ PT/INR หากทานยา Warfarin'
-    });
+    const t = 'บาดเจ็บที่ศีรษะร่วมกับอาการทางสมอง หรือศีรษะกระแทกในผู้ที่ใช้ยาละลายลิ่มเลือด (Head Injury with TBI Warning / Anticoagulant Risk)';
+    const d = 'พบการบาดเจ็บที่ศีรษะร่วมกับประวัติสลบ/อาเจียน/มึนงงสับสน/น้ำใสออกหูจมูก หรือเป็นผู้สูงอายุที่ใช้ยาละลายลิ่มเลือด เสี่ยงต่อภาวะเลือดออกในกะโหลกศีรษะ (ICH / SDH)';
+    const a = 'ประเมิน GCS และรูม่านตาทันที, ส่งตรวจ Stat Non-contrast CT Brain ตามเกณฑ์ Canadian CT Head Rule, ตรวจระดับ PT/INR หากทานยา Warfarin';
+    rfs.push({ key: 'rf_fall_tbi_anticoagulant_head', level: 'ESI 2', textTh: t, title: t, risk: d, detail: d, suggestedAction: a, action: a });
   }
 
   // RED FLAG 4: Fall Secondary to Syncope / Acute Medical Etiology (ESI 2)
   if (prodrome === 'has_prodrome') {
-    rfs.push({
-      key: 'rf_fall_syncopal_medical_cause',
-      level: 'ESI 2',
-      title: 'การหกล้มที่มีอาการวูบ หน้ามืด ใจสั่น เจ็บหน้าอก หรืออ่อนแรงนำมาก่อนล้ม (Fall Secondary to Syncope / Medical Etiology)',
-      detail: 'ประวัติบ่งชี้ว่าการล้มเกิดจากอาการเจ็บป่วยทางอายุรศาสตร์เฉียบพลัน (เช่น หัวใจเต้นผิดจังหวะ, กล้ามเนื้อหัวใจขาดเลือด, สโตรก หรือน้ำตาลในเลือดต่ำ) ไม่ใช่การสะดุดล้มทั่วไป',
-      action: 'ค้นหาสาเหตุของการวูบล้มควบคู่กับการรักษาการบาดเจ็บ: ทำ 12-Lead ECG ทันที, ตรวจ Stat DTX, ประเมิน FAST Neuro exam และวัดความดันท่านอน/ท่ายืน'
-    });
+    const t = 'การหกล้มที่มีอาการวูบ หน้ามืด ใจสั่น เจ็บหน้าอก หรืออ่อนแรงนำมาก่อนล้ม (Fall Secondary to Syncope / Medical Etiology)';
+    const d = 'ประวัติบ่งชี้ว่าการล้มเกิดจากอาการเจ็บป่วยทางอายุรศาสตร์เฉียบพลัน (เช่น หัวใจเต้นผิดจังหวะ, กล้ามเนื้อหัวใจขาดเลือด, สโตรก หรือน้ำตาลในเลือดต่ำ) ไม่ใช่การสะดุดล้มทั่วไป';
+    const a = 'ค้นหาสาเหตุของการวูบล้มควบคู่กับการรักษาการบาดเจ็บ: ทำ 12-Lead ECG ทันที, ตรวจ Stat DTX, ประเมิน FAST Neuro exam และวัดความดันท่านอน/ท่ายืน';
+    rfs.push({ key: 'rf_fall_syncopal_medical_cause', level: 'ESI 2', textTh: t, title: t, risk: d, detail: d, suggestedAction: a, action: a });
   }
 
   // RED FLAG 5: Suspected Hip Fracture / Open Fracture / Neurovascular Compromise (ESI 2)
@@ -158,13 +146,10 @@ function evaluateFallRedFlags(patient) {
   const hasPelvicThreat = patient.fallParentAbdomen && abdSigns.includes('pelvic_hip_pain_cannot_bear_weight');
 
   if (hasOpenFx || hasVascularThreat || hasHipFxSign || (hasPelvicThreat && age >= 55)) {
-    rfs.push({
-      key: 'rf_fall_open_fracture_neurovascular_hip',
-      level: 'ESI 2',
-      title: 'สงสัยกระดูกสะโพกหัก กระดูกหักแบบมีแผลเปิด หรือแขนขาผิดรูปร่วมกับขาดเลือด (Suspected Hip Fracture / Open Fracture / Ischemia)',
-      detail: 'พบกระดูกโผล่, ปลายมือปลายเท้าซีดเย็นขาดเลือด, ขาสั้นลงและบิดออกนอก (ลักษณะเฉพาะของกระดูกสะโพกหัก) หรือปวดสะโพกมากจนขยับขาไม่ได้',
-      action: 'ดามเฝือกชั่วคราว (Splinting) โดยตรวจชีพจรส่วนปลายก่อนและหลังดาม, ให้ IV Antibiotics ทันทีหากเป็นแผลเปิด, ส่ง Film X-ray และปรึกษาศัลยแพทย์ออร์โธปิดิกส์ด่วน'
-    });
+    const t = 'สงสัยกระดูกสะโพกหัก กระดูกหักแบบมีแผลเปิด หรือแขนขาผิดรูปร่วมกับขาดเลือด (Suspected Hip Fracture / Open Fracture / Ischemia)';
+    const d = 'พบกระดูกโผล่, ปลายมือปลายเท้าซีดเย็นขาดเลือด, ขาสั้นลงและบิดออกนอก (ลักษณะเฉพาะของกระดูกสะโพกหัก) หรือปวดสะโพกมากจนขยับขาไม่ได้';
+    const a = 'ดามเฝือกชั่วคราว (Splinting) โดยตรวจชีพจรส่วนปลายก่อนและหลังดาม, ให้ IV Antibiotics ทันทีหากเป็นแผลเปิด, ส่ง Film X-ray และปรึกษาศัลยแพทย์ออร์โธปิดิกส์ด่วน';
+    rfs.push({ key: 'rf_fall_open_fracture_neurovascular_hip', level: 'ESI 2', textTh: t, title: t, risk: d, detail: d, suggestedAction: a, action: a });
   }
 
   // RED FLAG 6: Suspected Closed Extremity Fracture / Joint Dislocation / Inability to Bear Weight (ESI 3)
@@ -174,13 +159,10 @@ function evaluateFallRedFlags(patient) {
     (patient.fallParentHeadFace && headSigns.includes('jaw_malocclusion_broken_tooth'));
 
   if (hasClosedExtremityDeformity && !rfs.some(r => r.key === 'rf_fall_open_fracture_neurovascular_hip')) {
-    rfs.push({
-      key: 'rf_fall_extremity_fracture_inability_to_bear_weight',
-      level: 'ESI 3',
-      title: 'สงสัยกระดูกแขนขาหัก ข้อเคลื่อนหลุด หรือเดินลงน้ำหนักไม่ได้ (Suspected Closed Fracture / Dislocation)',
-      detail: 'ตรวจพบแขนขาผิดรูป บวมตึง ปวดมากจนขยับไม่ได้ หรือยืนลงน้ำหนักไม่ได้ เสี่ยงต่อกระดูกหัก ข้อหลุด หรือเอ็นข้อฉีกขาดรุนแรง',
-      action: 'ดามส่วนที่บาดเจ็บ (Immobilization), ประคบเย็นลดบวม, ให้ยาระงับปวด และส่ง Film X-ray 2 views (AP/Lateral) ตามตำแหน่งที่สงสัย'
-    });
+    const t = 'สงสัยกระดูกแขนขาหัก ข้อเคลื่อนหลุด หรือเดินลงน้ำหนักไม่ได้ (Suspected Closed Fracture / Dislocation)';
+    const d = 'ตรวจพบแขนขาผิดรูป บวมตึง ปวดมากจนขยับไม่ได้ หรือยืนลงน้ำหนักไม่ได้ เสี่ยงต่อกระดูกหัก ข้อหลุด หรือเอ็นข้อฉีกขาดรุนแรง';
+    const a = 'ดามส่วนที่บาดเจ็บ (Immobilization), ประคบเย็นลดบวม, ให้ยาระงับปวด และส่ง Film X-ray 2 views (AP/Lateral) ตามตำแหน่งที่สงสัย';
+    rfs.push({ key: 'rf_fall_extremity_fracture_inability_to_bear_weight', level: 'ESI 3', textTh: t, title: t, risk: d, detail: d, suggestedAction: a, action: a });
   }
 
   return rfs;

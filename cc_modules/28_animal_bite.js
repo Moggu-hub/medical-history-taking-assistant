@@ -124,25 +124,19 @@ function evaluateBiteRedFlags(patient) {
 
   if (isSevereAirwayOrShock) {
     const isEsi1 = (sbp !== null && sbp < 90) || bleedingStatus === 'pulsatile_massive' || sysSigns.includes('hydrophobia_aerophobia_agitation');
-    rfs.push({
-      key: 'rf_bite_severe_neck_face_hemorrhagic_shock',
-      level: isEsi1 ? 'ESI 1' : 'ESI 2',
-      title: 'แผลสัตว์กัดขย้ำรุนแรงบริเวณลำคอ/ใบหน้า เลือดออกพุ่งตามชีพจร หรือมีภาวะช็อก/สงสัยอาการทางสมอง (Severe Neck/Maxillofacial Mauling, Active Arterial Bleeding, Shock or Rabies Encephalitis)',
-      detail: 'ผู้ป่วยมีแผลฉีกขาดรุนแรงบริเวณใบหน้า/ลำคอ หรือมีเลือดไหลพุ่งตามชีพจร ความดันตกช็อก หรือมีอาการทางสมองกลัวน้ำกลัวลม เสี่ยงต่อการเสียชีวิตฉุกเฉิน',
-      action: 'ประเมิน ABCDE ทันที, กดห้ามเลือดโดยตรง, ให้สารน้ำทางหลอดเลือดดำ, ตรวจทางเดินหายใจใกล้ชิด และปรึกษาศัลยแพทย์/ศัลยกรรมตกแต่งด่วน'
-    });
+    const t = 'แผลสัตว์กัดขย้ำรุนแรงบริเวณลำคอ/ใบหน้า เลือดออกพุ่งตามชีพจร หรือมีภาวะช็อก/สงสัยอาการทางสมอง (Severe Neck/Maxillofacial Mauling, Active Arterial Bleeding, Shock or Rabies Encephalitis)';
+    const d = 'ผู้ป่วยมีแผลฉีกขาดรุนแรงบริเวณใบหน้า/ลำคอ หรือมีเลือดไหลพุ่งตามชีพจร ความดันตกช็อก หรือมีอาการทางสมองกลัวน้ำกลัวลม เสี่ยงต่อการเสียชีวิตฉุกเฉิน';
+    const a = 'ประเมิน ABCDE ทันที, กดห้ามเลือดโดยตรง, ให้สารน้ำทางหลอดเลือดดำ, ตรวจทางเดินหายใจใกล้ชิด และปรึกษาศัลยแพทย์/ศัลยกรรมตกแต่งด่วน';
+    rfs.push({ key: 'rf_bite_severe_neck_face_hemorrhagic_shock', level: isEsi1 ? 'ESI 1' : 'ESI 2', textTh: t, title: t, risk: d, detail: d, suggestedAction: a, action: a });
   }
 
   // RED FLAG 2: WHO Category III Rabies Exposure Requiring ERIG/HRIG + Vaccine (ESI 2)
   const isRabiesNaiveOrUnsure = rabiesHx === 'naive_or_incomplete' || rabiesHx === 'unknown_or_unsure';
   if (isWhoCat3 && isRabiesNaiveOrUnsure) {
-    rfs.push({
-      key: 'rf_bite_who_cat3_rig_indicated',
-      level: 'ESI 2',
-      title: 'บาดแผลสัมผัสโรคพิษสุนัขบ้าระดับรุนแรง (WHO Category III) ที่ต้องได้รับเซรุ่มอิมมูโนโกลบูลิน (RIG) รอบแผลร่วมกับวัคซีน (WHO Category III Rabies Exposure Requiring ERIG/HRIG + Vaccine)',
-      detail: 'เข้าเกณฑ์ WHO Category III (แผลมีเลือดออก น้ำลายเข้าเยื่อบุตา/ปาก แผลที่ใบหน้า/คอ/มือ/นิ้ว หรือสัมผัสค้างคาว) ในผู้ที่ไม่เคยฉีดวัคซีนครบมาก่อนหรือจำประวัติไม่ได้ เสี่ยงต่อการติดเชื้อไวรัสพิษสุนัขบ้าเข้าสู่ระบบประสาท',
-      action: 'ล้างแผลด้วยน้ำสะอาดและสบู่ทันที, ให้ Rabies Immunoglobulin (ERIG 40 IU/kg หรือ HRIG 20 IU/kg) ฉีดแทรกซึมรอบบาดแผลทุกจุดให้มากที่สุด และเริ่มฉีดวัคซีนป้องกันโรคพิษสุนัขบ้าเข็มแรก (Day 0) ทันที'
-    });
+    const t = 'บาดแผลสัมผัสโรคพิษสุนัขบ้าระดับรุนแรง (WHO Category III) ที่ต้องได้รับเซรุ่มอิมมูโนโกลบูลิน (RIG) รอบแผลร่วมกับวัคซีน (WHO Category III Rabies Exposure Requiring ERIG/HRIG + Vaccine)';
+    const d = 'เข้าเกณฑ์ WHO Category III (แผลมีเลือดออก น้ำลายเข้าเยื่อบุตา/ปาก แผลที่ใบหน้า/คอ/มือ/นิ้ว หรือสัมผัสค้างคาว) ในผู้ที่ไม่เคยฉีดวัคซีนครบมาก่อนหรือจำประวัติไม่ได้ เสี่ยงต่อการติดเชื้อไวรัสพิษสุนัขบ้าเข้าสู่ระบบประสาท';
+    const a = 'ล้างแผลด้วยน้ำสะอาดและสบู่ทันที, ให้ Rabies Immunoglobulin (ERIG 40 IU/kg หรือ HRIG 20 IU/kg) ฉีดแทรกซึมรอบบาดแผลทุกจุดให้มากที่สุด และเริ่มฉีดวัคซีนป้องกันโรคพิษสุนัขบ้าเข็มแรก (Day 0) ทันที';
+    rfs.push({ key: 'rf_bite_who_cat3_rig_indicated', level: 'ESI 2', textTh: t, title: t, risk: d, detail: d, suggestedAction: a, action: a });
   }
 
   // RED FLAG 3: High-Risk Hand Bite / Suspected Flexor Tenosynovitis / Tendon-Nerve Injury (ESI 2)
@@ -155,13 +149,10 @@ function evaluateBiteRedFlags(patient) {
   );
 
   if (hasHandTendonOrNerveThreat) {
-    rfs.push({
-      key: 'rf_bite_deep_hand_tendon_joint_infection',
-      level: 'ESI 2',
-      title: 'แผลถูกกัดบริเวณมือ/นิ้วมือร่วมกับสงสัยการติดเชื้อในเยื่อหุ้มเอ็น/ข้อต่อ หรือเส้นเอ็น/เส้นประสาทบาดเจ็บ (High-Risk Hand Bite / Suspected Flexor Tenosynovitis / Tendon-Nerve Injury)',
-      detail: 'เขี้ยวสัตว์เจาะลึกบริเวณฝ่ามือหรือนิ้วมือ มีอาการปวดบวมตามแนวเส้นเอ็น ขยับงอเหยียดนิ้วไม่ได้ หรือมีอาการชา เสี่ยงต่อภาวะ Flexor Tenosynovitis / Compartment Syndrome และสูญเสียการทำงานของมือถาวร',
-      action: 'ตรวจ Kanavel cardinal signs, ห้ามเย็บปิดแผลที่มือเด็ดขาด (Avoid primary closure), ให้ยาปฏิชีวนะทางหลอดเลือดดำ และปรึกษาศัลยแพทย์กระดูกและข้อ/ศัลยศาสตร์ทางมือด่วน'
-    });
+    const t = 'แผลถูกกัดบริเวณมือ/นิ้วมือร่วมกับสงสัยการติดเชื้อในเยื่อหุ้มเอ็น/ข้อต่อ หรือเส้นเอ็น/เส้นประสาทบาดเจ็บ (High-Risk Hand Bite / Suspected Flexor Tenosynovitis / Tendon-Nerve Injury)';
+    const d = 'เขี้ยวสัตว์เจาะลึกบริเวณฝ่ามือหรือนิ้วมือ มีอาการปวดบวมตามแนวเส้นเอ็น ขยับงอเหยียดนิ้วไม่ได้ หรือมีอาการชา เสี่ยงต่อภาวะ Flexor Tenosynovitis / Compartment Syndrome และสูญเสียการทำงานของมือถาวร';
+    const a = 'ตรวจ Kanavel cardinal signs, ห้ามเย็บปิดแผลที่มือเด็ดขาด (Avoid primary closure), ให้ยาปฏิชีวนะทางหลอดเลือดดำ และปรึกษาศัลยแพทย์กระดูกและข้อ/ศัลยศาสตร์ทางมือด่วน';
+    rfs.push({ key: 'rf_bite_deep_hand_tendon_joint_infection', level: 'ESI 2', textTh: t, title: t, risk: d, detail: d, suggestedAction: a, action: a });
   }
 
   // RED FLAG 4: Infected Animal Bite / Lymphangitis-Abscess / Sepsis Risk (ESI 2 / 3)
@@ -172,13 +163,10 @@ function evaluateBiteRedFlags(patient) {
 
   if (hasLocalInfection || hasSystemicInfection) {
     const isSepsisLevel = hasSystemicInfection || infectionSigns.includes('lymphangitis_lymphadenopathy');
-    rfs.push({
-      key: 'rf_bite_infected_wound_sepsis_immunocompromised',
-      level: isSepsisLevel ? 'ESI 2' : 'ESI 3',
-      title: 'แผลสัตว์กัดมีการอักเสบติดเชื้อเป็นหนอง รอยแดงลามตามเส้นเลือด หรือมีไข้ (Infected Animal Bite / Lymphangitis-Abscess / Sepsis Risk)',
-      detail: 'พบสัญญาณการติดเชื้อแบคทีเรียเฉียบพลันจากช่องปากสัตว์ (เช่น Pasteurella multocida, Capnocytophaga, Staphylococcus aureus) เสี่ยงต่อการลุกลามเป็นฝีหนองลึกและภาวะติดเชื้อในกระแสเลือด',
-      action: 'เปิดระบายหนองหากมีฝี (Incision & Drainage), เก็บหนองเพาะเชื้อ, ให้ยาปฏิชีวนะครอบคลุมเชื้อสัตว์กัด (Amoxicillin-Clavulanate เป็น First-line) และพิจารณารับตัวไว้รักษาในรพ.หากมีไข้สูง'
-    });
+    const t = 'แผลสัตว์กัดมีการอักเสบติดเชื้อเป็นหนอง รอยแดงลามตามเส้นเลือด หรือมีไข้ (Infected Animal Bite / Lymphangitis-Abscess / Sepsis Risk)';
+    const d = 'พบสัญญาณการติดเชื้อแบคทีเรียเฉียบพลันจากช่องปากสัตว์ (เช่น Pasteurella multocida, Capnocytophaga, Staphylococcus aureus) เสี่ยงต่อการลุกลามเป็นฝีหนองลึกและภาวะติดเชื้อในกระแสเลือด';
+    const a = 'เปิดระบายหนองหากมีฝี (Incision & Drainage), เก็บหนองเพาะเชื้อ, ให้ยาปฏิชีวนะครอบคลุมเชื้อสัตว์กัด (Amoxicillin-Clavulanate เป็น First-line) และพิจารณารับตัวไว้รักษาในรพ.หากมีไข้สูง';
+    rfs.push({ key: 'rf_bite_infected_wound_sepsis_immunocompromised', level: isSepsisLevel ? 'ESI 2' : 'ESI 3', textTh: t, title: t, risk: d, detail: d, suggestedAction: a, action: a });
   }
 
   // RED FLAG 5: Rabies Booster Regimen or WHO Category II Exposure (ESI 3)
@@ -186,13 +174,10 @@ function evaluateBiteRedFlags(patient) {
   if (isWhoCat2 || (isWhoCat3 && isPreviouslyVaccinated)) {
     // Only add if not already flagged as severe Category III needing RIG
     if (!rfs.some(r => r.key === 'rf_bite_who_cat3_rig_indicated')) {
-      rfs.push({
-        key: 'rf_bite_who_cat2_or_booster_regimen',
-        level: 'ESI 3',
-        title: 'ผู้ป่วยสัมผัสโรคพิษสุนัขบ้าที่เคยได้รับวัคซีนครบมาก่อน (พิจารณาฉีดกระตุ้น 1–2 เข็มโดยไม่ต้องให้ RIG) หรือแผลระดับ WHO Category II (Rabies Booster Regimen or WHO Category II Exposure)',
-        detail: 'ผู้ป่วยเคยฉีดวัคซีนพิษสุนัขบ้าครบมาก่อน หรือมีบาดแผลระดับ Category II (ไม่มีเลือดออก) ไม่มีความจำเป็นต้องได้รับเซรุ่มอิมมูโนโกลบูลิน (RIG)',
-        action: 'ล้างทำความสะอาดแผล, ฉีดวัคซีนพิษสุนัขบ้ากระตุ้น (1 เข็ม Day 0 หากเข็มล่าสุดไม่เกิน 6 เดือน หรือ 2 เข็ม Day 0, 3 หากเข็มล่าสุดเกิน 6 เดือน โดยไม่ต้องให้ RIG), ประเมินวัคซีนบาดทะยัก และพิจารณาให้ยาปฏิชีวนะป้องกันการติดเชื้อ'
-      });
+      const t = 'ผู้ป่วยสัมผัสโรคพิษสุนัขบ้าที่เคยได้รับวัคซีนครบมาก่อน (พิจารณาฉีดกระตุ้น 1–2 เข็มโดยไม่ต้องให้ RIG) หรือแผลระดับ WHO Category II (Rabies Booster Regimen or WHO Category II Exposure)';
+      const d = 'ผู้ป่วยเคยฉีดวัคซีนพิษสุนัขบ้าครบมาก่อน หรือมีบาดแผลระดับ Category II (ไม่มีเลือดออก) ไม่มีความจำเป็นต้องได้รับเซรุ่มอิมมูโนโกลบูลิน (RIG)';
+      const a = 'ล้างทำความสะอาดแผล, ฉีดวัคซีนพิษสุนัขบ้ากระตุ้น (1 เข็ม Day 0 หากเข็มล่าสุดไม่เกิน 6 เดือน หรือ 2 เข็ม Day 0, 3 หากเข็มล่าสุดเกิน 6 เดือน โดยไม่ต้องให้ RIG), ประเมินวัคซีนบาดทะยัก และพิจารณาให้ยาปฏิชีวนะป้องกันการติดเชื้อ';
+      rfs.push({ key: 'rf_bite_who_cat2_or_booster_regimen', level: 'ESI 3', textTh: t, title: t, risk: d, detail: d, suggestedAction: a, action: a });
     }
   }
 
@@ -259,8 +244,12 @@ function updateBiteOutputs(rec) {
         chest: !!rec.biteParentChest,
         abdomen: !!rec.biteParentAbdomen,
         upper_extremity: !!rec.biteParentUpperExtremity,
-        lower_extremity: !!rec.biteParentLowerExtremity
+        lower_extremity: !!rec.biteParentLowerExtremity,
+        other: !!rec.biteParentOther,
+        other_detail: rec.biteOtherLocationDetail || ''
       },
+      fingers_digits: Array.isArray(rec.biteArmFingersDigits) ? rec.biteArmFingersDigits : [],
+      toes_digits: Array.isArray(rec.biteLegToesDigits) ? rec.biteLegToesDigits : [],
       infection_signs: Array.isArray(rec.biteInfectionSigns) ? rec.biteInfectionSigns : [],
       systemic_signs: Array.isArray(rec.biteSystemicSigns) ? rec.biteSystemicSigns : [],
       other_symptoms_free: rec.otherSymptomsFree || ''
@@ -269,9 +258,9 @@ function updateBiteOutputs(rec) {
       red_flags_detected: redFlags.map(rf => ({
         key: rf.key,
         level: rf.level,
-        title_th: rf.title,
-        clinical_risk: rf.detail,
-        action: rf.action
+        title_th: rf.textTh || rf.title,
+        clinical_risk: rf.risk || rf.detail,
+        action: rf.suggestedAction || rf.action
       })),
       total_red_flags: redFlags.length
     }
@@ -333,7 +322,7 @@ function formatBiteBehavior(patient) {
 function formatBiteCleansing(patient) {
   const map = {
     cleaned_soap_water: 'ล้างด้วยน้ำสะอาดและฟอกสบู่เรียบร้อยแล้ว',
-    cleaned_water_antiseptic_only: 'ล้างน้ำเปล่า/น้ำเกลือ/ยาฆ่าเชื้อเท่านั้น (ไม่ได้ฟอกสบู่)',
+    cleaned_water_antiseptic_only: 'ล้างน้ำหรือทายาฆ่าเชื้อ แต่ไม่ได้ฟอกสบู่',
     not_cleaned: 'ยังไม่ได้ล้างแผล'
   };
   return map[patient.biteWoundCleansing] || 'ไม่ระบุ';
@@ -342,7 +331,9 @@ function formatBiteCleansing(patient) {
 function formatBiteLocations(patient) {
   const locs = [];
   const sideMap = { left: 'ซ้าย', right: 'ขวา', center: 'ตรงกลาง' };
+  const digitMap = { thumb: 'นิ้วโป้ง', index: 'นิ้วชี้', middle: 'นิ้วกลาง', ring: 'นิ้วนาง', little: 'นิ้วก้อย' };
   const fmtSides = (s) => (Array.isArray(s) && s.length > 0) ? ` [${s.map(x => sideMap[x] || x).join('/')}]` : '';
+  const fmtDigits = (d) => (Array.isArray(d) && d.length > 0) ? ` [${d.map(x => digitMap[x] || x).join(', ')}]` : '';
 
   if (patient.biteParentHeadFace) {
     const subs = [];
@@ -380,7 +371,7 @@ function formatBiteLocations(patient) {
     if (patient.biteArmShoulder) subs.push(`หัวไหล่/ต้นแขน${fmtSides(patient.biteArmShoulderSides)}`);
     if (patient.biteArmElbow) subs.push(`ข้อศอก/แขนท่อนล่าง${fmtSides(patient.biteArmElbowSides)}`);
     if (patient.biteArmWrist) subs.push(`ข้อมือ/ฝ่ามือ${fmtSides(patient.biteArmWristSides)}`);
-    if (patient.biteArmFingers) subs.push(`นิ้วมือ${fmtSides(patient.biteArmFingersSides)}`);
+    if (patient.biteArmFingers) subs.push(`นิ้วมือ${fmtSides(patient.biteArmFingersSides)}${fmtDigits(patient.biteArmFingersDigits)}`);
     locs.push(`แขนและมือ (${subs.length > 0 ? subs.join(', ') : 'บริเวณแขน/มือ'})`);
   }
   if (patient.biteParentLowerExtremity) {
@@ -388,8 +379,11 @@ function formatBiteLocations(patient) {
     if (patient.biteLegThigh) subs.push(`ต้นขา${fmtSides(patient.biteLegThighSides)}`);
     if (patient.biteLegKneeShin) subs.push(`เข่า/หน้าแข้ง/น่อง${fmtSides(patient.biteLegKneeShinSides)}`);
     if (patient.biteLegAnkleFoot) subs.push(`ข้อเท้า/เท้า${fmtSides(patient.biteLegAnkleFootSides)}`);
-    if (patient.biteLegToes) subs.push(`นิ้วเท้า${fmtSides(patient.biteLegToesSides)}`);
+    if (patient.biteLegToes) subs.push(`นิ้วเท้า${fmtSides(patient.biteLegToesSides)}${fmtDigits(patient.biteLegToesDigits)}`);
     locs.push(`ขาและเท้า (${subs.length > 0 ? subs.join(', ') : 'บริเวณขา/เท้า'})`);
+  }
+  if (patient.biteParentOther) {
+    locs.push(`ตำแหน่งอื่นๆ (${patient.biteOtherLocationDetail || 'ระบุตำแหน่งอื่น'})`);
   }
 
   return locs.length > 0 ? locs.join('; ') : 'ไม่ระบุตำแหน่ง';
@@ -813,7 +807,7 @@ const ANIMAL_BITE_FORM_HTML = `
         <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
           <input type="radio" name="biteWoundCleansing" value="cleaned_water_antiseptic_only"
             class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4">
-          <span class="text-xs sm:text-sm text-slate-800">ล้างน้ำเปล่าหรือยาฆ่าเชื้อ (ไม่ได้ฟอกสบู่)</span>
+          <span class="text-xs sm:text-sm text-slate-800">ล้างน้ำหรือทายาฆ่าเชื้อ แต่ไม่ได้ฟอกสบู่</span>
         </label>
         <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
           <input type="radio" name="biteWoundCleansing" value="not_cleaned"
@@ -1033,6 +1027,7 @@ const ANIMAL_BITE_FORM_HTML = `
           </div>
 
           <div class="pt-2 border-t border-slate-200">
+            <span class="text-xs font-semibold text-slate-700 block mb-1.5">อาการสำคัญที่พบร่วมด้วย:</span>
             <label class="flex items-start space-x-2 text-xs cursor-pointer text-slate-700">
               <input type="checkbox" name="biteChestSigns" value="deep_chest_mauling_dyspnea" class="mt-0.5 text-medical-600 rounded">
               <span>แผลถูกขย้ำลึก หรือหายใจหอบเหนื่อย แน่นหน้าอก</span>
@@ -1167,14 +1162,25 @@ const ANIMAL_BITE_FORM_HTML = `
                 <label class="inline-flex items-center space-x-1 cursor-pointer"><input type="checkbox" name="biteArmWristSides" value="right" class="text-medical-600 rounded"><span>ขวา</span></label>
               </div>
             </div>
-            <div class="flex flex-col sm:flex-row sm:items-center justify-between text-xs py-1 gap-1">
-              <label class="flex items-center space-x-2 cursor-pointer">
+            <div class="flex flex-col sm:flex-row sm:items-start justify-between text-xs py-1.5 gap-2">
+              <label class="flex items-center space-x-2 cursor-pointer mt-0.5">
                 <input type="checkbox" name="biteArmFingers" onchange="toggleBiteGroup('biteArmFingersSidesContainer', this.checked)" class="text-medical-600 rounded">
-                <span class="text-slate-800">นิ้วมือ</span>
+                <span class="text-slate-800 font-medium">นิ้วมือ</span>
               </label>
-              <div id="biteArmFingersSidesContainer" class="hidden flex items-center space-x-3 pl-6 sm:pl-0">
-                <label class="inline-flex items-center space-x-1 cursor-pointer"><input type="checkbox" name="biteArmFingersSides" value="left" class="text-medical-600 rounded"><span>ซ้าย</span></label>
-                <label class="inline-flex items-center space-x-1 cursor-pointer"><input type="checkbox" name="biteArmFingersSides" value="right" class="text-medical-600 rounded"><span>ขวา</span></label>
+              <div id="biteArmFingersSidesContainer" class="hidden flex flex-col sm:flex-row sm:items-center space-y-1.5 sm:space-y-0 sm:space-x-3 pl-6 sm:pl-0">
+                <div class="flex items-center space-x-2">
+                  <span class="text-[11px] text-slate-500 font-medium">ข้าง:</span>
+                  <label class="inline-flex items-center space-x-1 cursor-pointer"><input type="checkbox" name="biteArmFingersSides" value="left" class="text-medical-600 rounded"><span>ซ้าย</span></label>
+                  <label class="inline-flex items-center space-x-1 cursor-pointer"><input type="checkbox" name="biteArmFingersSides" value="right" class="text-medical-600 rounded"><span>ขวา</span></label>
+                </div>
+                <div class="flex items-center flex-wrap gap-1.5 pt-1 sm:pt-0 sm:border-l sm:border-slate-200 sm:pl-2.5">
+                  <span class="text-[11px] text-slate-500 font-medium">นิ้ว:</span>
+                  <label class="inline-flex items-center space-x-1 cursor-pointer"><input type="checkbox" name="biteArmFingersDigits" value="thumb" class="text-medical-600 rounded"><span>โป้ง</span></label>
+                  <label class="inline-flex items-center space-x-1 cursor-pointer"><input type="checkbox" name="biteArmFingersDigits" value="index" class="text-medical-600 rounded"><span>ชี้</span></label>
+                  <label class="inline-flex items-center space-x-1 cursor-pointer"><input type="checkbox" name="biteArmFingersDigits" value="middle" class="text-medical-600 rounded"><span>กลาง</span></label>
+                  <label class="inline-flex items-center space-x-1 cursor-pointer"><input type="checkbox" name="biteArmFingersDigits" value="ring" class="text-medical-600 rounded"><span>นาง</span></label>
+                  <label class="inline-flex items-center space-x-1 cursor-pointer"><input type="checkbox" name="biteArmFingersDigits" value="little" class="text-medical-600 rounded"><span>ก้อย</span></label>
+                </div>
               </div>
             </div>
           </div>
@@ -1245,14 +1251,25 @@ const ANIMAL_BITE_FORM_HTML = `
                 <label class="inline-flex items-center space-x-1 cursor-pointer"><input type="checkbox" name="biteLegAnkleFootSides" value="right" class="text-medical-600 rounded"><span>ขวา</span></label>
               </div>
             </div>
-            <div class="flex flex-col sm:flex-row sm:items-center justify-between text-xs py-1 gap-1">
-              <label class="flex items-center space-x-2 cursor-pointer">
+            <div class="flex flex-col sm:flex-row sm:items-start justify-between text-xs py-1.5 gap-2">
+              <label class="flex items-center space-x-2 cursor-pointer mt-0.5">
                 <input type="checkbox" name="biteLegToes" onchange="toggleBiteGroup('biteLegToesSidesContainer', this.checked)" class="text-medical-600 rounded">
-                <span class="text-slate-800">นิ้วเท้า</span>
+                <span class="text-slate-800 font-medium">นิ้วเท้า</span>
               </label>
-              <div id="biteLegToesSidesContainer" class="hidden flex items-center space-x-3 pl-6 sm:pl-0">
-                <label class="inline-flex items-center space-x-1 cursor-pointer"><input type="checkbox" name="biteLegToesSides" value="left" class="text-medical-600 rounded"><span>ซ้าย</span></label>
-                <label class="inline-flex items-center space-x-1 cursor-pointer"><input type="checkbox" name="biteLegToesSides" value="right" class="text-medical-600 rounded"><span>ขวา</span></label>
+              <div id="biteLegToesSidesContainer" class="hidden flex flex-col sm:flex-row sm:items-center space-y-1.5 sm:space-y-0 sm:space-x-3 pl-6 sm:pl-0">
+                <div class="flex items-center space-x-2">
+                  <span class="text-[11px] text-slate-500 font-medium">ข้าง:</span>
+                  <label class="inline-flex items-center space-x-1 cursor-pointer"><input type="checkbox" name="biteLegToesSides" value="left" class="text-medical-600 rounded"><span>ซ้าย</span></label>
+                  <label class="inline-flex items-center space-x-1 cursor-pointer"><input type="checkbox" name="biteLegToesSides" value="right" class="text-medical-600 rounded"><span>ขวา</span></label>
+                </div>
+                <div class="flex items-center flex-wrap gap-1.5 pt-1 sm:pt-0 sm:border-l sm:border-slate-200 sm:pl-2.5">
+                  <span class="text-[11px] text-slate-500 font-medium">นิ้ว:</span>
+                  <label class="inline-flex items-center space-x-1 cursor-pointer"><input type="checkbox" name="biteLegToesDigits" value="thumb" class="text-medical-600 rounded"><span>โป้ง</span></label>
+                  <label class="inline-flex items-center space-x-1 cursor-pointer"><input type="checkbox" name="biteLegToesDigits" value="index" class="text-medical-600 rounded"><span>ชี้</span></label>
+                  <label class="inline-flex items-center space-x-1 cursor-pointer"><input type="checkbox" name="biteLegToesDigits" value="middle" class="text-medical-600 rounded"><span>กลาง</span></label>
+                  <label class="inline-flex items-center space-x-1 cursor-pointer"><input type="checkbox" name="biteLegToesDigits" value="ring" class="text-medical-600 rounded"><span>นาง</span></label>
+                  <label class="inline-flex items-center space-x-1 cursor-pointer"><input type="checkbox" name="biteLegToesDigits" value="little" class="text-medical-600 rounded"><span>ก้อย</span></label>
+                </div>
               </div>
             </div>
           </div>
@@ -1277,10 +1294,25 @@ const ANIMAL_BITE_FORM_HTML = `
         </div>
       </div>
 
-      <!-- 2.7 อาการอักเสบติดเชื้อบริเวณบาดแผล -->
+      <!-- 2.7 บาดแผลที่ตำแหน่งอื่นๆ (พิมพ์ระบุ) -->
+      <div class="border border-slate-200 rounded-2xl p-4 bg-slate-50/50">
+        <label class="flex items-center space-x-2.5 cursor-pointer">
+          <input type="checkbox" id="biteParentOther"
+            onchange="toggleBiteGroup('biteOtherSubGroup', this.checked)"
+            class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded">
+          <span class="text-xs sm:text-sm font-bold text-slate-900">2.7 บาดแผลที่ตำแหน่งอื่นๆ (พิมพ์ระบุ)</span>
+        </label>
+        <div id="biteOtherSubGroup" class="hidden mt-3 pl-6 border-l-2 border-medical-200 space-y-2">
+          <label class="text-xs font-semibold text-slate-600 block">ระบุตำแหน่งบาดแผลเพิ่มเติม:</label>
+          <input type="text" id="biteOtherLocationDetail" placeholder="เช่น บริเวณรักแร้, ซอกคอ, ก้นกบ..."
+            class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-medical-500">
+        </div>
+      </div>
+
+      <!-- 2.8 อาการอักเสบติดเชื้อบริเวณบาดแผล -->
       <div class="mt-4 pt-3 border-t border-slate-100">
         <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
-          2.7 อาการอักเสบติดเชื้อบริเวณบาดแผลในขณะนี้ (เลือกได้หลายข้อ):
+          2.8 อาการอักเสบติดเชื้อบริเวณบาดแผลในขณะนี้ (เลือกได้หลายข้อ):
         </label>
         <div class="space-y-2">
           <label class="selectable-card flex items-start p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
@@ -1539,6 +1571,7 @@ const animalBiteModule = {
     const sArmElbow = getSubState(parentUpperExt, 'biteArmElbow', 'biteArmElbowSides');
     const sArmWrist = getSubState(parentUpperExt, 'biteArmWrist', 'biteArmWristSides');
     const sArmFingers = getSubState(parentUpperExt, 'biteArmFingers', 'biteArmFingersSides');
+    const armFingersDigits = (parentUpperExt && sArmFingers.checked) ? getChecks('biteArmFingersDigits') : [];
     const upperSigns = parentUpperExt ? getChecks('biteUpperExtSigns') : [];
 
     const parentLowerExt = !!document.getElementById('biteParentLowerExtremity')?.checked;
@@ -1546,7 +1579,11 @@ const animalBiteModule = {
     const sLegKneeShin = getSubState(parentLowerExt, 'biteLegKneeShin', 'biteLegKneeShinSides');
     const sLegAnkleFoot = getSubState(parentLowerExt, 'biteLegAnkleFoot', 'biteLegAnkleFootSides');
     const sLegToes = getSubState(parentLowerExt, 'biteLegToes', 'biteLegToesSides');
+    const legToesDigits = (parentLowerExt && sLegToes.checked) ? getChecks('biteLegToesDigits') : [];
     const lowerSigns = parentLowerExt ? getChecks('biteLowerExtSigns') : [];
+
+    const parentOther = !!document.getElementById('biteParentOther')?.checked;
+    const otherLocationDetail = parentOther ? (document.getElementById('biteOtherLocationDetail')?.value?.trim() || '') : '';
 
     const infectionSigns = getChecks('biteInfectionSigns');
     const systemicSigns = getChecks('biteSystemicSigns');
@@ -1638,6 +1675,7 @@ const animalBiteModule = {
       biteArmWristSides: sArmWrist.sides,
       biteArmFingers: sArmFingers.checked,
       biteArmFingersSides: sArmFingers.sides,
+      biteArmFingersDigits: armFingersDigits,
       biteUpperExtSigns: upperSigns,
 
       biteParentLowerExtremity: parentLowerExt,
@@ -1649,7 +1687,11 @@ const animalBiteModule = {
       biteLegAnkleFootSides: sLegAnkleFoot.sides,
       biteLegToes: sLegToes.checked,
       biteLegToesSides: sLegToes.sides,
+      biteLegToesDigits: legToesDigits,
       biteLowerExtSigns: lowerSigns,
+
+      biteParentOther: parentOther,
+      biteOtherLocationDetail: otherLocationDetail,
 
       biteInfectionSigns: infectionSigns,
       biteSystemicSigns: systemicSigns,
@@ -1752,6 +1794,7 @@ const animalBiteModule = {
     setSubLocation('biteArmElbow', 'biteArmElbowSides', 'biteArmElbowSidesContainer', data.biteArmElbow, data.biteArmElbowSides);
     setSubLocation('biteArmWrist', 'biteArmWristSides', 'biteArmWristSidesContainer', data.biteArmWrist, data.biteArmWristSides);
     setSubLocation('biteArmFingers', 'biteArmFingersSides', 'biteArmFingersSidesContainer', data.biteArmFingers, data.biteArmFingersSides);
+    setChecks('biteArmFingersDigits', data.biteArmFingersDigits);
     setChecks('biteUpperExtSigns', data.biteUpperExtSigns);
 
     setSubGroup('biteParentLowerExtremity', 'biteLowerExtSubGroup', data.biteParentLowerExtremity);
@@ -1759,7 +1802,12 @@ const animalBiteModule = {
     setSubLocation('biteLegKneeShin', 'biteLegKneeShinSides', 'biteLegKneeShinSidesContainer', data.biteLegKneeShin, data.biteLegKneeShinSides);
     setSubLocation('biteLegAnkleFoot', 'biteLegAnkleFootSides', 'biteLegAnkleFootSidesContainer', data.biteLegAnkleFoot, data.biteLegAnkleFootSides);
     setSubLocation('biteLegToes', 'biteLegToesSides', 'biteLegToesSidesContainer', data.biteLegToes, data.biteLegToesSides);
+    setChecks('biteLegToesDigits', data.biteLegToesDigits);
     setChecks('biteLowerExtSigns', data.biteLowerExtSigns);
+
+    setSubGroup('biteParentOther', 'biteOtherSubGroup', data.biteParentOther);
+    const otherLocEl = document.getElementById('biteOtherLocationDetail');
+    if (otherLocEl) otherLocEl.value = data.biteOtherLocationDetail || '';
 
     setChecks('biteInfectionSigns', data.biteInfectionSigns);
     setChecks('biteSystemicSigns', data.biteSystemicSigns);
@@ -1782,7 +1830,7 @@ const animalBiteModule = {
 
   // --- Clear / Reset Hook ---
   clearForm: function() {
-    ['biteDurationVal', 'biteAnimalOtherDetail'].forEach(id => {
+    ['biteDurationVal', 'biteAnimalOtherDetail', 'biteOtherLocationDetail'].forEach(id => {
       const el = document.getElementById(id); if (el) el.value = '';
     });
     const durUnit = document.getElementById('biteDurationUnit');
@@ -1796,7 +1844,8 @@ const animalBiteModule = {
       'biteChestSubGroup', 'biteChestFrontSidesContainer', 'biteChestUpperBackSidesContainer',
       'biteAbdomenSubGroup', 'biteAbdWallSidesContainer', 'biteAbdFlankSidesContainer', 'biteAbdLowerBackSidesContainer', 'biteAbdGlutealSidesContainer', 'biteAbdGenitaliaSidesContainer',
       'biteUpperExtSubGroup', 'biteArmShoulderSidesContainer', 'biteArmElbowSidesContainer', 'biteArmWristSidesContainer', 'biteArmFingersSidesContainer',
-      'biteLowerExtSubGroup', 'biteLegThighSidesContainer', 'biteLegKneeShinSidesContainer', 'biteLegAnkleFootSidesContainer', 'biteLegToesSidesContainer'
+      'biteLowerExtSubGroup', 'biteLegThighSidesContainer', 'biteLegKneeShinSidesContainer', 'biteLegAnkleFootSidesContainer', 'biteLegToesSidesContainer',
+      'biteOtherSubGroup'
     ].forEach(id => { const el = document.getElementById(id); if (el) el.classList.add('hidden'); });
 
     const radios = document.querySelectorAll('#cc-animal-bite-section input[type="radio"]');
