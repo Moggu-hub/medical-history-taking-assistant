@@ -11,14 +11,11 @@ let fallPainScoreTouched = false;
 function toggleFallGroup(subId, show) {
   const el = document.getElementById(subId);
   if (!el) return;
-  if (show) {
-    el.classList.remove('hidden');
-  } else {
+  if (show) el.classList.remove('hidden');
+  else {
     el.classList.add('hidden');
-    el.querySelectorAll('input[type="checkbox"]').forEach(cb => { cb.checked = false; });
-    el.querySelectorAll('input[type="radio"]').forEach(rb => { rb.checked = false; });
-    el.querySelectorAll('input[type="text"]').forEach(ti => { ti.value = ''; });
-    el.querySelectorAll('input[type="number"]').forEach(ni => { ni.value = ''; });
+    el.querySelectorAll('input[type="checkbox"], input[type="radio"]').forEach(cb => { cb.checked = false; });
+    el.querySelectorAll('input[type="text"], input[type="number"]').forEach(ti => { ti.value = ''; });
   }
 }
 
@@ -26,10 +23,8 @@ function clearFallPainScore() {
   fallPainScoreTouched = false;
   const slider = document.getElementById('fallPainScore');
   if (slider) slider.value = 0;
-  const emojiEl = document.getElementById('fallPainScoreEmoji');
-  const textEl = document.getElementById('fallPainScoreText');
-  const badgeEl = document.getElementById('fallPainScoreBadge');
-  const clearBtn = document.getElementById('fallPainScoreClearBtn');
+  const emojiEl = document.getElementById('fallPainScoreEmoji'), textEl = document.getElementById('fallPainScoreText');
+  const badgeEl = document.getElementById('fallPainScoreBadge'), clearBtn = document.getElementById('fallPainScoreClearBtn');
   if (emojiEl) emojiEl.textContent = '⚪';
   if (textEl) textEl.textContent = 'ยังไม่ได้ระบุ (แตะแถบเพื่อระบุ)';
   if (badgeEl) badgeEl.className = 'inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-600 border border-slate-300 self-start sm:self-auto transition-all';
@@ -41,25 +36,17 @@ function handleFallPainScoreChange(val) {
   const num = parseInt(val, 10);
   const slider = document.getElementById('fallPainScore');
   if (slider) slider.value = num;
-  const emojiEl = document.getElementById('fallPainScoreEmoji');
-  const textEl = document.getElementById('fallPainScoreText');
-  const badgeEl = document.getElementById('fallPainScoreBadge');
-  const clearBtn = document.getElementById('fallPainScoreClearBtn');
+  const emojiEl = document.getElementById('fallPainScoreEmoji'), textEl = document.getElementById('fallPainScoreText');
+  const badgeEl = document.getElementById('fallPainScoreBadge'), clearBtn = document.getElementById('fallPainScoreClearBtn');
   if (clearBtn) clearBtn.classList.remove('hidden');
   if (!emojiEl || !textEl || !badgeEl) return;
 
   let emoji = '😐', label = 'ปวดปานกลาง', badgeClass = 'bg-amber-100 text-amber-800 border-amber-300';
-  if (num === 0) {
-    emoji = '😊'; label = 'สบายดี (ไม่ปวดเลย)'; badgeClass = 'bg-emerald-100 text-emerald-800 border-emerald-300';
-  } else if (num <= 3) {
-    emoji = '🙂'; label = 'ปวดเล็กน้อย (ทนได้)'; badgeClass = 'bg-lime-100 text-lime-800 border-lime-300';
-  } else if (num <= 6) {
-    emoji = '😐'; label = 'ปวดปานกลาง (รบกวนสมาธิ)'; badgeClass = 'bg-amber-100 text-amber-800 border-amber-300';
-  } else if (num <= 8) {
-    emoji = '😣'; label = 'ปวดรุนแรง (ทนแทบไม่ไหว)'; badgeClass = 'bg-orange-100 text-orange-800 border-orange-300';
-  } else {
-    emoji = '😫'; label = 'ปวดรุนแรงที่สุดในชีวิต'; badgeClass = 'bg-rose-100 text-rose-800 border-rose-300';
-  }
+  if (num === 0) { emoji = '😊'; label = 'สบายดี (ไม่ปวดเลย)'; badgeClass = 'bg-emerald-100 text-emerald-800 border-emerald-300'; }
+  else if (num <= 3) { emoji = '🙂'; label = 'ปวดเล็กน้อย (ทนได้)'; badgeClass = 'bg-lime-100 text-lime-800 border-lime-300'; }
+  else if (num <= 6) { emoji = '😐'; label = 'ปวดปานกลาง (รบกวนสมาธิ)'; badgeClass = 'bg-amber-100 text-amber-800 border-amber-300'; }
+  else if (num <= 8) { emoji = '😣'; label = 'ปวดรุนแรง (ทนแทบไม่ไหว)'; badgeClass = 'bg-orange-100 text-orange-800 border-orange-300'; }
+  else { emoji = '😫'; label = 'ปวดรุนแรงที่สุดในชีวิต'; badgeClass = 'bg-rose-100 text-rose-800 border-rose-300'; }
 
   emojiEl.textContent = emoji;
   textEl.textContent = `${num}/10 คะแนน - ${label}`;
@@ -70,6 +57,9 @@ const handleFallPainSliderTouch = handleFallPainScoreChange;
 // --- Clinical Decision Support & Evaluation Functions ---
 function evaluateFallRedFlags(patient) {
   const rfs = [];
+  const addRf = (key, level, textTh, risk, suggestedAction) => {
+    rfs.push({ key, level, textTh, title: textTh, risk, detail: risk, suggestedAction, action: suggestedAction });
+  };
   const vs = patient.vital_signs || {};
   const sbp = typeof vs.sbp === 'number' ? vs.sbp : (parseInt(vs.sbp, 10) || null);
   const pr = typeof vs.pr === 'number' ? vs.pr : (parseInt(vs.pr, 10) || null);
@@ -101,10 +91,11 @@ function evaluateFallRedFlags(patient) {
     woundStatus === 'active_spurting';
 
   if (isHighEnergy || (hasShock && (patient.fallParentChest || patient.fallParentAbdomen || patient.fallParentNeck)) || isBluntTorsoThreat) {
-    const t = 'อุบัติเหตุตกจากที่สูงรุนแรง หรือมีภาวะช็อก/สงสัยเลือดออกภายในช่องอก-ช่องท้อง (High-Energy Fall / Internal Hemorrhage / Shock)';
-    const d = 'ผู้ป่วยมีประวัติตกจากที่สูง > 3 เมตร, มีภาวะช็อก/สงสัยเลือดออกในช่องอกหรือช่องท้อง หรือมีแผลเลือดพุ่ง เสี่ยงต่อการเสียเลือดเฉียบพลันและภาวะการหายใจล้มเหลว';
-    const a = 'ประเมิน ABCDE ตามแนวทาง ATLS, ตรวจ Bedside eFAST, เปิดเส้น IV เบอร์ใหญ่ 2 เส้น, จองเลือด, ส่ง Chest/Pelvis X-ray และปรึกษาศัลยแพทย์ด่วน';
-    rfs.push({ key: 'rf_fall_high_energy_shock_internal_bleed', level: (sbp !== null && sbp < 90) || woundStatus === 'active_spurting' || heightLevel === 'over_3m' ? 'ESI 1' : 'ESI 2', textTh: t, title: t, risk: d, detail: d, suggestedAction: a, action: a });
+    addRf('rf_fall_high_energy_shock_internal_bleed',
+      (sbp !== null && sbp < 90) || woundStatus === 'active_spurting' || heightLevel === 'over_3m' ? 'ESI 1' : 'ESI 2',
+      'อุบัติเหตุตกจากที่สูงรุนแรง หรือมีภาวะช็อก/สงสัยเลือดออกภายในช่องอก-ช่องท้อง (High-Energy Fall / Internal Hemorrhage / Shock)',
+      'ผู้ป่วยมีประวัติตกจากที่สูง > 3 เมตร, มีภาวะช็อก/สงสัยเลือดออกในช่องอกหรือช่องท้อง หรือมีแผลเลือดพุ่ง เสี่ยงต่อการเสียเลือดเฉียบพลันและภาวะการหายใจล้มเหลว',
+      'ประเมิน ABCDE ตามแนวทาง ATLS, ตรวจ Bedside eFAST, เปิดเส้น IV เบอร์ใหญ่ 2 เส้น, จองเลือด, ส่ง Chest/Pelvis X-ray และปรึกษาศัลยแพทย์ด่วน');
   }
 
   // RED FLAG 2: Suspected Cervical / Thoracolumbar Spine or Spinal Cord Injury (ESI 1 / 2)
@@ -112,10 +103,11 @@ function evaluateFallRedFlags(patient) {
     (patient.fallParentAbdomen && abdSigns.includes('sciatica_numbness_cauda_equina'));
 
   if (hasSpineThreat) {
-    const t = 'สงสัยการบาดเจ็บกระดูกต้นคอหรือไขสันหลัง (Suspected Cervical / Spinal Cord Injury)';
-    const d = 'พบอาการปวดแนวกระดูกต้นคอรุนแรง ขยับคอไม่ได้ หรือมีอาการชา/ไฟช็อต/อ่อนแรงร้าวลงแขนขา หรือสูญเสียการควบคุมการขับถ่าย เสี่ยงต่อภาวะอัมพาตถาวร';
-    const a = 'ใส่ Hard Cervical Collar และจัดให้นอนราบบน Long Spinal Board ทันทีด้วยเทคนิค Log-roll, งอข้อ/ดัดคอไม่ได้เด็ดขาด, ตรวจ Motor/Sensory และส่ง Stat CT Spine';
-    rfs.push({ key: 'rf_fall_cspine_spinal_cord_injury', level: neckSigns.includes('radicular_shock_numbness_weakness') || abdSigns.includes('sciatica_numbness_cauda_equina') ? 'ESI 1' : 'ESI 2', textTh: t, title: t, risk: d, detail: d, suggestedAction: a, action: a });
+    addRf('rf_fall_cspine_spinal_cord_injury',
+      neckSigns.includes('radicular_shock_numbness_weakness') || abdSigns.includes('sciatica_numbness_cauda_equina') ? 'ESI 1' : 'ESI 2',
+      'สงสัยการบาดเจ็บกระดูกต้นคอหรือไขสันหลัง (Suspected Cervical / Spinal Cord Injury)',
+      'พบอาการปวดแนวกระดูกต้นคอรุนแรง ขยับคอไม่ได้ หรือมีอาการชา/ไฟช็อต/อ่อนแรงร้าวลงแขนขา หรือสูญเสียการควบคุมการขับถ่าย เสี่ยงต่อภาวะอัมพาตถาวร',
+      'ใส่ Hard Cervical Collar และจัดให้นอนราบบน Long Spinal Board ทันทีด้วยเทคนิค Log-roll, งอข้อ/ดัดคอไม่ได้เด็ดขาด, ตรวจ Motor/Sensory และส่ง Stat CT Spine');
   }
 
   // RED FLAG 3: Head Injury with TBI Warning / Head Trauma on Anticoagulant (ESI 2)
@@ -125,18 +117,18 @@ function evaluateFallRedFlags(patient) {
   const isOnBloodThinner = antithrombotic === 'on_anticoagulant_antiplatelet' || antithrombotic === 'coagulopathy_history';
 
   if (isHeadInjured && (hasTbiSigns || (isOnBloodThinner && age >= 50) || age >= 65)) {
-    const t = 'บาดเจ็บที่ศีรษะร่วมกับอาการทางสมอง หรือศีรษะกระแทกในผู้ที่ใช้ยาละลายลิ่มเลือด (Head Injury with TBI Warning / Anticoagulant Risk)';
-    const d = 'พบการบาดเจ็บที่ศีรษะร่วมกับประวัติสลบ/อาเจียน/มึนงงสับสน/น้ำใสออกหูจมูก หรือเป็นผู้สูงอายุที่ใช้ยาละลายลิ่มเลือด เสี่ยงต่อภาวะเลือดออกในกะโหลกศีรษะ (ICH / SDH)';
-    const a = 'ประเมิน GCS และรูม่านตาทันที, ส่งตรวจ Stat Non-contrast CT Brain ตามเกณฑ์ Canadian CT Head Rule, ตรวจระดับ PT/INR หากทานยา Warfarin';
-    rfs.push({ key: 'rf_fall_tbi_anticoagulant_head', level: 'ESI 2', textTh: t, title: t, risk: d, detail: d, suggestedAction: a, action: a });
+    addRf('rf_fall_tbi_anticoagulant_head', 'ESI 2',
+      'บาดเจ็บที่ศีรษะร่วมกับอาการทางสมอง หรือศีรษะกระแทกในผู้ที่ใช้ยาละลายลิ่มเลือด (Head Injury with TBI Warning / Anticoagulant Risk)',
+      'พบการบาดเจ็บที่ศีรษะร่วมกับประวัติสลบ/อาเจียน/มึนงงสับสน/น้ำใสออกหูจมูก หรือเป็นผู้สูงอายุที่ใช้ยาละลายลิ่มเลือด เสี่ยงต่อภาวะเลือดออกในกะโหลกศีรษะ (ICH / SDH)',
+      'ประเมิน GCS และรูม่านตาทันที, ส่งตรวจ Stat Non-contrast CT Brain ตามเกณฑ์ Canadian CT Head Rule, ตรวจระดับ PT/INR หากทานยา Warfarin');
   }
 
   // RED FLAG 4: Fall Secondary to Syncope / Acute Medical Etiology (ESI 2)
   if (prodrome === 'has_prodrome') {
-    const t = 'การหกล้มที่มีอาการวูบ หน้ามืด ใจสั่น เจ็บหน้าอก หรืออ่อนแรงนำมาก่อนล้ม (Fall Secondary to Syncope / Medical Etiology)';
-    const d = 'ประวัติบ่งชี้ว่าการล้มเกิดจากอาการเจ็บป่วยทางอายุรศาสตร์เฉียบพลัน (เช่น หัวใจเต้นผิดจังหวะ, กล้ามเนื้อหัวใจขาดเลือด, สโตรก หรือน้ำตาลในเลือดต่ำ) ไม่ใช่การสะดุดล้มทั่วไป';
-    const a = 'ค้นหาสาเหตุของการวูบล้มควบคู่กับการรักษาการบาดเจ็บ: ทำ 12-Lead ECG ทันที, ตรวจ Stat DTX, ประเมิน FAST Neuro exam และวัดความดันท่านอน/ท่ายืน';
-    rfs.push({ key: 'rf_fall_syncopal_medical_cause', level: 'ESI 2', textTh: t, title: t, risk: d, detail: d, suggestedAction: a, action: a });
+    addRf('rf_fall_syncopal_medical_cause', 'ESI 2',
+      'การหกล้มที่มีอาการวูบ หน้ามืด ใจสั่น เจ็บหน้าอก หรืออ่อนแรงนำมาก่อนล้ม (Fall Secondary to Syncope / Medical Etiology)',
+      'ประวัติบ่งชี้ว่าการล้มเกิดจากอาการเจ็บป่วยทางอายุรศาสตร์เฉียบพลัน (เช่น หัวใจเต้นผิดจังหวะ, กล้ามเนื้อหัวใจขาดเลือด, สโตรก หรือน้ำตาลในเลือดต่ำ) ไม่ใช่การสะดุดล้มทั่วไป',
+      'ค้นหาสาเหตุของการวูบล้มควบคู่กับการรักษาการบาดเจ็บ: ทำ 12-Lead ECG ทันที, ตรวจ Stat DTX, ประเมิน FAST Neuro exam และวัดความดันท่านอน/ท่ายืน');
   }
 
   // RED FLAG 5: Suspected Hip Fracture / Open Fracture / Neurovascular Compromise (ESI 2)
@@ -146,10 +138,10 @@ function evaluateFallRedFlags(patient) {
   const hasPelvicThreat = patient.fallParentAbdomen && abdSigns.includes('pelvic_hip_pain_cannot_bear_weight');
 
   if (hasOpenFx || hasVascularThreat || hasHipFxSign || (hasPelvicThreat && age >= 55)) {
-    const t = 'สงสัยกระดูกสะโพกหัก กระดูกหักแบบมีแผลเปิด หรือแขนขาผิดรูปร่วมกับขาดเลือด (Suspected Hip Fracture / Open Fracture / Ischemia)';
-    const d = 'พบกระดูกโผล่, ปลายมือปลายเท้าซีดเย็นขาดเลือด, ขาสั้นลงและบิดออกนอก (ลักษณะเฉพาะของกระดูกสะโพกหัก) หรือปวดสะโพกมากจนขยับขาไม่ได้';
-    const a = 'ดามเฝือกชั่วคราว (Splinting) โดยตรวจชีพจรส่วนปลายก่อนและหลังดาม, ให้ IV Antibiotics ทันทีหากเป็นแผลเปิด, ส่ง Film X-ray และปรึกษาศัลยแพทย์ออร์โธปิดิกส์ด่วน';
-    rfs.push({ key: 'rf_fall_open_fracture_neurovascular_hip', level: 'ESI 2', textTh: t, title: t, risk: d, detail: d, suggestedAction: a, action: a });
+    addRf('rf_fall_open_fracture_neurovascular_hip', 'ESI 2',
+      'สงสัยกระดูกสะโพกหัก กระดูกหักแบบมีแผลเปิด หรือแขนขาผิดรูปร่วมกับขาดเลือด (Suspected Hip Fracture / Open Fracture / Ischemia)',
+      'พบกระดูกโผล่, ปลายมือปลายเท้าซีดเย็นขาดเลือด, ขาสั้นลงและบิดออกนอก (ลักษณะเฉพาะของกระดูกสะโพกหัก) หรือปวดสะโพกมากจนขยับขาไม่ได้',
+      'ดามเฝือกชั่วคราว (Splinting) โดยตรวจชีพจรส่วนปลายก่อนและหลังดาม, ให้ IV Antibiotics ทันทีหากเป็นแผลเปิด, ส่ง Film X-ray และปรึกษาศัลยแพทย์ออร์โธปิดิกส์ด่วน');
   }
 
   // RED FLAG 6: Suspected Closed Extremity Fracture / Joint Dislocation / Inability to Bear Weight (ESI 3)
@@ -159,10 +151,10 @@ function evaluateFallRedFlags(patient) {
     (patient.fallParentHeadFace && headSigns.includes('jaw_malocclusion_broken_tooth'));
 
   if (hasClosedExtremityDeformity && !rfs.some(r => r.key === 'rf_fall_open_fracture_neurovascular_hip')) {
-    const t = 'สงสัยกระดูกแขนขาหัก ข้อเคลื่อนหลุด หรือเดินลงน้ำหนักไม่ได้ (Suspected Closed Fracture / Dislocation)';
-    const d = 'ตรวจพบแขนขาผิดรูป บวมตึง ปวดมากจนขยับไม่ได้ หรือยืนลงน้ำหนักไม่ได้ เสี่ยงต่อกระดูกหัก ข้อหลุด หรือเอ็นข้อฉีกขาดรุนแรง';
-    const a = 'ดามส่วนที่บาดเจ็บ (Immobilization), ประคบเย็นลดบวม, ให้ยาระงับปวด และส่ง Film X-ray 2 views (AP/Lateral) ตามตำแหน่งที่สงสัย';
-    rfs.push({ key: 'rf_fall_extremity_fracture_inability_to_bear_weight', level: 'ESI 3', textTh: t, title: t, risk: d, detail: d, suggestedAction: a, action: a });
+    addRf('rf_fall_extremity_fracture_inability_to_bear_weight', 'ESI 3',
+      'สงสัยกระดูกแขนขาหัก ข้อเคลื่อนหลุด หรือเดินลงน้ำหนักไม่ได้ (Suspected Closed Fracture / Dislocation)',
+      'ตรวจพบแขนขาผิดรูป บวมตึง ปวดมากจนขยับไม่ได้ หรือยืนลงน้ำหนักไม่ได้ เสี่ยงต่อกระดูกหัก ข้อหลุด หรือเอ็นข้อฉีกขาดรุนแรง',
+      'ดามส่วนที่บาดเจ็บ (Immobilization), ประประคบเย็นลดบวม, ให้ยาระงับปวด และส่ง Film X-ray 2 views (AP/Lateral) ตามตำแหน่งที่สงสัย');
   }
 
   return rfs;
@@ -173,27 +165,17 @@ function formatFallMechanisms(patient) {
   const mechs = Array.isArray(patient.fallMechanisms) ? patient.fallMechanisms : [];
   if (mechs.length === 0) return 'ไม่ได้ระบุกลไกชัดเจน';
   const labels = [];
-  if (mechs.includes('ground_level_fall')) {
-    labels.push(`ลื่น/สะดุดล้มระดับพื้นราบ${patient.fallMechGroundDetail ? ` (${patient.fallMechGroundDetail})` : ''}`);
-  }
+  if (mechs.includes('ground_level_fall')) labels.push(`ลื่น/สะดุดล้มระดับพื้นราบ${patient.fallMechGroundDetail ? ` (${patient.fallMechGroundDetail})` : ''}`);
   if (mechs.includes('bed_chair_fall')) labels.push('ตกจากเตียง/เก้าอี้');
-  if (mechs.includes('stairs_fall')) {
-    labels.push(`ตกบันได${patient.fallMechStairsDetail ? ` (${patient.fallMechStairsDetail})` : ''}`);
-  }
+  if (mechs.includes('stairs_fall')) labels.push(`ตกบันได${patient.fallMechStairsDetail ? ` (${patient.fallMechStairsDetail})` : ''}`);
   if (mechs.includes('height_fall')) {
     const hMap = { under_2m: 'สูง < 2 เมตร', '2_to_3m': 'สูงประมาณ 2–3 เมตร', over_3m: 'สูง > 3 เมตร (High-Energy)' };
     const hStr = hMap[patient.fallHeightLevel] || '';
     labels.push(`พลัดตกจากที่สูง${hStr ? ` [${hStr}]` : ''}${patient.fallMechHeightDetail ? ` (${patient.fallMechHeightDetail})` : ''}`);
   }
-  if (mechs.includes('blunt_heavy_impact')) {
-    labels.push(`ชนกระแทก/ของหนักทับ${patient.fallMechBluntDetail ? ` (${patient.fallMechBluntDetail})` : ''}`);
-  }
-  if (mechs.includes('sports_twist')) {
-    labels.push(`บาดเจ็บจากการเล่นกีฬา/ข้อพลิกผิดท่า${patient.fallMechSportsDetail ? ` (${patient.fallMechSportsDetail})` : ''}`);
-  }
-  if (mechs.includes('other_mechanism')) {
-    labels.push(`สาเหตุอื่น${patient.fallMechOtherDetail ? ` (${patient.fallMechOtherDetail})` : ''}`);
-  }
+  if (mechs.includes('blunt_heavy_impact')) labels.push(`ชนกระแทก/ของหนักทับ${patient.fallMechBluntDetail ? ` (${patient.fallMechBluntDetail})` : ''}`);
+  if (mechs.includes('sports_twist')) labels.push(`บาดเจ็บจากการเล่นกีฬา/ข้อพลิกผิดท่า${patient.fallMechSportsDetail ? ` (${patient.fallMechSportsDetail})` : ''}`);
+  if (mechs.includes('other_mechanism')) labels.push(`สาเหตุอื่น${patient.fallMechOtherDetail ? ` (${patient.fallMechOtherDetail})` : ''}`);
   return labels.join(', ');
 }
 
@@ -208,12 +190,8 @@ function formatFallWoundStatus(patient) {
 }
 
 function formatFallProdrome(patient) {
-  if (patient.fallProdrome === 'has_prodrome') {
-    return 'มีอาการวูบ หน้ามืด เวียนศีรษะ ใจสั่น หรืออ่อนแรงนำมาก่อนล้ม (Syncopal Fall)';
-  }
-  if (patient.fallProdrome === 'no_prodrome') {
-    return 'ไม่มีอาการผิดปกตินำมาก่อน (อุบัติเหตุโดยตรง Mechanical Fall)';
-  }
+  if (patient.fallProdrome === 'has_prodrome') return 'มีอาการวูบ หน้ามืด เวียนศีรษะ ใจสั่น หรืออ่อนแรงนำมาก่อนล้ม (Syncopal Fall)';
+  if (patient.fallProdrome === 'no_prodrome') return 'ไม่มีอาการผิดปกตินำมาก่อน (อุบัติเหตุโดยตรง Mechanical Fall)';
   return 'ไม่ได้ระบุ';
 }
 
@@ -233,6 +211,14 @@ function formatFallAnatomy(patient) {
     if (!Array.isArray(arr) || arr.length === 0) return '';
     const thMap = { left: 'ซ้าย', right: 'ขวา', center: 'ตรงกลาง' };
     return ` [${arr.map(s => thMap[s] || s).join(', ')}]`;
+  };
+  const digitMap = { thumb: 'นิ้วโป้ง', index: 'นิ้วชี้', middle: 'นิ้วกลาง', ring: 'นิ้วนาง', little: 'นิ้วก้อย' };
+  const fmtDigitsBySide = (leftD, rightD, fallbackSides, fallbackD) => {
+    const dParts = [];
+    if (Array.isArray(leftD) && leftD.length > 0) dParts.push(`ซ้าย: ${leftD.map(x => digitMap[x] || x).join(', ')}`);
+    if (Array.isArray(rightD) && rightD.length > 0) dParts.push(`ขวา: ${rightD.map(x => digitMap[x] || x).join(', ')}`);
+    if (dParts.length > 0) return ` [${dParts.join('; ')}]`;
+    return `${sideLabel(fallbackSides)}${Array.isArray(fallbackD) && fallbackD.length > 0 ? ` [${fallbackD.map(x => digitMap[x] || x).join(', ')}]` : ''}`;
   };
 
   if (patient.fallParentHeadFace) {
@@ -276,7 +262,7 @@ function formatFallAnatomy(patient) {
     if (patient.fallArmShoulder) subs.push(`หัวไหล่/ต้นแขน${sideLabel(patient.fallArmShoulderSides)}`);
     if (patient.fallArmElbow) subs.push(`ข้อศอก/แขนท่อนล่าง${sideLabel(patient.fallArmElbowSides)}`);
     if (patient.fallArmWrist) subs.push(`ข้อมือ/มือ${sideLabel(patient.fallArmWristSides)}`);
-    if (patient.fallArmFingers) subs.push(`นิ้วมือ${sideLabel(patient.fallArmFingersSides)}`);
+    if (patient.fallArmFingers) subs.push(`นิ้วมือ${fmtDigitsBySide(patient.fallArmFingersLeftDigits, patient.fallArmFingersRightDigits, patient.fallArmFingersSides, patient.fallArmFingersDigits)}`);
     parts.push(`แขน/มือ: ${subs.length > 0 ? subs.join(', ') : 'มีบาดเจ็บ'}`);
   }
 
@@ -285,8 +271,12 @@ function formatFallAnatomy(patient) {
     if (patient.fallLegThigh) subs.push(`ต้นขา${sideLabel(patient.fallLegThighSides)}`);
     if (patient.fallLegKneeShin) subs.push(`เข่า/หน้าแข้ง${sideLabel(patient.fallLegKneeShinSides)}`);
     if (patient.fallLegAnkleFoot) subs.push(`ข้อเท้า/เท้า${sideLabel(patient.fallLegAnkleFootSides)}`);
-    if (patient.fallLegToes) subs.push(`นิ้วเท้า${sideLabel(patient.fallLegToesSides)}`);
+    if (patient.fallLegToes) subs.push(`นิ้วเท้า${fmtDigitsBySide(patient.fallLegToesLeftDigits, patient.fallLegToesRightDigits, patient.fallLegToesSides, patient.fallLegToesDigits)}`);
     parts.push(`ขา/เท้า: ${subs.length > 0 ? subs.join(', ') : 'มีบาดเจ็บ'}`);
+  }
+
+  if (patient.fallParentOther) {
+    parts.push(`ตำแหน่งอื่นๆ: ${patient.fallOtherLocationDetail || 'ระบุตำแหน่งอื่น'}`);
   }
 
   return parts.length > 0 ? parts.join(' | ') : 'ไม่ได้ระบุตำแหน่งบาดเจ็บชัดเจน';
@@ -316,29 +306,20 @@ function renderFallRapidHpi(patient) {
 
   const positives = [];
   const negatives = [];
-
-  // Positives & Negatives compilation
   if (patient.fallProdrome === 'has_prodrome') positives.push('มีอาการวูบ หน้ามืด หรือใจสั่นนำมาก่อนล้ม');
   else if (patient.fallProdrome === 'no_prodrome') negatives.push('ไม่มีอาการวูบหรือหน้ามืดนำมาก่อน');
-
   if (patient.fallHeightLevel === 'over_3m') positives.push('ตกจากที่สูง > 3 เมตร (High-Energy Fall)');
-
   if (headSigns.includes('loss_of_consciousness')) positives.push('มีอาการสลบ/หมดสติชั่วขณะ หรือจำเหตุการณ์ไม่ได้');
   else if (patient.fallParentHeadFace) negatives.push('ไม่มีประวัติสลบหรือหมดสติ');
-
   if (headSigns.includes('severe_headache_vomit_drowsy')) positives.push('ปวดศีรษะรุนแรง ซึมลง หรือมีอาเจียน');
   if (headSigns.includes('csf_leak_ear_nose')) positives.push('มีเลือดหรือน้ำใสไหลออกจากรูหู/จมูก (สงสัย Basilar skull fracture)');
-
   if (neckSigns.includes('severe_cervical_pain_limited_rom')) positives.push('ปวดตึงแนวกระดูกต้นคอรุนแรง ขยับคอไม่ได้');
   if (neckSigns.includes('radicular_shock_numbness_weakness')) positives.push('มีอาการชา/ไฟช็อต/อ่อนแรงร้าวลงแขนขา');
-
   if (chestSigns.includes('dyspnea_shortness_of_breath')) positives.push('หายใจหอบเหนื่อย แน่นหน้าอก');
   if (chestSigns.includes('pleuritic_chest_pain')) positives.push('เจ็บแปล๊บหน้าอกเวลาหายใจเข้าลึก');
-
   if (abdSigns.includes('severe_abd_pain_distension')) positives.push('ปวดท้องรุนแรง ท้องอืดตึง');
   if (abdSigns.includes('pelvic_hip_pain_cannot_bear_weight')) positives.push('ปวดสะโพก/เชิงกรานมากจนขยับขาไม่ได้');
   if (abdSigns.includes('urinary_retention_hematuria')) positives.push('ปัสสาวะไม่ออกหรือมีเลือดปน');
-
   if (upperSigns.includes('deformity_dislocation_arm')) positives.push('แขน/ข้อมือ/นิ้วมือ บวมผิดรูปหรือข้อหลุด');
   if (upperSigns.includes('open_fracture_arm')) positives.push('กระดูกแขนหักแบบมีแผลเปิด (Open fracture)');
   if (upperSigns.includes('vascular_cold_pale_hand')) positives.push('ปลายมือซีดเย็นขาดเลือด');
@@ -358,19 +339,6 @@ function renderFallRapidHpi(patient) {
     pScoreStr = `${patient.painScore}/10`;
   }
 
-  let rapid = `[Chief Complaint (CC)]\nพลัดตกหกล้ม / ได้รับบาดเจ็บทางกายภาพ เป็นมา ${durText}\n\n`;
-  rapid += `[History of Present Illness (HPI)]\n`;
-  rapid += `• กลไกการบาดเจ็บและระยะเวลา: ${mechsText} | เป็นมา ${durText}\n`;
-  rapid += `• อาการนำก่อนเกิดเหตุ: ${prodromeText}\n`;
-  rapid += `• ตำแหน่งที่ได้รับบาดเจ็บ: ${anatomyText}\n`;
-  rapid += `• สถานะบาดแผลภายนอก: ${woundText}\n`;
-  rapid += `• ระดับความปวด (Pain Score): ${pScoreStr}\n\n`;
-
-  rapid += `• Pertinent Positives:\n`;
-  positives.forEach(p => { rapid += `  - ${p}\n`; });
-  rapid += `\n• Pertinent Negatives:\n`;
-  negatives.forEach(n => { rapid += `  - ${n}\n`; });
-
   const udDisplay = (patient.underlying && patient.underlying.length > 0)
     ? (Array.isArray(patient.underlying) ? patient.underlying : [patient.underlying])
         .filter(u => u && !u.includes('ปฏิเสธ') && u !== 'ไม่มี').join(', ') || 'ปฏิเสธ'
@@ -383,38 +351,47 @@ function renderFallRapidHpi(patient) {
     : patient.currentMeds;
   const docNotes = patient.doctor_notes || {};
 
-  rapid += `\n[Past Medical History & Medications]\n`;
-  rapid += `• ประวัติยาละลายลิ่มเลือด/ต้านเกล็ดเลือด: ${bloodThinnerText}\n`;
-  if (patient.fallTetanusHx) {
-    const tMap = {
-      within_5_years: 'ฉีดวัคซีนบาดทะยักภายใน 5 ปี',
-      '5_to_10_years': 'ฉีดวัคซีนบาดทะยัก 5-10 ปีที่ผ่านมา',
-      more_than_10_years: 'ฉีดวัคซีนบาดทะยักเกิน 10 ปีแล้ว',
-      never_or_unsure: 'ไม่เคยฉีด หรือไม่แน่ใจประวัติวัคซีน'
-    };
-    rapid += `• ประวัติวัคซีนบาดทะยัก: ${tMap[patient.fallTetanusHx] || patient.fallTetanusHx}\n`;
-  }
-  rapid += `• โรคประจำตัว (U/D): ${udDisplay}\n`;
-  rapid += `• ยาประจำตัว (Current Meds): ${medsText}\n`;
-  rapid += `• ประวัติแพ้ยา/แพ้อาหาร (Allergies): ${allergyDisplay}\n\n`;
+  const tMap = {
+    within_5_years: 'ฉีดวัคซีนบาดทะยักภายใน 5 ปี',
+    '5_to_10_years': 'ฉีดวัคซีนบาดทะยัก 5-10 ปีที่ผ่านมา',
+    more_than_10_years: 'ฉีดวัคซีนบาดทะยักเกิน 10 ปีแล้ว',
+    never_or_unsure: 'ไม่เคยฉีด หรือไม่แน่ใจประวัติวัคซีน'
+  };
+  const tetText = patient.fallTetanusHx ? `\n• ประวัติวัคซีนบาดทะยัก: ${tMap[patient.fallTetanusHx] || patient.fallTetanusHx}` : '';
+  const rfText = rfs.length > 0
+    ? `🚩 ตรวจพบสัญญาณเตือนฉุกเฉิน (${rfs.length} รายการ):\n${rfs.map(r => `  * [${r.level}] ${r.title}`).join('\n')}`
+    : '✓ ไม่พบสัญญาณเตือนวิกฤต ESI 1-2 ในขณะคัดกรอง (Low-Risk Blunt/Fall Trauma)';
 
-  rapid += `[Emergency Risk Assessment (Red Flags)]\n`;
-  if (rfs.length > 0) {
-    rapid += `🚩 ตรวจพบสัญญาณเตือนฉุกเฉิน (${rfs.length} รายการ):\n`;
-    rfs.forEach(r => {
-      rapid += `  * [${r.level}] ${r.title}\n`;
-    });
-  } else {
-    rapid += `✓ ไม่พบสัญญาณเตือนวิกฤต ESI 1-2 ในขณะคัดกรอง (Low-Risk Blunt/Fall Trauma)\n`;
-  }
+  return `[Chief Complaint (CC)]
+พลัดตกหกล้ม / ได้รับบาดเจ็บทางกายภาพ เป็นมา ${durText}
 
-  rapid += `\n[Doctor's Clinical Addendum & Exam]\n`;
-  rapid += `• บันทึกประวัติเพิ่มเติมหรือแก้ไขโดยแพทย์: ${docNotes.additional_hpi || '-'}\n`;
-  rapid += `• สัญญาณชีพและการตรวจร่างกาย: ${docNotes.physical_exam || '-'}\n`;
-  rapid += `• การวินิจฉัยเบื้องต้น (Impression): ${docNotes.preliminary_dx || '-'}\n`;
-  rapid += `• แผนการรักษาและคำสั่งการรักษา (Plan/Orders): ${docNotes.plan || '-'}`;
+[History of Present Illness (HPI)]
+• กลไกการบาดเจ็บและระยะเวลา: ${mechsText} | เป็นมา ${durText}
+• อาการนำก่อนเกิดเหตุ: ${prodromeText}
+• ตำแหน่งที่ได้รับบาดเจ็บ: ${anatomyText}
+• สถานะบาดแผลภายนอก: ${woundText}
+• ระดับความปวด (Pain Score): ${pScoreStr}
 
-  return rapid;
+• Pertinent Positives:
+${positives.map(p => `  - ${p}`).join('\n')}
+
+• Pertinent Negatives:
+${negatives.map(n => `  - ${n}`).join('\n')}
+
+[Past Medical History & Medications]
+• ประวัติยาละลายลิ่มเลือด/ต้านเกล็ดเลือด: ${bloodThinnerText}${tetText}
+• โรคประจำตัว (U/D): ${udDisplay}
+• ยาประจำตัว (Current Meds): ${medsText}
+• ประวัติแพ้ยา/แพ้อาหาร (Allergies): ${allergyDisplay}
+
+[Emergency Risk Assessment (Red Flags)]
+${rfText}
+
+[Doctor's Clinical Addendum & Exam]
+• บันทึกประวัติเพิ่มเติมหรือแก้ไขโดยแพทย์: ${docNotes.additional_hpi || '-'}
+• สัญญาณชีพและการตรวจร่างกาย: ${docNotes.physical_exam || '-'}
+• การวินิจฉัยเบื้องต้น (Impression): ${docNotes.preliminary_dx || '-'}
+• แผนการรักษาและคำสั่งการรักษา (Plan/Orders): ${docNotes.plan || '-'}`;
 }
 
 function renderFallNarrative(patient) {
@@ -508,8 +485,16 @@ function updateFallOutputs(rec) {
         chest: !!rec.fallParentChest,
         abdomen: !!rec.fallParentAbdomen,
         upper_extremity: !!rec.fallParentUpperExtremity,
-        lower_extremity: !!rec.fallParentLowerExtremity
+        lower_extremity: !!rec.fallParentLowerExtremity,
+        other: !!rec.fallParentOther,
+        other_detail: rec.fallOtherLocationDetail || ''
       },
+      fingers_digits: Array.isArray(rec.fallArmFingersDigits) ? rec.fallArmFingersDigits : [],
+      fingers_left_digits: Array.isArray(rec.fallArmFingersLeftDigits) ? rec.fallArmFingersLeftDigits : [],
+      fingers_right_digits: Array.isArray(rec.fallArmFingersRightDigits) ? rec.fallArmFingersRightDigits : [],
+      toes_digits: Array.isArray(rec.fallLegToesDigits) ? rec.fallLegToesDigits : [],
+      toes_left_digits: Array.isArray(rec.fallLegToesLeftDigits) ? rec.fallLegToesLeftDigits : [],
+      toes_right_digits: Array.isArray(rec.fallLegToesRightDigits) ? rec.fallLegToesRightDigits : [],
       systemic_signs: Array.isArray(rec.fallSystemicSigns) ? rec.fallSystemicSigns : [],
       other_symptoms_free: rec.otherSymptomsFree || ''
     },
@@ -531,58 +516,46 @@ function updateFallOutputs(rec) {
 function generateFallCds(patient, { rfs, ddxList = [], workupList = [], managementList = [] } = {}) {
   if (!patient) return '';
   const redFlags = rfs || evaluateFallRedFlags(patient);
+  const setPlan = (dxs, wus, mgmts) => {
+    ddxList.push(...dxs); workupList.push(...wus); managementList.push(...mgmts);
+  };
 
   if (redFlags.some(r => r.key === 'rf_fall_high_energy_shock_internal_bleed')) {
-    ddxList.push('1. 🚨 High-Energy Multiple Trauma with Hemorrhagic Shock');
-    ddxList.push('2. Blunt Abdominal Trauma (Liver / Spleen Laceration)');
-    ddxList.push('3. Blunt Thoracic Trauma (Hemopneumothorax / Pulmonary Contusion)');
-    workupList.push('ATLS Primary Survey (A-B-C-D-E)');
-    workupList.push('Bedside eFAST (Focused Assessment with Sonography in Trauma)');
-    workupList.push('Portable Chest X-ray & Pelvis AP X-ray');
-    workupList.push('CBC, Coagulogram, Type & Screen / Crossmatch, VBG/Lactate');
-    managementList.push('2 Large-bore IV lines (16-18G) + Warm crystalloid resuscitation');
-    managementList.push('Pelvic binder if suspected unstable pelvic fracture');
-    managementList.push('Urgent Surgical / Trauma Consult');
+    setPlan(
+      ['1. 🚨 High-Energy Multiple Trauma with Hemorrhagic Shock', '2. Blunt Abdominal Trauma (Liver / Spleen Laceration)', '3. Blunt Thoracic Trauma (Hemopneumothorax / Pulmonary Contusion)'],
+      ['ATLS Primary Survey (A-B-C-D-E)', 'Bedside eFAST (Focused Assessment with Sonography in Trauma)', 'Portable Chest X-ray & Pelvis AP X-ray', 'CBC, Coagulogram, Type & Screen / Crossmatch, VBG/Lactate'],
+      ['2 Large-bore IV lines (16-18G) + Warm crystalloid resuscitation', 'Pelvic binder if suspected unstable pelvic fracture', 'Urgent Surgical / Trauma Consult']
+    );
   } else if (redFlags.some(r => r.key === 'rf_fall_cspine_spinal_cord_injury')) {
-    ddxList.push('1. 🚨 Cervical Spine Fracture / Subluxation');
-    ddxList.push('2. Traumatic Spinal Cord Injury (SCI) / Central Cord Syndrome');
-    workupList.push('Stat Non-contrast CT Cervical Spine / Thoracolumbar Spine');
-    workupList.push('Complete Neurological Assessment (ASIA Impairment Scale)');
-    managementList.push('Rigid Cervical Collar + Full Spinal Motion Restriction (Log-roll)');
-    managementList.push('Avoid hypotension (Maintain MAP > 85 mmHg for spinal cord perfusion)');
-    managementList.push('Urgent Orthopedic / Neurosurgical Consult');
+    setPlan(
+      ['1. 🚨 Cervical Spine Fracture / Subluxation', '2. Traumatic Spinal Cord Injury (SCI) / Central Cord Syndrome'],
+      ['Stat Non-contrast CT Cervical Spine / Thoracolumbar Spine', 'Complete Neurological Assessment (ASIA Impairment Scale)'],
+      ['Rigid Cervical Collar + Full Spinal Motion Restriction (Log-roll)', 'Avoid hypotension (Maintain MAP > 85 mmHg for spinal cord perfusion)', 'Urgent Orthopedic / Neurosurgical Consult']
+    );
   } else if (redFlags.some(r => r.key === 'rf_fall_tbi_anticoagulant_head')) {
-    ddxList.push('1. 🚨 Traumatic Brain Injury (TBI) / Traumatic Subdural / Epidural Hematoma');
-    ddxList.push('2. Traumatic Subarachnoid Hemorrhage (tSAH)');
-    workupList.push('Stat Non-contrast CT Brain');
-    workupList.push('Coagulation Profile (PT/INR, PTT)');
-    managementList.push('Frequent Neuro-vital signs check (every 15-30 min)');
-    managementList.push('Anticoagulant reversal protocol if intracranial hemorrhage confirmed');
+    setPlan(
+      ['1. 🚨 Traumatic Brain Injury (TBI) / Traumatic Subdural / Epidural Hematoma', '2. Traumatic Subarachnoid Hemorrhage (tSAH)'],
+      ['Stat Non-contrast CT Brain', 'Coagulation Profile (PT/INR, PTT)'],
+      ['Frequent Neuro-vital signs check (every 15-30 min)', 'Anticoagulant reversal protocol if intracranial hemorrhage confirmed']
+    );
   } else if (redFlags.some(r => r.key === 'rf_fall_syncopal_medical_cause')) {
-    ddxList.push('1. 🚨 Cardiogenic Syncope (Cardiac Arrhythmia / Structural Heart Disease)');
-    ddxList.push('2. Acute Coronary Syndrome (ACS) with Secondary Fall');
-    ddxList.push('3. Acute Ischemic Stroke with Secondary Fall');
-    workupList.push('12-Lead ECG Stat + Cardiac Monitor');
-    workupList.push('Stat DTX (Point-of-care Blood Glucose)');
-    workupList.push('Troponin-T / I, Electrolytes');
-    managementList.push('Continuous cardiac rhythm monitoring');
-    managementList.push('Orthostatic vital signs evaluation');
+    setPlan(
+      ['1. 🚨 Cardiogenic Syncope (Cardiac Arrhythmia / Structural Heart Disease)', '2. Acute Coronary Syndrome (ACS) with Secondary Fall', '3. Acute Ischemic Stroke with Secondary Fall'],
+      ['12-Lead ECG Stat + Cardiac Monitor', 'Stat DTX (Point-of-care Blood Glucose)', 'Troponin-T / I, Electrolytes'],
+      ['Continuous cardiac rhythm monitoring', 'Orthostatic vital signs evaluation']
+    );
   } else if (redFlags.some(r => r.key === 'rf_fall_open_fracture_neurovascular_hip')) {
-    ddxList.push('1. 🚨 Femoral Neck / Intertrochanteric Hip Fracture');
-    ddxList.push('2. Open Fracture with Soft Tissue Defect');
-    ddxList.push('3. Impending Compartment Syndrome / Acute Limb Ischemia');
-    workupList.push('X-ray Pelvis AP & Hip AP/Cross-table Lateral');
-    workupList.push('X-ray injured extremity 2 views (AP / Lateral including joints above & below)');
-    managementList.push('Early reduction & splinting with neurovascular check pre/post splint');
-    managementList.push('IV Antibiotics (Cefazolin) within 1 hour for Open Fracture');
-    managementList.push('Multimodal analgesia & Urgent Orthopedic Consult');
+    setPlan(
+      ['1. 🚨 Femoral Neck / Intertrochanteric Hip Fracture', '2. Open Fracture with Soft Tissue Defect', '3. Impending Compartment Syndrome / Acute Limb Ischemia'],
+      ['X-ray Pelvis AP & Hip AP/Cross-table Lateral', 'X-ray injured extremity 2 views (AP / Lateral including joints above & below)'],
+      ['Early reduction & splinting with neurovascular check pre/post splint', 'IV Antibiotics (Cefazolin) within 1 hour for Open Fracture', 'Multimodal analgesia & Urgent Orthopedic Consult']
+    );
   } else {
-    ddxList.push('1. Contusion / Sprain / Strain');
-    ddxList.push('2. Simple Closed Fracture (Rule-out by X-ray)');
-    workupList.push('Plain Radiography (X-ray) of injured area (2 views)');
-    managementList.push('RICE protocol (Rest, Ice, Compression, Elevation)');
-    managementList.push('Analgesia (Acetaminophen / NSAIDs if no contraindication)');
-    managementList.push('Temporary immobilization / Elastic bandage');
+    setPlan(
+      ['1. Contusion / Sprain / Strain', '2. Simple Closed Fracture (Rule-out by X-ray)'],
+      ['Plain Radiography (X-ray) of injured area (2 views)'],
+      ['RICE protocol (Rest, Ice, Compression, Elevation)', 'Analgesia (Acetaminophen / NSAIDs if no contraindication)', 'Temporary immobilization / Elastic bandage']
+    );
   }
 
   return ddxList.join('\n');
@@ -1182,12 +1155,29 @@ const FALL_TRAUMA_FORM_HTML = `
               </div>
 
               <div class="p-2.5 rounded-xl border border-slate-200 bg-white">
-                <label class="flex items-center cursor-pointer">
-                  <input type="checkbox" id="fallArmFingers" onchange="toggleFallGroup('fallArmFingersSidesContainer', this.checked)" class="text-medical-600 mr-2 h-4 w-4 rounded">
-                  <span class="text-xs sm:text-sm font-medium text-slate-800">นิ้วมือ</span>
-                </label>
-                <div id="fallArmFingersSidesContainer" class="hidden mt-2 pl-6 flex gap-4 text-xs">
-                  <label class="flex items-center cursor-pointer"><input type="checkbox" name="fallArmFingersSides" value="left" class="mr-1"> ซ้าย</label> <label class="flex items-center cursor-pointer"><input type="checkbox" name="fallArmFingersSides" value="right" class="mr-1"> ขวา</label>
+                <div class="flex flex-col sm:flex-row sm:items-start justify-between text-xs py-1.5 gap-2">
+                  <label class="flex items-center space-x-2 cursor-pointer mt-0.5">
+                    <input type="checkbox" id="fallArmFingers" onchange="toggleFallGroup('fallArmFingersSidesContainer', this.checked)" class="text-medical-600 rounded">
+                    <span class="text-xs sm:text-sm font-medium text-slate-800">นิ้วมือ</span>
+                  </label>
+                  <div id="fallArmFingersSidesContainer" class="hidden flex flex-col space-y-1.5 pl-6 sm:pl-0">
+                    <div class="flex items-center flex-wrap gap-1.5">
+                      <span class="text-[11px] text-slate-500 font-medium w-8">ซ้าย:</span>
+                      <label class="inline-flex items-center space-x-1 cursor-pointer"><input type="checkbox" name="fallArmFingersLeftDigits" value="thumb" class="text-medical-600 rounded"><span>โป้ง</span></label>
+                      <label class="inline-flex items-center space-x-1 cursor-pointer"><input type="checkbox" name="fallArmFingersLeftDigits" value="index" class="text-medical-600 rounded"><span>ชี้</span></label>
+                      <label class="inline-flex items-center space-x-1 cursor-pointer"><input type="checkbox" name="fallArmFingersLeftDigits" value="middle" class="text-medical-600 rounded"><span>กลาง</span></label>
+                      <label class="inline-flex items-center space-x-1 cursor-pointer"><input type="checkbox" name="fallArmFingersLeftDigits" value="ring" class="text-medical-600 rounded"><span>นาง</span></label>
+                      <label class="inline-flex items-center space-x-1 cursor-pointer"><input type="checkbox" name="fallArmFingersLeftDigits" value="little" class="text-medical-600 rounded"><span>ก้อย</span></label>
+                    </div>
+                    <div class="flex items-center flex-wrap gap-1.5">
+                      <span class="text-[11px] text-slate-500 font-medium w-8">ขวา:</span>
+                      <label class="inline-flex items-center space-x-1 cursor-pointer"><input type="checkbox" name="fallArmFingersRightDigits" value="thumb" class="text-medical-600 rounded"><span>โป้ง</span></label>
+                      <label class="inline-flex items-center space-x-1 cursor-pointer"><input type="checkbox" name="fallArmFingersRightDigits" value="index" class="text-medical-600 rounded"><span>ชี้</span></label>
+                      <label class="inline-flex items-center space-x-1 cursor-pointer"><input type="checkbox" name="fallArmFingersRightDigits" value="middle" class="text-medical-600 rounded"><span>กลาง</span></label>
+                      <label class="inline-flex items-center space-x-1 cursor-pointer"><input type="checkbox" name="fallArmFingersRightDigits" value="ring" class="text-medical-600 rounded"><span>นาง</span></label>
+                      <label class="inline-flex items-center space-x-1 cursor-pointer"><input type="checkbox" name="fallArmFingersRightDigits" value="little" class="text-medical-600 rounded"><span>ก้อย</span></label>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1267,12 +1257,29 @@ const FALL_TRAUMA_FORM_HTML = `
               </div>
 
               <div class="p-2.5 rounded-xl border border-slate-200 bg-white">
-                <label class="flex items-center cursor-pointer">
-                  <input type="checkbox" id="fallLegToes" onchange="toggleFallGroup('fallLegToesSidesContainer', this.checked)" class="text-medical-600 mr-2 h-4 w-4 rounded">
-                  <span class="text-xs sm:text-sm font-medium text-slate-800">นิ้วเท้า</span>
-                </label>
-                <div id="fallLegToesSidesContainer" class="hidden mt-2 pl-6 flex gap-4 text-xs">
-                  <label class="flex items-center cursor-pointer"><input type="checkbox" name="fallLegToesSides" value="left" class="mr-1"> ซ้าย</label> <label class="flex items-center cursor-pointer"><input type="checkbox" name="fallLegToesSides" value="right" class="mr-1"> ขวา</label>
+                <div class="flex flex-col sm:flex-row sm:items-start justify-between text-xs py-1.5 gap-2">
+                  <label class="flex items-center space-x-2 cursor-pointer mt-0.5">
+                    <input type="checkbox" id="fallLegToes" onchange="toggleFallGroup('fallLegToesSidesContainer', this.checked)" class="text-medical-600 rounded">
+                    <span class="text-xs sm:text-sm font-medium text-slate-800">นิ้วเท้า</span>
+                  </label>
+                  <div id="fallLegToesSidesContainer" class="hidden flex flex-col space-y-1.5 pl-6 sm:pl-0">
+                    <div class="flex items-center flex-wrap gap-1.5">
+                      <span class="text-[11px] text-slate-500 font-medium w-8">ซ้าย:</span>
+                      <label class="inline-flex items-center space-x-1 cursor-pointer"><input type="checkbox" name="fallLegToesLeftDigits" value="thumb" class="text-medical-600 rounded"><span>โป้ง</span></label>
+                      <label class="inline-flex items-center space-x-1 cursor-pointer"><input type="checkbox" name="fallLegToesLeftDigits" value="index" class="text-medical-600 rounded"><span>ชี้</span></label>
+                      <label class="inline-flex items-center space-x-1 cursor-pointer"><input type="checkbox" name="fallLegToesLeftDigits" value="middle" class="text-medical-600 rounded"><span>กลาง</span></label>
+                      <label class="inline-flex items-center space-x-1 cursor-pointer"><input type="checkbox" name="fallLegToesLeftDigits" value="ring" class="text-medical-600 rounded"><span>นาง</span></label>
+                      <label class="inline-flex items-center space-x-1 cursor-pointer"><input type="checkbox" name="fallLegToesLeftDigits" value="little" class="text-medical-600 rounded"><span>ก้อย</span></label>
+                    </div>
+                    <div class="flex items-center flex-wrap gap-1.5">
+                      <span class="text-[11px] text-slate-500 font-medium w-8">ขวา:</span>
+                      <label class="inline-flex items-center space-x-1 cursor-pointer"><input type="checkbox" name="fallLegToesRightDigits" value="thumb" class="text-medical-600 rounded"><span>โป้ง</span></label>
+                      <label class="inline-flex items-center space-x-1 cursor-pointer"><input type="checkbox" name="fallLegToesRightDigits" value="index" class="text-medical-600 rounded"><span>ชี้</span></label>
+                      <label class="inline-flex items-center space-x-1 cursor-pointer"><input type="checkbox" name="fallLegToesRightDigits" value="middle" class="text-medical-600 rounded"><span>กลาง</span></label>
+                      <label class="inline-flex items-center space-x-1 cursor-pointer"><input type="checkbox" name="fallLegToesRightDigits" value="ring" class="text-medical-600 rounded"><span>นาง</span></label>
+                      <label class="inline-flex items-center space-x-1 cursor-pointer"><input type="checkbox" name="fallLegToesRightDigits" value="little" class="text-medical-600 rounded"><span>ก้อย</span></label>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1303,6 +1310,18 @@ const FALL_TRAUMA_FORM_HTML = `
               </label>
             </div>
           </div>
+        </div>
+      </div>
+
+      <!-- 2.7 บาดแผลที่ตำแหน่งอื่นๆ (พิมพ์ระบุ) -->
+      <div class="border border-slate-200 rounded-2xl p-4 bg-slate-50/50">
+        <label class="flex items-center space-x-2.5 cursor-pointer">
+          <input type="checkbox" id="fallParentOther" onchange="toggleFallGroup('fallOtherSubGroup', this.checked)" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded">
+          <span class="text-xs sm:text-sm font-bold text-slate-900">2.7 บาดแผลที่ตำแหน่งอื่นๆ (พิมพ์ระบุ)</span>
+        </label>
+        <div id="fallOtherSubGroup" class="hidden mt-3 pl-6 border-l-2 border-medical-200 space-y-2">
+          <label class="text-xs font-semibold text-slate-600 block">ระบุตำแหน่งบาดเจ็บเพิ่มเติม:</label>
+          <input type="text" id="fallOtherLocationDetail" placeholder="เช่น บริเวณรักแร้, ซอกคอ, ก้นกบ..." class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-medical-500">
         </div>
       </div>
     </div>
@@ -1525,7 +1544,13 @@ const fallTraumaModule = {
     const sArmShoulder = getSubState(parentUpperExt, 'fallArmShoulder', 'fallArmShoulderSides');
     const sArmElbow = getSubState(parentUpperExt, 'fallArmElbow', 'fallArmElbowSides');
     const sArmWrist = getSubState(parentUpperExt, 'fallArmWrist', 'fallArmWristSides');
-    const sArmFingers = getSubState(parentUpperExt, 'fallArmFingers', 'fallArmFingersSides');
+    const isArmFingers = parentUpperExt && !!document.getElementById('fallArmFingers')?.checked;
+    const armFingersLeftDigits = isArmFingers ? getChecks('fallArmFingersLeftDigits') : [];
+    const armFingersRightDigits = isArmFingers ? getChecks('fallArmFingersRightDigits') : [];
+    const armFingersSides = [];
+    if (armFingersLeftDigits.length > 0) armFingersSides.push('left');
+    if (armFingersRightDigits.length > 0) armFingersSides.push('right');
+    const armFingersDigits = [...new Set([...armFingersLeftDigits, ...armFingersRightDigits])];
     const upperSigns = parentUpperExt ? getChecks('fallUpperExtSigns') : [];
 
     // Lower Extremity
@@ -1533,8 +1558,18 @@ const fallTraumaModule = {
     const sLegThigh = getSubState(parentLowerExt, 'fallLegThigh', 'fallLegThighSides');
     const sLegKneeShin = getSubState(parentLowerExt, 'fallLegKneeShin', 'fallLegKneeShinSides');
     const sLegAnkleFoot = getSubState(parentLowerExt, 'fallLegAnkleFoot', 'fallLegAnkleFootSides');
-    const sLegToes = getSubState(parentLowerExt, 'fallLegToes', 'fallLegToesSides');
+    const isLegToes = parentLowerExt && !!document.getElementById('fallLegToes')?.checked;
+    const legToesLeftDigits = isLegToes ? getChecks('fallLegToesLeftDigits') : [];
+    const legToesRightDigits = isLegToes ? getChecks('fallLegToesRightDigits') : [];
+    const legToesSides = [];
+    if (legToesLeftDigits.length > 0) legToesSides.push('left');
+    if (legToesRightDigits.length > 0) legToesSides.push('right');
+    const legToesDigits = [...new Set([...legToesLeftDigits, ...legToesRightDigits])];
     const lowerSigns = parentLowerExt ? getChecks('fallLowerExtSigns') : [];
+
+    // 2.7 Other
+    const parentOther = document.getElementById('fallParentOther')?.checked || false;
+    const otherLocationDetail = parentOther ? (document.getElementById('fallOtherLocationDetail')?.value?.trim() || '') : '';
 
     const systemicSigns = getChecks('fallSystemicSigns');
     const painScore = fallPainScoreTouched ? parseInt(document.getElementById('fallPainScore')?.value || 0, 10) : null;
@@ -1625,8 +1660,11 @@ const fallTraumaModule = {
       fallArmElbowSides: sArmElbow.sides,
       fallArmWrist: sArmWrist.active,
       fallArmWristSides: sArmWrist.sides,
-      fallArmFingers: sArmFingers.active,
-      fallArmFingersSides: sArmFingers.sides,
+      fallArmFingers: isArmFingers,
+      fallArmFingersSides: armFingersSides,
+      fallArmFingersLeftDigits: armFingersLeftDigits,
+      fallArmFingersRightDigits: armFingersRightDigits,
+      fallArmFingersDigits: armFingersDigits,
       fallUpperExtSigns: upperSigns,
 
       fallParentLowerExtremity: parentLowerExt,
@@ -1636,9 +1674,15 @@ const fallTraumaModule = {
       fallLegKneeShinSides: sLegKneeShin.sides,
       fallLegAnkleFoot: sLegAnkleFoot.active,
       fallLegAnkleFootSides: sLegAnkleFoot.sides,
-      fallLegToes: sLegToes.active,
-      fallLegToesSides: sLegToes.sides,
+      fallLegToes: isLegToes,
+      fallLegToesSides: legToesSides,
+      fallLegToesLeftDigits: legToesLeftDigits,
+      fallLegToesRightDigits: legToesRightDigits,
+      fallLegToesDigits: legToesDigits,
       fallLowerExtSigns: lowerSigns,
+
+      fallParentOther: parentOther,
+      fallOtherLocationDetail: otherLocationDetail,
 
       fallSystemicSigns: systemicSigns,
       painScore: painScore,
@@ -1681,36 +1725,22 @@ const fallTraumaModule = {
 
     setChecks('fallMechanisms', data.fallMechanisms);
     if (Array.isArray(data.fallMechanisms)) {
-      if (data.fallMechanisms.includes('ground_level_fall')) {
-        toggleFallGroup('fallMechGroundDetailContainer', true);
-        const el = document.getElementById('fallMechGroundDetail');
-        if (el) el.value = data.fallMechGroundDetail || '';
-      }
-      if (data.fallMechanisms.includes('stairs_fall')) {
-        toggleFallGroup('fallMechStairsDetailContainer', true);
-        const el = document.getElementById('fallMechStairsDetail');
-        if (el) el.value = data.fallMechStairsDetail || '';
-      }
+      [
+        ['ground_level_fall', 'fallMechGroundDetailContainer', 'fallMechGroundDetail', data.fallMechGroundDetail],
+        ['stairs_fall', 'fallMechStairsDetailContainer', 'fallMechStairsDetail', data.fallMechStairsDetail],
+        ['blunt_heavy_impact', 'fallMechBluntDetailContainer', 'fallMechBluntDetail', data.fallMechBluntDetail],
+        ['sports_twist', 'fallMechSportsDetailContainer', 'fallMechSportsDetail', data.fallMechSportsDetail],
+        ['other_mechanism', 'fallMechOtherDetailContainer', 'fallMechOtherDetail', data.fallMechOtherDetail]
+      ].forEach(([k, c, inp, v]) => {
+        if (data.fallMechanisms.includes(k)) {
+          toggleFallGroup(c, true);
+          const el = document.getElementById(inp); if (el) el.value = v || '';
+        }
+      });
       if (data.fallMechanisms.includes('height_fall')) {
         toggleFallGroup('fallMechHeightContainer', true);
         setRadio('fallHeightLevel', data.fallHeightLevel);
-        const el = document.getElementById('fallMechHeightDetail');
-        if (el) el.value = data.fallMechHeightDetail || '';
-      }
-      if (data.fallMechanisms.includes('blunt_heavy_impact')) {
-        toggleFallGroup('fallMechBluntDetailContainer', true);
-        const el = document.getElementById('fallMechBluntDetail');
-        if (el) el.value = data.fallMechBluntDetail || '';
-      }
-      if (data.fallMechanisms.includes('sports_twist')) {
-        toggleFallGroup('fallMechSportsDetailContainer', true);
-        const el = document.getElementById('fallMechSportsDetail');
-        if (el) el.value = data.fallMechSportsDetail || '';
-      }
-      if (data.fallMechanisms.includes('other_mechanism')) {
-        toggleFallGroup('fallMechOtherDetailContainer', true);
-        const el = document.getElementById('fallMechOtherDetail');
-        if (el) el.value = data.fallMechOtherDetail || '';
+        const el = document.getElementById('fallMechHeightDetail'); if (el) el.value = data.fallMechHeightDetail || '';
       }
     }
 
@@ -1771,7 +1801,12 @@ const fallTraumaModule = {
       hydrateSub('fallArmShoulder', 'fallArmShoulder', 'fallArmShoulderSidesContainer', 'fallArmShoulderSides', data.fallArmShoulderSides);
       hydrateSub('fallArmElbow', 'fallArmElbow', 'fallArmElbowSidesContainer', 'fallArmElbowSides', data.fallArmElbowSides);
       hydrateSub('fallArmWrist', 'fallArmWrist', 'fallArmWristSidesContainer', 'fallArmWristSides', data.fallArmWristSides);
-      hydrateSub('fallArmFingers', 'fallArmFingers', 'fallArmFingersSidesContainer', 'fallArmFingersSides', data.fallArmFingersSides);
+      if (data.fallArmFingers) {
+        setCheckById('fallArmFingers', true);
+        toggleFallGroup('fallArmFingersSidesContainer', true);
+        setChecks('fallArmFingersLeftDigits', data.fallArmFingersLeftDigits || (data.fallArmFingersSides?.includes('left') ? data.fallArmFingersDigits : []));
+        setChecks('fallArmFingersRightDigits', data.fallArmFingersRightDigits || (data.fallArmFingersSides?.includes('right') ? data.fallArmFingersDigits : []));
+      }
       setChecks('fallUpperExtSigns', data.fallUpperExtSigns);
     }
 
@@ -1781,8 +1816,20 @@ const fallTraumaModule = {
       hydrateSub('fallLegThigh', 'fallLegThigh', 'fallLegThighSidesContainer', 'fallLegThighSides', data.fallLegThighSides);
       hydrateSub('fallLegKneeShin', 'fallLegKneeShin', 'fallLegKneeShinSidesContainer', 'fallLegKneeShinSides', data.fallLegKneeShinSides);
       hydrateSub('fallLegAnkleFoot', 'fallLegAnkleFoot', 'fallLegAnkleFootSidesContainer', 'fallLegAnkleFootSides', data.fallLegAnkleFootSides);
-      hydrateSub('fallLegToes', 'fallLegToes', 'fallLegToesSidesContainer', 'fallLegToesSides', data.fallLegToesSides);
+      if (data.fallLegToes) {
+        setCheckById('fallLegToes', true);
+        toggleFallGroup('fallLegToesSidesContainer', true);
+        setChecks('fallLegToesLeftDigits', data.fallLegToesLeftDigits || (data.fallLegToesSides?.includes('left') ? data.fallLegToesDigits : []));
+        setChecks('fallLegToesRightDigits', data.fallLegToesRightDigits || (data.fallLegToesSides?.includes('right') ? data.fallLegToesDigits : []));
+      }
       setChecks('fallLowerExtSigns', data.fallLowerExtSigns);
+    }
+
+    if (data.fallParentOther) {
+      setCheckById('fallParentOther', true);
+      toggleFallGroup('fallOtherSubGroup', true);
+      const otherEl = document.getElementById('fallOtherLocationDetail');
+      if (otherEl) otherEl.value = data.fallOtherLocationDetail || '';
     }
 
     setChecks('fallSystemicSigns', data.fallSystemicSigns);
@@ -1800,7 +1847,7 @@ const fallTraumaModule = {
   },
 
   clearForm: function() {
-    ['fallDurationVal', 'fallMechGroundDetail', 'fallMechStairsDetail', 'fallMechHeightDetail', 'fallMechBluntDetail', 'fallMechSportsDetail', 'fallMechOtherDetail'].forEach(id => {
+    ['fallDurationVal', 'fallMechGroundDetail', 'fallMechStairsDetail', 'fallMechHeightDetail', 'fallMechBluntDetail', 'fallMechSportsDetail', 'fallMechOtherDetail', 'fallOtherLocationDetail'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.value = '';
     });
@@ -1815,17 +1862,13 @@ const fallTraumaModule = {
       'fallChestSubGroup', 'fallChestRibsSidesContainer', 'fallChestClavicleSidesContainer', 'fallChestUpperBackSidesContainer',
       'fallAbdomenSubGroup', 'fallAbdWallSidesContainer', 'fallAbdFlankSidesContainer', 'fallAbdLowerBackSidesContainer', 'fallAbdPelvisHipSidesContainer', 'fallAbdGenitaliaSidesContainer',
       'fallUpperExtSubGroup', 'fallArmShoulderSidesContainer', 'fallArmElbowSidesContainer', 'fallArmWristSidesContainer', 'fallArmFingersSidesContainer',
-      'fallLowerExtSubGroup', 'fallLegThighSidesContainer', 'fallLegKneeShinSidesContainer', 'fallLegAnkleFootSidesContainer', 'fallLegToesSidesContainer'
+      'fallLowerExtSubGroup', 'fallLegThighSidesContainer', 'fallLegKneeShinSidesContainer', 'fallLegAnkleFootSidesContainer', 'fallLegToesSidesContainer', 'fallOtherSubGroup'
     ].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.classList.add('hidden');
     });
 
-    const radios = document.querySelectorAll('#cc-fall-trauma-section input[type="radio"]');
-    radios.forEach(r => { r.checked = false; });
-
-    const checks = document.querySelectorAll('#cc-fall-trauma-section input[type="checkbox"]');
-    checks.forEach(c => { c.checked = false; });
+    document.querySelectorAll('#cc-fall-trauma-section input[type="radio"], #cc-fall-trauma-section input[type="checkbox"]').forEach(i => { i.checked = false; });
   },
 
   isRedFlag: function(patient) {
@@ -1848,8 +1891,7 @@ const fallTraumaModule = {
       name: 'นายวิชัย ช่างก่อสร้างตกหลังคาช็อกและขาสองข้างชาขยับไม่ได้', age: 42, gender: 'ชาย',
       chief_complaint: 'fall_trauma', chief_complaint_title: 'พลัดตกหกล้ม / ได้รับบาดเจ็บทางกายภาพ',
       timestamp: '2026-11-06T08:00:00.000Z', status: 'waiting',
-      durationVal: 40, durationUnit: 'minutes', hospRecordStatus: 'self',
-      underlying: [], drugAllergy: 'ปฏิเสธ', currentMeds: 'ไม่มี',
+      durationVal: 40, durationUnit: 'minutes', hospRecordStatus: 'self', underlying: [], drugAllergy: 'ปฏิเสธ', currentMeds: 'ไม่มี',
       otherSymptomsFree: 'พลัดตกจากหลังคาบ้านเดี่ยวชั้น 2 สูงประมาณ 4 เมตร กระแทกพื้นปูน ปวดต้นคอและแผ่นหลังมาก ขาสองข้างชาและยกไม่ขึ้น แน่นหน้าอก หายใจหอบเหนื่อย ปวดท้องตึง หน้ามืดเหงื่อแตกตัวเย็น',
       doctor_notes: { additional_hpi: '', physical_exam: '', preliminary_dx: '', plan: '' },
       vital_signs: { bt: 36.5, sbp: 90, dbp: 56, bp: '90/56', pr: 118, rr: 26, spo2: 93 },
@@ -1903,8 +1945,7 @@ const fallTraumaModule = {
       name: 'นางสมศรี สะดุดล้มเอามือยันพื้นข้อมือซ้ายบวมผิดรูป', age: 58, gender: 'หญิง',
       chief_complaint: 'fall_trauma', chief_complaint_title: 'พลัดตกหกล้ม / ได้รับบาดเจ็บทางกายภาพ',
       timestamp: '2026-11-06T09:00:00.000Z', status: 'waiting',
-      durationVal: 2, durationUnit: 'hours', hospRecordStatus: 'self',
-      underlying: ['ไขมันในเลือดสูง'], drugAllergy: 'ปฏิเสธ', currentMeds: 'Simvastatin 20 mg 1 tab po hs',
+      durationVal: 2, durationUnit: 'hours', hospRecordStatus: 'self', underlying: ['ไขมันในเลือดสูง'], drugAllergy: 'ปฏิเสธ', currentMeds: 'Simvastatin 20 mg 1 tab po hs',
       otherSymptomsFree: 'เดินสะดุดขอบพรมในบ้าน เสียหลักล้มเอามือซ้ายยันพื้น ไม่มีอาการวูบนำมาก่อน ศีรษะไม่กระแทก รู้สึกปวดและบวมผิดรูปเหมือนส้อม (dinner fork) ที่ข้อมือซ้าย ขยับหมุนข้อมือไม่ได้ ปลายนิ้วไม่ชา สีชมพูดี',
       doctor_notes: { additional_hpi: '', physical_exam: '', preliminary_dx: '', plan: '' },
       vital_signs: { bt: 36.6, sbp: 128, dbp: 78, bp: '128/78', pr: 76, rr: 16, spo2: 99 },
@@ -1925,8 +1966,7 @@ const fallTraumaModule = {
       name: 'นายธนากร ก้าวพลาดตกขอบฟุตบาทข้อเท้าขวาพลิกเดินลงน้ำหนักได้', age: 25, gender: 'ชาย',
       chief_complaint: 'fall_trauma', chief_complaint_title: 'พลัดตกหกล้ม / ได้รับบาดเจ็บทางกายภาพ',
       timestamp: '2026-11-06T09:30:00.000Z', status: 'waiting',
-      durationVal: 3, durationUnit: 'hours', hospRecordStatus: 'self',
-      underlying: [], drugAllergy: 'ปฏิเสธ', currentMeds: 'ไม่มี',
+      durationVal: 3, durationUnit: 'hours', hospRecordStatus: 'self', underlying: [], drugAllergy: 'ปฏิเสธ', currentMeds: 'ไม่มี',
       otherSymptomsFree: 'เดินก้าวพลาดตกขอบฟุตบาท ข้อเท้าขวาบิดพลิกเข้าด้านใน ปวดเจ็บและบวมเล็กน้อยบริเวณตาตุ่มด้านนอกขวา ยังพอยืนและเดินลงน้ำหนักได้ ไม่มีแผลเปิด ไม่ชา ไม่หน้ามืด',
       doctor_notes: { additional_hpi: '', physical_exam: '', preliminary_dx: '', plan: '' },
       vital_signs: { bt: 36.7, sbp: 116, dbp: 72, bp: '116/72', pr: 68, rr: 16, spo2: 99 },
@@ -1943,11 +1983,8 @@ const fallTraumaModule = {
 };
 
 // Register module in Ratchaburi ER Core Registry
-if (typeof registerCcModule === 'function') {
-  registerCcModule(fallTraumaModule);
-} else if (typeof window !== 'undefined' && typeof window.registerCcModule === 'function') {
-  window.registerCcModule(fallTraumaModule);
-}
+if (typeof registerCcModule === 'function') registerCcModule(fallTraumaModule);
+else if (typeof window !== 'undefined' && typeof window.registerCcModule === 'function') window.registerCcModule(fallTraumaModule);
 
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = fallTraumaModule;

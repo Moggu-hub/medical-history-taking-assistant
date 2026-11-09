@@ -72,6 +72,9 @@ const handleLacPainSliderTouch = handleLacPainScoreChange;
 // --- Clinical Decision Support & Evaluation Functions ---
 function evaluateLacerationRedFlags(patient) {
   const rfs = [];
+  const addRf = (key, level, textTh, risk, suggestedAction) => {
+    rfs.push({ key, level, textTh, title: textTh, risk, detail: risk, suggestedAction, action: suggestedAction });
+  };
   const vs = patient.vital_signs || {};
   const sbp = vs.sbp !== undefined && vs.sbp !== null ? parseInt(vs.sbp, 10) : null;
   const pr = vs.pr !== undefined && vs.pr !== null ? parseInt(vs.pr, 10) : null;
@@ -94,13 +97,10 @@ function evaluateLacerationRedFlags(patient) {
   const hasShockSigns = systemicSigns.includes('palpitation_cold_sweat') && systemicSigns.includes('dizziness_presyncope');
 
   if (isSpurting || hasShockSigns || isShockVs) {
-    rfs.push({
-      key: 'rf_lac_arterial_hemorrhagic_shock',
-      level: 1,
-      textTh: 'ภาวะเลือดออกรุนแรงพุ่งเป็นจังหวะตามชีพจร หรือมีภาวะช็อกจากการเสียเลือด (Uncontrolled Arterial Bleeding / Hemorrhagic Shock)',
-      risk: 'Hypovolemic shock, cardiac arrest, irreversible tissue hypoxia secondary to massive blood loss.',
-      suggestedAction: 'Immediate Direct Pressure Dressing. Apply arterial tourniquet proximal to wound if on extremity and direct pressure fails. Establish 2 large-bore IV lines (16-18G), stat fluid resuscitation, Type & Crossmatch PRBCs, notify Trauma Surgeon immediately.'
-    });
+    addRf('rf_lac_arterial_hemorrhagic_shock', 1,
+      'ภาวะเลือดออกรุนแรงพุ่งเป็นจังหวะตามชีพจร หรือมีภาวะช็อกจากการเสียเลือด (Uncontrolled Arterial Bleeding / Hemorrhagic Shock)',
+      'Hypovolemic shock, cardiac arrest, irreversible tissue hypoxia secondary to massive blood loss.',
+      'Immediate Direct Pressure Dressing. Apply arterial tourniquet proximal to wound if on extremity and direct pressure fails. Establish 2 large-bore IV lines (16-18G), stat fluid resuscitation, Type & Crossmatch PRBCs, notify Trauma Surgeon immediately.');
   }
 
   // 2. Penetrating Neck / Thoracic / Abdominal Trauma (ESI 1)
@@ -109,13 +109,10 @@ function evaluateLacerationRedFlags(patient) {
   const isAbdomenCritical = abdomenSigns.includes('evisceration_internal_organ') || abdomenSigns.includes('severe_abd_pain_rigid');
 
   if (isNeckCritical || isChestCritical || isAbdomenCritical) {
-    rfs.push({
-      key: 'rf_lac_penetrating_neck_torso',
-      level: 1,
-      textTh: 'บาดแผลลึกหรือทะลุบริเวณลำคอ หน้าอก หรือช่องท้อง (Penetrating Neck / Thoracic / Abdominal Trauma)',
-      risk: 'Tension/open pneumothorax, major vascular disruption, tracheobronchial injury, visceral rupture with peritonitis.',
-      suggestedAction: 'Apply 3-sided occlusive dressing for sucking chest wound. Cover eviscerated bowel with moist sterile saline gauze (do not push back). Stat eFAST ultrasound, upright/portable CXR, Stat surgical consultation for emergency exploration.'
-    });
+    addRf('rf_lac_penetrating_neck_torso', 1,
+      'บาดแผลลึกหรือทะลุบริเวณลำคอ หน้าอก หรือช่องท้อง (Penetrating Neck / Thoracic / Abdominal Trauma)',
+      'Tension/open pneumothorax, major vascular disruption, tracheobronchial injury, visceral rupture with peritonitis.',
+      'Apply 3-sided occlusive dressing for sucking chest wound. Cover eviscerated bowel with moist sterile saline gauze (do not push back). Stat eFAST ultrasound, upright/portable CXR, Stat surgical consultation for emergency exploration.');
   }
 
   // 3. Traumatic Amputation / Acute Limb Ischemia (ESI 1 / 2)
@@ -123,49 +120,32 @@ function evaluateLacerationRedFlags(patient) {
   const hasIschemia = upperExtSigns.includes('vascular_cold_pale_hand') || lowerExtSigns.includes('vascular_cold_pale_foot');
 
   if (hasAmputation || hasIschemia) {
-    rfs.push({
-      key: 'rf_lac_traumatic_amputation_ischemia',
-      level: 2,
-      textTh: 'ภาวะนิ้วหรืออวัยวะขาด หรือมีภาวะขาดเลือดส่วนปลาย (Traumatic Amputation / Acute Limb Ischemia)',
-      risk: 'Permanent loss of extremity/digit viability, muscle necrosis, secondary systemic toxicity.',
-      suggestedAction: 'Control stump bleeding with compressive dressing. Wrap amputated part in saline-moistened sterile gauze, seal in plastic bag, place on ice-water bath (avoid direct ice contact). Stat Orthopedic/Plastic Surgery consult for emergent replantation. Stat IV Cefazolin.'
-    });
+    addRf('rf_lac_traumatic_amputation_ischemia', 2,
+      'ภาวะนิ้วหรืออวัยวะขาด หรือมีภาวะขาดเลือดส่วนปลาย (Traumatic Amputation / Acute Limb Ischemia)',
+      'Permanent loss of extremity/digit viability, muscle necrosis, secondary systemic toxicity.',
+      'Control stump bleeding with compressive dressing. Wrap amputated part in saline-moistened sterile gauze, seal in plastic bag, place on ice-water bath (avoid direct ice contact). Stat Orthopedic/Plastic Surgery consult for emergent replantation. Stat IV Cefazolin.');
   }
 
   // 4. Head Laceration with TBI Warning / Open Globe Injury (ESI 2)
-  const hasHeadTbi = headSigns.includes('loss_of_consciousness') ||
-    headSigns.includes('csf_leak_ear_nose') ||
-    headSigns.includes('severe_headache_vomit');
+  const hasHeadTbi = headSigns.includes('loss_of_consciousness') || headSigns.includes('csf_leak_ear_nose') || headSigns.includes('severe_headache_vomit');
   const hasEyeInjury = headSigns.includes('vision_problem_eye_injury');
 
   if (hasHeadTbi || hasEyeInjury) {
-    rfs.push({
-      key: 'rf_lac_head_ocular_trauma',
-      level: 2,
-      textTh: 'บาดแผลศีรษะร่วมกับอาการทางสมอง หรือบาดแผลทะลุดวงตา (Head Laceration with TBI Warning / Open Globe Injury)',
-      risk: 'Intracranial hemorrhage, brain herniation, traumatic optic neuropathy, permanent blindness from globe rupture.',
-      suggestedAction: 'For suspected eye injury: place rigid eye shield immediately, DO NOT apply pressure or remove foreign objects, stat Ophthalmology consult. For TBI signs: perform full Glasgow Coma Scale (GCS) and schedule Stat Non-contrast CT Brain.'
-    });
+    addRf('rf_lac_head_ocular_trauma', 2,
+      'บาดแผลศีรษะร่วมกับอาการทางสมอง หรือบาดแผลทะลุดวงตา (Head Laceration with TBI Warning / Open Globe Injury)',
+      'Intracranial hemorrhage, brain herniation, traumatic optic neuropathy, permanent blindness from globe rupture.',
+      'For suspected eye injury: place rigid eye shield immediately, DO NOT apply pressure or remove foreign objects, stat Ophthalmology consult. For TBI signs: perform full Glasgow Coma Scale (GCS) and schedule Stat Non-contrast CT Brain.');
   }
 
   // 5. Suspected Open Fracture / Tendon or Nerve Injury (ESI 2 / 3)
   const hasOpenFx = upperExtSigns.includes('open_fracture_arm') || lowerExtSigns.includes('open_fracture_leg');
-  const hasTendonNerve = upperExtSigns.includes('tendon_deficit_hand') ||
-    upperExtSigns.includes('nerve_numbness_hand') ||
-    lowerExtSigns.includes('tendon_bone_deficit_leg') ||
-    lowerExtSigns.includes('nerve_numbness_foot');
+  const hasTendonNerve = upperExtSigns.includes('tendon_deficit_hand') || upperExtSigns.includes('nerve_numbness_hand') || lowerExtSigns.includes('tendon_bone_deficit_leg') || lowerExtSigns.includes('nerve_numbness_foot');
 
   if (hasOpenFx || hasTendonNerve) {
-    const isEsi2 = hasOpenFx;
-    rfs.push({
-      key: 'rf_lac_open_fracture_tendon_nerve',
-      level: isEsi2 ? 2 : 3,
-      textTh: hasOpenFx
-        ? 'สงสัยกระดูกหักแบบมีแผลเปิด (Suspected Open Fracture)'
-        : 'สงสัยเส้นเอ็นหรือเส้นประสาทบาดเจ็บ (Suspected Tendon or Peripheral Nerve Injury)',
-      risk: 'Osteomyelitis, permanent loss of fine motor dexterity, claw hand, drop foot, persistent neuropathy.',
-      suggestedAction: 'Assess and document 2-point discrimination and individual tendon motion BEFORE local anesthesia. Stat X-ray of injured limb. For open fracture: initiate IV Cefazolin within 1 hr, apply sterile dressing and splint, urgent Orthopedic consult.'
-    });
+    addRf('rf_lac_open_fracture_tendon_nerve', hasOpenFx ? 2 : 3,
+      hasOpenFx ? 'สงสัยกระดูกหักแบบมีแผลเปิด (Suspected Open Fracture)' : 'สงสัยเส้นเอ็นหรือเส้นประสาทบาดเจ็บ (Suspected Tendon or Peripheral Nerve Injury)',
+      'Osteomyelitis, permanent loss of fine motor dexterity, claw hand, drop foot, persistent neuropathy.',
+      'Assess and document 2-point discrimination and individual tendon motion BEFORE local anesthesia. Stat X-ray of injured limb. For open fracture: initiate IV Cefazolin within 1 hr, apply sterile dressing and splint, urgent Orthopedic consult.');
   }
 
   // 6. Suspected Retained Foreign Body / Anticoagulant Use (ESI 3)
@@ -173,15 +153,10 @@ function evaluateLacerationRedFlags(patient) {
   const hasAnticoag = antithrombotic === 'on_anticoagulant_antiplatelet' || antithrombotic === 'bleeding_disorder';
 
   if (hasRetainedFb || hasAnticoag) {
-    rfs.push({
-      key: 'rf_lac_retained_fb_anticoagulant',
-      level: 3,
-      textTh: hasRetainedFb
-        ? 'สงสัยมีสิ่งแปลกปลอมตกค้างหรือหักคาในบาดแผล (Suspected Retained Foreign Body in Wound)'
-        : 'ผู้ป่วยมีประวัติใช้ยาละลายลิ่มเลือด หรือมีภาวะเลือดออกง่ายหยุดยาก (Anticoagulant / Bleeding Disorder Risk)',
-      risk: 'Delayed wound healing, chronic infection, granuloma formation, secondary refractory hemorrhage.',
-      suggestedAction: 'Order soft tissue X-ray or bedside POCUS to locate radiopaque/sonographic foreign bodies prior to suturing. Check PT/INR if on Warfarin, prepare for prolonged compression and consider hemostatic adjuncts.'
-    });
+    addRf('rf_lac_retained_fb_anticoagulant', 3,
+      hasRetainedFb ? 'สงสัยมีสิ่งแปลกปลอมตกค้างหรือหักคาในบาดแผล (Suspected Retained Foreign Body in Wound)' : 'ผู้ป่วยมีประวัติใช้ยาละลายลิ่มเลือด หรือมีภาวะเลือดออกง่ายหยุดยาก (Anticoagulant / Bleeding Disorder Risk)',
+      'Delayed wound healing, chronic infection, granuloma formation, secondary refractory hemorrhage.',
+      'Order soft tissue X-ray or bedside POCUS to locate radiopaque/sonographic foreign bodies prior to suturing. Check PT/INR if on Warfarin, prepare for prolonged compression and consider hemostatic adjuncts.');
   }
 
   return rfs;
@@ -191,26 +166,13 @@ function evaluateLacerationRedFlags(patient) {
 function formatLacCauses(patient) {
   const causes = Array.isArray(patient.lacCauses) ? patient.lacCauses : [];
   if (causes.length === 0) return 'ไม่ได้ระบุสาเหตุ';
-
   const parts = [];
-  if (causes.includes('sharp_object')) {
-    parts.push(patient.lacCauseSharpDetail ? `ของมีคมบาด/ทิ่มแทง (${patient.lacCauseSharpDetail})` : 'ของมีคมบาด หรือทิ่มแทง');
-  }
-  if (causes.includes('machinery_tools')) {
-    parts.push(patient.lacCauseMachineryDetail ? `เครื่องจักรกล/อุปกรณ์ไฟฟ้า (${patient.lacCauseMachineryDetail})` : 'เครื่องจักรกล หรืออุปกรณ์ไฟฟ้า/การเกษตร');
-  }
-  if (causes.includes('blunt_impact')) {
-    parts.push(patient.lacCauseBluntDetail ? `ถูกกระแทกด้วยของแข็ง (${patient.lacCauseBluntDetail})` : 'ถูกกระแทกด้วยของแข็ง');
-  }
-  if (causes.includes('fall_collision')) {
-    parts.push('หกล้ม หรือชนกระแทกจนเกิดแผลแตก');
-  }
-  if (causes.includes('puncture_wound')) {
-    parts.push(patient.lacCausePunctureDetail ? `ของแหลมทิ่มตำ (${patient.lacCausePunctureDetail})` : 'ถูกไม้ ตะปู เสี้ยน หรือของแหลมทิ่มตำ');
-  }
-  if (causes.includes('other_cause')) {
-    parts.push(patient.lacCauseOtherDetail ? `สาเหตุอื่น: ${patient.lacCauseOtherDetail}` : 'สาเหตุอื่นๆ');
-  }
+  if (causes.includes('sharp_object')) parts.push(patient.lacCauseSharpDetail ? `ของมีคมบาด/ทิ่มแทง (${patient.lacCauseSharpDetail})` : 'ของมีคมบาด หรือทิ่มแทง');
+  if (causes.includes('machinery_tools')) parts.push(patient.lacCauseMachineryDetail ? `เครื่องจักรกล/อุปกรณ์ไฟฟ้า (${patient.lacCauseMachineryDetail})` : 'เครื่องจักรกล หรืออุปกรณ์ไฟฟ้า/การเกษตร');
+  if (causes.includes('blunt_impact')) parts.push(patient.lacCauseBluntDetail ? `ถูกกระแทกด้วยของแข็ง (${patient.lacCauseBluntDetail})` : 'ถูกกระแทกด้วยของแข็ง');
+  if (causes.includes('fall_collision')) parts.push('หกล้ม หรือชนกระแทกจนเกิดแผลแตก');
+  if (causes.includes('puncture_wound')) parts.push(patient.lacCausePunctureDetail ? `ของแหลมทิ่มตำ (${patient.lacCausePunctureDetail})` : 'ถูกไม้ ตะปู เสี้ยน หรือของแหลมทิ่มตำ');
+  if (causes.includes('other_cause')) parts.push(patient.lacCauseOtherDetail ? `สาเหตุอื่น: ${patient.lacCauseOtherDetail}` : 'สาเหตุอื่นๆ');
   return parts.join(', ');
 }
 
@@ -270,6 +232,14 @@ function formatLacAnatomy(patient) {
     const thMap = { left: 'ซ้าย', right: 'ขวา', center: 'ตรงกลาง' };
     return ` [${arr.map(s => thMap[s] || s).join(', ')}]`;
   };
+  const digitMap = { thumb: 'นิ้วโป้ง', index: 'นิ้วชี้', middle: 'นิ้วกลาง', ring: 'นิ้วนาง', little: 'นิ้วก้อย' };
+  const fmtDigitsBySide = (leftD, rightD, fallbackSides, fallbackD) => {
+    const dParts = [];
+    if (Array.isArray(leftD) && leftD.length > 0) dParts.push(`ซ้าย: ${leftD.map(x => digitMap[x] || x).join(', ')}`);
+    if (Array.isArray(rightD) && rightD.length > 0) dParts.push(`ขวา: ${rightD.map(x => digitMap[x] || x).join(', ')}`);
+    if (dParts.length > 0) return ` [${dParts.join('; ')}]`;
+    return `${sideLabel(fallbackSides)}${Array.isArray(fallbackD) && fallbackD.length > 0 ? ` [${fallbackD.map(x => digitMap[x] || x).join(', ')}]` : ''}`;
+  };
 
   // 1. Head & Face
   if (patient.lacParentHeadFace) {
@@ -316,7 +286,7 @@ function formatLacAnatomy(patient) {
     if (patient.lacArmShoulder) armParts.push(`ไหล่/ต้นแขน${sideLabel(patient.lacArmShoulderSides)}`);
     if (patient.lacArmElbow) armParts.push(`ข้อศอก/แขนท่อนล่าง${sideLabel(patient.lacArmElbowSides)}`);
     if (patient.lacArmWrist) armParts.push(`ข้อมือ/ฝ่ามือ/หลังมือ${sideLabel(patient.lacArmWristSides)}`);
-    if (patient.lacArmFingers) armParts.push(`นิ้วมือ${sideLabel(patient.lacArmFingersSides)}`);
+    if (patient.lacArmFingers) armParts.push(`นิ้วมือ${fmtDigitsBySide(patient.lacArmFingersLeftDigits, patient.lacArmFingersRightDigits, patient.lacArmFingersSides, patient.lacArmFingersDigits)}`);
     parts.push(`แขน/มือ: ${armParts.length > 0 ? armParts.join(', ') : 'มีบาดแผล'}`);
   }
 
@@ -326,8 +296,13 @@ function formatLacAnatomy(patient) {
     if (patient.lacLegThigh) legParts.push(`ต้นขา${sideLabel(patient.lacLegThighSides)}`);
     if (patient.lacLegKneeShin) legParts.push(`เข่า/หน้าแข้ง/น่อง${sideLabel(patient.lacLegKneeShinSides)}`);
     if (patient.lacLegAnkleFoot) legParts.push(`ข้อเท้า/เท้า${sideLabel(patient.lacLegAnkleFootSides)}`);
-    if (patient.lacLegToes) legParts.push(`นิ้วเท้า${sideLabel(patient.lacLegToesSides)}`);
+    if (patient.lacLegToes) legParts.push(`นิ้วเท้า${fmtDigitsBySide(patient.lacLegToesLeftDigits, patient.lacLegToesRightDigits, patient.lacLegToesSides, patient.lacLegToesDigits)}`);
     parts.push(`ขา/เท้า: ${legParts.length > 0 ? legParts.join(', ') : 'มีบาดแผล'}`);
+  }
+
+  // 7. Other Location
+  if (patient.lacParentOther) {
+    parts.push(`ตำแหน่งอื่นๆ: ${patient.lacOtherLocationDetail || 'ระบุตำแหน่งอื่น'}`);
   }
 
   return parts.length > 0 ? parts.join(' | ') : 'ไม่ได้ระบุตำแหน่งบาดแผลชัดเจน';
@@ -357,18 +332,10 @@ function renderLacerationRapidHpi(patient) {
   const negList = [];
 
   // Positives Evaluation
-  if (patient.lacBleedingStatus === 'active_spurting') {
-    posList.push('เลือดยังไหลพุ่งเป็นจังหวะตามชีพจร หรือไหลทะลักมากผิดปกติ 🚩');
-  } else if (patient.lacBleedingStatus === 'active_oozing') {
-    posList.push('เลือดยังไหลซึมต่อเนื่อง');
-  }
-
-  if (contaminants.includes('foreign_body_retained')) {
-    posList.push('มีวัตถุหักคา หรือปักคาอยู่ในบาดแผล (เช่น เศษแก้ว, เสี้ยนไม้, โลหะ) 🚩');
-  }
-  if (contaminants.includes('dirty_contaminated')) {
-    posList.push('บาดแผลปนเปื้อนดินโคลน สนิม น้ำสกปรก หรือเศษอาหาร/มูลสัตว์ 🚩');
-  }
+  if (patient.lacBleedingStatus === 'active_spurting') posList.push('เลือดยังไหลพุ่งเป็นจังหวะตามชีพจร หรือไหลทะลักมากผิดปกติ 🚩');
+  else if (patient.lacBleedingStatus === 'active_oozing') posList.push('เลือดยังไหลซึมต่อเนื่อง');
+  if (contaminants.includes('foreign_body_retained')) posList.push('มีวัตถุหักคา หรือปักคาอยู่ในบาดแผล (เช่น เศษแก้ว, เสี้ยนไม้, โลหะ) 🚩');
+  if (contaminants.includes('dirty_contaminated')) posList.push('บาดแผลปนเปื้อนดินโคลน สนิม น้ำสกปรก หรือเศษอาหาร/มูลสัตว์ 🚩');
 
   // Head/Face Positives
   if (headSigns.includes('loss_of_consciousness')) posList.push('มีอาการสลบ หมดสติไปชั่วขณะ หรือจำเหตุการณ์ไม่ได้ 🚩');
@@ -410,38 +377,18 @@ function renderLacerationRapidHpi(patient) {
   if (systemicSigns.includes('excessive_thirst_weakness')) posList.push('กระหายน้ำมากผิดปกติ หรืออ่อนเพลียไม่มีแรง 🚩');
   if (systemicSigns.includes('infection_signs_fever_pus')) posList.push('มีไข้ หนาวสั่น หรือบริเวณแผลเริ่มบวมแดงร้อนและมีหนองซึม 🚩');
 
-  if (patient.otherSymptomsFree) {
-    posList.push(patient.otherSymptomsFree);
-  }
+  if (patient.otherSymptomsFree) posList.push(patient.otherSymptomsFree);
 
   // Negatives Evaluation
-  if (patient.lacBleedingStatus === 'stopped') {
-    negList.push('เลือดหยุดไหลแล้ว ไม่มีเลือดพุ่งหรือซึมต่อเนื่อง');
-  }
-  if (!contaminants.includes('foreign_body_retained')) {
-    negList.push('ไม่มีวัตถุปักคาหรือหักคาในบาดแผล');
-  }
-  if (!headSigns.includes('loss_of_consciousness') && !headSigns.includes('severe_headache_vomit')) {
-    negList.push('ไม่มีอาการสลบ หมดสติ หรืออาเจียน');
-  }
-  if (!chestSigns.includes('dyspnea_pleuritic_pain') && !chestSigns.includes('sucking_chest_wound')) {
-    negList.push('ไม่มีอาการแน่นหน้าอก หายใจลำบาก หรือลมดูดออกทางแผล');
-  }
-  if (!abdomenSigns.includes('severe_abd_pain_rigid') && !abdomenSigns.includes('evisceration_internal_organ')) {
-    negList.push('ไม่มีปวดเกร็งหน้าท้อง และไม่มีอวัยวะภายในโผล่');
-  }
-  if (!upperExtSigns.includes('tendon_deficit_hand') && !lowerExtSigns.includes('tendon_bone_deficit_leg')) {
-    negList.push('ไม่มีอาการงอหรือเหยียดข้อนิ้วไม่ได้ (ยังขยับได้ปกติ)');
-  }
-  if (!upperExtSigns.includes('nerve_numbness_hand') && !lowerExtSigns.includes('nerve_numbness_foot')) {
-    negList.push('ไม่มีอาการชา หรือสูญเสียความรู้สึกที่ปลายมือปลายเท้า');
-  }
-  if (!upperExtSigns.includes('vascular_cold_pale_hand') && !lowerExtSigns.includes('vascular_cold_pale_foot')) {
-    negList.push('ปลายมือปลายเท้าไม่ซีด ไม่เย็น คลำชีพจรส่วนปลายได้ดี');
-  }
-  if (!systemicSigns.includes('dizziness_presyncope') && !systemicSigns.includes('palpitation_cold_sweat')) {
-    negList.push('ไม่มีอาการหน้ามืด วูบ เหงื่อแตกตัวเย็น หรือสัญญาณภาวะช็อก');
-  }
+  if (patient.lacBleedingStatus === 'stopped') negList.push('เลือดหยุดไหลแล้ว ไม่มีเลือดพุ่งหรือซึมต่อเนื่อง');
+  if (!contaminants.includes('foreign_body_retained')) negList.push('ไม่มีวัตถุปักคาหรือหักคาในบาดแผล');
+  if (!headSigns.includes('loss_of_consciousness') && !headSigns.includes('severe_headache_vomit')) negList.push('ไม่มีอาการสลบ หมดสติ หรืออาเจียน');
+  if (!chestSigns.includes('dyspnea_pleuritic_pain') && !chestSigns.includes('sucking_chest_wound')) negList.push('ไม่มีอาการแน่นหน้าอก หายใจลำบาก หรือลมดูดออกทางแผล');
+  if (!abdomenSigns.includes('severe_abd_pain_rigid') && !abdomenSigns.includes('evisceration_internal_organ')) negList.push('ไม่มีปวดเกร็งหน้าท้อง และไม่มีอวัยวะภายในโผล่');
+  if (!upperExtSigns.includes('tendon_deficit_hand') && !lowerExtSigns.includes('tendon_bone_deficit_leg')) negList.push('ไม่มีอาการงอหรือเหยียดข้อนิ้วไม่ได้ (ยังขยับได้ปกติ)');
+  if (!upperExtSigns.includes('nerve_numbness_hand') && !lowerExtSigns.includes('nerve_numbness_foot')) negList.push('ไม่มีอาการชา หรือสูญเสียความรู้สึกที่ปลายมือปลายเท้า');
+  if (!upperExtSigns.includes('vascular_cold_pale_hand') && !lowerExtSigns.includes('vascular_cold_pale_foot')) negList.push('ปลายมือปลายเท้าไม่ซีด ไม่เย็น คลำชีพจรส่วนปลายได้ดี');
+  if (!systemicSigns.includes('dizziness_presyncope') && !systemicSigns.includes('palpitation_cold_sweat')) negList.push('ไม่มีอาการหน้ามืด วูบ เหงื่อแตกตัวเย็น หรือสัญญาณภาวะช็อก');
 
   const hospLabel = {
     complete: 'มีประวัติกับ รพ.ราชบุรี ครบถ้วน (ดึงข้อมูลเดิมจากระบบ)',
@@ -606,8 +553,16 @@ function updateLacerationOutputs(rec) {
         chest: !!rec.lacParentChest,
         abdomen: !!rec.lacParentAbdomen,
         upper_extremity: !!rec.lacParentUpperExtremity,
-        lower_extremity: !!rec.lacParentLowerExtremity
+        lower_extremity: !!rec.lacParentLowerExtremity,
+        other: !!rec.lacParentOther,
+        other_detail: rec.lacOtherLocationDetail || ''
       },
+      fingers_digits: Array.isArray(rec.lacArmFingersDigits) ? rec.lacArmFingersDigits : [],
+      fingers_left_digits: Array.isArray(rec.lacArmFingersLeftDigits) ? rec.lacArmFingersLeftDigits : [],
+      fingers_right_digits: Array.isArray(rec.lacArmFingersRightDigits) ? rec.lacArmFingersRightDigits : [],
+      toes_digits: Array.isArray(rec.lacLegToesDigits) ? rec.lacLegToesDigits : [],
+      toes_left_digits: Array.isArray(rec.lacLegToesLeftDigits) ? rec.lacLegToesLeftDigits : [],
+      toes_right_digits: Array.isArray(rec.lacLegToesRightDigits) ? rec.lacLegToesRightDigits : [],
       systemic_signs: Array.isArray(rec.lacSystemicSigns) ? rec.lacSystemicSigns : [],
       other_symptoms_free: rec.otherSymptomsFree || ''
     },
@@ -637,67 +592,46 @@ function generateLacerationCds(patient, { rfs, ddxList = [], workupList = [], ma
   const hasHeadEye = redFlags.some(r => r.key === 'rf_lac_head_ocular_trauma');
   const hasOpenFxTendon = redFlags.some(r => r.key === 'rf_lac_open_fracture_tendon_nerve');
 
+  const setPlan = (dxs, wus, mgmts) => {
+    ddxList.push(...dxs); workupList.push(...wus); managementList.push(...mgmts);
+  };
+
   if (hasArterialShock) {
-    ddxList.push('1. 🚨 Major Arterial Laceration with Impending Hemorrhagic Shock');
-    ddxList.push('2. Extremity Vascular Disruption / Pseudoaneurysm');
-    ddxList.push('3. Severe Secondary Coagulopathy from Blood Loss');
-    workupList.push('Stat CBC, Hct, Platelet, Coagulogram (PT, PTT, INR)');
-    workupList.push('Emergency Type & Crossmatch PRBCs 2-4 units');
-    workupList.push('Bedside Doppler Ultrasound of distal arterial pulses');
-    managementList.push('Triage Level 1: ย้ายเข้าห้องช่วยชีวิต (Resuscitation Room) ทันที');
-    managementList.push('Direct compressive wound packing; พิจารณาขันชะเนาะ (Tourniquet) เหนือแผลหากเป็นแขนขาและกดไม่อยู่');
-    managementList.push('เปิด IV เส้นใหญ่ 2 เส้น (16-18G) โหลด IV NSS/Acetar และเตรียมให้เลือดทันที');
-    managementList.push('Stat Consultation ศัลยแพทย์ / ศัลยแพทย์หลอดเลือด เพื่อเข้าห้องผ่าตัดด่วน (OR Exploration)');
+    setPlan(
+      ['1. 🚨 Major Arterial Laceration with Impending Hemorrhagic Shock', '2. Extremity Vascular Disruption / Pseudoaneurysm', '3. Severe Secondary Coagulopathy from Blood Loss'],
+      ['Stat CBC, Hct, Platelet, Coagulogram (PT, PTT, INR)', 'Emergency Type & Crossmatch PRBCs 2-4 units', 'Bedside Doppler Ultrasound of distal arterial pulses'],
+      ['Triage Level 1: ย้ายเข้าห้องช่วยชีวิต (Resuscitation Room) ทันที', 'Direct compressive wound packing; ขันชะเนาะ (Tourniquet) หากกดไม่อยู่', 'เปิด IV 16-18G 2 เส้น โหลด IV NSS/Acetar และเตรียมให้เลือดทันที', 'Stat Consultation ศัลยแพทย์ / ศัลยแพทย์หลอดเลือด เพื่อเข้าห้องผ่าตัดด่วน (OR Exploration)']
+    );
   } else if (hasPenetrating) {
-    ddxList.push('1. 🚨 Penetrating Torso Trauma / Open Pneumothorax / Hemothorax');
-    ddxList.push('2. Penetrating Neck Injury (Zone I/II/III Aerodigestive or Vascular Injury)');
-    ddxList.push('3. Penetrating Abdominal Wound with Visceral Perforation');
-    workupList.push('Stat portable Chest X-ray, Abdominal X-ray (upright/decubitus)');
-    workupList.push('Stat Bedside eFAST (Extended Focused Assessment with Sonography in Trauma)');
-    workupList.push('CBC, Electrolytes, BUN, Cr, Coagulation, Type & Hold');
-    managementList.push('Triage Level 1 / 2: ประเมินทางเดินหายใจ (ABCs) ทันที');
-    managementList.push('หากเป็น Sucking Chest Wound ให้ปิดด้วย Three-Sided Occlusive Dressing ทันที และเตรียม ICD');
-    managementList.push('หากมีอวัยวะโผล่ทางหน้าท้อง คลุมด้วยผ้าก๊อซชุบน้ำเกลืออุ่น ห้ามดันกลับเด็ดขาด');
-    managementList.push('ห้ามดึงสิ่งแปลกปลอมที่ปักคาออกในห้องฉุกเฉิน และประสานศัลยแพทย์ด่วน');
+    setPlan(
+      ['1. 🚨 Penetrating Torso Trauma / Open Pneumothorax / Hemothorax', '2. Penetrating Neck Injury (Zone I/II/III Aerodigestive or Vascular Injury)', '3. Penetrating Abdominal Wound with Visceral Perforation'],
+      ['Stat portable Chest X-ray, Abdominal X-ray (upright/decubitus)', 'Stat Bedside eFAST (Extended Focused Assessment with Sonography in Trauma)', 'CBC, Electrolytes, BUN, Cr, Coagulation, Type & Hold'],
+      ['Triage Level 1 / 2: ประเมินทางเดินหายใจ (ABCs) ทันที', 'หากเป็น Sucking Chest Wound ปิดด้วย Three-Sided Occlusive Dressing ทันที และเตรียม ICD', 'หากมีอวัยวะโผล่ทางหน้าท้อง คลุมด้วยผ้าก๊อซชุบน้ำเกลืออุ่น ห้ามดันกลับเด็ดขาด', 'ห้ามดึงสิ่งแปลกปลอมที่ปักคาออกในห้องฉุกเฉิน และประสานศัลยแพทย์ด่วน']
+    );
   } else if (hasAmputation) {
-    ddxList.push('1. 🚨 Traumatic Amputation of Extremity / Digit');
-    ddxList.push('2. Acute Extremity Arterial Occlusion with Limb Ischemia');
-    ddxList.push('3. Severe Crush Injury with Soft Tissue Loss');
-    workupList.push('Plain Film X-ray of amputated part and stump (AP & Lateral)');
-    workupList.push('CBC, Coagulogram, Type & Crossmatch, EKG, Chest X-ray');
-    managementList.push('Triage Level 2: กดห้ามเลือดที่ตอแผลด้วยผ้าก๊อซสะอาด');
-    managementList.push('เก็บชิ้นส่วนที่ขาด: ห่อผ้าก๊อซชุบ NSS หมาดๆ ใส่ถุงพลาสติกแห้งมัดปากถุง แล้วแช่ในกระติกน้ำผสมน้ำแข็ง (ห้ามสัมผัสน้ำแข็งโดยตรง)');
-    managementList.push('ให้ IV Cefazolin 1-2 g stat + ฉีดวัคซีนป้องกันบาดทะยัก (dT/TIG)');
-    managementList.push('โทรประสานด่วนศัลยแพทย์กระดูกและข้อ / ศัลยกรรมตกแต่ง เพื่อประเมิน Replantation');
+    setPlan(
+      ['1. 🚨 Traumatic Amputation of Extremity / Digit', '2. Acute Extremity Arterial Occlusion with Limb Ischemia', '3. Severe Crush Injury with Soft Tissue Loss'],
+      ['Plain Film X-ray of amputated part and stump (AP & Lateral)', 'CBC, Coagulogram, Type & Crossmatch, EKG, Chest X-ray'],
+      ['Triage Level 2: กดห้ามเลือดที่ตอแผลด้วยผ้าก๊อซสะอาด', 'เก็บชิ้นส่วนที่ขาด: ห่อผ้าก๊อซชุบ NSS หมาด ใส่ถุงพลาสติกแห้งมัดปากถุง แช่ในกระติกน้ำผสมน้ำแข็ง', 'ให้ IV Cefazolin 1-2 g stat + ฉีดวัคซีนป้องกันบาดทะยัก (dT/TIG)', 'โทรประสานด่วนศัลยแพทย์กระดูกและข้อ / ศัลยกรรมตกแต่ง เพื่อประเมิน Replantation']
+    );
   } else if (hasHeadEye) {
-    ddxList.push('1. 🚨 Scalp Laceration with Traumatic Brain Injury (Concussion / Contusion / ICH)');
-    ddxList.push('2. Open Globe Injury / Corneal-Scleral Laceration / Hyphema');
-    ddxList.push('3. Depressed Skull Fracture / Basilar Skull Fracture');
-    workupList.push('Stat Non-contrast CT Brain & Bone Window if LOC/amnesia or vomiting present');
-    workupList.push('Cervical Spine X-ray / CT C-spine to rule out occult spinal injury');
-    workupList.push('Fluorescein stain and Slit lamp exam by Ophthalmologist');
-    managementList.push('Triage Level 2: หากสงสัยแผลทะลุลูกตา ครอบ Eye Shield ทันที ห้ามกดทับลูกตาเด็ดขาด');
-    managementList.push('เย็บห้ามเลือดหนังศีรษะ (Scalp hemostasis) อย่างรวดเร็วเพื่อป้องกันการเสียเลือดมาก');
-    managementList.push('ปรึกษาจักษุแพทย์ทันทีหากมีแผลที่ลูกตา / ปรึกษาประสาทศัลยแพทย์หาก CT พบ Bleeding');
+    setPlan(
+      ['1. 🚨 Scalp Laceration with Traumatic Brain Injury (Concussion / Contusion / ICH)', '2. Open Globe Injury / Corneal-Scleral Laceration / Hyphema', '3. Depressed Skull Fracture / Basilar Skull Fracture'],
+      ['Stat Non-contrast CT Brain & Bone Window if LOC/amnesia or vomiting present', 'Cervical Spine X-ray / CT C-spine to rule out occult spinal injury', 'Fluorescein stain and Slit lamp exam by Ophthalmologist'],
+      ['Triage Level 2: หากสงสัยแผลทะลุลูกตา ครอบ Eye Shield ทันที ห้ามกดทับลูกตาเด็ดขาด', 'เย็บห้ามเลือดหนังศีรษะ (Scalp hemostasis) อย่างรวดเร็วเพื่อป้องกันการเสียเลือดมาก', 'ปรึกษาจักษุแพทย์ทันทีหากมีแผลที่ลูกตา / ปรึกษาประสาทศัลยแพทย์หาก CT พบ Bleeding']
+    );
   } else if (hasOpenFxTendon) {
-    ddxList.push('1. 🚨 Open Fracture (Gustilo-Anderson Classification)');
-    ddxList.push('2. Extensor / Flexor Tendon Transection');
-    ddxList.push('3. Peripheral Nerve Laceration (Median / Ulnar / Radial / Peroneal)');
-    workupList.push('Plain Film X-ray of injured joint/bone (at least 2 views: AP & Lateral)');
-    workupList.push('Pre-op Blood workup: CBC, BUN, Cr, Electrolytes, PT/INR');
-    managementList.push('Triage Level 2 / 3: ตรวจ Neurovascular และ Tendon function อย่างละเอียดก่อนฉีดยาชา');
-    managementList.push('กรณี Open Fracture: ให้ IV Antibiotic (Cefazolin 1-2 g IV) ภายใน 1 ชม. และล้างแผลด้วย Normal Saline ปริมาณมาก');
-    managementList.push('ดามเฝือกชั่วคราว (Splinting) ในท่าพัก และปรึกษาศัลยแพทย์ออร์โธปิดิกส์เพื่อผ่าตัดซ่อมแซม');
+    setPlan(
+      ['1. 🚨 Open Fracture (Gustilo-Anderson Classification)', '2. Extensor / Flexor Tendon Transection', '3. Peripheral Nerve Laceration (Median / Ulnar / Radial / Peroneal)'],
+      ['Plain Film X-ray of injured joint/bone (at least 2 views: AP & Lateral)', 'Pre-op Blood workup: CBC, BUN, Cr, Electrolytes, PT/INR'],
+      ['Triage Level 2 / 3: ตรวจ Neurovascular และ Tendon function อย่างละเอียดก่อนฉีดยาชา', 'กรณี Open Fracture: ให้ IV Antibiotic (Cefazolin 1-2 g IV) ภายใน 1 ชม. และล้างแผลด้วย NSS ปริมาณมาก', 'ดามเฝือกชั่วคราว (Splinting) ในท่าพัก และปรึกษาศัลยแพทย์ออร์โธปิดิกส์เพื่อผ่าตัดซ่อมแซม']
+    );
   } else {
-    ddxList.push('1. Simple Clean Laceration (Uncomplicated cut / tear)');
-    ddxList.push('2. Contaminated Superficial Wound');
-    ddxList.push('3. Minor Blunt Abrasion / Contusion');
-    workupList.push('Wound exploration under sterile technique');
-    workupList.push('Soft tissue X-ray if high suspicion of radiopaque foreign body (glass/metal)');
-    managementList.push('Triage Level 3 / 4: ล้างทำความสะอาดแผลด้วย Normal Saline ชะล้างสิ่งสกปรก');
-    managementList.push('Local Anesthesia (1-2% Lidocaine with/without Epinephrine - avoid epi on digits/ear/tip of nose)');
-    managementList.push('Primary Wound Closure (Suturing with Nylon/Prolene) ภายใน Golden period (6-12 ชม.)');
-    managementList.push('ประเมินและฉีดวัคซีนป้องกันบาดทะยัก (dT) ตามแนวทางกระทรวงสาธารณสุข');
+    setPlan(
+      ['1. Simple Clean Laceration (Uncomplicated cut / tear)', '2. Contaminated Superficial Wound', '3. Minor Blunt Abrasion / Contusion'],
+      ['Wound exploration under sterile technique', 'Soft tissue X-ray if high suspicion of radiopaque foreign body (glass/metal)'],
+      ['Triage Level 3 / 4: ล้างทำความสะอาดแผลด้วย Normal Saline ชะล้างสิ่งสกปรก', 'Local Anesthesia (1-2% Lidocaine with/without Epinephrine - avoid epi on digits/ear/tip of nose)', 'Primary Wound Closure (Suturing with Nylon/Prolene) ภายใน Golden period (6-12 ชม.)', 'ประเมินและฉีดวัคซีนป้องกันบาดทะยัก (dT) ตามแนวทางกระทรวงสาธารณสุข']
+    );
   }
 
   return ddxList.join('\n');
@@ -1250,12 +1184,29 @@ const LACERATION_FORM_HTML = `
               </div>
 
               <div class="p-2.5 rounded-xl border border-slate-200 bg-white">
-                <label class="flex items-center cursor-pointer">
-                  <input type="checkbox" id="lacArmFingers" onchange="toggleLacGroup('lacArmFingersSidesContainer', this.checked)" class="text-medical-600 mr-2 h-4 w-4 rounded">
-                  <span class="text-xs sm:text-sm font-medium text-slate-800">นิ้วมือ</span>
-                </label>
-                <div id="lacArmFingersSidesContainer" class="hidden mt-2 pl-6 flex gap-4 text-xs">
-                  <label class="flex items-center cursor-pointer"><input type="checkbox" name="lacArmFingersSides" value="left" class="mr-1"> ข้างซ้าย</label> <label class="flex items-center cursor-pointer"><input type="checkbox" name="lacArmFingersSides" value="right" class="mr-1"> ข้างขวา</label>
+                <div class="flex flex-col sm:flex-row sm:items-start justify-between text-xs py-1.5 gap-2">
+                  <label class="flex items-center space-x-2 cursor-pointer mt-0.5">
+                    <input type="checkbox" id="lacArmFingers" onchange="toggleLacGroup('lacArmFingersSidesContainer', this.checked)" class="text-medical-600 rounded">
+                    <span class="text-xs sm:text-sm font-medium text-slate-800">นิ้วมือ</span>
+                  </label>
+                  <div id="lacArmFingersSidesContainer" class="hidden flex flex-col space-y-1.5 pl-6 sm:pl-0">
+                    <div class="flex items-center flex-wrap gap-1.5">
+                      <span class="text-[11px] text-slate-500 font-medium w-8">ซ้าย:</span>
+                      <label class="inline-flex items-center space-x-1 cursor-pointer"><input type="checkbox" name="lacArmFingersLeftDigits" value="thumb" class="text-medical-600 rounded"><span>โป้ง</span></label>
+                      <label class="inline-flex items-center space-x-1 cursor-pointer"><input type="checkbox" name="lacArmFingersLeftDigits" value="index" class="text-medical-600 rounded"><span>ชี้</span></label>
+                      <label class="inline-flex items-center space-x-1 cursor-pointer"><input type="checkbox" name="lacArmFingersLeftDigits" value="middle" class="text-medical-600 rounded"><span>กลาง</span></label>
+                      <label class="inline-flex items-center space-x-1 cursor-pointer"><input type="checkbox" name="lacArmFingersLeftDigits" value="ring" class="text-medical-600 rounded"><span>นาง</span></label>
+                      <label class="inline-flex items-center space-x-1 cursor-pointer"><input type="checkbox" name="lacArmFingersLeftDigits" value="little" class="text-medical-600 rounded"><span>ก้อย</span></label>
+                    </div>
+                    <div class="flex items-center flex-wrap gap-1.5">
+                      <span class="text-[11px] text-slate-500 font-medium w-8">ขวา:</span>
+                      <label class="inline-flex items-center space-x-1 cursor-pointer"><input type="checkbox" name="lacArmFingersRightDigits" value="thumb" class="text-medical-600 rounded"><span>โป้ง</span></label>
+                      <label class="inline-flex items-center space-x-1 cursor-pointer"><input type="checkbox" name="lacArmFingersRightDigits" value="index" class="text-medical-600 rounded"><span>ชี้</span></label>
+                      <label class="inline-flex items-center space-x-1 cursor-pointer"><input type="checkbox" name="lacArmFingersRightDigits" value="middle" class="text-medical-600 rounded"><span>กลาง</span></label>
+                      <label class="inline-flex items-center space-x-1 cursor-pointer"><input type="checkbox" name="lacArmFingersRightDigits" value="ring" class="text-medical-600 rounded"><span>นาง</span></label>
+                      <label class="inline-flex items-center space-x-1 cursor-pointer"><input type="checkbox" name="lacArmFingersRightDigits" value="little" class="text-medical-600 rounded"><span>ก้อย</span></label>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1335,12 +1286,29 @@ const LACERATION_FORM_HTML = `
               </div>
 
               <div class="p-2.5 rounded-xl border border-slate-200 bg-white">
-                <label class="flex items-center cursor-pointer">
-                  <input type="checkbox" id="lacLegToes" onchange="toggleLacGroup('lacLegToesSidesContainer', this.checked)" class="text-medical-600 mr-2 h-4 w-4 rounded">
-                  <span class="text-xs sm:text-sm font-medium text-slate-800">นิ้วเท้า</span>
-                </label>
-                <div id="lacLegToesSidesContainer" class="hidden mt-2 pl-6 flex gap-4 text-xs">
-                  <label class="flex items-center cursor-pointer"><input type="checkbox" name="lacLegToesSides" value="left" class="mr-1"> ข้างซ้าย</label> <label class="flex items-center cursor-pointer"><input type="checkbox" name="lacLegToesSides" value="right" class="mr-1"> ข้างขวา</label>
+                <div class="flex flex-col sm:flex-row sm:items-start justify-between text-xs py-1.5 gap-2">
+                  <label class="flex items-center space-x-2 cursor-pointer mt-0.5">
+                    <input type="checkbox" id="lacLegToes" onchange="toggleLacGroup('lacLegToesSidesContainer', this.checked)" class="text-medical-600 rounded">
+                    <span class="text-xs sm:text-sm font-medium text-slate-800">นิ้วเท้า</span>
+                  </label>
+                  <div id="lacLegToesSidesContainer" class="hidden flex flex-col space-y-1.5 pl-6 sm:pl-0">
+                    <div class="flex items-center flex-wrap gap-1.5">
+                      <span class="text-[11px] text-slate-500 font-medium w-8">ซ้าย:</span>
+                      <label class="inline-flex items-center space-x-1 cursor-pointer"><input type="checkbox" name="lacLegToesLeftDigits" value="thumb" class="text-medical-600 rounded"><span>โป้ง</span></label>
+                      <label class="inline-flex items-center space-x-1 cursor-pointer"><input type="checkbox" name="lacLegToesLeftDigits" value="index" class="text-medical-600 rounded"><span>ชี้</span></label>
+                      <label class="inline-flex items-center space-x-1 cursor-pointer"><input type="checkbox" name="lacLegToesLeftDigits" value="middle" class="text-medical-600 rounded"><span>กลาง</span></label>
+                      <label class="inline-flex items-center space-x-1 cursor-pointer"><input type="checkbox" name="lacLegToesLeftDigits" value="ring" class="text-medical-600 rounded"><span>นาง</span></label>
+                      <label class="inline-flex items-center space-x-1 cursor-pointer"><input type="checkbox" name="lacLegToesLeftDigits" value="little" class="text-medical-600 rounded"><span>ก้อย</span></label>
+                    </div>
+                    <div class="flex items-center flex-wrap gap-1.5">
+                      <span class="text-[11px] text-slate-500 font-medium w-8">ขวา:</span>
+                      <label class="inline-flex items-center space-x-1 cursor-pointer"><input type="checkbox" name="lacLegToesRightDigits" value="thumb" class="text-medical-600 rounded"><span>โป้ง</span></label>
+                      <label class="inline-flex items-center space-x-1 cursor-pointer"><input type="checkbox" name="lacLegToesRightDigits" value="index" class="text-medical-600 rounded"><span>ชี้</span></label>
+                      <label class="inline-flex items-center space-x-1 cursor-pointer"><input type="checkbox" name="lacLegToesRightDigits" value="middle" class="text-medical-600 rounded"><span>กลาง</span></label>
+                      <label class="inline-flex items-center space-x-1 cursor-pointer"><input type="checkbox" name="lacLegToesRightDigits" value="ring" class="text-medical-600 rounded"><span>นาง</span></label>
+                      <label class="inline-flex items-center space-x-1 cursor-pointer"><input type="checkbox" name="lacLegToesRightDigits" value="little" class="text-medical-600 rounded"><span>ก้อย</span></label>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1371,6 +1339,18 @@ const LACERATION_FORM_HTML = `
               </label>
             </div>
           </div>
+        </div>
+      </div>
+
+      <!-- 2.7 บาดแผลที่ตำแหน่งอื่นๆ (พิมพ์ระบุ) -->
+      <div class="border border-slate-200 rounded-2xl p-4 bg-slate-50/50">
+        <label class="flex items-center space-x-2.5 cursor-pointer">
+          <input type="checkbox" id="lacParentOther" onchange="toggleLacGroup('lacOtherSubGroup', this.checked)" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded">
+          <span class="text-xs sm:text-sm font-bold text-slate-900">2.7 บาดแผลที่ตำแหน่งอื่นๆ (พิมพ์ระบุ)</span>
+        </label>
+        <div id="lacOtherSubGroup" class="hidden mt-3 pl-6 border-l-2 border-medical-200 space-y-2">
+          <label class="text-xs font-semibold text-slate-600 block">ระบุตำแหน่งบาดแผลเพิ่มเติม:</label>
+          <input type="text" id="lacOtherLocationDetail" placeholder="เช่น บริเวณรักแร้, ซอกคอ, ก้นกบ..." class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-medical-500">
         </div>
       </div>
     </div>
@@ -1587,15 +1567,30 @@ const lacerationBleedingModule = {
     const sArmShoulder = getSubState(parentUpperExt, 'lacArmShoulder', 'lacArmShoulderSides');
     const sArmElbow = getSubState(parentUpperExt, 'lacArmElbow', 'lacArmElbowSides');
     const sArmWrist = getSubState(parentUpperExt, 'lacArmWrist', 'lacArmWristSides');
-    const sArmFingers = getSubState(parentUpperExt, 'lacArmFingers', 'lacArmFingersSides');
+    const isArmFingers = parentUpperExt && !!document.getElementById('lacArmFingers')?.checked;
+    const armFingersLeftDigits = isArmFingers ? getChecks('lacArmFingersLeftDigits') : [];
+    const armFingersRightDigits = isArmFingers ? getChecks('lacArmFingersRightDigits') : [];
+    const armFingersSides = [];
+    if (armFingersLeftDigits.length > 0) armFingersSides.push('left');
+    if (armFingersRightDigits.length > 0) armFingersSides.push('right');
+    const armFingersDigits = [...new Set([...armFingersLeftDigits, ...armFingersRightDigits])];
     const upperExtSigns = parentUpperExt ? getChecks('lacUpperExtSigns') : [];
 
     const parentLowerExt = document.getElementById('lacParentLowerExtremity')?.checked || false;
     const sLegThigh = getSubState(parentLowerExt, 'lacLegThigh', 'lacLegThighSides');
     const sLegKneeShin = getSubState(parentLowerExt, 'lacLegKneeShin', 'lacLegKneeShinSides');
     const sLegAnkleFoot = getSubState(parentLowerExt, 'lacLegAnkleFoot', 'lacLegAnkleFootSides');
-    const sLegToes = getSubState(parentLowerExt, 'lacLegToes', 'lacLegToesSides');
+    const isLegToes = parentLowerExt && !!document.getElementById('lacLegToes')?.checked;
+    const legToesLeftDigits = isLegToes ? getChecks('lacLegToesLeftDigits') : [];
+    const legToesRightDigits = isLegToes ? getChecks('lacLegToesRightDigits') : [];
+    const legToesSides = [];
+    if (legToesLeftDigits.length > 0) legToesSides.push('left');
+    if (legToesRightDigits.length > 0) legToesSides.push('right');
+    const legToesDigits = [...new Set([...legToesLeftDigits, ...legToesRightDigits])];
     const lowerExtSigns = parentLowerExt ? getChecks('lacLowerExtSigns') : [];
+
+    const parentOther = document.getElementById('lacParentOther')?.checked || false;
+    const otherLocationDetail = parentOther ? (document.getElementById('lacOtherLocationDetail')?.value?.trim() || '') : '';
 
     const systemicSigns = getChecks('lacSystemicSigns');
     const painScore = lacPainScoreTouched ? parseInt(document.getElementById('lacPainScore')?.value || 0, 10) : null;
@@ -1683,8 +1678,11 @@ const lacerationBleedingModule = {
       lacArmElbowSides: sArmElbow.sides,
       lacArmWrist: sArmWrist.active,
       lacArmWristSides: sArmWrist.sides,
-      lacArmFingers: sArmFingers.active,
-      lacArmFingersSides: sArmFingers.sides,
+      lacArmFingers: isArmFingers,
+      lacArmFingersSides: armFingersSides,
+      lacArmFingersLeftDigits: armFingersLeftDigits,
+      lacArmFingersRightDigits: armFingersRightDigits,
+      lacArmFingersDigits: armFingersDigits,
       lacUpperExtSigns: upperExtSigns,
 
       lacParentLowerExtremity: parentLowerExt,
@@ -1694,9 +1692,15 @@ const lacerationBleedingModule = {
       lacLegKneeShinSides: sLegKneeShin.sides,
       lacLegAnkleFoot: sLegAnkleFoot.active,
       lacLegAnkleFootSides: sLegAnkleFoot.sides,
-      lacLegToes: sLegToes.active,
-      lacLegToesSides: sLegToes.sides,
+      lacLegToes: isLegToes,
+      lacLegToesSides: legToesSides,
+      lacLegToesLeftDigits: legToesLeftDigits,
+      lacLegToesRightDigits: legToesRightDigits,
+      lacLegToesDigits: legToesDigits,
       lacLowerExtSigns: lowerExtSigns,
+
+      lacParentOther: parentOther,
+      lacOtherLocationDetail: otherLocationDetail,
 
       lacSystemicSigns: systemicSigns,
       painScore: painScore,
@@ -1741,31 +1745,18 @@ const lacerationBleedingModule = {
 
     setChecks('lacCauses', data.lacCauses);
     if (Array.isArray(data.lacCauses)) {
-      if (data.lacCauses.includes('sharp_object')) {
-        toggleLacGroup('lacCauseSharpDetailContainer', true);
-        const el = document.getElementById('lacCauseSharpDetail');
-        if (el) el.value = data.lacCauseSharpDetail || '';
-      }
-      if (data.lacCauses.includes('machinery_tools')) {
-        toggleLacGroup('lacCauseMachineryDetailContainer', true);
-        const el = document.getElementById('lacCauseMachineryDetail');
-        if (el) el.value = data.lacCauseMachineryDetail || '';
-      }
-      if (data.lacCauses.includes('blunt_impact')) {
-        toggleLacGroup('lacCauseBluntDetailContainer', true);
-        const el = document.getElementById('lacCauseBluntDetail');
-        if (el) el.value = data.lacCauseBluntDetail || '';
-      }
-      if (data.lacCauses.includes('puncture_wound')) {
-        toggleLacGroup('lacCausePunctureDetailContainer', true);
-        const el = document.getElementById('lacCausePunctureDetail');
-        if (el) el.value = data.lacCausePunctureDetail || '';
-      }
-      if (data.lacCauses.includes('other_cause')) {
-        toggleLacGroup('lacCauseOtherDetailContainer', true);
-        const el = document.getElementById('lacCauseOtherDetail');
-        if (el) el.value = data.lacCauseOtherDetail || '';
-      }
+      [
+        ['sharp_object', 'lacCauseSharpDetailContainer', 'lacCauseSharpDetail', data.lacCauseSharpDetail],
+        ['machinery_tools', 'lacCauseMachineryDetailContainer', 'lacCauseMachineryDetail', data.lacCauseMachineryDetail],
+        ['blunt_impact', 'lacCauseBluntDetailContainer', 'lacCauseBluntDetail', data.lacCauseBluntDetail],
+        ['puncture_wound', 'lacCausePunctureDetailContainer', 'lacCausePunctureDetail', data.lacCausePunctureDetail],
+        ['other_cause', 'lacCauseOtherDetailContainer', 'lacCauseOtherDetail', data.lacCauseOtherDetail]
+      ].forEach(([k, c, inp, v]) => {
+        if (data.lacCauses.includes(k)) {
+          toggleLacGroup(c, true);
+          const el = document.getElementById(inp); if (el) el.value = v || '';
+        }
+      });
     }
 
     setChecks('lacContaminants', data.lacContaminants);
@@ -1825,7 +1816,12 @@ const lacerationBleedingModule = {
       hydrateSub('lacArmShoulder', 'lacArmShoulder', 'lacArmShoulderSidesContainer', 'lacArmShoulderSides', data.lacArmShoulderSides);
       hydrateSub('lacArmElbow', 'lacArmElbow', 'lacArmElbowSidesContainer', 'lacArmElbowSides', data.lacArmElbowSides);
       hydrateSub('lacArmWrist', 'lacArmWrist', 'lacArmWristSidesContainer', 'lacArmWristSides', data.lacArmWristSides);
-      hydrateSub('lacArmFingers', 'lacArmFingers', 'lacArmFingersSidesContainer', 'lacArmFingersSides', data.lacArmFingersSides);
+      if (data.lacArmFingers) {
+        setCheckById('lacArmFingers', true);
+        toggleLacGroup('lacArmFingersSidesContainer', true);
+        setChecks('lacArmFingersLeftDigits', data.lacArmFingersLeftDigits || (data.lacArmFingersSides?.includes('left') ? data.lacArmFingersDigits : []));
+        setChecks('lacArmFingersRightDigits', data.lacArmFingersRightDigits || (data.lacArmFingersSides?.includes('right') ? data.lacArmFingersDigits : []));
+      }
       setChecks('lacUpperExtSigns', data.lacUpperExtSigns);
     }
 
@@ -1835,8 +1831,20 @@ const lacerationBleedingModule = {
       hydrateSub('lacLegThigh', 'lacLegThigh', 'lacLegThighSidesContainer', 'lacLegThighSides', data.lacLegThighSides);
       hydrateSub('lacLegKneeShin', 'lacLegKneeShin', 'lacLegKneeShinSidesContainer', 'lacLegKneeShinSides', data.lacLegKneeShinSides);
       hydrateSub('lacLegAnkleFoot', 'lacLegAnkleFoot', 'lacLegAnkleFootSidesContainer', 'lacLegAnkleFootSides', data.lacLegAnkleFootSides);
-      hydrateSub('lacLegToes', 'lacLegToes', 'lacLegToesSidesContainer', 'lacLegToesSides', data.lacLegToesSides);
+      if (data.lacLegToes) {
+        setCheckById('lacLegToes', true);
+        toggleLacGroup('lacLegToesSidesContainer', true);
+        setChecks('lacLegToesLeftDigits', data.lacLegToesLeftDigits || (data.lacLegToesSides?.includes('left') ? data.lacLegToesDigits : []));
+        setChecks('lacLegToesRightDigits', data.lacLegToesRightDigits || (data.lacLegToesSides?.includes('right') ? data.lacLegToesDigits : []));
+      }
       setChecks('lacLowerExtSigns', data.lacLowerExtSigns);
+    }
+
+    if (data.lacParentOther) {
+      setCheckById('lacParentOther', true);
+      toggleLacGroup('lacOtherSubGroup', true);
+      const otherEl = document.getElementById('lacOtherLocationDetail');
+      if (otherEl) otherEl.value = data.lacOtherLocationDetail || '';
     }
 
     setChecks('lacSystemicSigns', data.lacSystemicSigns);
@@ -1854,7 +1862,7 @@ const lacerationBleedingModule = {
   },
 
   clearForm: function() {
-    ['lacDurationVal', 'lacCauseSharpDetail', 'lacCauseMachineryDetail', 'lacCauseBluntDetail', 'lacCausePunctureDetail', 'lacCauseOtherDetail'].forEach(id => {
+    ['lacDurationVal', 'lacCauseSharpDetail', 'lacCauseMachineryDetail', 'lacCauseBluntDetail', 'lacCausePunctureDetail', 'lacCauseOtherDetail', 'lacOtherLocationDetail'].forEach(id => {
       const el = document.getElementById(id); if (el) el.value = '';
     });
     const durUnit = document.getElementById('lacDurationUnit');
@@ -1868,14 +1876,10 @@ const lacerationBleedingModule = {
       'lacChestSubGroup', 'lacChestRibsSidesContainer', 'lacChestUpperBackSidesContainer',
       'lacAbdomenSubGroup', 'lacAbdWallSidesContainer', 'lacAbdFlankSidesContainer', 'lacAbdLowerBackSidesContainer', 'lacAbdButtockSidesContainer', 'lacAbdGenitaliaSidesContainer',
       'lacUpperExtSubGroup', 'lacArmShoulderSidesContainer', 'lacArmElbowSidesContainer', 'lacArmWristSidesContainer', 'lacArmFingersSidesContainer',
-      'lacLowerExtSubGroup', 'lacLegThighSidesContainer', 'lacLegKneeShinSidesContainer', 'lacLegAnkleFootSidesContainer', 'lacLegToesSidesContainer'
+      'lacLowerExtSubGroup', 'lacLegThighSidesContainer', 'lacLegKneeShinSidesContainer', 'lacLegAnkleFootSidesContainer', 'lacLegToesSidesContainer', 'lacOtherSubGroup'
     ].forEach(id => { const el = document.getElementById(id); if (el) el.classList.add('hidden'); });
 
-    const radios = document.querySelectorAll('#cc-laceration-bleeding-section input[type="radio"]');
-    radios.forEach(r => { r.checked = false; });
-
-    const checks = document.querySelectorAll('#cc-laceration-bleeding-section input[type="checkbox"]');
-    checks.forEach(c => { c.checked = false; });
+    document.querySelectorAll('#cc-laceration-bleeding-section input[type="radio"], #cc-laceration-bleeding-section input[type="checkbox"]').forEach(i => { i.checked = false; });
   },
 
   isRedFlag: function(patient) {
@@ -1898,8 +1902,7 @@ const lacerationBleedingModule = {
       name: 'นายสมเกียรติ หินเจียรแตกบาดข้อมือเลือดพุ่ง', age: 38, gender: 'ชาย',
       chief_complaint: 'laceration_bleeding', chief_complaint_title: 'บาดแผลฉีกขาด / มีเลือดออก',
       timestamp: '2026-11-06T08:00:00.000Z', status: 'waiting',
-      durationVal: 30, durationUnit: 'minutes', hospRecordStatus: 'self',
-      underlying: [], drugAllergy: 'ปฏิเสธประวัติแพ้ยาและแพ้อาหาร', currentMeds: 'ไม่มี',
+      durationVal: 30, durationUnit: 'minutes', hospRecordStatus: 'self', underlying: [], drugAllergy: 'ปฏิเสธประวัติแพ้ยาและแพ้อาหาร', currentMeds: 'ไม่มี',
       otherSymptomsFree: 'หินเจียรตัดเหล็กแตกสะบัดบาดข้อมือซ้ายลึก เลือดพุ่งกระฉูดตามจังหวะชีพจร กดผ้าแน่นแล้วชุ่มเลือดเร็ว หน้าซีดเหงื่อแตกตัวเย็น นิ้วมืองอไม่ได้และชาปลายนิ้วก้อย-นาง',
       doctor_notes: { additional_hpi: '', physical_exam: '', preliminary_dx: '', plan: '' },
       vital_signs: { bt: 36.4, sbp: 88, dbp: 52, bp: '88/52', pr: 122, rr: 24, spo2: 98 },
@@ -1921,8 +1924,7 @@ const lacerationBleedingModule = {
       name: 'นายชาญชัย ถูกมีดฟันหน้าอกมีลมดูด', age: 26, gender: 'ชาย',
       chief_complaint: 'laceration_bleeding', chief_complaint_title: 'บาดแผลฉีกขาด / มีเลือดออก',
       timestamp: '2026-11-06T08:30:00.000Z', status: 'waiting',
-      durationVal: 45, durationUnit: 'minutes', hospRecordStatus: 'self',
-      underlying: [], drugAllergy: 'ปฏิเสธประวัติแพ้ยาและแพ้อาหาร', currentMeds: 'ไม่มี',
+      durationVal: 45, durationUnit: 'minutes', hospRecordStatus: 'self', underlying: [], drugAllergy: 'ปฏิเสธประวัติแพ้ยาและแพ้อาหาร', currentMeds: 'ไม่มี',
       otherSymptomsFree: 'ถูกมีดดาบฟันเข้าที่หน้าอกขวาและหลังขวา แผลลึก มีเสียงลมดูดฟ่อๆ เข้าออกตามจังหวะหายใจ แน่นหน้าอก หายใจหอบเหนื่อยรุนแรง',
       doctor_notes: { additional_hpi: '', physical_exam: '', preliminary_dx: '', plan: '' },
       vital_signs: { bt: 36.8, sbp: 105, dbp: 68, bp: '105/68', pr: 114, rr: 28, spo2: 91 },
@@ -1969,8 +1971,7 @@ const lacerationBleedingModule = {
       name: 'น.ส.กัญญา มีดทำครัวบาดนิ้วชี้ซ้ายเลือดหยุดแล้ว', age: 24, gender: 'หญิง',
       chief_complaint: 'laceration_bleeding', chief_complaint_title: 'บาดแผลฉีกขาด / มีเลือดออก',
       timestamp: '2026-11-06T09:30:00.000Z', status: 'waiting',
-      durationVal: 1, durationUnit: 'hours', hospRecordStatus: 'self',
-      underlying: [], drugAllergy: 'ปฏิเสธประวัติแพ้ยาและแพ้อาหาร', currentMeds: 'ไม่มี',
+      durationVal: 1, durationUnit: 'hours', hospRecordStatus: 'self', underlying: [], drugAllergy: 'ปฏิเสธประวัติแพ้ยาและแพ้อาหาร', currentMeds: 'ไม่มี',
       otherSymptomsFree: 'มีดทำครัวบาดนิ้วชี้ซ้ายขณะหั่นผัก แผลยาว 1.5 ซม. เลือดออกเล็กน้อยและหยุดสนิทแล้วหลังใช้ผ้ากด งอนิ้วได้ปกติ ปลายนิ้วไม่ชา ไม่หน้ามืด ฉีดวัคซีนบาดทะยักเมื่อ 2 ปีก่อน',
       doctor_notes: { additional_hpi: '', physical_exam: '', preliminary_dx: '', plan: '' },
       vital_signs: { bt: 36.7, sbp: 118, dbp: 74, bp: '118/74', pr: 72, rr: 16, spo2: 99 },
@@ -1979,7 +1980,8 @@ const lacerationBleedingModule = {
       lacContaminants: ['clean_wound'],
       lacBleedingStatus: 'stopped', lacProdrome: 'no_prodrome',
       lacParentHeadFace: false, lacParentNeck: false, lacParentChest: false, lacParentAbdomen: false,
-      lacParentUpperExtremity: true, lacArmShoulder: false, lacArmElbow: false, lacArmWrist: false, lacArmFingers: true, lacArmFingersSides: ['left'],
+      lacParentUpperExtremity: true, lacArmShoulder: false, lacArmElbow: false, lacArmWrist: false,
+      lacArmFingers: true, lacArmFingersSides: ['left'], lacArmFingersLeftDigits: ['index'], lacArmFingersRightDigits: [], lacArmFingersDigits: ['index'],
       lacUpperExtSigns: [], lacParentLowerExtremity: false, lacSystemicSigns: ['no_systemic_signs'],
       painScore: 2, lacAntithrombotic: 'no_antithrombotic', lacTetanusHx: 'within_5_years'
     }

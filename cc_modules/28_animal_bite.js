@@ -1157,11 +1157,11 @@ const ANIMAL_BITE_FORM_HTML = `
             <div class="flex flex-col sm:flex-row sm:items-start justify-between text-xs py-1.5 gap-2">
               <label class="flex items-center space-x-2 cursor-pointer mt-0.5">
                 <input type="checkbox" name="biteArmFingers" onchange="toggleBiteGroup('biteArmFingersSidesContainer', this.checked)" class="text-medical-600 rounded">
-                <span class="text-slate-800 font-medium">นิ้วมือ</span>
+                <span class="text-slate-800">นิ้วมือ</span>
               </label>
               <div id="biteArmFingersSidesContainer" class="hidden flex flex-col space-y-1.5 pl-6 sm:pl-0">
                 <div class="flex items-center flex-wrap gap-1.5">
-                  <span class="text-[11px] text-slate-600 font-medium w-8">ซ้าย:</span>
+                  <span class="text-[11px] text-slate-500 font-medium w-8">ซ้าย:</span>
                   <label class="inline-flex items-center space-x-1 cursor-pointer"><input type="checkbox" name="biteArmFingersLeftDigits" value="thumb" class="text-medical-600 rounded"><span>โป้ง</span></label>
                   <label class="inline-flex items-center space-x-1 cursor-pointer"><input type="checkbox" name="biteArmFingersLeftDigits" value="index" class="text-medical-600 rounded"><span>ชี้</span></label>
                   <label class="inline-flex items-center space-x-1 cursor-pointer"><input type="checkbox" name="biteArmFingersLeftDigits" value="middle" class="text-medical-600 rounded"><span>กลาง</span></label>
@@ -1169,7 +1169,7 @@ const ANIMAL_BITE_FORM_HTML = `
                   <label class="inline-flex items-center space-x-1 cursor-pointer"><input type="checkbox" name="biteArmFingersLeftDigits" value="little" class="text-medical-600 rounded"><span>ก้อย</span></label>
                 </div>
                 <div class="flex items-center flex-wrap gap-1.5">
-                  <span class="text-[11px] text-slate-600 font-medium w-8">ขวา:</span>
+                  <span class="text-[11px] text-slate-500 font-medium w-8">ขวา:</span>
                   <label class="inline-flex items-center space-x-1 cursor-pointer"><input type="checkbox" name="biteArmFingersRightDigits" value="thumb" class="text-medical-600 rounded"><span>โป้ง</span></label>
                   <label class="inline-flex items-center space-x-1 cursor-pointer"><input type="checkbox" name="biteArmFingersRightDigits" value="index" class="text-medical-600 rounded"><span>ชี้</span></label>
                   <label class="inline-flex items-center space-x-1 cursor-pointer"><input type="checkbox" name="biteArmFingersRightDigits" value="middle" class="text-medical-600 rounded"><span>กลาง</span></label>
@@ -1249,11 +1249,11 @@ const ANIMAL_BITE_FORM_HTML = `
             <div class="flex flex-col sm:flex-row sm:items-start justify-between text-xs py-1.5 gap-2">
               <label class="flex items-center space-x-2 cursor-pointer mt-0.5">
                 <input type="checkbox" name="biteLegToes" onchange="toggleBiteGroup('biteLegToesSidesContainer', this.checked)" class="text-medical-600 rounded">
-                <span class="text-slate-800 font-medium">นิ้วเท้า</span>
+                <span class="text-slate-800">นิ้วเท้า</span>
               </label>
               <div id="biteLegToesSidesContainer" class="hidden flex flex-col space-y-1.5 pl-6 sm:pl-0">
                 <div class="flex items-center flex-wrap gap-1.5">
-                  <span class="text-[11px] text-slate-600 font-medium w-8">ซ้าย:</span>
+                  <span class="text-[11px] text-slate-500 font-medium w-8">ซ้าย:</span>
                   <label class="inline-flex items-center space-x-1 cursor-pointer"><input type="checkbox" name="biteLegToesLeftDigits" value="thumb" class="text-medical-600 rounded"><span>โป้ง</span></label>
                   <label class="inline-flex items-center space-x-1 cursor-pointer"><input type="checkbox" name="biteLegToesLeftDigits" value="index" class="text-medical-600 rounded"><span>ชี้</span></label>
                   <label class="inline-flex items-center space-x-1 cursor-pointer"><input type="checkbox" name="biteLegToesLeftDigits" value="middle" class="text-medical-600 rounded"><span>กลาง</span></label>
@@ -1261,7 +1261,7 @@ const ANIMAL_BITE_FORM_HTML = `
                   <label class="inline-flex items-center space-x-1 cursor-pointer"><input type="checkbox" name="biteLegToesLeftDigits" value="little" class="text-medical-600 rounded"><span>ก้อย</span></label>
                 </div>
                 <div class="flex items-center flex-wrap gap-1.5">
-                  <span class="text-[11px] text-slate-600 font-medium w-8">ขวา:</span>
+                  <span class="text-[11px] text-slate-500 font-medium w-8">ขวา:</span>
                   <label class="inline-flex items-center space-x-1 cursor-pointer"><input type="checkbox" name="biteLegToesRightDigits" value="thumb" class="text-medical-600 rounded"><span>โป้ง</span></label>
                   <label class="inline-flex items-center space-x-1 cursor-pointer"><input type="checkbox" name="biteLegToesRightDigits" value="index" class="text-medical-600 rounded"><span>ชี้</span></label>
                   <label class="inline-flex items-center space-x-1 cursor-pointer"><input type="checkbox" name="biteLegToesRightDigits" value="middle" class="text-medical-600 rounded"><span>กลาง</span></label>

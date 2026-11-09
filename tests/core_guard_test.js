@@ -923,6 +923,40 @@ const splitLocText = ccModBite.renderRapidHpi(biteCase2);
 assert(splitLocText.includes('ซ้าย: นิ้วชี้, นิ้วกลาง') && splitLocText.includes('ขวา: นิ้วโป้ง'), 'Animal bite renders finger digits split by left and right');
 assert(splitLocText.includes('ซ้าย: นิ้วก้อย') && splitLocText.includes('ขวา: นิ้วโป้ง, นิ้วชี้'), 'Animal bite renders toe digits split by left and right');
 
+// Test split digits by side and 2.7 other location for laceration
+const testLacCase = JSON.parse(JSON.stringify(lacCase4));
+testLacCase.lacParentUpperExtremity = true;
+testLacCase.lacArmFingers = true;
+testLacCase.lacArmFingersLeftDigits = ['index', 'middle'];
+testLacCase.lacArmFingersRightDigits = ['thumb'];
+testLacCase.lacParentLowerExtremity = true;
+testLacCase.lacLegToes = true;
+testLacCase.lacLegToesLeftDigits = ['little'];
+testLacCase.lacLegToesRightDigits = ['thumb', 'index'];
+testLacCase.lacParentOther = true;
+testLacCase.lacOtherLocationDetail = 'แผลถลอกที่ข้อศอก';
+const splitLacText = ccModLac.renderRapidHpi(testLacCase);
+assert(splitLacText.includes('ซ้าย: นิ้วชี้, นิ้วกลาง') && splitLacText.includes('ขวา: นิ้วโป้ง'), 'Laceration renders finger digits split by left and right');
+assert(splitLacText.includes('ซ้าย: นิ้วก้อย') && splitLacText.includes('ขวา: นิ้วโป้ง, นิ้วชี้'), 'Laceration renders toe digits split by left and right');
+assert(splitLacText.includes('แผลถลอกที่ข้อศอก'), 'Laceration renders 2.7 other location in Rapid Note');
+
+// Test split digits by side and 2.7 other location for fall trauma
+const testFallCase = JSON.parse(JSON.stringify(fallCase4));
+testFallCase.fallParentUpperExtremity = true;
+testFallCase.fallArmFingers = true;
+testFallCase.fallArmFingersLeftDigits = ['ring', 'little'];
+testFallCase.fallArmFingersRightDigits = ['index'];
+testFallCase.fallParentLowerExtremity = true;
+testFallCase.fallLegToes = true;
+testFallCase.fallLegToesLeftDigits = ['thumb'];
+testFallCase.fallLegToesRightDigits = ['middle'];
+testFallCase.fallParentOther = true;
+testFallCase.fallOtherLocationDetail = 'ฟกช้ำบริเวณสะโพกด้านหลัง';
+const splitFallText = ccModFall.renderRapidHpi(testFallCase);
+assert(splitFallText.includes('ซ้าย: นิ้วนาง, นิ้วก้อย') && splitFallText.includes('ขวา: นิ้วชี้'), 'Fall trauma renders finger digits split by left and right');
+assert(splitFallText.includes('ซ้าย: นิ้วโป้ง') && splitFallText.includes('ขวา: นิ้วกลาง'), 'Fall trauma renders toe digits split by left and right');
+assert(splitFallText.includes('ฟกช้ำบริเวณสะโพกด้านหลัง'), 'Fall trauma renders 2.7 other location in Rapid Note');
+
 // Test doctorCcBadgeHtml presence across all registered CC modules
 const allCcMods = vm.runInContext('CC_MODULES', sandbox);
 Object.values(allCcMods).forEach(mod => {
