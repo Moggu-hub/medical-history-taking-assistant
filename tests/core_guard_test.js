@@ -330,9 +330,9 @@ assert(dateInput.value === '26/10/2026', `Universal Date descriptor converts ISO
 timeInput.value = '3:30 PM';
 assert(timeInput.value === '15:30', `Universal Time descriptor converts '3:30 PM' -> '${timeInput.value}' (24-hour HH:mm)`);
 
-console.log('\n=== มิติที่ (ง): DOCTOR UI RENDER, JSON SCHEMA & BUILT-IN CDS (ALL 109 SEED CASES) ===');
+console.log('\n=== มิติที่ (ง): DOCTOR UI RENDER, JSON SCHEMA & BUILT-IN CDS (ALL 113 SEED CASES) ===');
 const patients = sandbox.getSeedPatients();
-assert(patients.length === 109, `Seed database has all 109 clinical cases across 29 Chief Complaints (found ${patients.length})`);
+assert(patients.length === 113, `Seed database has all 113 clinical cases across 30 Chief Complaints (found ${patients.length})`);
 
 let renderErrors = 0;
 let cdsErrors = 0;
@@ -485,7 +485,7 @@ assert(rapidDeDuplicationErrors === 0, `Zero De-duplication, Clean Negative Synt
 
 console.log('\n=== มิติที่ (ข): SAVE PERSISTENCE CHECK (PATIENT SUBMIT -> STATE & LOCALSTORAGE -> STATUS VIEW) ===');
 let saveErrors = 0;
-const testSubmitCases = ['case-043', 'case-046', 'case-051', 'case-040', 'case-061', 'case-071', 'case-081', 'case-091', 'case-095', 'case-101', 'case-105', 'case-120', 'case-130', 'case-140', 'case-150', 'case-160', 'case-170', 'case-180', 'seed-hematuria-01', 'case-backpain-01', 'case-neck-01', 'case-hemo-01', 'case-epistaxis-01', 'case-htn-01', 'case-psych-01', 'case-lac-01', 'case-fall-01', 'case-bite-01', 'case-venom-01'];
+const testSubmitCases = ['case-043', 'case-046', 'case-051', 'case-040', 'case-061', 'case-071', 'case-081', 'case-091', 'case-095', 'case-101', 'case-105', 'case-120', 'case-130', 'case-140', 'case-150', 'case-160', 'case-170', 'case-180', 'seed-hematuria-01', 'case-backpain-01', 'case-neck-01', 'case-hemo-01', 'case-epistaxis-01', 'case-htn-01', 'case-psych-01', 'case-lac-01', 'case-fall-01', 'case-bite-01', 'case-venom-01', 'case-assault-01'];
 for (const caseId of testSubmitCases) {
   const seedCase = patients.find(x => x.id === caseId);
   sandbox.switchUserRole('patient', { silent: true });
@@ -516,7 +516,7 @@ for (const caseId of testSubmitCases) {
     saveErrors++;
   }
 }
-assert(saveErrors === 0, `Save Persistence verified across all 29 active Chief Complaints (State + localStorage + #patientStatusView)`);
+assert(saveErrors === 0, `Save Persistence verified across all 30 active Chief Complaints (State + localStorage + #patientStatusView)`);
 
 console.log('\n=== มิติที่ (ค): PATIENT ISOLATION & CONTEXT SWITCHING CHECK (PATIENT A <-> PATIENT B) ===');
 sandbox.switchUserRole('doctor', { silent: true });
@@ -996,6 +996,44 @@ assert(splitVenomText.includes('ซ้าย: นิ้วกลาง, นิ�
 assert(splitVenomText.includes('ซ้าย: นิ้วก้อย') && splitVenomText.includes('ขวา: นิ้วโป้ง'), 'Venomous bite renders toe digits split by left and right');
 assert(splitVenomText.includes('ซอกคอด้านขวา'), 'Venomous bite renders 2.7 other location in Rapid Note');
 
+// === CC #30 PHYSICAL ASSAULT CLINICAL RED FLAG & TRIAGE VALIDATION ===
+const assaultCase1 = patients.find(p => p.id === 'case-assault-01');
+const assaultCase2 = patients.find(p => p.id === 'case-assault-02');
+const assaultCase3 = patients.find(p => p.id === 'case-assault-03');
+const assaultCase4 = patients.find(p => p.id === 'case-assault-04');
+
+const ccModAssault = sandbox.getCcModule('physical_assault');
+assert(ccModAssault !== null, 'Module physical_assault successfully registered');
+
+const assaultRf1 = ccModAssault.evaluateRedFlags(assaultCase1);
+assert(assaultRf1.some(r => r.key === 'rf_assault_penetrating_torso_neck_shock'), 'Assault Case 1 triggers Penetrating Torso/Shock Red Flag (ESI 1)');
+
+const assaultRf2 = ccModAssault.evaluateRedFlags(assaultCase2);
+assert(assaultRf2.some(r => r.key === 'rf_assault_strangulation_airway_compromise'), 'Assault Case 2 triggers Strangulation Airway Compromise Red Flag (ESI 2)');
+
+const assaultRf3 = ccModAssault.evaluateRedFlags(assaultCase3);
+assert(assaultRf3.some(r => r.key === 'rf_assault_tbi_anticoagulant_maxillofacial'), 'Assault Case 3 triggers TBI / Maxillofacial Blowout Red Flag (ESI 2)');
+
+const assaultRf4 = ccModAssault.evaluateRedFlags(assaultCase4);
+assert(assaultRf4.length === 0, 'Assault Case 4 (Minor Blunt Contusion) triggers Zero Red Flags (Low-Risk ESI 4)');
+
+// Test split digits by side and 2.7 other location for physical assault
+const testAssaultCase = JSON.parse(JSON.stringify(assaultCase4));
+testAssaultCase.assaultParentUpperExtremity = true;
+testAssaultCase.assaultArmFingers = true;
+testAssaultCase.assaultArmFingersLeftDigits = ['middle', 'ring'];
+testAssaultCase.assaultArmFingersRightDigits = ['thumb', 'index'];
+testAssaultCase.assaultParentLowerExtremity = true;
+testAssaultCase.assaultLegToes = true;
+testAssaultCase.assaultLegToesLeftDigits = ['little'];
+testAssaultCase.assaultLegToesRightDigits = ['thumb'];
+testAssaultCase.assaultParentOther = true;
+testAssaultCase.assaultOtherLocationDetail = 'ซอกคอด้านขวา';
+const splitAssaultText = ccModAssault.renderRapidHpi(testAssaultCase);
+assert(splitAssaultText.includes('ซ้าย: นิ้วกลาง, นิ้วนาง') && splitAssaultText.includes('ขวา: นิ้วโป้ง, นิ้วชี้'), 'Physical assault renders finger digits split by left and right');
+assert(splitAssaultText.includes('ซ้าย: นิ้วก้อย') && splitAssaultText.includes('ขวา: นิ้วโป้ง'), 'Physical assault renders toe digits split by left and right');
+assert(splitAssaultText.includes('ซอกคอด้านขวา'), 'Physical assault renders 2.7 other location in Rapid Note');
+
 // Test doctorCcBadgeHtml presence across all registered CC modules
 const allCcMods = vm.runInContext('CC_MODULES', sandbox);
 Object.values(allCcMods).forEach(mod => {
@@ -1030,6 +1068,13 @@ const ccDisplayVenom = elementsById.get('activeCcDisplay').innerHTML;
 assert(
   ccDisplayVenom.includes('แมลง') || ccDisplayVenom.includes('bug'),
   'Patient case-venom-01 updates activeCcDisplay to venomous bite badge'
+);
+
+sandbox.selectPatient('case-assault-01');
+const ccDisplayAssault = elementsById.get('activeCcDisplay').innerHTML;
+assert(
+  ccDisplayAssault.includes('ทำร้าย') || ccDisplayAssault.includes('shield-alert'),
+  'Patient case-assault-01 updates activeCcDisplay to physical assault badge'
 );
 
 // === AI CONSULTANT PERSISTENCE & RESILIENT RETRY/FALLBACK TESTS ===
