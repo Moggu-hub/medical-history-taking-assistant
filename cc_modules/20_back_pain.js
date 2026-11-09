@@ -380,6 +380,7 @@ registerCcModule({
   titleEn: 'Back pain / Lumbago',
   icon: 'activity',
   sectionDomId: 'back_painQuestionnaireSection',
+  doctorCcBadgeHtml: '<i data-lucide="activity" class="w-3.5 h-3.5 mr-1 text-amber-500"></i> CC: ปวดหลัง (Back pain)',
 
   algorithm: {
     chiefComplaint: 'back_pain',

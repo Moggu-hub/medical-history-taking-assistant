@@ -337,6 +337,7 @@ registerCcModule({
   titleEn: 'Neck / Shoulder / Upper back pain',
   icon: 'activity',
   sectionDomId: 'neck_shoulder_painQuestionnaireSection',
+  doctorCcBadgeHtml: '<i data-lucide="activity" class="w-3.5 h-3.5 mr-1 text-amber-500"></i> CC: ปวดต้นคอ / บ่า / หลังช่วงบน (Neck & Shoulder pain)',
 
   algorithm: {
     chiefComplaint: 'neck_shoulder_pain',

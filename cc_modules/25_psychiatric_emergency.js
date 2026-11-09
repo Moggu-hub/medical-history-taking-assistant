@@ -1154,6 +1154,10 @@ const PSYCHIATRIC_FORM_HTML = `
 const psychiatricEmergencyModule = {
   id: 'psychiatric_emergency',
   recordCc: 'psychiatric_emergency',
+  titleTh: 'เอะอะโวยวาย / จิตเวช',
+  titleEn: 'Acute agitation / Psychiatric emergency',
+  icon: 'alert-octagon',
+  doctorCcBadgeHtml: '<i data-lucide="alert-octagon" class="w-3.5 h-3.5 mr-1 text-purple-600"></i> CC: เอะอะโวยวาย / จิตเวช (Psychiatric Emergency)',
   algorithm: 'psychiatric-emergency-protocol',
   sectionDomId: 'cc-psychiatric-emergency-section',
   formHtml: PSYCHIATRIC_FORM_HTML,

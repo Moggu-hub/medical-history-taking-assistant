@@ -912,6 +912,46 @@ const locText = ccModBite.renderRapidHpi(biteCase2);
 assert(locText.includes('นิ้วชี้'), 'Animal bite renders finger digit (นิ้วชี้) in Rapid Note');
 assert(locText.includes('ซอกคอด้านซ้าย'), 'Animal bite renders other location in Rapid Note');
 
+// Test split digits by side for fingers and toes in animal bite
+biteCase2.biteArmFingersLeftDigits = ['index', 'middle'];
+biteCase2.biteArmFingersRightDigits = ['thumb'];
+biteCase2.biteParentLowerExtremity = true;
+biteCase2.biteLegToes = true;
+biteCase2.biteLegToesLeftDigits = ['little'];
+biteCase2.biteLegToesRightDigits = ['thumb', 'index'];
+const splitLocText = ccModBite.renderRapidHpi(biteCase2);
+assert(splitLocText.includes('ซ้าย: นิ้วชี้, นิ้วกลาง') && splitLocText.includes('ขวา: นิ้วโป้ง'), 'Animal bite renders finger digits split by left and right');
+assert(splitLocText.includes('ซ้าย: นิ้วก้อย') && splitLocText.includes('ขวา: นิ้วโป้ง, นิ้วชี้'), 'Animal bite renders toe digits split by left and right');
+
+// Test doctorCcBadgeHtml presence across all registered CC modules
+const allCcMods = vm.runInContext('CC_MODULES', sandbox);
+Object.values(allCcMods).forEach(mod => {
+  assert(
+    typeof mod.doctorCcBadgeHtml === 'string' && mod.doctorCcBadgeHtml.trim().length > 0,
+    `Module ${mod.id} has valid non-empty doctorCcBadgeHtml`
+  );
+});
+
+// Test Active Consultation CC Badge updating when switching between patients
+sandbox.switchUserRole('doctor', { silent: true });
+sandbox.selectPatient('case-040');
+const ccDisplayBefore = elementsById.get('activeCcDisplay').innerHTML;
+assert(ccDisplayBefore.includes('flame') || ccDisplayBefore.includes('ไข้'), 'Patient case-040 shows Fever CC badge');
+
+sandbox.selectPatient('case-bite-01');
+const ccDisplayAfter = elementsById.get('activeCcDisplay').innerHTML;
+assert(
+  ccDisplayAfter.includes('สุนัข') || ccDisplayAfter.includes('paw-print'),
+  'Patient case-bite-01 updates activeCcDisplay to animal bite badge instead of keeping previous CC'
+);
+
+sandbox.selectPatient('case-lac-01');
+const ccDisplayLac = elementsById.get('activeCcDisplay').innerHTML;
+assert(
+  ccDisplayLac.includes('ฉีกขาด') || ccDisplayLac.includes('bandage'),
+  'Patient case-lac-01 updates activeCcDisplay to laceration badge'
+);
+
 // === AI CONSULTANT PERSISTENCE & RESILIENT RETRY/FALLBACK TESTS ===
 // Test 4: AI Consult Result Persistence across modal close & reopen
 sandbox.selectPatient('case-040');

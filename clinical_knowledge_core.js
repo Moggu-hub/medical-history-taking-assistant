@@ -211,6 +211,11 @@ function registerCcModule(mod) {
   if (ccEntry && mod.active !== false) {
     ccEntry.active = true;
   }
+  if (!mod.doctorCcBadgeHtml) {
+    const iconName = mod.icon || (ccEntry ? ccEntry.icon : 'activity');
+    const title = mod.titleTh || (ccEntry ? ccEntry.titleTh : mod.id);
+    mod.doctorCcBadgeHtml = `<i data-lucide="${iconName}" class="w-3.5 h-3.5 mr-1 text-medical-600"></i> CC: ${title}`;
+  }
   if (typeof CC_REGISTRY !== 'undefined' && !CC_REGISTRY[mod.id]) {
     CC_REGISTRY[mod.id] = {
       formId: mod.id,

@@ -515,6 +515,10 @@ function generateEpistaxisCds(patient, { rfs, ddxList = [], workupList = [], man
 const epistaxisModule = {
   id: 'epistaxis',
   recordCc: 'epistaxis',
+  titleTh: 'เลือดกำเดาไหล',
+  titleEn: 'Epistaxis / Nosebleed',
+  icon: 'droplets',
+  doctorCcBadgeHtml: '<i data-lucide="droplets" class="w-3.5 h-3.5 mr-1 text-rose-500"></i> CC: เลือดกำเดาไหล (Epistaxis)',
   algorithm: 'epistaxis-clinical-protocol',
   sectionDomId: 'cc-epistaxis-section',
 

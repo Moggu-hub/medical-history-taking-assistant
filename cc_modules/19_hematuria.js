@@ -351,6 +351,7 @@ registerCcModule({
   titleEn: 'Hematuria / Blood in urine',
   icon: 'droplets',
   sectionDomId: 'hematuriaQuestionnaireSection',
+  doctorCcBadgeHtml: '<i data-lucide="droplets" class="w-3.5 h-3.5 mr-1 text-rose-500"></i> CC: ปัสสาวะเป็นเลือด (Hematuria)',
 
   algorithm: {
     chiefComplaint: 'hematuria',

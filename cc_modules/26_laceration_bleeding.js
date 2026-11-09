@@ -1513,6 +1513,10 @@ const LACERATION_FORM_HTML = `
 const lacerationBleedingModule = {
   id: 'laceration_bleeding',
   recordCc: 'laceration_bleeding',
+  titleTh: 'บาดแผลฉีกขาด / มีเลือดออก',
+  titleEn: 'Laceration / Active bleeding',
+  icon: 'bandage',
+  doctorCcBadgeHtml: '<i data-lucide="bandage" class="w-3.5 h-3.5 mr-1 text-rose-500"></i> CC: บาดแผลฉีกขาด / มีเลือดออก (Laceration & Bleeding)',
   algorithm: 'laceration-bleeding-protocol',
   sectionDomId: 'cc-laceration-bleeding-section',
   formHtml: LACERATION_FORM_HTML,
@@ -1976,20 +1980,15 @@ const lacerationBleedingModule = {
       lacBleedingStatus: 'stopped', lacProdrome: 'no_prodrome',
       lacParentHeadFace: false, lacParentNeck: false, lacParentChest: false, lacParentAbdomen: false,
       lacParentUpperExtremity: true, lacArmShoulder: false, lacArmElbow: false, lacArmWrist: false, lacArmFingers: true, lacArmFingersSides: ['left'],
-      lacUpperExtSigns: [],
-      lacParentLowerExtremity: false,
-      lacSystemicSigns: ['no_systemic_signs'],
+      lacUpperExtSigns: [], lacParentLowerExtremity: false, lacSystemicSigns: ['no_systemic_signs'],
       painScore: 2, lacAntithrombotic: 'no_antithrombotic', lacTetanusHx: 'within_5_years'
     }
   ]
 };
 
 // Register module in Ratchaburi ER Core Registry
-if (typeof registerCcModule === 'function') {
-  registerCcModule(lacerationBleedingModule);
-} else if (typeof window !== 'undefined' && typeof window.registerCcModule === 'function') {
-  window.registerCcModule(lacerationBleedingModule);
-}
+if (typeof registerCcModule === 'function') registerCcModule(lacerationBleedingModule);
+else if (typeof window !== 'undefined' && typeof window.registerCcModule === 'function') window.registerCcModule(lacerationBleedingModule);
 
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = lacerationBleedingModule;

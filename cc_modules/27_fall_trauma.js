@@ -1445,6 +1445,10 @@ const FALL_TRAUMA_FORM_HTML = `
 const fallTraumaModule = {
   id: 'fall_trauma',
   recordCc: 'fall_trauma',
+  titleTh: 'พลัดตกหกล้ม / ได้รับบาดเจ็บทางกายภาพ',
+  titleEn: 'Falls / Blunt trauma',
+  icon: 'user-x',
+  doctorCcBadgeHtml: '<i data-lucide="user-x" class="w-3.5 h-3.5 mr-1 text-amber-500"></i> CC: พลัดตกหกล้ม / ได้รับบาดเจ็บทางกายภาพ (Falls / Blunt Trauma)',
   algorithm: 'fall-trauma-protocol',
   sectionDomId: 'cc-fall-trauma-section',
   formHtml: FALL_TRAUMA_FORM_HTML,

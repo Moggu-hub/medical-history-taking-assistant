@@ -1083,6 +1083,10 @@ const HYPERTENSION_FORM_HTML = `
 const hypertensionModule = {
   id: 'hypertension',
   recordCc: 'hypertension',
+  titleTh: 'ตรวจพบความดันโลหิตสูง',
+  titleEn: 'Asymptomatic severe hypertension / High BP screen',
+  icon: 'activity',
+  doctorCcBadgeHtml: '<i data-lucide="activity" class="w-3.5 h-3.5 mr-1 text-rose-500"></i> CC: ตรวจพบความดันโลหิตสูง (Severe HTN Screen)',
   algorithm: 'hypertension-screen-protocol',
   sectionDomId: 'cc-hypertension-section',
   formHtml: HYPERTENSION_FORM_HTML,

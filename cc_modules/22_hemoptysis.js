@@ -689,6 +689,7 @@ const hemoptysisModule = {
   titleEn: 'Hemoptysis / Coughing up blood',
   icon: 'droplet',
   sectionDomId: 'hemoptysisQuestionnaireSection',
+  doctorCcBadgeHtml: '<i data-lucide="droplet" class="w-3.5 h-3.5 mr-1 text-rose-500"></i> CC: ไอเป็นเลือด (Hemoptysis)',
 
   algorithm: {
     chiefComplaint: 'hemoptysis',
