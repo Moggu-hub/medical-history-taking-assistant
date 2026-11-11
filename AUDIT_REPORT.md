@@ -1,6 +1,6 @@
 # 🕵️‍♂️ รายงานการตรวจสอบคุณภาพโค้ดและสถาปัตยกรรม (AUTOMATED & AI AUDIT REPORT)
 
-- **วันที่ตรวจสอบ:** `09/11/2026` เวลา `20:37` น. (24-Hour Format)
+- **วันที่ตรวจสอบ:** `11/11/2026` เวลา `07:11` น. (24-Hour Format)
 - **สถานะภาพรวม (Overall Verdict):** **✅ PASS (ผ่านการตรวจสอบครบทุกมิติ)**
 - **จำนวนหัวข้อที่ผ่าน (Passed Checks):** 7 รายการ
 - **จำนวนคำเตือน (Warnings):** 0 รายการ
@@ -12,7 +12,7 @@
 
 | ไฟล์ (File Path) | จำนวนบรรทัด (Lines) | เพดานสูงสุด (Max Limit) | สถานะ (Status) |
 | :--- | :---: | :---: | :---: |
-| `index.html` | 1,992 | 2,000 | ✅ ปกติ (Safe) |
+| `index.html` | 1,993 | 2,000 | ✅ ปกติ (Safe) |
 | `clinical_knowledge_core.js` | 997 | 1,000 | ✅ ปกติ (Safe) |
 | `core_engine.js` | 2,949 | 3,200 | ✅ ปกติ (Safe) |
 | `cc_modules/01_abdpain.js` | 1,251 | 2,000 | ✅ ปกติ (Safe) |
@@ -45,16 +45,17 @@
 | `cc_modules/28_animal_bite.js` | 1,996 | 2,000 | ✅ ปกติ (Safe) |
 | `cc_modules/29_venomous_bite.js` | 1,858 | 2,000 | ✅ ปกติ (Safe) |
 | `cc_modules/30_physical_assault.js` | 1,675 | 2,000 | ✅ ปกติ (Safe) |
+| `cc_modules/31_traffic_accident.js` | 1,885 | 2,000 | ✅ ปกติ (Safe) |
 
 ---
 
 ## 2. สรุปรายการที่ตรวจผ่าน (Passed Verification Checks)
 
-- ✅ index.html: 1992 บรรทัด (อยู่ในเกณฑ์ปลอดภัย <= 2000 บรรทัด)
+- ✅ index.html: 1993 บรรทัด (อยู่ในเกณฑ์ปลอดภัย <= 2000 บรรทัด)
 - ✅ clinical_knowledge_core.js: 997 บรรทัด (อยู่ในเกณฑ์ปลอดภัย <= 1000 บรรทัด)
 - ✅ core_engine.js: 2949 บรรทัด (อยู่ในเกณฑ์ปลอดภัย <= 3200 บรรทัด)
-- ✅ Core System Freeze: core_engine.js ไม่ถูกแก้ไขนับจากจุดเซฟ 'v2.63' (SHA-256 ตรงกัน 100%)
-- ✅ พบไฟล์โมดูลรายอาการใน cc_modules/ จำนวน 30 โมดูล
+- ✅ Core System Freeze: core_engine.js ไม่ถูกแก้ไขนับจากจุดเซฟ 'v2.64' (SHA-256 ตรงกัน 100%)
+- ✅ พบไฟล์โมดูลรายอาการใน cc_modules/ จำนวน 31 โมดูล
 - ✅ ทุกโมดูลใน cc_modules/ ผ่านเกณฑ์โครงสร้าง Lifecycle Hooks, ความปลอดภัย UI คนไข้ และมาตรฐานวันที่ dd/mm/yyyy + เวลา 24 ชั่วโมง HH:mm
 - ✅ ชุดทดสอบ Mandatory 4-Dimension Core Guard TDD (tests/core_guard_test.js) ผ่านครบ 100% ทั้ง 4 มิติ!
 
@@ -73,7 +74,7 @@
 === มิติที่ (ก): ARCHITECTURE, DOM INTEGRITY, UX HYGIENE & UNIVERSAL DATE/TIME ===
 ✅ PASS: index.html โหลด clinical_knowledge_core.js
 ✅ PASS: index.html โหลด core_engine.js
-✅ PASS: index.html โหลดโมดูลอาการนำจาก cc_modules/ ครบ 30 โมดูล
+✅ PASS: index.html โหลดโมดูลอาการนำจาก cc_modules/ ครบ 31 โมดูล
 ✅ PASS: Zero missing static DOM IDs across all modules (found: none)
 ✅ PASS: Zero 🚩 emojis inside #patientView & all cc_modules formHtml
 ✅ PASS: Zero pre-checked inputs inside #patientView (Zero Default Bias) (found: 0)
@@ -82,12 +83,12 @@
 ✅ PASS: Universal Date descriptor converts ISO '2026-10-26' -> '26/10/2026' (dd/mm/yyyy)
 ✅ PASS: Universal Time descriptor converts '3:30 PM' -> '15:30' (24-hour HH:mm)
 
-=== มิติที่ (ง): DOCTOR UI RENDER, JSON SCHEMA & BUILT-IN CDS (ALL 113 SEED CASES) ===
-✅ PASS: Seed database has all 113 clinical cases across 30 Chief Complaints (found 113)
-✅ PASS: All 113 seed cases render Rapid Note, Narrative Note & JSON Schema on Doctor Dashboard with 0 errors
-✅ PASS: All 113 seed cases generate Built-in CDS Analysis with 0 errors
-✅ PASS: Zero Date/Time format violations across all 113 seed cases
-✅ PASS: Zero De-duplication, Clean Negative Syntax & Score Offloading violations across all 113 seed cases
+=== มิติที่ (ง): DOCTOR UI RENDER, JSON SCHEMA & BUILT-IN CDS (ALL 117 SEED CASES) ===
+✅ PASS: Seed database has all 117 clinical cases across 31 Chief Complaints (found 117)
+✅ PASS: All 117 seed cases render Rapid Note, Narrative Note & JSON Schema on Doctor Dashboard with 0 errors
+✅ PASS: All 117 seed cases generate Built-in CDS Analysis with 0 errors
+✅ PASS: Zero Date/Time format violations across all 117 seed cases
+✅ PASS: Zero De-duplication, Clean Negative Syntax & Score Offloading violations across all 117 seed cases
 
 === มิติที่ (ข): SAVE PERSISTENCE CHECK (PATIENT SUBMIT -> STATE & LOCALSTORAGE -> STATUS VIEW) ===
 ✅ PASS: Save Persistence verified across all 30 active Chief Complaints (State + localStorage + #patientStatusView)
@@ -104,7 +105,7 @@
 ✅ PASS: Zero seed patients stuck on legacy dummy vital signs (found: 0)
 ✅ PASS: Empty patient submission records age='ไม่ระบุ' and durationVal=null instead of fake defaults (got age=ไม่ระบุ, durationVal=null)
 ✅ PASS: Empty patient submission displays "ไม่ระบุ" in Doctor Rapid Note without fabricated age or duration
-✅ PASS: PDPA Shield 100% compliant: Zero leaks of Name, HN, Queue, or Hospital name across all 113 patients (leaks: 0)
+✅ PASS: PDPA Shield 100% compliant: Zero leaks of Name, HN, Queue, or Hospital name across all 117 patients (leaks: 0)
 ✅ PASS: parseAiConsultantResponse isolates Provisional & Differential Diagnosis cleanly
 ✅ PASS: parseAiConsultantResponse isolates ER Orders checklist with "- [ ]" cleanly
 ✅ PASS: 1-Click Apply populates both Dx and Plan fields directly when empty
@@ -196,6 +197,14 @@
 ✅ PASS: Physical assault renders finger digits split by left and right
 ✅ PASS: Physical assault renders toe digits split by left and right
 ✅ PASS: Physical assault renders 2.7 other location in Rapid Note
+✅ PASS: Module traffic_accident successfully registered
+✅ PASS: Traffic Case 1 triggers Shock/Active Bleed Red Flag (ESI 1)
+✅ PASS: Traffic Case 2 triggers C-Spine Instability Red Flag (ESI 2)
+✅ PASS: Traffic Case 3 triggers Open Fracture Red Flag (ESI 2)
+✅ PASS: Traffic Case 4 (Minor Motorcycle Fall) triggers Zero Red Flags (Low-Risk ESI 3)
+✅ PASS: Traffic accident renders finger digits split by left and right
+✅ PASS: Traffic accident renders toe digits split by left and right
+✅ PASS: Traffic accident renders 2.7 other location in Rapid Note
 ✅ PASS: Module abdpain has valid non-empty doctorCcBadgeHtml
 ✅ PASS: Module abdpain has valid non-empty doctorCcBadgeHtml
 ✅ PASS: Module chestpain has valid non-empty doctorCcBadgeHtml
@@ -233,11 +242,13 @@
 ✅ PASS: Module animal_bite has valid non-empty doctorCcBadgeHtml
 ✅ PASS: Module venomous_bite has valid non-empty doctorCcBadgeHtml
 ✅ PASS: Module physical_assault has valid non-empty doctorCcBadgeHtml
+✅ PASS: Module traffic_accident has valid non-empty doctorCcBadgeHtml
 ✅ PASS: Patient case-040 shows Fever CC badge
 ✅ PASS: Patient case-bite-01 updates activeCcDisplay to animal bite badge instead of keeping previous CC
 ✅ PASS: Patient case-lac-01 updates activeCcDisplay to laceration badge
 ✅ PASS: Patient case-venom-01 updates activeCcDisplay to venomous bite badge
 ✅ PASS: Patient case-assault-01 updates activeCcDisplay to physical assault badge
+✅ PASS: Patient case-traffic-01 updates activeCcDisplay to traffic accident badge
 ✅ PASS: openAiConsultantModal preserves and restores saved AI consult diagnosis instead of overwriting with CDS
 ✅ PASS: openAiConsultantModal preserves and restores saved AI consult orders checklist
 ✅ PASS: openAiConsultantModal displays saved AI status banner indicating persisted consultation

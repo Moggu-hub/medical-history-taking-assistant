@@ -330,9 +330,9 @@ assert(dateInput.value === '26/10/2026', `Universal Date descriptor converts ISO
 timeInput.value = '3:30 PM';
 assert(timeInput.value === '15:30', `Universal Time descriptor converts '3:30 PM' -> '${timeInput.value}' (24-hour HH:mm)`);
 
-console.log('\n=== มิติที่ (ง): DOCTOR UI RENDER, JSON SCHEMA & BUILT-IN CDS (ALL 113 SEED CASES) ===');
+console.log('\n=== มิติที่ (ง): DOCTOR UI RENDER, JSON SCHEMA & BUILT-IN CDS (ALL 117 SEED CASES) ===');
 const patients = sandbox.getSeedPatients();
-assert(patients.length === 113, `Seed database has all 113 clinical cases across 30 Chief Complaints (found ${patients.length})`);
+assert(patients.length === 117, `Seed database has all 117 clinical cases across 31 Chief Complaints (found ${patients.length})`);
 
 let renderErrors = 0;
 let cdsErrors = 0;
@@ -485,7 +485,7 @@ assert(rapidDeDuplicationErrors === 0, `Zero De-duplication, Clean Negative Synt
 
 console.log('\n=== มิติที่ (ข): SAVE PERSISTENCE CHECK (PATIENT SUBMIT -> STATE & LOCALSTORAGE -> STATUS VIEW) ===');
 let saveErrors = 0;
-const testSubmitCases = ['case-043', 'case-046', 'case-051', 'case-040', 'case-061', 'case-071', 'case-081', 'case-091', 'case-095', 'case-101', 'case-105', 'case-120', 'case-130', 'case-140', 'case-150', 'case-160', 'case-170', 'case-180', 'seed-hematuria-01', 'case-backpain-01', 'case-neck-01', 'case-hemo-01', 'case-epistaxis-01', 'case-htn-01', 'case-psych-01', 'case-lac-01', 'case-fall-01', 'case-bite-01', 'case-venom-01', 'case-assault-01'];
+const testSubmitCases = ['case-043', 'case-046', 'case-051', 'case-040', 'case-061', 'case-071', 'case-081', 'case-091', 'case-095', 'case-101', 'case-105', 'case-120', 'case-130', 'case-140', 'case-150', 'case-160', 'case-170', 'case-180', 'seed-hematuria-01', 'case-backpain-01', 'case-neck-01', 'case-hemo-01', 'case-epistaxis-01', 'case-htn-01', 'case-psych-01', 'case-lac-01', 'case-fall-01', 'case-bite-01', 'case-venom-01', 'case-assault-01', 'case-traffic-01'];
 for (const caseId of testSubmitCases) {
   const seedCase = patients.find(x => x.id === caseId);
   sandbox.switchUserRole('patient', { silent: true });
@@ -1034,6 +1034,44 @@ assert(splitAssaultText.includes('ซ้าย: นิ้วกลาง, นิ
 assert(splitAssaultText.includes('ซ้าย: นิ้วก้อย') && splitAssaultText.includes('ขวา: นิ้วโป้ง'), 'Physical assault renders toe digits split by left and right');
 assert(splitAssaultText.includes('ซอกคอด้านขวา'), 'Physical assault renders 2.7 other location in Rapid Note');
 
+// === CC #31 TRAFFIC ACCIDENT CLINICAL RED FLAG & TRIAGE VALIDATION ===
+const trafficCase1 = patients.find(p => p.id === 'case-traffic-01');
+const trafficCase2 = patients.find(p => p.id === 'case-traffic-02');
+const trafficCase3 = patients.find(p => p.id === 'case-traffic-03');
+const trafficCase4 = patients.find(p => p.id === 'case-traffic-04');
+
+const ccModTraffic = sandbox.getCcModule('traffic_accident');
+assert(ccModTraffic !== null, 'Module traffic_accident successfully registered');
+
+const trafficRf1 = ccModTraffic.evaluateRedFlags(trafficCase1);
+assert(trafficRf1.some(r => r.key === 'rf_traffic_shock_active_massive_bleed'), 'Traffic Case 1 triggers Shock/Active Bleed Red Flag (ESI 1)');
+
+const trafficRf2 = ccModTraffic.evaluateRedFlags(trafficCase2);
+assert(trafficRf2.some(r => r.key === 'rf_traffic_cspine_instability_deficit'), 'Traffic Case 2 triggers C-Spine Instability Red Flag (ESI 2)');
+
+const trafficRf3 = ccModTraffic.evaluateRedFlags(trafficCase3);
+assert(trafficRf3.some(r => r.key === 'rf_traffic_open_fracture_neurovascular'), 'Traffic Case 3 triggers Open Fracture Red Flag (ESI 2)');
+
+const trafficRf4 = ccModTraffic.evaluateRedFlags(trafficCase4);
+assert(trafficRf4.length === 0, 'Traffic Case 4 (Minor Motorcycle Fall) triggers Zero Red Flags (Low-Risk ESI 3)');
+
+// Test split digits by side and 2.7 other location for traffic accident
+const testTrafficCase = JSON.parse(JSON.stringify(trafficCase4));
+testTrafficCase.trafficParentUpperExtremity = true;
+testTrafficCase.trafficArmFingers = true;
+testTrafficCase.trafficArmFingersLeftDigits = ['ring', 'little'];
+testTrafficCase.trafficArmFingersRightDigits = ['thumb', 'index'];
+testTrafficCase.trafficParentLowerExtremity = true;
+testTrafficCase.trafficLegToes = true;
+testTrafficCase.trafficLegToesLeftDigits = ['middle'];
+testTrafficCase.trafficLegToesRightDigits = ['thumb'];
+testTrafficCase.trafficParentOther = true;
+testTrafficCase.trafficOtherLocationDetail = 'แผ่นหลังส่วนล่างขวา';
+const splitTrafficText = ccModTraffic.renderRapidHpi(testTrafficCase);
+assert(splitTrafficText.includes('ซ้าย: นิ้วนาง, นิ้วก้อย') && splitTrafficText.includes('ขวา: นิ้วโป้ง, นิ้วชี้'), 'Traffic accident renders finger digits split by left and right');
+assert(splitTrafficText.includes('ซ้าย: นิ้วกลาง') && splitTrafficText.includes('ขวา: นิ้วโป้ง'), 'Traffic accident renders toe digits split by left and right');
+assert(splitTrafficText.includes('แผ่นหลังส่วนล่างขวา'), 'Traffic accident renders 2.7 other location in Rapid Note');
+
 // Test doctorCcBadgeHtml presence across all registered CC modules
 const allCcMods = vm.runInContext('CC_MODULES', sandbox);
 Object.values(allCcMods).forEach(mod => {
@@ -1075,6 +1113,13 @@ const ccDisplayAssault = elementsById.get('activeCcDisplay').innerHTML;
 assert(
   ccDisplayAssault.includes('ทำร้าย') || ccDisplayAssault.includes('shield-alert'),
   'Patient case-assault-01 updates activeCcDisplay to physical assault badge'
+);
+
+sandbox.selectPatient('case-traffic-01');
+const ccDisplayTraffic = elementsById.get('activeCcDisplay').innerHTML;
+assert(
+  ccDisplayTraffic.includes('จราจร') || ccDisplayTraffic.includes('car'),
+  'Patient case-traffic-01 updates activeCcDisplay to traffic accident badge'
 );
 
 // === AI CONSULTANT PERSISTENCE & RESILIENT RETRY/FALLBACK TESTS ===
