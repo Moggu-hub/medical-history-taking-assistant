@@ -5,7 +5,7 @@ services:
     working_dir: /app
     command: >
       sh -c "mkdir -p /app /app/data /tmp/repo &&
-      wget -qO /tmp/repo.tar.gz https://codeload.github.com/Moggu-hub/medical-history-taking-assistant/tar.gz/refs/heads/main &&
+      wget -qO /tmp/repo.tar.gz https://codeload.github.com/Moggu-hub/medical-history-taking-assistant/tar.gz/refs/heads/pilot-vps &&
       tar -xzf /tmp/repo.tar.gz -C /tmp/repo &&
       cp -rf /tmp/repo/medical-history-taking-assistant-*/* /app/ &&
       rm -rf /tmp/repo /tmp/repo.tar.gz &&
