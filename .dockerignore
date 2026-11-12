@@ -1,0 +1,8 @@
+.git
+.gitignore
+.snapshots
+node_modules
+tests
+scripts
+AUDIT_REPORT.md
+*.log
