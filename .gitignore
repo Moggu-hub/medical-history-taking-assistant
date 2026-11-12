@@ -2,6 +2,7 @@
 _backups/
 scratch/
 node_modules/
+data/
 *.tmp
 *.log
 .DS_Store
