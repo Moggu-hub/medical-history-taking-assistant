@@ -148,8 +148,30 @@ for (const mod of modsToInspect) {
   if (missingFns.length > 0) {
     fail(`โมดูล '${mod.id}' ขาดฟังก์ชันบังคับ: ${missingFns.join(', ')}`);
   }
-  if (typeof mod.doctorCcBadgeHtml !== 'string' || !mod.doctorCcBadgeHtml.trim()) {
+    if (typeof mod.doctorCcBadgeHtml !== 'string' || !mod.doctorCcBadgeHtml.trim()) {
     fail(`โมดูล '${mod.id}' ขาด doctorCcBadgeHtml (C-AP6)`);
+  }
+
+  // Check C-AP9: Doctor Output DOM Binding Contract
+  const modScriptItem = allJsContents.find(item => item.rel.startsWith('cc_modules/') && item.code.includes(`'${mod.id}'`));
+  if (modScriptItem) {
+    const hasRapidDom = modScriptItem.code.includes('rapidTextView');
+    const hasNarrDom = modScriptItem.code.includes('narrativeTextView');
+    if (!hasRapidDom || !hasNarrDom) {
+      fail(`โมดูล '${mod.id}': ขาดการเขียนค่าลง DOM (#rapidTextView, #narrativeTextView) ใน updateOutputs (C-AP9)`);
+    } else {
+      pass(`โมดูล '${mod.id}': มีการผูกค่าลง DOM (#rapidTextView, #narrativeTextView) สำหรับแพทย์เรียบร้อย (C-AP9)`);
+    }
+
+    // Check C-AP10: Dynamic Universal Date/Time inputs must invoke initUniversalDateTimeInputs
+    const hasDynamicUniversalDt = /data-universal-(?:date|time)[\s\S]{1,300}createElement|createElement[\s\S]{1,500}data-universal-(?:date|time)/.test(modScriptItem.code);
+    if (hasDynamicUniversalDt) {
+      if (!modScriptItem.code.includes('initUniversalDateTimeInputs')) {
+        fail(`โมดูล '${mod.id}': มีการสร้าง Dynamic Date/Time input แต่ไม่ได้เรียก initUniversalDateTimeInputs() (C-AP10)`);
+      } else {
+        pass(`โมดูล '${mod.id}': มีการเรียก initUniversalDateTimeInputs() รองรับ Dynamic Date/Time Picker ครบถ้วน (C-AP10)`);
+      }
+    }
   }
 }
 

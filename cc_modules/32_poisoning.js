@@ -42,6 +42,9 @@ function addPoisoningTimeRow(initialDate = '', initialTime = '') {
   if (typeof lucide !== 'undefined' && lucide.createIcons) {
     lucide.createIcons({ root: rowDiv });
   }
+  if (typeof initUniversalDateTimeInputs === 'function') {
+    initUniversalDateTimeInputs();
+  }
 }
 
 function removePoisoningTimeRow(rowElementId) {
@@ -93,6 +96,9 @@ function addPoisoningSubstanceRow(initialSubstance = '', initialAmount = '') {
   container.appendChild(rowDiv);
   if (typeof lucide !== 'undefined' && lucide.createIcons) {
     lucide.createIcons({ root: rowDiv });
+  }
+  if (typeof initUniversalDateTimeInputs === 'function') {
+    initUniversalDateTimeInputs();
   }
 }
 
@@ -228,7 +234,7 @@ registerCcModule({
       durationUnit: 'hours',
       hospRecordStatus: 'complete',
       underlying: ['เบาหวาน (DM)'],
-      drugAllergy: 'ปฏิเสธประวัติแพ้ยาและแพ้อาหาร',
+      drugAllergy: 'ปฏิเสธ',
       currentMeds: 'Metformin 500 mg 1 tab po bid',
       otherSymptomsFree: 'ฉีดพ่นยาฆ่าแมลงในสวนแล้วมีน้ำลายฟูมปาก เหงื่อแตกท่วมตัว เสมหะมาก หายใจเหนื่อย ปัสสาวะราด',
       doctor_notes: { additional_hpi: '', physical_exam: '', preliminary_dx: '', plan: '' },
@@ -270,7 +276,7 @@ registerCcModule({
       durationUnit: 'hours',
       hospRecordStatus: 'complete',
       underlying: ['โรคซึมเศร้า (Major Depression)'],
-      drugAllergy: 'ปฏิเสธประวัติแพ้ยาและแพ้อาหาร',
+      drugAllergy: 'ปฏิเสธ',
       currentMeds: 'Sertraline 50 mg 1 tab po od',
       otherSymptomsFree: 'ดื่มน้ำยาล้างห้องน้ำเป็ดโปรกรดเข้มข้น แสบไหม้ปากและลำคอรุนแรง กลืนน้ำลายไม่ได้ อาเจียนมีเลือดปน เสียงแหบ แน่นคอ',
       doctor_notes: { additional_hpi: '', physical_exam: '', preliminary_dx: '', plan: '' },
@@ -315,7 +321,7 @@ registerCcModule({
       durationUnit: 'hours',
       hospRecordStatus: 'complete',
       underlying: ['ปฏิเสธ'],
-      drugAllergy: 'ปฏิเสธประวัติแพ้ยาและแพ้อาหาร',
+      drugAllergy: 'ปฏิเสธ',
       currentMeds: 'ไม่มี',
       otherSymptomsFree: 'กินยาพาราเซตามอลรอบแรก 20 เม็ดตอนเที่ยง และกินซ้ำอีก 20 เม็ดตอนบ่ายสาม รวม 40 เม็ด คลื่นไส้ ปวดแสบท้อง ปัสสาวะสีเข้มขึ้น',
       doctor_notes: { additional_hpi: '', physical_exam: '', preliminary_dx: '', plan: '' },
@@ -363,7 +369,7 @@ registerCcModule({
       durationUnit: 'minutes',
       hospRecordStatus: 'complete',
       underlying: ['ภูมิแพ้'],
-      drugAllergy: 'ปฏิเสธประวัติแพ้ยาและแพ้อาหาร',
+      drugAllergy: 'ปฏิเสธ',
       currentMeds: 'Cetirizine syrup',
       otherSymptomsFree: 'เด็กเผลอหยิบวิตามินซีชนิดเคี้ยวไปรับประทานประมาณ 4 เม็ด มารดาพามาตรวจดูอาการ ขณะนี้รู้สึกตัวดี วิ่งเล่นได้ ไม่มีอาการผิดปกติใดๆ',
       doctor_notes: { additional_hpi: '', physical_exam: '', preliminary_dx: '', plan: '' },
@@ -710,7 +716,7 @@ registerCcModule({
             <label class="selectable-card flex items-start p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
               <input type="checkbox" id="poisoningFirstAid_induced" class="mt-0.5 text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
               <div class="ml-3">
-                <span class="block text-xs sm:text-sm font-semibold text-slate-800">มีการล้วงคอให้อาเจียน หรือดื่มน้ำ/นม/ไข่ดิบเข้าไปหลังเกิดเหตุ</span>
+                <span class="block text-xs sm:text-sm font-semibold text-slate-800">มีการล้วงคอให้อาเจียน หรือดื่มน้ำ/นม/ไข่ดิบเข้าไปหลังเกิดเหตุ (เป็นวิธีที่ผิด ไม่ควรทำ)</span>
                 <span class="block text-[11px] text-slate-500 font-normal mt-0.5">ข้อมูลสำคัญเพื่อให้แพทย์ประเมินความเสี่ยงของการสำลักและการระคายเคืองหลอดอาหาร</span>
               </div>
             </label>
@@ -1482,6 +1488,54 @@ registerCcModule({
   },
 
   // -----------------------------------------------------------------------
+  // CLEAR FORM (RESET INPUTS & DYNAMIC ROWS)
+  // -----------------------------------------------------------------------
+  clearForm: function() {
+    const sec = document.getElementById(this.sectionDomId);
+    if (!sec) return;
+    sec.querySelectorAll('input[type="checkbox"]').forEach(cb => { cb.checked = false; });
+    sec.querySelectorAll('input[type="radio"]').forEach(rb => { rb.checked = false; });
+    sec.querySelectorAll('input[type="text"]').forEach(ti => { ti.value = ''; });
+    sec.querySelectorAll('input[type="number"]').forEach(ni => { ni.value = ''; });
+
+    const durUnit = document.getElementById('poisoningDurationUnit');
+    if (durUnit) durUnit.value = 'minutes';
+
+    const timeContainer = document.getElementById('poisoningTimeRowsContainer');
+    if (timeContainer) {
+      const extraRows = timeContainer.querySelectorAll('[id^="poisoningTimeRow_"]');
+      extraRows.forEach(r => {
+        if (r.id !== 'poisoningTimeRow_0') r.remove();
+      });
+    }
+    poisoningTimeRowCount = 1;
+
+    const subContainer = document.getElementById('poisoningSubstanceRowsContainer');
+    if (subContainer) {
+      const extraSRows = subContainer.querySelectorAll('[id^="poisoningSubstanceRow_"]');
+      extraSRows.forEach(r => {
+        if (r.id !== 'poisoningSubstanceRow_0') r.remove();
+      });
+    }
+    poisoningSubstanceRowCount = 1;
+
+    clearPoisoningPainScore();
+    updatePoisoningRouteSymptoms();
+  },
+
+  populateForm: function(patient) {
+    this.hydrateForm(patient);
+  },
+
+  renderRapidHpi: function(patient) {
+    return this.updateOutputs(patient).rapid;
+  },
+
+  renderNarrativeHpi: function(patient) {
+    return this.updateOutputs(patient).narrative;
+  },
+
+  // -----------------------------------------------------------------------
   // RED FLAG EVALUATION
   // -----------------------------------------------------------------------
   isRedFlag: function(patient) {
@@ -1661,7 +1715,7 @@ registerCcModule({
     // First Aid Summary
     const faDict = {
       vomited: 'อาเจียนออกมาเองหลังได้รับสาร',
-      induced: 'ล้วงคอให้อาเจียน/ดื่มน้ำนมไข่ดิบ',
+      induced: 'ล้วงคอให้อาเจียน/ดื่มน้ำนมไข่ดิบ (เป็นวิธีที่ผิด ไม่ควรทำ)',
       washed: 'ล้างตา/ล้างผิวหนังและเปลี่ยนเสื้อผ้าแล้ว',
       none: 'ยังไม่ได้ปฐมพยาบาลและยังไม่อาเจียน'
     };
@@ -1812,6 +1866,24 @@ ${negatives.slice(0, 10).map(s => `- ${s}`).join('\n')}
       },
       red_flags: this.evaluateRedFlags(p).map(r => r.key)
     };
+
+    // DOM Binding for Doctor View
+    const rapidEl = document.getElementById('rapidTextView');
+    if (rapidEl) {
+      rapidEl.value = p.custom_rapid_note || rapidNote;
+    }
+    const narrativeEl = document.getElementById('narrativeTextView');
+    if (narrativeEl) {
+      narrativeEl.value = p.custom_narrative_note || narrativeNote;
+    }
+    const jsonEl = document.getElementById('jsonViewer');
+    if (jsonEl) {
+      jsonEl.textContent = JSON.stringify(jsonSchema, null, 2);
+    }
+
+    p.rapidHpi = p.custom_rapid_note || rapidNote;
+    p.narrativeHpi = p.custom_narrative_note || narrativeNote;
+    p.medicalJson = jsonSchema;
 
     return {
       rapid: rapidNote,

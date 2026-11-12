@@ -18,8 +18,10 @@
 3. **ความสมบูรณ์ของข้อมูล (Round-Trip & Dynamic Repeaters):**
    - `collectIntake(ctx)` ต้องดึงฟิลด์จาก `ctx` (`patientName`, `patientAge`, `gender`, `recordId`, `queueNumber` ฯลฯ) และ fallback สร้าง object ผู้ป่วยใหม่ที่สมบูรณ์ แล้วคืนค่า (`return p`) เสมอ
    - ทุกฟิลด์และทุกแถวของ Dynamic Repeater ที่อ่านใน `collectIntake(ctx)` ต้องถูกคืนค่าเข้า DOM และอัปเดตสถานะการเปิดกิ่ง/การกรองอาการใน `hydrateForm(patient)` แบบ 100%
-   - ช่องวันที่/เวลาทั้งแบบ Static และ Dynamic Repeater ต้องรองรับรูปแบบ `dd/mm/yyyy` และ `HH:mm` (24 ชม.)
-4. **ด่านตรวจบังคับก่อนส่งงาน:**
+   - ช่องวันที่/เวลาทั้งแบบ Static และ Dynamic Repeater ต้องรองรับรูปแบบ `dd/mm/yyyy` และ `HH:mm` (24 ชม.) และเมื่อ append แถว dynamic ใน DOM ต้องเรียก `initUniversalDateTimeInputs()` เสมอ (ป้องกัน C-AP10)
+4. **การแสดงผลข้อความในหน้าจอแพทย์ (Doctor View Binding):**
+   - ใน `updateOutputs(patient)` ต้องเขียนค่าลง `#rapidTextView`, `#narrativeTextView`, `#jsonViewer` และเซ็ต `patient.rapidHpi`, `patient.narrativeHpi`, `patient.medicalJson` เสมอ ห้าม return เปล่าๆ เด็ดขาด (ป้องกัน C-AP9)
+5. **ด่านตรวจบังคับก่อนส่งงาน:**
    - ต้องรัน `node scripts/verify_cc.js --cc <cc_id>` จนผ่าน 100% (0 Failures) ก่อนรายงานว่างานเสร็จ
-5. **กฎ Auto-Immunization:**
+6. **กฎ Auto-Immunization:**
    - เมื่อพบบั๊กทางเทคนิคในการเขียนโค้ดหรือจากการทดสอบของผู้ใช้ เมื่อแก้บั๊กผ่านแล้ว ต้องอัปเดตกฎลงใน `.agents/skills/code-cc/SKILL.md` (`SKILL_CODE_CC.md`) และเพิ่มตัวดักจับลงใน `scripts/verify_cc.js` ทันที พร้อมแจ้งสรุปให้ผู้ใช้ทราบ

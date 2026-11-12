@@ -68,6 +68,9 @@ description: มาตรฐานบังคับสำหรับการ�
 | **C-AP6** | `pertinentPositives` ว่างเปล่าเมื่อกดบันทึก หรือขาด `doctorCcBadgeHtml` | ใน `updateOutputs(p)` ต้องกำหนด `p.pertinentPositives` ให้มีอย่างน้อย 1 รายการสรุปเสมอ และต้องระบุ `doctorCcBadgeHtml` ในโมดูล |
 | **C-AP7** | เขียนโค้ดเทสต์ต่อท้าย `tests/core_guard_test.js` จนไฟล์บวม | ใช้ `node scripts/verify_cc.js --cc <cc_id>` ซึ่งตรวจสอบครบทุกมิติโดยอัตโนมัติ ไม่ต้องเขียนโค้ดต่อท้าย `tests/core_guard_test.js` |
 | **C-AP8** | `collectIntake(ctx)` พังเพราะอ่าน `ctx.patient` โดยตรง หรือไม่คืนค่า object | `collectIntake(ctx)` ต้องดึงฟิลด์จาก `ctx` (`patientName`, `patientAge`, `gender`, `recordId`, `queueNumber` ฯลฯ) และ fallback สร้าง object ผู้ป่วยใหม่ที่สมบูรณ์ แล้วคืนค่า (`return p`) เสมอ |
+| **C-AP9** | ลืมผูกค่า DOM ใน `updateOutputs(patient)` ทำให้หน้าจอแพทย์ค้างเป็นของคนเก่า (Critical Error) | ใน `updateOutputs(patient)` ต้องเขียนค่าลง `#rapidTextView`, `#narrativeTextView`, `#jsonViewer` ร่วมกับกำหนดค่าใน `p.rapidHpi`, `p.narrativeHpi`, `p.medicalJson` เสมอ ห้าม return เฉพาะ object โดยไม่แตะ DOM |
+| **C-AP10** | Dynamic Input ที่กด `+` เพิ่มแถวใหม่กลายเป็น Plaintext ไม่เป็นปฏิทิน/เวลา | ฟังก์ชันที่สร้างแถว dynamic ที่มี `data-universal-date` หรือ `data-universal-time` ต้องเรียก `if (typeof initUniversalDateTimeInputs === 'function') initUniversalDateTimeInputs();` ทันทีหลัง append แถวลง DOM |
+| **C-AP11** | Wordy Negation ใน `seedPatients` ขัดกับเกณฑ์ Clean Syntax | ใน `seedPatients` ประวัติแพ้ยา `drugAllergy` และโรคประจำตัว หากปฏิเสธต้องใช้คำสั้นๆ คือ `'ปฏิเสธ'` เท่านั้น ห้ามใส่ประโยคยาว เช่น 'ปฏิเสธประวัติแพ้ยาและแพ้อาหาร' |
 
 ---
 
