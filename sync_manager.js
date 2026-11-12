@@ -7,10 +7,10 @@
  * 2. ตรวจจับอุปกรณ์:
  *    - หน้าจอมือถือ (<=768px): สลับเข้ามุมมองผู้ป่วย (Landing / ซักประวัติ) ให้อัตโนมัติ
  *    - คอมพิวเตอร์ รพ. (>768px): สลับเข้ามุมมองแพทย์ (Doctor Dashboard) พร้อมระบบ PIN 4 หลัก
- * 3. เคลียร์เคสจำลอง (Seed Patients) ออก 100% ในโหมด Pilot เพื่อแสดงเฉพาะเคสจริงที่คุณหมอกรอก
- * 4. Hook ปุ่ม Submit Intake บนมือถือ -> ส่งข้อมูลขึ้น Cloud ผ่าน POST /api/intake ทันที
- * 5. ป้องกัน Doctor Dashboard ด้วย PIN 4 หลัก (ค่าเริ่มต้น: '1234' หรือตามที่ตั้งใน server.js)
- * 6. ดึงเคสล่าสุดอัตโนมัติ (Auto-poll ทุก 10 วินาที) + ปุ่ม [🔄 ดึงเคสล่าสุด] ในหน้าจอแพทย์
+ * 3. เคลียร์เคสจำลอง (Seed Patients 117 เคส) ออก 100% ในโหมด Pilot เพื่อแสดงเฉพาะเคสจริงที่คุณหมอกรอก
+ * 4. ซ่อนข้อมูลจำลอง (HN จำลอง, เลขคิวจำลอง, สัญญาณชีพจำลอง, แบนเนอร์ QR จำลอง)
+ * 5. Hook ปุ่ม Submit Intake บนมือถือ -> ส่งข้อมูลขึ้น Cloud ผ่าน POST /api/intake ทันที
+ * 6. ดึงเคสล่าสุดจาก VPS มาแทนที่ใน patientDatabase โดยตรง พร้อมปุ่ม [🔄 ดึงเคสล่าสุด]
  * ============================================================================
  */
 
@@ -29,6 +29,24 @@
     return;
   }
 
+  // --- IMMEDIATE SYNC SETUP BEFORE DOMCONTENTLOADED ---
+  // 1. Override getSeedPatients so initDatabase cannot seed 117 mock patients
+  window.getSeedPatients = function () {
+    return [];
+  };
+
+  // 2. Clear localStorage of any legacy seed patients immediately
+  try {
+    const raw = localStorage.getItem('medhistory_patients_v16');
+    if (raw) {
+      const list = JSON.parse(raw);
+      if (Array.isArray(list)) {
+        const cleaned = list.filter(p => !isSeedPatientRecord(p));
+        localStorage.setItem('medhistory_patients_v16', JSON.stringify(cleaned));
+      }
+    }
+  } catch (e) {}
+
   const SYNC_STATE = {
     isConnected: false,
     doctorPin: sessionStorage.getItem('er_doctor_pin') || '',
@@ -46,6 +64,7 @@
         activatePilotMode();
         setupDeviceDefaultView();
         injectRefreshButton();
+        hideSimulatedUiElements();
       } else {
         renderSyncStatusBadge(false);
       }
@@ -69,25 +88,37 @@
     }
   }
 
-  // --- 2. PILOT MODE: CLEAR MOCK SEED PATIENTS ---
+  // --- 2. PILOT MODE: CLEAR SEED PATIENTS & HIDE SIMULATED DEMOGRAPHICS ---
   function activatePilotMode() {
-    if (Array.isArray(window.patientDatabase)) {
-      const hasSeed = window.patientDatabase.some(p => String(p.id || '').startsWith('pt_'));
-      if (hasSeed) {
-        console.log('[SyncManager] Pilot Mode: Removing mock seed patients.');
-        window.patientDatabase = [];
-        if (typeof window.saveDatabase === 'function') {
-          try {
-            localStorage.setItem('er_smart_triage_db_v2', JSON.stringify([]));
-          } catch (err) {}
-        }
-        if (typeof window.renderQueueCards === 'function') window.renderQueueCards();
-        if (typeof window.renderDoctorDashboard === 'function') window.renderDoctorDashboard();
-        if (typeof window.updateTopCounter === 'function') window.updateTopCounter();
+    // Clear in-memory patientDatabase of any seed patients
+    if (typeof patientDatabase !== 'undefined' && Array.isArray(patientDatabase)) {
+      const realPatients = patientDatabase.filter(p => !isSeedPatientRecord(p));
+      patientDatabase.length = 0;
+      patientDatabase.push(...realPatients);
+
+      if (typeof saveDatabase === 'function') {
+        try {
+          localStorage.setItem('medhistory_patients_v16', JSON.stringify(realPatients));
+        } catch (err) {}
       }
+      if (typeof renderQueueCards === 'function') renderQueueCards();
+      if (typeof renderDoctorDashboard === 'function') renderDoctorDashboard();
+      if (typeof updateTopCounter === 'function') updateTopCounter();
     }
 
-    // Hook switchUserRole to enforce PIN
+    // Reset simulated QR queue pass so it doesn't stamp fake HN / Queue / Vitals
+    if (typeof activeQrQueuePass !== 'undefined') {
+      activeQrQueuePass.queue_number = '';
+      activeQrQueuePass.hn = '';
+      activeQrQueuePass.title = '';
+      activeQrQueuePass.name = '';
+      activeQrQueuePass.age = '';
+      activeQrQueuePass.gender = '';
+      activeQrQueuePass.esi = null;
+      activeQrQueuePass.vital_signs = null;
+    }
+
+    hideSimulatedUiElements();
     hookRoleSwitching();
 
     // If PIN is already authenticated in this session, fetch cases immediately
@@ -100,14 +131,62 @@
       }, 300);
     }
 
-    // Background polling (every 10s)
+    // Background polling (every 8 seconds)
     if (!SYNC_STATE.pollingInterval) {
       SYNC_STATE.pollingInterval = setInterval(() => {
         if (SYNC_STATE.doctorPin && isDoctorViewVisible()) {
           fetchCasesFromServer(true);
         }
-      }, 10000);
+      }, 8000);
     }
+  }
+
+  function hideSimulatedUiElements() {
+    // 1. Hide Triage QR Ticket Banner on landing
+    const qrBanner = document.querySelector('#qrQueueTicketBanner');
+    if (qrBanner) qrBanner.style.setProperty('display', 'none', 'important');
+
+    // 2. Hide Top-right QR Queue badge
+    const qrHeaderBadge = document.querySelector('#patientQrHeaderBadge');
+    if (qrHeaderBadge) qrHeaderBadge.style.setProperty('display', 'none', 'important');
+
+    // 3. Hide Triage Vital Signs card in Doctor View (Pilot mode focuses on history)
+    const vsCard = document.querySelector('#doctorTriageVsCard');
+    if (vsCard) vsCard.style.setProperty('display', 'none', 'important');
+
+    // 4. Hide Seed Patient Reload button in Empty Queue notice
+    const reloadSeedBtn = document.querySelector('button[onclick*="restoreInitialDatabase"]');
+    if (reloadSeedBtn) reloadSeedBtn.style.setProperty('display', 'none', 'important');
+
+    // 5. Hide Simulator Buttons in devRoleBar
+    const simBtns = document.querySelectorAll(
+      'button[onclick*="openTriageSimulatorModal"], #devSimulateQrBtn, #devLockStaffBtn, #resetDbBtn, #simBtnDesktop'
+    );
+    simBtns.forEach(b => {
+      if (b.id === 'simBtnDesktop' && b.parentElement) {
+        b.parentElement.style.setProperty('display', 'none', 'important');
+      } else {
+        b.style.setProperty('display', 'none', 'important');
+      }
+    });
+  }
+
+  function cleanPilotPatientRecord(p) {
+    if (!p) return;
+    // Remove fake random HN (e.g. 67xxxxx)
+    if (p.hn && (String(p.hn).startsWith('67') || p.hn === '6788412')) {
+      p.hn = 'ไม่ระบุ';
+    }
+    // Set sequential friendly queue number (เคสที่ 1, เคสที่ 2...)
+    const realCount = (typeof patientDatabase !== 'undefined' && Array.isArray(patientDatabase))
+      ? patientDatabase.filter(x => !isSeedPatientRecord(x)).length
+      : 1;
+    if (!p.queue_number || p.queue_number.startsWith('E1-') || p.queue_number.startsWith('E3-') || p.queue_number.startsWith('A-')) {
+      p.queue_number = `เคสที่ ${realCount || 1}`;
+    }
+    // Remove fake default vitals
+    p.vital_signs = null;
+    p.esi_level = null;
   }
 
   function isDoctorViewVisible() {
@@ -125,6 +204,7 @@
       if (typeof origSwitchRole === 'function') {
         origSwitchRole(role, options);
       }
+      hideSimulatedUiElements();
       if (role === 'doctor' && SYNC_STATE.isConnected && SYNC_STATE.doctorPin) {
         fetchCasesFromServer(true);
       }
@@ -143,20 +223,30 @@
 
       setTimeout(async () => {
         try {
-          const submittedId = window.lastSubmittedPatientId ||
-            (window.patientDatabase && window.patientDatabase[window.patientDatabase.length - 1]?.id);
+          // Retrieve newly submitted patient from global patientDatabase or localStorage
+          let allPatients = [];
+          if (typeof patientDatabase !== 'undefined' && Array.isArray(patientDatabase) && patientDatabase.length > 0) {
+            allPatients = patientDatabase;
+          } else {
+            const raw = localStorage.getItem('medhistory_patients_v16');
+            allPatients = raw ? JSON.parse(raw) : [];
+          }
 
-          const patientRecord = Array.isArray(window.patientDatabase)
-            ? window.patientDatabase.find(p => p.id === submittedId)
-            : null;
+          const patientRecord = allPatients[allPatients.length - 1];
 
           if (patientRecord) {
+            cleanPilotPatientRecord(patientRecord);
+            // Save cleaned record to local storage
+            try {
+              localStorage.setItem('medhistory_patients_v16', JSON.stringify(allPatients));
+            } catch (err) {}
+
             await uploadCaseToServer(patientRecord);
           }
         } catch (err) {
           console.error('[SyncManager] Submit upload error:', err);
         }
-      }, 200);
+      }, 250);
     };
   }
 
@@ -169,7 +259,8 @@
       });
 
       if (res.ok) {
-        showSyncToast(`✅ ซิงค์เคส ${patientRecord.patient_info?.name || ''} ขึ้น Cloud เรียบร้อยแล้ว`, 'success');
+        const data = await res.json();
+        showSyncToast(`✅ ซิงค์เคส ${patientRecord.name || ''} (${patientRecord.queue_number}) ขึ้น Cloud สำเร็จแล้ว`, 'success');
       } else {
         showSyncToast('⚠️ ไม่สามารถซิงค์เคสขึ้นเซิร์ฟเวอร์ได้ กรุณาตรวจสอบอินเทอร์เน็ต', 'warn');
       }
@@ -199,24 +290,30 @@
 
       if (res.ok) {
         const data = await res.json();
-        const serverCases = data.cases || [];
+        const serverCases = (data.cases || []).filter(p => !isSeedPatientRecord(p));
 
-        window.patientDatabase = serverCases;
-
-        if (typeof window.saveDatabase === 'function') {
-          try {
-            localStorage.setItem('er_smart_triage_db_v2', JSON.stringify(serverCases));
-          } catch (e) {}
+        // Update global patientDatabase in place so all core_engine functions see it
+        if (typeof patientDatabase !== 'undefined') {
+          patientDatabase.length = 0;
+          patientDatabase.push(...serverCases);
         }
 
-        // Set active patient to most recent if not selected
-        if (!window.activePatientId && serverCases.length > 0) {
-          window.activePatientId = serverCases[0].id;
+        try {
+          localStorage.setItem('medhistory_patients_v16', JSON.stringify(serverCases));
+        } catch (e) {}
+
+        // Set active patient to most recent if not selected or current one no longer exists
+        if (typeof activePatientId !== 'undefined') {
+          if (!activePatientId || !serverCases.some(c => c.id === activePatientId)) {
+            activePatientId = serverCases.length > 0 ? serverCases[0].id : null;
+          }
         }
 
-        if (typeof window.renderQueueCards === 'function') window.renderQueueCards();
-        if (typeof window.renderDoctorDashboard === 'function') window.renderDoctorDashboard();
-        if (typeof window.updateTopCounter === 'function') window.updateTopCounter();
+        if (typeof renderQueueCards === 'function') renderQueueCards();
+        if (typeof renderDoctorDashboard === 'function') renderDoctorDashboard();
+        if (typeof updateTopCounter === 'function') updateTopCounter();
+
+        hideSimulatedUiElements();
 
         if (!isSilent) {
           showSyncToast(`🔄 อัปเดตรายชื่อเคสล่าสุดแล้ว (${serverCases.length} เคส)`, 'info');
