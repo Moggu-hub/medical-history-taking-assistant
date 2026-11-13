@@ -259,21 +259,23 @@ function toggleShPsychSub() {
 }
 
 function updateShContextSymptoms() {
-  const hanging = Boolean(document.getElementById('shMethod_hanging')?.checked);
-  const co = Boolean(document.getElementById('shMethod_co')?.checked);
-  const drowning = Boolean(document.getElementById('shMethod_drowning')?.checked);
   const sharp = Boolean(document.getElementById('shMethod_sharp')?.checked);
+  const hanging = Boolean(document.getElementById('shMethod_hanging')?.checked);
+  const drowning = Boolean(document.getElementById('shMethod_drowning')?.checked);
   const jumping = Boolean(document.getElementById('shMethod_jumping')?.checked);
+  const vehicle = Boolean(document.getElementById('shMethod_vehicle')?.checked);
+  const burn = Boolean(document.getElementById('shMethod_burn')?.checked);
   const other = Boolean(document.getElementById('shMethod_other')?.checked);
+  const co = Boolean(document.getElementById('shMethod_co')?.checked);
   const neckLoc = Boolean(document.getElementById('shParentNeck')?.checked);
-  const anyMethod = hanging || co || drowning || sharp || jumping || other;
+  const anyMethod = sharp || hanging || drowning || jumping || vehicle || burn || other || co;
 
   const airwayGrp = document.getElementById('shGroup_airway');
   const bleedGrp = document.getElementById('shGroup_bleeding');
   const traumaGrp = document.getElementById('shGroup_trauma');
-  if (airwayGrp) airwayGrp.classList.toggle('hidden', anyMethod ? !(hanging || co || drowning || other || neckLoc) : false);
-  if (bleedGrp) bleedGrp.classList.toggle('hidden', anyMethod ? !(sharp || other) : false);
-  if (traumaGrp) traumaGrp.classList.toggle('hidden', anyMethod ? !(jumping || other) : false);
+  if (airwayGrp) airwayGrp.classList.toggle('hidden', anyMethod ? !(hanging || drowning || other || neckLoc || co) : false);
+  if (bleedGrp) bleedGrp.classList.toggle('hidden', anyMethod ? !(sharp || jumping || vehicle || burn || other) : false);
+  if (traumaGrp) traumaGrp.classList.toggle('hidden', anyMethod ? !(jumping || vehicle || burn || other) : false);
 }
 
 function handleShPainScoreChange(val) {
@@ -491,117 +493,147 @@ const selfHarmModule = {
           </div>
         </div>
 
-        <!-- 1.3 วิธีการทำร้ายตนเอง -->
+        <!-- 1.3 ลักษณะหรือวิธีการที่เกิดขึ้นในครั้งนี้ -->
         <div class="pt-2 border-t border-slate-100">
-          <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">1.3 วิธีการที่ใช้ในการทำร้ายตนเอง (เลือกได้หลายข้อหากมีหลายวิธีร่วมกัน)</label>
+          <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">1.3 ลักษณะหรือวิธีการที่เกิดขึ้นในครั้งนี้ (เลือกได้มากกว่า 1 ข้อ — ใช้คัดกรองชุดคำถามอาการและตำแหน่งบาดแผลในส่วนถัดไป)</label>
+          <p class="text-[11px] text-slate-500 mb-2.5">หากเป็นการกินยาเกินขนาดหรือดื่มสารพิษอย่างเดียว กรุณากดปุ่มเปลี่ยนไปใช้หัวข้อ <strong>"ได้รับสารพิษ / กินยาเกินขนาด"</strong> ด้านบน</p>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
             <label class="selectable-card flex items-start p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-              <input type="checkbox" id="shMethod_hanging" name="selfHarmMethod" value="hanging" onchange="toggleShGroup('shSub_hanging', this.checked); updateShContextSymptoms();" class="mt-0.5 text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
-              <div class="ml-3"><span class="block text-xs sm:text-sm font-semibold text-slate-800">ผูกคอ รัดคอ หรือทำให้ขาดอากาศหายใจ</span><span class="block text-[11px] text-slate-500 font-normal mt-0.5">เช่น ใช้เชือก ผ้า รัดคอ หรือใช้ถุงคลุมศีรษะ</span></div>
-            </label>
-            <label class="selectable-card flex items-start p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
               <input type="checkbox" id="shMethod_sharp" name="selfHarmMethod" value="sharp" onchange="toggleShGroup('shSub_sharp', this.checked); updateShContextSymptoms();" class="mt-0.5 text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
-              <div class="ml-3"><span class="block text-xs sm:text-sm font-semibold text-slate-800">ใช้ของมีคม กรีด ขีดข่วน หรือแทง</span><span class="block text-[11px] text-slate-500 font-normal mt-0.5">เช่น มีดคัตเตอร์ มีดโกน กรรไกร เศษแก้ว หรือแทงส่วนร่างกาย</span></div>
+              <div class="ml-3"><span class="block text-xs sm:text-sm font-semibold text-slate-800">ใช้ของมีคม หรืออาวุธทำร้ายตนเอง</span><span class="block text-[11px] text-slate-500 font-normal mt-0.5">เช่น ใช้มีด คัตเตอร์ ใบมีดโกน เศษแก้ว กรีดหรือแทงตามร่างกาย</span></div>
             </label>
             <label class="selectable-card flex items-start p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-              <input type="checkbox" id="shMethod_jumping" name="selfHarmMethod" value="jumping" onchange="toggleShGroup('shSub_jumping', this.checked); updateShContextSymptoms();" class="mt-0.5 text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
-              <div class="ml-3"><span class="block text-xs sm:text-sm font-semibold text-slate-800">กระโดดจากที่สูง หรือตกจากที่สูง</span><span class="block text-[11px] text-slate-500 font-normal mt-0.5">เช่น ตึก ระเบียง สะพาน หรือที่ลาดชัน</span></div>
+              <input type="checkbox" id="shMethod_hanging" name="selfHarmMethod" value="hanging" onchange="toggleShGroup('shSub_hanging', this.checked); updateShContextSymptoms();" class="mt-0.5 text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
+              <div class="ml-3"><span class="block text-xs sm:text-sm font-semibold text-slate-800">ผูกคอ รัดคอ หรือทำให้ขาดอากาศหายใจ</span><span class="block text-[11px] text-slate-500 font-normal mt-0.5">เช่น ใช้เชือก ผ้า สายไฟรัดคอ หรือใช้ถุงพลาสติกคลุมศีรษะ</span></div>
             </label>
             <label class="selectable-card flex items-start p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
               <input type="checkbox" id="shMethod_drowning" name="selfHarmMethod" value="drowning" onchange="toggleShGroup('shSub_drowning', this.checked); updateShContextSymptoms();" class="mt-0.5 text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
-              <div class="ml-3"><span class="block text-xs sm:text-sm font-semibold text-slate-800">กระโดดน้ำ หรือพยายามทำให้ตนเองจมน้ำ</span><span class="block text-[11px] text-slate-500 font-normal mt-0.5">เช่น กระโดดแม่น้ำ คลอง สระน้ำ หรือจมน้ำ</span></div>
+              <div class="ml-3"><span class="block text-xs sm:text-sm font-semibold text-slate-800">กระโดดน้ำ จมน้ำ หรือพยายามทำให้ตนเองจมน้ำ</span><span class="block text-[11px] text-slate-500 font-normal mt-0.5">เช่น กระโดดลงแม่น้ำ/คลอง จุ่มศีรษะลงในอ่างน้ำ หรือพยายามกลั้นใจใต้น้ำ</span></div>
             </label>
             <label class="selectable-card flex items-start p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-              <input type="checkbox" id="shMethod_co" name="selfHarmMethod" value="co_poisoning" onchange="toggleShGroup('shSub_co', this.checked); updateShContextSymptoms();" class="mt-0.5 text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
-              <div class="ml-3"><span class="block text-xs sm:text-sm font-semibold text-slate-800">รมควัน จุดเตาถ่าน หรือสูดดมก๊าซพิษในห้องปิด</span><span class="block text-[11px] text-slate-500 font-normal mt-0.5">จุดไฟในรถ หรือในห้องปิดสนิท</span></div>
+              <input type="checkbox" id="shMethod_jumping" name="selfHarmMethod" value="jumping" onchange="toggleShGroup('shSub_jumping', this.checked); updateShContextSymptoms();" class="mt-0.5 text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
+              <div class="ml-3"><span class="block text-xs sm:text-sm font-semibold text-slate-800">กระโดดจากที่สูง</span><span class="block text-[11px] text-slate-500 font-normal mt-0.5">เช่น กระโดดลงมาจากตัวอาคาร ระเบียงบ้าน บันได หรือสะพาน</span></div>
+            </label>
+            <label class="selectable-card flex items-start p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
+              <input type="checkbox" id="shMethod_vehicle" name="selfHarmMethod" value="vehicle" onchange="toggleShGroup('shSub_vehicle', this.checked); updateShContextSymptoms();" class="mt-0.5 text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
+              <div class="ml-3"><span class="block text-xs sm:text-sm font-semibold text-slate-800">วิ่งให้รถชน หรือกระโดดตัดหน้ารถ</span><span class="block text-[11px] text-slate-500 font-normal mt-0.5">เช่น วิ่งออกไปบนถนนเพื่อให้รถยนต์ รถจักรยานยนต์ หรือรถไฟชน</span></div>
+            </label>
+            <label class="selectable-card flex items-start p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
+              <input type="checkbox" id="shMethod_burn" name="selfHarmMethod" value="burn" onchange="toggleShGroup('shSub_burn', this.checked); updateShContextSymptoms();" class="mt-0.5 text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
+              <div class="ml-3"><span class="block text-xs sm:text-sm font-semibold text-slate-800">ทำร้ายตนเองด้วยความร้อน ไฟ หรือน้ำร้อน</span><span class="block text-[11px] text-slate-500 font-normal mt-0.5">เช่น ใช้น้ำร้อนลวก จุดไฟเผา หรือใช้บุหรี่/วัตถุความร้อนจี้ผิวหนัง</span></div>
             </label>
             <label class="selectable-card flex items-start p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
               <input type="checkbox" id="shMethod_other" name="selfHarmMethod" value="other_trauma" onchange="toggleShGroup('shSub_other', this.checked); updateShContextSymptoms();" class="mt-0.5 text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
-              <div class="ml-3"><span class="block text-xs sm:text-sm font-semibold text-slate-800">วิธีอื่น เช่น วิ่งให้รถชน กระแทก อาวุธปืน หรือไฟลวก</span><span class="block text-[11px] text-slate-500 font-normal mt-0.5">การกระทำที่ก่อให้เกิดการบาดเจ็บรุนแรงอื่นๆ</span></div>
+              <div class="ml-3"><span class="block text-xs sm:text-sm font-semibold text-slate-800">ทำร้ายร่างกายด้วยแรงกระแทก หรือวิธีอื่นๆ</span><span class="block text-[11px] text-slate-500 font-normal mt-0.5">เช่น โขกศีรษะกับกำแพง ชกกำแพง หรือทุบตีร่างกายตนเอง</span></div>
+            </label>
+            <label class="selectable-card flex items-start p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
+              <input type="checkbox" id="shMethod_co" name="selfHarmMethod" value="co_poisoning" onchange="toggleShGroup('shSub_co', this.checked); updateShContextSymptoms();" class="mt-0.5 text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
+              <div class="ml-3"><span class="block text-xs sm:text-sm font-semibold text-slate-800">มีการรับประทานยาเกินขนาด หรือดื่มสารพิษร่วมด้วยในเหตุการณ์นี้</span><span class="block text-[11px] text-slate-500 font-normal mt-0.5">เลือกข้อนี้เฉพาะกรณีที่มีการทำร้ายร่างกายข้างต้น ควบคู่กับ การกินยาหรือสารพิษร่วมด้วย</span></div>
             </label>
           </div>
 
-          <!-- Progressive Disclosure Sub-options -->
-          <div id="shSub_hanging" class="hidden mt-3 p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
-            <span class="block text-xs font-bold text-slate-700">รายละเอียดการผูกคอ / ขาดอากาศหายใจ:</span>
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
-              <label class="selectable-card flex items-center p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer"><input type="checkbox" id="shHanging_suspended" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0"><span class="ml-3 text-xs font-semibold text-slate-800">ตัวลอยพ้นพื้น</span></label>
-              <label class="selectable-card flex items-center p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer"><input type="checkbox" id="shHanging_unconscious" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0"><span class="ml-3 text-xs font-semibold text-slate-800">หมดสติ ไม่รู้สึกตัวเมื่อพบ</span></label>
-              <label class="selectable-card flex items-center p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer"><input type="checkbox" id="shHanging_cyanosis" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0"><span class="ml-3 text-xs font-semibold text-slate-800">พบหน้าเขียว คล้ำ หรือจุดเลือดออก</span></label>
+          <!-- Progressive Disclosure Sub-options (1.3.1 - 1.3.8 ตามแผน plan_self_harm.md) -->
+          <div id="shSub_sharp" class="hidden mt-3 p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
+            <span class="block text-xs font-bold text-slate-700">1.3.1 รายละเอียดการใช้ของมีคม หรืออาวุธ:</span>
+            <div>
+              <span class="block text-xs font-semibold text-slate-700 mb-1">สิ่งของหรืออุปกรณ์ที่ใช้:</span>
+              <input type="text" id="selfHarmSharpDevice" placeholder="เช่น มีดคัตเตอร์, ใบมีดโกน, มีดทำครัว, เศษแก้ว..." class="w-full text-xs sm:text-sm border-slate-300 rounded-lg p-2 focus:ring-medical-500 focus:border-medical-500 bg-white">
             </div>
             <div>
-              <span class="block text-[11px] font-semibold text-slate-600 mb-1">ระยะเวลาที่ถูกแขวน/รัดคอ (ถ้าทราบ):</span>
-              <input type="text" id="selfHarmHangingDuration" placeholder="เช่น ประมาณ 2-3 นาที หรือ ช่วยตัดเชือกลงมาทันที" class="w-full text-xs sm:text-sm border-slate-300 rounded-lg p-2 focus:ring-medical-500 focus:border-medical-500 bg-white">
-            </div>
-          </div>
-
-          <div id="shSub_sharp" class="hidden mt-3 p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
-            <span class="block text-xs font-bold text-slate-700">รายละเอียดการใช้ของมีคม:</span>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              <div>
-                <span class="block text-[11px] font-semibold text-slate-600 mb-1">ชนิดของมีคมหรืออาวุธที่ใช้:</span>
-                <input type="text" id="selfHarmSharpDevice" placeholder="เช่น คัตเตอร์, ใบมีดโกน, มีดทำครัว, เศษแก้ว" class="w-full text-xs sm:text-sm border-slate-300 rounded-lg p-2 focus:ring-medical-500 focus:border-medical-500 bg-white">
-              </div>
-              <div>
-                <span class="block text-[11px] font-semibold text-slate-600 mb-1">การไหลของเลือดจากบาดแผล:</span>
-                <select id="selfHarmBleedingStatus" class="w-full text-xs sm:text-sm border-slate-300 rounded-lg p-2 focus:ring-medical-500 focus:border-medical-500 bg-white">
-                  <option value="stopped">เลือดหยุดไหลแล้ว หรือซึมเล็กน้อย</option>
-                  <option value="oozing">เลือดยังคงไหลซึมต่อเนื่อง</option>
-                  <option value="pulsatile">เลือดพุ่งเป็นจังหวะ หรือไหลทะลักไม่หยุด</option>
-                </select>
+              <span class="block text-xs font-semibold text-slate-700 mb-1.5">ลักษณะเลือดออกที่บาดแผลในขณะนี้:</span>
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <label class="selectable-card flex items-start p-2.5 rounded-lg border border-slate-200 bg-white hover:border-medical-300 cursor-pointer transition">
+                  <input type="radio" name="selfHarmBleedingStatus" value="stopped" class="mt-0.5 text-medical-600 focus:ring-medical-500 h-4 w-4 flex-shrink-0">
+                  <div class="ml-3"><span class="block text-xs font-semibold text-slate-800">เลือดหยุดไหลแล้ว</span><span class="block text-[11px] text-slate-500 font-normal mt-0.5">เป็นแผลตื้น หรือแผลที่ไม่มีเลือดซึมออกมาอีกในขณะนี้</span></div>
+                </label>
+                <label class="selectable-card flex items-start p-2.5 rounded-lg border border-slate-200 bg-white hover:border-medical-300 cursor-pointer transition">
+                  <input type="radio" name="selfHarmBleedingStatus" value="oozing" class="mt-0.5 text-medical-600 focus:ring-medical-500 h-4 w-4 flex-shrink-0">
+                  <div class="ml-3"><span class="block text-xs font-semibold text-slate-800">ยังมีเลือดไหลซึมต่อเนื่อง</span><span class="block text-[11px] text-slate-500 font-normal mt-0.5">เลือดยังซึมออกจากปากแผลเรื่อยๆ</span></div>
+                </label>
+                <label class="selectable-card flex items-start p-2.5 rounded-lg border border-slate-200 bg-white hover:border-medical-300 cursor-pointer transition">
+                  <input type="radio" name="selfHarmBleedingStatus" value="pulsatile" class="mt-0.5 text-medical-600 focus:ring-medical-500 h-4 w-4 flex-shrink-0">
+                  <div class="ml-3"><span class="block text-xs font-semibold text-slate-800">เลือดไหลพุ่ง หรือชุ่มผ้าเร็วมาก</span><span class="block text-[11px] text-slate-500 font-normal mt-0.5">เลือดออกปริมาณมาก กดห้ามเลือดแล้วยังซึมทะลุผ้าอย่างรวดเร็ว</span></div>
+                </label>
               </div>
             </div>
           </div>
 
-          <div id="shSub_jumping" class="hidden mt-3 p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
-            <span class="block text-xs font-bold text-slate-700">รายละเอียดการตก/กระโดดจากที่สูง:</span>
+          <div id="shSub_hanging" class="hidden mt-3 p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
+            <span class="block text-xs font-bold text-slate-700">1.3.2 ลักษณะเหตุการณ์ผูกคอ รัดคอ หรือขาดอากาศหายใจ (เลือกได้หลายข้อ):</span>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              <div>
-                <span class="block text-[11px] font-semibold text-slate-600 mb-1">ความสูงโดยประมาณ หรือชั้นของอาคาร:</span>
-                <input type="text" id="selfHarmJumpingHeight" placeholder="เช่น ชั้น 2, ชั้น 3, สะพานลอย (ประมาณ 4 เมตร)" class="w-full text-xs sm:text-sm border-slate-300 rounded-lg p-2 focus:ring-medical-500 focus:border-medical-500 bg-white">
-              </div>
-              <div>
-                <span class="block text-[11px] font-semibold text-slate-600 mb-1">ลักษณะพื้นผิวที่ตกกระทบ:</span>
-                <input type="text" id="selfHarmJumpingSurface" placeholder="เช่น พื้นปูนคอนกรีต, พื้นดิน, กระเบื้อง" class="w-full text-xs sm:text-sm border-slate-300 rounded-lg p-2 focus:ring-medical-500 focus:border-medical-500 bg-white">
-              </div>
+              <label class="selectable-card flex items-start p-2.5 rounded-lg border border-slate-200 bg-white hover:border-medical-300 cursor-pointer transition">
+                <input type="checkbox" id="shHanging_suspended" class="mt-0.5 text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
+                <div class="ml-3"><span class="block text-xs font-semibold text-slate-800">ผูกคอโดยเท้าลอยพ้นพื้น</span><span class="block text-[11px] text-slate-500 font-normal mt-0.5">ร่างกายห้อยลงมาโดยเท้าไม่แตะพื้น หรือทิ้งตัวลงมาจากที่สูง</span></div>
+              </label>
+              <label class="selectable-card flex items-start p-2.5 rounded-lg border border-slate-200 bg-white hover:border-medical-300 cursor-pointer transition">
+                <input type="checkbox" id="shHanging_partial" class="mt-0.5 text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
+                <div class="ml-3"><span class="block text-xs font-semibold text-slate-800">ผูกคอโดยเท้าหรือลำตัวยังแตะพื้น</span><span class="block text-[11px] text-slate-500 font-normal mt-0.5">ยืน นั่ง หรือคุกเข่าผูกคอโดยบางส่วนของร่างกายยังแตะพื้นอยู่</span></div>
+              </label>
+              <label class="selectable-card flex items-start p-2.5 rounded-lg border border-slate-200 bg-white hover:border-medical-300 cursor-pointer transition">
+                <input type="checkbox" id="shHanging_ligature" class="mt-0.5 text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
+                <div class="ml-3"><span class="block text-xs font-semibold text-slate-800">ใช้มือบีบคอ หรือใช้วัสดุรัดรอบคอ</span><span class="block text-[11px] text-slate-500 font-normal mt-0.5">เช่น ใช้เข็มขัด สายไฟ หรือผ้าดึงรัดรอบลำคอ</span></div>
+              </label>
+              <label class="selectable-card flex items-start p-2.5 rounded-lg border border-slate-200 bg-white hover:border-medical-300 cursor-pointer transition">
+                <input type="checkbox" id="shHanging_suffocation" class="mt-0.5 text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
+                <div class="ml-3"><span class="block text-xs font-semibold text-slate-800">ใช้ถุงคลุมศีรษะ หรืออุดกั้นทางเดินหายใจ</span><span class="block text-[11px] text-slate-500 font-normal mt-0.5">เช่น ใช้ถุงพลาสติกคลุมศีรษะ หรือใช้หมอน/สิ่งของกดปิดจมูกและปาก</span></div>
+              </label>
+              <label class="selectable-card flex items-start p-2.5 rounded-lg border border-slate-200 bg-white hover:border-medical-300 cursor-pointer transition">
+                <input type="checkbox" id="shHanging_unconscious" class="mt-0.5 text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
+                <div class="ml-3"><span class="block text-xs font-semibold text-slate-800">มีอาการหมดสติหลังเกิดเหตุ</span><span class="block text-[11px] text-slate-500 font-normal mt-0.5">ไม่รู้สึกตัวไปชั่วขณะ หรือเพิ่งรู้สึกตัวหลังมีผู้เข้าช่วยเหลือ</span></div>
+              </label>
+              <label class="selectable-card flex items-start p-2.5 rounded-lg border border-slate-200 bg-white hover:border-medical-300 cursor-pointer transition">
+                <input type="checkbox" id="shHanging_cyanosis" class="mt-0.5 text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
+                <div class="ml-3"><span class="block text-xs font-semibold text-slate-800">ตัวเขียว หรือหยุดหายใจชั่วคราว</span><span class="block text-[11px] text-slate-500 font-normal mt-0.5">ผู้ช่วยเหลือสังเกตเห็นริมฝีปากเขียว ตัวเขียว หรือต้องช่วยปั๊มหัวใจ/เป่าปาก</span></div>
+              </label>
             </div>
           </div>
 
           <div id="shSub_drowning" class="hidden mt-3 p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
-            <span class="block text-xs font-bold text-slate-700">รายละเอียดการกระโดดน้ำ / จมน้ำ:</span>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              <div>
-                <span class="block text-[11px] font-semibold text-slate-600 mb-1">สถานที่จมน้ำ:</span>
-                <input type="text" id="selfHarmDrowningPlace" placeholder="เช่น แม่น้ำแม่กลอง, คลองชลประทาน, สระว่ายน้ำ" class="w-full text-xs sm:text-sm border-slate-300 rounded-lg p-2 focus:ring-medical-500 focus:border-medical-500 bg-white">
-              </div>
-              <div>
-                <span class="block text-[11px] font-semibold text-slate-600 mb-1">มีภาวะสำลักน้ำหรือหมดสติ:</span>
-                <select id="selfHarmDrowningAspiration" class="w-full text-xs sm:text-sm border-slate-300 rounded-lg p-2 focus:ring-medical-500 focus:border-medical-500 bg-white">
-                  <option value="no">ไม่มีการสำลักน้ำ / รู้สึกตัวดีตลอด</option>
-                  <option value="cough_gasping">มีอาการไอ สำลักน้ำ หรือหอบเหนื่อย</option>
-                  <option value="unconscious_cpr">หมดสติ / มีการช่วยฟื้นคืนชีพ (CPR) ในที่เกิดเหตุ</option>
-                </select>
-              </div>
+            <span class="block text-xs font-bold text-slate-700">1.3.3 รายละเอียดเพิ่มเติมเกี่ยวกับการจมน้ำ (เลือกได้หลายข้อ):</span>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              <label class="selectable-card flex items-start p-2.5 rounded-lg border border-slate-200 bg-white hover:border-medical-300 cursor-pointer transition">
+                <input type="checkbox" id="shDrown_aspiration" class="mt-0.5 text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
+                <span class="ml-3 text-xs font-semibold text-slate-800">มีการสำลักน้ำ หรือไอสำลักรุนแรงหลังช่วยขึ้นมา</span>
+              </label>
+              <label class="selectable-card flex items-start p-2.5 rounded-lg border border-slate-200 bg-white hover:border-medical-300 cursor-pointer transition">
+                <input type="checkbox" id="shDrown_unconscious" class="mt-0.5 text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
+                <span class="ml-3 text-xs font-semibold text-slate-800">มีอาการหมดสติ ไม่รู้สึกตัว หรือตัวเขียวในน้ำ</span>
+              </label>
+              <label class="selectable-card flex items-start p-2.5 rounded-lg border border-slate-200 bg-white hover:border-medical-300 cursor-pointer transition">
+                <input type="checkbox" id="shDrown_cpr" class="mt-0.5 text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
+                <span class="ml-3 text-xs font-semibold text-slate-800">ได้รับการปั๊มหัวใจ หรือผายปอดช่วยชีวิตก่อนมาถึง รพ.</span>
+              </label>
             </div>
           </div>
 
-          <div id="shSub_co" class="hidden mt-3 p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
-            <span class="block text-xs font-bold text-slate-700">รายละเอียดการรมควัน / สูดก๊าซพิษ:</span>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              <div>
-                <span class="block text-[11px] font-semibold text-slate-600 mb-1">สถานที่และแหล่งกำเนิดควัน:</span>
-                <input type="text" id="selfHarmCoSource" placeholder="เช่น จุดเตาอั้งโล่ในห้องนอนปิดสนิท, สตาร์ทรถรมควัน" class="w-full text-xs sm:text-sm border-slate-300 rounded-lg p-2 focus:ring-medical-500 focus:border-medical-500 bg-white">
-              </div>
-              <div>
-                <span class="block text-[11px] font-semibold text-slate-600 mb-1">ระยะเวลาที่อยู่ในห้องปิดควัน:</span>
-                <input type="text" id="selfHarmCoDuration" placeholder="เช่น ประมาณ 30 นาที, หรือ ไม่แน่ชัด" class="w-full text-xs sm:text-sm border-slate-300 rounded-lg p-2 focus:ring-medical-500 focus:border-medical-500 bg-white">
-              </div>
-            </div>
+          <div id="shSub_jumping" class="hidden mt-3 p-3.5 bg-slate-50 rounded-xl border border-slate-200">
+            <span class="block text-xs font-bold text-slate-700 mb-1.5">1.3.4 ความสูงโดยประมาณและพื้นที่ตกกระแทก:</span>
+            <input type="text" id="selfHarmJumpingDetail" placeholder="เช่น กระโดดจากระเบียงชั้น 2 (สูงประมาณ 4 เมตร) ลงบนพื้นปูน..." class="w-full text-xs sm:text-sm border-slate-300 rounded-lg p-2 focus:ring-medical-500 focus:border-medical-500 bg-white">
+          </div>
+
+          <div id="shSub_vehicle" class="hidden mt-3 p-3.5 bg-slate-50 rounded-xl border border-slate-200">
+            <span class="block text-xs font-bold text-slate-700 mb-1.5">1.3.5 ชนิดของรถที่ชนและลักษณะเหตุการณ์:</span>
+            <input type="text" id="selfHarmVehicleDetail" placeholder="เช่น วิ่งตัดหน้ารถจักรยานยนต์, ถูกรถกระบะเฉี่ยวชนล้ม..." class="w-full text-xs sm:text-sm border-slate-300 rounded-lg p-2 focus:ring-medical-500 focus:border-medical-500 bg-white">
+          </div>
+
+          <div id="shSub_burn" class="hidden mt-3 p-3.5 bg-slate-50 rounded-xl border border-slate-200">
+            <span class="block text-xs font-bold text-slate-700 mb-1.5">1.3.6 สิ่งที่ทำให้เกิดแผลไหม้หรือความร้อน:</span>
+            <input type="text" id="selfHarmBurnDetail" placeholder="เช่น น้ำร้อนลวก, เปลวไฟ, เตารีด..." class="w-full text-xs sm:text-sm border-slate-300 rounded-lg p-2 focus:ring-medical-500 focus:border-medical-500 bg-white">
           </div>
 
           <div id="shSub_other" class="hidden mt-3 p-3.5 bg-slate-50 rounded-xl border border-slate-200">
-            <span class="block text-xs font-semibold text-slate-700 mb-1">ระบุรายละเอียดวิธีการทำร้ายตนเองอื่นๆ:</span>
-            <textarea id="selfHarmOtherMethodText" rows="2" placeholder="อธิบายเหตุการณ์ เช่น วิ่งชนสิ่งกีดขวาง, ไฟลวก ฯลฯ" class="w-full text-xs sm:text-sm border-slate-300 rounded-lg p-2 focus:ring-medical-500 focus:border-medical-500 bg-white"></textarea>
+            <span class="block text-xs font-bold text-slate-700 mb-1.5">1.3.7 รายละเอียดวิธีการทำร้ายร่างกาย:</span>
+            <input type="text" id="selfHarmOtherMethodText" placeholder="เช่น โขกศีรษะกับผนังปูน, ชกกระจก..." class="w-full text-xs sm:text-sm border-slate-300 rounded-lg p-2 focus:ring-medical-500 focus:border-medical-500 bg-white">
+          </div>
+
+          <div id="shSub_co" class="hidden mt-3 p-3.5 bg-amber-50/70 rounded-xl border border-amber-200 space-y-2">
+            <p class="text-xs text-slate-700">
+              <strong>คำแนะนำ:</strong> หากไม่มีบาดแผลทางกายและเป็นการกินยา/สารพิษอย่างเดียว กรุณากดปุ่มสลับไปใช้หัวข้อ <strong>"ได้รับสารพิษ / กินยาเกินขนาด"</strong> ด้านบน แต่หากมีบาดแผลทางกายร่วมด้วย กรุณาระบุชื่อยาหรือสารพิษคร่าวๆ ด้านล่างเพื่อแจ้งแพทย์ทันที:
+            </p>
+            <div>
+              <span class="block text-xs font-bold text-slate-700 mb-1">1.3.8 ชื่อยาหรือสารพิษที่รับประทานร่วมด้วยและปริมาณ:</span>
+              <input type="text" id="selfHarmCoPoisoningText" placeholder="เช่น กินยาพาราเซตามอลร่วมด้วย 20 เม็ด..." class="w-full text-xs sm:text-sm border-slate-300 rounded-lg p-2 focus:ring-medical-500 focus:border-medical-500 bg-white">
+            </div>
           </div>
         </div>
       </div>
@@ -960,22 +992,24 @@ const selfHarmModule = {
     p.selfHarmMethods = getVals('selfHarmMethod');
 
     p.selfHarmHanging_suspended = getChecked('shHanging_suspended');
+    p.selfHarmHanging_partial = getChecked('shHanging_partial');
+    p.selfHarmHanging_ligature = getChecked('shHanging_ligature');
+    p.selfHarmHanging_suffocation = getChecked('shHanging_suffocation');
     p.selfHarmHanging_unconscious = getChecked('shHanging_unconscious');
     p.selfHarmHanging_cyanosis = getChecked('shHanging_cyanosis');
-    p.selfHarmHangingDuration = getVal('selfHarmHangingDuration');
 
     p.selfHarmSharpDevice = getVal('selfHarmSharpDevice');
-    p.selfHarmBleedingStatus = p.selfHarmMethods.includes('sharp') ? (document.getElementById('selfHarmBleedingStatus')?.value || 'stopped') : '';
+    p.selfHarmBleedingStatus = p.selfHarmMethods.includes('sharp') ? getRadio('selfHarmBleedingStatus') : '';
 
-    p.selfHarmJumpingHeight = getVal('selfHarmJumpingHeight');
-    p.selfHarmJumpingSurface = getVal('selfHarmJumpingSurface');
+    p.selfHarmDrown_aspiration = getChecked('shDrown_aspiration');
+    p.selfHarmDrown_unconscious = getChecked('shDrown_unconscious');
+    p.selfHarmDrown_cpr = getChecked('shDrown_cpr');
 
-    p.selfHarmDrowningPlace = getVal('selfHarmDrowningPlace');
-    p.selfHarmDrowningAspiration = document.getElementById('selfHarmDrowningAspiration')?.value || 'no';
-
-    p.selfHarmCoSource = getVal('selfHarmCoSource');
-    p.selfHarmCoDuration = getVal('selfHarmCoDuration');
+    p.selfHarmJumpingDetail = getVal('selfHarmJumpingDetail');
+    p.selfHarmVehicleDetail = getVal('selfHarmVehicleDetail');
+    p.selfHarmBurnDetail = getVal('selfHarmBurnDetail');
     p.selfHarmOtherMethodText = getVal('selfHarmOtherMethodText');
+    p.selfHarmCoPoisoningText = getVal('selfHarmCoPoisoningText');
 
     // Card 2: Symptoms, Standard 7 Regions & Pain
     const symIds = ['hoarseness', 'stridor', 'active_bleeding', 'numbness_distal', 'motor_deficit', 'wound_depth', 'severe_pain_deformity', 'severe_abdpain', 'unconscious', 'dizziness_shock', 'none'];
@@ -1082,26 +1116,42 @@ const selfHarmModule = {
     setVal('selfHarmExactTime', patient.selfHarmExactTime || '');
 
     const methods = Array.isArray(patient.selfHarmMethods) ? patient.selfHarmMethods : [];
-    [['hanging', 'hanging'], ['sharp', 'sharp'], ['jumping', 'jumping'], ['drowning', 'drowning'], ['co', 'co_poisoning'], ['other', 'other_trauma']].forEach(([m, v]) => {
+    [
+      ['sharp', 'sharp'],
+      ['hanging', 'hanging'],
+      ['drowning', 'drowning'],
+      ['jumping', 'jumping'],
+      ['vehicle', 'vehicle'],
+      ['burn', 'burn'],
+      ['other', 'other_trauma'],
+      ['co', 'co_poisoning']
+    ].forEach(([m, v]) => {
       const checked = methods.includes(v) || methods.includes(m);
       setChecked(`shMethod_${m}`, checked);
       toggleShGroup(`shSub_${m}`, checked);
     });
 
     setChecked('shHanging_suspended', patient.selfHarmHanging_suspended);
+    setChecked('shHanging_partial', patient.selfHarmHanging_partial);
+    setChecked('shHanging_ligature', patient.selfHarmHanging_ligature);
+    setChecked('shHanging_suffocation', patient.selfHarmHanging_suffocation);
     setChecked('shHanging_unconscious', patient.selfHarmHanging_unconscious);
     setChecked('shHanging_cyanosis', patient.selfHarmHanging_cyanosis);
-    setVal('selfHarmHangingDuration', patient.selfHarmHangingDuration || '');
 
     setVal('selfHarmSharpDevice', patient.selfHarmSharpDevice || '');
-    if (document.getElementById('selfHarmBleedingStatus')) document.getElementById('selfHarmBleedingStatus').value = patient.selfHarmBleedingStatus || 'stopped';
-    setVal('selfHarmJumpingHeight', patient.selfHarmJumpingHeight || '');
-    setVal('selfHarmJumpingSurface', patient.selfHarmJumpingSurface || '');
-    setVal('selfHarmDrowningPlace', patient.selfHarmDrowningPlace || '');
-    if (document.getElementById('selfHarmDrowningAspiration')) document.getElementById('selfHarmDrowningAspiration').value = patient.selfHarmDrowningAspiration || 'no';
-    setVal('selfHarmCoSource', patient.selfHarmCoSource || '');
-    setVal('selfHarmCoDuration', patient.selfHarmCoDuration || '');
+    setRadio('selfHarmBleedingStatus', patient.selfHarmBleedingStatus);
+
+    setChecked('shDrown_aspiration', patient.selfHarmDrown_aspiration || patient.selfHarmDrowningAspiration === 'cough_gasping');
+    setChecked('shDrown_unconscious', patient.selfHarmDrown_unconscious || patient.selfHarmDrowningAspiration === 'unconscious_cpr');
+    setChecked('shDrown_cpr', patient.selfHarmDrown_cpr || patient.selfHarmDrowningAspiration === 'unconscious_cpr');
+
+    const legacyJump = [patient.selfHarmJumpingHeight, patient.selfHarmJumpingSurface].filter(Boolean).join(', ');
+    setVal('selfHarmJumpingDetail', patient.selfHarmJumpingDetail || legacyJump || '');
+    setVal('selfHarmVehicleDetail', patient.selfHarmVehicleDetail || '');
+    setVal('selfHarmBurnDetail', patient.selfHarmBurnDetail || '');
     setVal('selfHarmOtherMethodText', patient.selfHarmOtherMethodText || '');
+    const legacyCo = [patient.selfHarmCoSource, patient.selfHarmCoDuration].filter(Boolean).join(', ');
+    setVal('selfHarmCoPoisoningText', patient.selfHarmCoPoisoningText || legacyCo || '');
 
     // Card 2
     const symList = Array.isArray(patient.selfHarmSymptoms) ? patient.selfHarmSymptoms : [];
@@ -1196,7 +1246,7 @@ const selfHarmModule = {
 
     const toHide = [
       'shInformantRelSub', 'shInformantRescuerSub',
-      'shSub_hanging', 'shSub_sharp', 'shSub_jumping', 'shSub_drowning', 'shSub_co', 'shSub_other',
+      'shSub_sharp', 'shSub_hanging', 'shSub_drowning', 'shSub_jumping', 'shSub_vehicle', 'shSub_burn', 'shSub_other', 'shSub_co',
       'shHeadFaceSubGroup', 'shNeckSubGroup', 'shChestSubGroup', 'shAbdSubGroup',
       'shUpperExtSubGroup', 'shLowerExtSubGroup', 'shArmFingersDetail', 'shLegToesDetail', 'shOtherSubGroup',
       'shPsychDetailSub', 'selfHarmFemaleSection',
@@ -1231,7 +1281,7 @@ const selfHarmModule = {
     const lowerSigns = Array.isArray(patient.shLowerExtSigns) ? patient.shLowerExtSigns : [];
 
     // 1. Airway / Near-Hanging / C-spine
-    if (methods.includes('hanging') || symptoms.includes('hoarseness') || symptoms.includes('stridor') || neckSigns.includes('airway_compromise_hoarseness') || neckSigns.includes('cspine_severe_pain_stiff')) {
+    if (methods.includes('hanging') || patient.selfHarmHanging_unconscious || patient.selfHarmHanging_cyanosis || symptoms.includes('hoarseness') || symptoms.includes('stridor') || neckSigns.includes('airway_compromise_hoarseness') || neckSigns.includes('cspine_severe_pain_stiff')) {
       redFlags.push({
         key: 'airway_compromise_near_hanging',
         textTh: 'สงสัยภาวะทางเดินหายใจอุดกั้น / บาดเจ็บกระดูกคอและกล่องเสียง (Airway & Laryngeal Trauma)',
@@ -1258,7 +1308,7 @@ const selfHarmModule = {
     }
 
     // 4. High-Energy Multiple Trauma / Chest-Abdomen
-    if (methods.includes('jumping') || symptoms.includes('severe_pain_deformity') || symptoms.includes('severe_abdpain') || chestSigns.includes('chest_dyspnea_tightness') || abdSigns.includes('peritonitis_guarding') || abdSigns.includes('pelvic_instability_pain') || lowerSigns.includes('deformity_fracture_shortening')) {
+    if (methods.includes('jumping') || methods.includes('vehicle') || symptoms.includes('severe_pain_deformity') || symptoms.includes('severe_abdpain') || chestSigns.includes('chest_dyspnea_tightness') || abdSigns.includes('peritonitis_guarding') || abdSigns.includes('pelvic_instability_pain') || lowerSigns.includes('deformity_fracture_shortening')) {
       redFlags.push({
         key: 'high_energy_multiple_trauma',
         textTh: 'ภาวะบาดเจ็บรุนแรงหลายระบบ / ช่องอก-ช่องท้อง (High-Energy Multiple Trauma)',
@@ -1266,12 +1316,21 @@ const selfHarmModule = {
       });
     }
 
-    // 5. CO Inhalation / Submersion Arrest Risk
-    if (methods.includes('co_poisoning') || methods.includes('co') || (methods.includes('drowning') && patient.selfHarmDrowningAspiration && patient.selfHarmDrowningAspiration !== 'no')) {
+    // 5. Submersion / Near-Drowning Hypoxic Injury
+    if (methods.includes('drowning') && (patient.selfHarmDrown_aspiration || patient.selfHarmDrown_unconscious || patient.selfHarmDrown_cpr || (patient.selfHarmDrowningAspiration && patient.selfHarmDrowningAspiration !== 'no'))) {
       redFlags.push({
         key: 'hypoxic_inhalation_or_submersion',
-        textTh: 'ภาวะสูดดมก๊าซพิษหรือจมน้ำสำลัก (Hypoxic Inhalation / Drowning Injury)',
-        risk: 'ความเสี่ยงต่อภาวะพร่องออกซิเจนเฉียบพลัน ARDS สมองขาดออกซิเจน และหัวใจเต้นผิดจังหวะ'
+        textTh: 'ภาวะจมน้ำสำลักหรือขาดออกซิเจนเฉียบพลัน (Submersion / Near-Drowning Hypoxia)',
+        risk: 'ความเสี่ยงต่อภาวะน้ำท่วมปอดหลังสำลักน้ำ (ARDS) สมองขาดออกซิเจน และหัวใจเต้นผิดจังหวะ'
+      });
+    }
+
+    // 6. Co-occurring Self-Poisoning / Drug Overdose
+    if (methods.includes('co_poisoning') || methods.includes('co') || Boolean(patient.selfHarmCoPoisoningText)) {
+      redFlags.push({
+        key: 'co_occurring_self_poisoning',
+        textTh: 'มีประวัติรับประทานยาเกินขนาดหรือสารพิษร่วมด้วย (Co-occurring Self-Poisoning)',
+        risk: 'ต้องประเมินอาการพิษวิทยา (Toxidromes) ตรวจคลื่นไฟฟ้าหัวใจ และเตรียมยาต้านพิษควบคู่กับการดูแลบาดแผล'
       });
     }
 
@@ -1315,36 +1374,49 @@ const selfHarmModule = {
     if (patient.selfHarmInformant === 'relative' && patient.selfHarmInformantRelText) informantStr += ` (${patient.selfHarmInformantRelText})`;
     if (patient.selfHarmInformant === 'rescuer' && patient.selfHarmInformantRescuerText) informantStr += ` (${patient.selfHarmInformantRescuerText})`;
 
-    const bleedMap = { stopped: 'เลือดหยุดไหลแล้ว หรือซึมเล็กน้อย', oozing: 'เลือดยังไหลซึมต่อเนื่อง', pulsatile: 'เลือดพุ่งเป็นจังหวะ/ไหลไม่หยุด' };
+    const bleedMap = { stopped: 'เลือดหยุดไหลแล้ว', oozing: 'ยังมีเลือดไหลซึมต่อเนื่อง', pulsatile: 'เลือดไหลพุ่ง หรือชุ่มผ้าเร็วมาก' };
     const drownMap = { no: 'ไม่สำลักน้ำ/รู้สึกตัวดี', cough_gasping: 'มีอาการไอ สำลักน้ำ หรือหอบเหนื่อย', unconscious_cpr: 'หมดสติ/มีการทำ CPR ในที่เกิดเหตุ' };
 
     const methods = Array.isArray(patient.selfHarmMethods) ? patient.selfHarmMethods : [];
     const methodParts = [];
+    if (methods.includes('sharp')) {
+      methodParts.push(`ใช้ของมีคม/อาวุธ (${patient.selfHarmSharpDevice || 'ไม่ระบุอุปกรณ์'})`);
+    }
     if (methods.includes('hanging')) {
       const hSub = [];
-      if (patient.selfHarmHanging_suspended) hSub.push('ตัวลอยพ้นพื้น');
-      if (patient.selfHarmHanging_unconscious) hSub.push('หมดสติเมื่อพบ');
-      if (patient.selfHarmHanging_cyanosis) hSub.push('หน้าเขียวคล้ำ');
-      if (patient.selfHarmHangingDuration) hSub.push(`แขวนนาน ${patient.selfHarmHangingDuration}`);
-      methodParts.push(`ผูกคอ/รัดคอ${hSub.length > 0 ? ` (${hSub.join(', ')})` : ''}`);
-    }
-    if (methods.includes('sharp')) {
-      methodParts.push(`ใช้ของมีคม (${patient.selfHarmSharpDevice || 'ไม่ระบุอุปกรณ์'})`);
-    }
-    if (methods.includes('jumping')) {
-      const jSub = [patient.selfHarmJumpingHeight, patient.selfHarmJumpingSurface].filter(Boolean);
-      methodParts.push(`กระโดดจากที่สูง${jSub.length > 0 ? ` (${jSub.join(', ')})` : ''}`);
+      if (patient.selfHarmHanging_suspended) hSub.push('เท้าลอยพ้นพื้น');
+      if (patient.selfHarmHanging_partial) hSub.push('เท้าหรือลำตัวยังแตะพื้น');
+      if (patient.selfHarmHanging_ligature) hSub.push('ใช้มือบีบคอ/รัดรอบคอ');
+      if (patient.selfHarmHanging_suffocation) hSub.push('ใช้ถุงคลุมศีรษะ/อุดกั้นทางเดินหายใจ');
+      if (patient.selfHarmHanging_unconscious) hSub.push('หมดสติหลังเกิดเหตุ');
+      if (patient.selfHarmHanging_cyanosis) hSub.push('ตัวเขียว/หยุดหายใจชั่วคราว');
+      methodParts.push(`ผูกคอ/รัดคอ/ขาดอากาศหายใจ${hSub.length > 0 ? ` (${hSub.join(', ')})` : ''}`);
     }
     if (methods.includes('drowning')) {
-      const dSub = [patient.selfHarmDrowningPlace, drownMap[patient.selfHarmDrowningAspiration]].filter(Boolean);
+      const dSub = [];
+      if (patient.selfHarmDrown_aspiration) dSub.push('สำลักน้ำ/ไอสำลักรุนแรง');
+      if (patient.selfHarmDrown_unconscious) dSub.push('หมดสติ/ตัวเขียวในน้ำ');
+      if (patient.selfHarmDrown_cpr) dSub.push('ได้รับการช่วยชีวิต (CPR/ผายปอด)');
+      if (dSub.length === 0 && patient.selfHarmDrowningAspiration && drownMap[patient.selfHarmDrowningAspiration]) dSub.push(drownMap[patient.selfHarmDrowningAspiration]);
+      if (patient.selfHarmDrowningPlace) dSub.unshift(patient.selfHarmDrowningPlace);
       methodParts.push(`กระโดดน้ำ/จมน้ำ${dSub.length > 0 ? ` (${dSub.join(', ')})` : ''}`);
     }
-    if (methods.includes('co_poisoning') || methods.includes('co')) {
-      const cSub = [patient.selfHarmCoSource, patient.selfHarmCoDuration].filter(Boolean);
-      methodParts.push(`รมควัน/จุดเตาถ่าน${cSub.length > 0 ? ` (${cSub.join(', ')})` : ''}`);
+    if (methods.includes('jumping')) {
+      const jSub = [patient.selfHarmJumpingDetail, patient.selfHarmJumpingHeight, patient.selfHarmJumpingSurface].filter(Boolean);
+      methodParts.push(`กระโดดจากที่สูง${jSub.length > 0 ? ` (${jSub.join(', ')})` : ''}`);
+    }
+    if (methods.includes('vehicle')) {
+      methodParts.push(`วิ่งให้รถชน/ตัดหน้ารถ${patient.selfHarmVehicleDetail ? ` (${patient.selfHarmVehicleDetail})` : ''}`);
+    }
+    if (methods.includes('burn')) {
+      methodParts.push(`ความร้อน/ไฟ/น้ำร้อน${patient.selfHarmBurnDetail ? ` (${patient.selfHarmBurnDetail})` : ''}`);
     }
     if (methods.includes('other_trauma') || methods.includes('other')) {
-      methodParts.push(`วิธีอื่นๆ (${patient.selfHarmOtherMethodText || 'ระบุเพิ่มเติม'})`);
+      methodParts.push(`แรงกระแทก/วิธีอื่นๆ (${patient.selfHarmOtherMethodText || 'ไม่ระบุรายละเอียด'})`);
+    }
+    if (methods.includes('co_poisoning') || methods.includes('co')) {
+      const cSub = [patient.selfHarmCoPoisoningText, patient.selfHarmCoSource, patient.selfHarmCoDuration].filter(Boolean);
+      methodParts.push(`กินยาเกินขนาด/ดื่มสารพิษร่วมด้วย${cSub.length > 0 ? ` (${cSub.join(', ')})` : ''}`);
     }
     const methodStr = methodParts.length > 0 ? methodParts.join(' + ') : 'ทำร้ายตนเอง (ไม่ระบุวิธี)';
 
@@ -1608,15 +1680,17 @@ ${effectiveRfs.length > 0 ? `🚩 RED FLAGS DETECTED:\n${effectiveRfs.map(r => `
     ctx.ddxList.push('Non-suicidal self-injury (NSSI) vs. Suicidal attempt with high lethality');
     if (methods.includes('hanging')) ctx.ddxList.push('Near-hanging injury with delayed laryngotracheal edema / Cervical spine injury');
     if (methods.includes('sharp')) ctx.ddxList.push('Sharp penetrating trauma with peripheral neurovascular & tendon injury');
-    if (methods.includes('jumping')) ctx.ddxList.push('High-energy multiple trauma (Spinal / Pelvic / Calcaneal fractures)');
-    if (methods.includes('drowning')) ctx.ddxList.push('Near-drowning aspiration pneumonitis / Hypoxic encephalopathy');
-    if (methods.includes('co_poisoning') || methods.includes('co')) ctx.ddxList.push('Acute Carbon Monoxide toxicity / Inhalation injury');
+    if (methods.includes('jumping') || methods.includes('vehicle')) ctx.ddxList.push('High-energy multiple trauma (Spinal / Pelvic / Calcaneal / Internal organ injury)');
+    if (methods.includes('drowning')) ctx.ddxList.push('Near-drowning aspiration pneumonitis / Post-obstructive pulmonary edema');
+    if (methods.includes('burn')) ctx.ddxList.push('Self-inflicted thermal burn injury / Airway inhalation burn');
+    if (methods.includes('co_poisoning') || methods.includes('co')) ctx.ddxList.push('Co-occurring acute drug overdose / self-poisoning toxidrome');
 
     ctx.workupList.push('Complete Blood Count (CBC), Electrolytes, BUN, Cr, Urine Pregnancy Test (if female)');
     if (methods.includes('hanging')) ctx.workupList.push('CT Cervical Spine, Soft Tissue Neck CT or Laryngoscopy evaluation');
     if (methods.includes('sharp')) ctx.workupList.push('X-ray of affected extremity (rule out retained foreign body / fracture)');
-    if (methods.includes('jumping')) ctx.workupList.push('Trauma Pan-Scan (CT Brain, C-spine, Chest, Whole Abdomen, Pelvis), eFAST');
-    if (methods.includes('drowning') || methods.includes('co_poisoning') || methods.includes('co')) ctx.workupList.push('Chest X-ray, ABG with Co-oximetry (COHb), SpO2, EKG 12-lead');
+    if (methods.includes('jumping') || methods.includes('vehicle')) ctx.workupList.push('Trauma Pan-Scan (CT Brain, C-spine, Chest, Whole Abdomen, Pelvis), eFAST');
+    if (methods.includes('drowning')) ctx.workupList.push('Chest X-ray, ABG, SpO2 monitoring, EKG 12-lead');
+    if (methods.includes('co_poisoning') || methods.includes('co')) ctx.workupList.push('12-lead EKG, DTX, LFT, Coagulogram, Serum Paracetamol/Salicylate or Urine Tox Screen (assess co-poisoning per CC Poisoning)');
 
     ctx.managementList.push('1:1 Close Observation & Suicide Precaution (Remove sharp/harmful objects)');
     ctx.managementList.push('Wound care: Direct pressure hemostasis, antiseptic irrigation, explore neurovascular/tendon integrity');
@@ -1714,6 +1788,7 @@ ${effectiveRfs.length > 0 ? `🚩 RED FLAGS DETECTED:\n${effectiveRfs.map(r => `
       selfHarmInformantRescuerText: 'กู้ภัยสว่างราชบุรี',
       selfHarmMethods: ['hanging'],
       selfHarmHanging_suspended: true,
+      selfHarmHanging_ligature: true,
       selfHarmHanging_unconscious: true,
       selfHarmHanging_cyanosis: true,
       selfHarmSymptoms: ['hoarseness', 'stridor'],
@@ -1753,8 +1828,7 @@ ${effectiveRfs.length > 0 ? `🚩 RED FLAGS DETECTED:\n${effectiveRfs.map(r => `
       selfHarmInformant: 'relative',
       selfHarmInformantRelText: 'พี่สาว',
       selfHarmMethods: ['jumping'],
-      selfHarmJumpingHeight: 'ชั้น 2 (ประมาณ 4 เมตร)',
-      selfHarmJumpingSurface: 'พื้นปูนซีเมนต์',
+      selfHarmJumpingDetail: 'ชั้น 2 (ประมาณ 4 เมตร) ลงบนพื้นปูนซีเมนต์',
       selfHarmSymptoms: ['severe_abdpain', 'severe_pain_deformity'],
       shParentAbdomen: true,
       shAbdPelvis: true,
