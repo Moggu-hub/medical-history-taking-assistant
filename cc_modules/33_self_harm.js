@@ -472,22 +472,26 @@ const selfHarmModule = {
         <div class="pt-2 border-t border-slate-100">
           <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">1.2 เวลาเกิดเหตุ หรือระยะเวลาตั้งแต่เริ่มทำร้ายตนเอง</label>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
+            <div class="min-w-0">
               <span class="block text-xs font-semibold text-slate-600 mb-1">ระยะเวลาโดยประมาณก่อนมา รพ.:</span>
               <div class="flex items-center space-x-2">
-                <input type="number" id="selfHarmDurationVal" min="1" max="999" placeholder="ระบุตัวเลข" class="w-1/2 text-xs sm:text-sm border-slate-300 rounded-lg p-2 focus:ring-medical-500 focus:border-medical-500">
-                <select id="selfHarmDurationUnit" class="w-1/2 text-xs sm:text-sm border-slate-300 rounded-lg p-2 focus:ring-medical-500 focus:border-medical-500 bg-white">
+                <input type="number" id="selfHarmDurationVal" min="1" max="999" placeholder="ระบุตัวเลข" class="w-1/2 min-w-0 text-xs sm:text-sm border-slate-300 rounded-lg p-2 focus:ring-medical-500 focus:border-medical-500">
+                <select id="selfHarmDurationUnit" class="w-1/2 min-w-0 text-xs sm:text-sm border-slate-300 rounded-lg p-2 focus:ring-medical-500 focus:border-medical-500 bg-white">
                   <option value="minutes" selected>นาที</option>
                   <option value="hours">ชั่วโมง</option>
                   <option value="days">วัน</option>
                 </select>
               </div>
             </div>
-            <div>
+            <div class="min-w-0">
               <span class="block text-xs font-semibold text-slate-600 mb-1">ระบุเวลาที่เกิดเหตุแน่นอน (ถ้าทราบ):</span>
-              <div class="grid grid-cols-2 gap-2">
-                <input type="text" id="selfHarmExactDate" data-universal-date="true" placeholder="วว/ดด/ปปปป" class="text-xs sm:text-sm border-slate-300 rounded-lg p-2 focus:ring-medical-500 focus:border-medical-500">
-                <input type="text" id="selfHarmExactTime" data-universal-time="true" placeholder="ชช:นน (24 ชม.)" class="text-xs sm:text-sm border-slate-300 rounded-lg p-2 focus:ring-medical-500 focus:border-medical-500">
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+                <div class="min-w-0">
+                  <input type="text" id="selfHarmExactDate" data-universal-date="true" placeholder="วว/ดด/ปปปป" class="w-full min-w-0 text-xs sm:text-sm border-slate-300 rounded-lg p-2 focus:ring-medical-500 focus:border-medical-500 bg-white">
+                </div>
+                <div class="min-w-0">
+                  <input type="text" id="selfHarmExactTime" data-universal-time="true" placeholder="ชช:นน (24 ชม.)" class="w-full min-w-0 text-xs sm:text-sm border-slate-300 rounded-lg p-2 focus:ring-medical-500 focus:border-medical-500 bg-white">
+                </div>
               </div>
             </div>
           </div>
@@ -891,19 +895,19 @@ const selfHarmModule = {
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
             <label class="selectable-card flex items-start p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
               <input type="radio" name="selfHarmTetanus" value="within_5y" class="mt-0.5 text-medical-600 focus:ring-medical-500 h-4 w-4">
-              <div class="ml-3"><span class="block text-xs sm:text-sm font-semibold text-slate-800">เคยฉีดเข็มกระตุ้นภายใน 5 ปีที่ผ่านมา</span><span class="block text-[11px] text-slate-500 font-normal mt-0.5">มีภูมิคุ้มกันบาดทะยักเพียงพอ</span></div>
+              <div class="ml-3"><span class="block text-xs sm:text-sm font-semibold text-slate-800">เคยฉีดเข็มกระตุ้นภายใน 5 ปีที่ผ่านมา</span><span class="block text-[11px] text-slate-500 font-normal mt-0.5">เคยฉีดครบ (3 เข็ม) มาก่อน และเข็มสุดท้ายหรือเข็มกระตุ้น &lt; 5 ปี</span></div>
             </label>
             <label class="selectable-card flex items-start p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
               <input type="radio" name="selfHarmTetanus" value="5_to_10y" class="mt-0.5 text-medical-600 focus:ring-medical-500 h-4 w-4">
-              <div class="ml-3"><span class="block text-xs sm:text-sm font-semibold text-slate-800">เคยฉีดในช่วง 5 ถึง 10 ปีที่ผ่านมา</span><span class="block text-[11px] text-slate-500 font-normal mt-0.5">อาจต้องฉีดกระตุ้น 1 เข็มหากมีบาดแผลสกปรก</span></div>
+              <div class="ml-3"><span class="block text-xs sm:text-sm font-semibold text-slate-800">เคยฉีดในช่วง 5 ถึง 10 ปีที่ผ่านมา</span><span class="block text-[11px] text-slate-500 font-normal mt-0.5">เคยฉีดครบ (3 เข็ม) มาก่อน และเข็มสุดท้ายหรือเข็มกระตุ้นห่างมาแล้ว 5–10 ปี</span></div>
             </label>
             <label class="selectable-card flex items-start p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
               <input type="radio" name="selfHarmTetanus" value="over_10y" class="mt-0.5 text-medical-600 focus:ring-medical-500 h-4 w-4">
-              <div class="ml-3"><span class="block text-xs sm:text-sm font-semibold text-slate-800">เคยฉีดครบ แต่เกิน 10 ปีแล้ว</span><span class="block text-[11px] text-slate-500 font-normal mt-0.5">ควรได้รับเข็มกระตุ้นป้องกันบาดทะยักหากมีแผลเปิด</span></div>
+              <div class="ml-3"><span class="block text-xs sm:text-sm font-semibold text-slate-800">เคยฉีดครบ แต่เกิน 10 ปีแล้ว</span><span class="block text-[11px] text-slate-500 font-normal mt-0.5">เคยฉีดครบ (3 เข็ม) มาก่อน แต่เข็มสุดท้ายมานานเกิน 10 ปีแล้ว</span></div>
             </label>
             <label class="selectable-card flex items-start p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
               <input type="radio" name="selfHarmTetanus" value="unknown_or_never" class="mt-0.5 text-medical-600 focus:ring-medical-500 h-4 w-4">
-              <div class="ml-3"><span class="block text-xs sm:text-sm font-semibold text-slate-800">ไม่เคยฉีด หรือจำประวัติไม่ได้</span><span class="block text-[11px] text-slate-500 font-normal mt-0.5">จำเป็นต้องประเมินการฉีดวัคซีนและเซรุ่ม (TIG) หากมีบาดแผล</span></div>
+              <div class="ml-3"><span class="block text-xs sm:text-sm font-semibold text-slate-800">ไม่เคยฉีด หรือจำประวัติไม่ได้</span><span class="block text-[11px] text-slate-500 font-normal mt-0.5">ไม่เคยฉีด เคยฉีดไม่ครบ 3 เข็ม หรือจำประวัติไม่ได้</span></div>
             </label>
           </div>
         </div>
@@ -912,13 +916,13 @@ const selfHarmModule = {
         <div class="pt-2 border-t border-slate-100">
           <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">4.4 เวลาที่รับประทานอาหารหรือดื่มน้ำครั้งสุดท้าย (สำหรับเตรียมหัตถการหรือเย็บแผล)</label>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-slate-50 p-3 rounded-xl border border-slate-200">
-            <div>
+            <div class="min-w-0">
               <span class="block text-xs font-semibold text-slate-600 mb-1">เวลารับประทานครั้งสุดท้าย:</span>
-              <input type="text" id="selfHarmNpoTime" data-universal-time="true" placeholder="ชช:นน (24 ชม.) เช่น 11:30" class="w-full text-xs sm:text-sm border-slate-300 rounded-lg p-2 focus:ring-medical-500 focus:border-medical-500 bg-white">
+              <input type="text" id="selfHarmNpoTime" data-universal-time="true" placeholder="ชช:นน (24 ชม.) เช่น 11:30" class="w-full min-w-0 text-xs sm:text-sm border-slate-300 rounded-lg p-2 focus:ring-medical-500 focus:border-medical-500 bg-white">
             </div>
-            <div>
+            <div class="min-w-0">
               <span class="block text-xs font-semibold text-slate-600 mb-1">สิ่งที่รับประทานล่าสุด:</span>
-              <input type="text" id="selfHarmNpoLastMeal" placeholder="เช่น ข้าวผัด, ดื่มน้ำเปล่า 1 แก้ว, นม" class="w-full text-xs sm:text-sm border-slate-300 rounded-lg p-2 focus:ring-medical-500 focus:border-medical-500 bg-white">
+              <input type="text" id="selfHarmNpoLastMeal" placeholder="เช่น ข้าวผัด, ดื่มน้ำเปล่า 1 แก้ว, นม" class="w-full min-w-0 text-xs sm:text-sm border-slate-300 rounded-lg p-2 focus:ring-medical-500 focus:border-medical-500 bg-white">
             </div>
           </div>
         </div>
@@ -930,17 +934,18 @@ const selfHarmModule = {
             <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider">4.5 ประจำเดือนและการตั้งครรภ์ (LMP & Pregnancy)</label>
           </div>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-pink-50/50 p-3.5 rounded-xl border border-pink-200">
-            <div>
+            <div class="min-w-0">
               <span class="block text-xs font-semibold text-slate-700 mb-1">วันแรกของประจำเดือนครั้งสุดท้าย (LMP):</span>
-              <input type="text" id="selfHarmLmpDate" data-universal-date="true" placeholder="วว/ดด/ปปปป เช่น 28/10/2026" class="w-full text-xs sm:text-sm border-slate-300 rounded-lg p-2 focus:ring-medical-500 focus:border-medical-500 bg-white">
+              <input type="text" id="selfHarmLmpDate" data-universal-date="true" placeholder="วว/ดด/ปปปป เช่น 28/10/2026" class="w-full min-w-0 text-xs sm:text-sm border-slate-300 rounded-lg p-2 focus:ring-medical-500 focus:border-medical-500 bg-white">
             </div>
-            <div>
+            <div class="min-w-0">
               <span class="block text-xs font-semibold text-slate-700 mb-1">สถานะการตั้งครรภ์:</span>
-              <select id="selfHarmPregnancyStatus" class="w-full text-xs sm:text-sm border-slate-300 rounded-lg p-2 focus:ring-medical-500 focus:border-medical-500 bg-white">
+              <select id="selfHarmPregnancyStatus" class="w-full min-w-0 text-xs sm:text-sm border-slate-300 rounded-lg p-2 focus:ring-medical-500 focus:border-medical-500 bg-white">
                 <option value="not_pregnant">ไม่ได้ตั้งครรภ์ / ประจำเดือนมาปกติ</option>
                 <option value="suspected_or_missed">ขาดประจำเดือน / สงสัยอาจตั้งครรภ์</option>
                 <option value="confirmed_pregnant">ได้รับการยืนยันว่ากำลังตั้งครรภ์</option>
                 <option value="menopause_or_hysterectomy">วัยหมดประจำเดือน / ผ่าตัดมดลูกแล้ว</option>
+                <option value="unknown">ไม่ทราบ</option>
               </select>
             </div>
           </div>
@@ -1465,7 +1470,8 @@ const selfHarmModule = {
       not_pregnant: 'ไม่ได้ตั้งครรภ์ / ประจำเดือนมาปกติ',
       suspected_or_missed: 'ขาดประจำเดือน / สงสัยอาจตั้งครรภ์',
       confirmed_pregnant: 'ยืนยันกำลังตั้งครรภ์',
-      menopause_or_hysterectomy: 'วัยหมดประจำเดือน / ผ่าตัดมดลูกแล้ว'
+      menopause_or_hysterectomy: 'วัยหมดประจำเดือน / ผ่าตัดมดลูกแล้ว',
+      unknown: 'ไม่ทราบ'
     };
     const isFemalePatient = patient.gender === 'female' || patient.gender === 'หญิง' || /นาง|น\.ส\./.test(patient.patientTitle || '');
     const femaleStr = `LMP ${patient.selfHarmLmpDate || 'ไม่ระบุ'} (${pregMap[patient.selfHarmPregnancyStatus] || 'ไม่ระบุสถานะ'})`;
