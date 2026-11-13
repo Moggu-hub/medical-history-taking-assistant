@@ -1,6 +1,6 @@
 # 🕵️‍♂️ รายงานการตรวจสอบคุณภาพโค้ดและสถาปัตยกรรม (AUTOMATED & AI AUDIT REPORT)
 
-- **วันที่ตรวจสอบ:** `13/11/2026` เวลา `11:44` น. (24-Hour Format)
+- **วันที่ตรวจสอบ:** `13/11/2026` เวลา `13:56` น. (24-Hour Format)
 - **สถานะภาพรวม (Overall Verdict):** **✅ PASS (ผ่านการตรวจสอบครบทุกมิติ)**
 - **จำนวนหัวข้อที่ผ่าน (Passed Checks):** 7 รายการ
 - **จำนวนคำเตือน (Warnings):** 0 รายการ
@@ -47,7 +47,7 @@
 | `cc_modules/30_physical_assault.js` | 1,675 | 2,000 | ✅ ปกติ (Safe) |
 | `cc_modules/31_traffic_accident.js` | 1,885 | 2,000 | ✅ ปกติ (Safe) |
 | `cc_modules/32_poisoning.js` | 1,997 | 2,000 | ✅ ปกติ (Safe) |
-| `cc_modules/33_self_harm.js` | 1,659 | 2,000 | ✅ ปกติ (Safe) |
+| `cc_modules/33_self_harm.js` | 1,836 | 2,000 | ✅ ปกติ (Safe) |
 
 ---
 

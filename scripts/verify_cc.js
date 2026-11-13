@@ -349,6 +349,79 @@ for (const mod of modsToInspect) {
         pass(`โมดูล '${mod.id}': updateOutputs() สร้าง [Chief Complaint (CC)] และกรองเพศชายถูกต้อง 100% (C-AP12/C-AP13)`);
       }
 
+      // C-AP14 & C-AP15: Validate all seed patients of targetCcId for raw English enum leaks & missing anatomical injury output
+      const rawEnumLeaks = [];
+      const missingLocationCases = [];
+      const skippedRawKeys = new Set([
+        'id', 'queue_number', 'hn', 'name', 'chief_complaint', 'chief_complaint_title',
+        'timestamp', 'durationUnit', 'status', 'hospRecordStatus', 'otherSymptomsFree',
+        'drugAllergy', 'currentMeds', 'underlying', 'gender', 'preservedDoctorNotes',
+        'rapidHpi', 'narrativeHpi', 'medicalJson'
+      ]);
+      const freeTextKeySuffixRe = /(?:Text|Detail|Device|Height|Surface|Place|Source|Duration|Date|Time|Meds|Allergy|Note|Notes|Name|Age|Val|Year|Month|Day)$/i;
+      const isEnumVal = v => typeof v === 'string' && /^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$/.test(v) && v.length >= 2 && !['na', 'er', 'iv', 'im', 'po', 'ng', 'ct', 'ekg', 'ecg', 'cpr', 'gcs', 'lmp', 'npo', 'esi'].includes(v);
+
+      for (const sp of seeds) {
+        if (domEls.rapidTextView) domEls.rapidTextView.value = '';
+        if (domEls.narrativeTextView) domEls.narrativeTextView.value = '';
+        const spClone = JSON.parse(JSON.stringify(sp));
+        const spRes = mod.updateOutputs(spClone);
+        const spRapid = domEls.rapidTextView?.value || spRes?.rapid || '';
+        const spNarr = domEls.narrativeTextView?.value || spRes?.narrative || '';
+        const hpiBlock = spRapid.split('[Past Medical History')[0] || spRapid;
+
+        // C-AP14: Check snake_case & lowercase enum keys on choice fields not printed raw in HPI/Narrative
+        const enumVals = new Set();
+        for (const [k, val] of Object.entries(sp)) {
+          if (skippedRawKeys.has(k) || freeTextKeySuffixRe.test(k)) continue;
+          const arr = Array.isArray(val) ? val : [val];
+          for (const item of arr) {
+            if (isEnumVal(item)) enumVals.add(item);
+          }
+        }
+        for (const ev of enumVals) {
+          const isSnake = ev.includes('_');
+          const tokenRe = isSnake
+            ? new RegExp(`(?:^|[^a-zA-Z0-9_])${ev}(?:$|[^a-zA-Z0-9_])`)
+            : new RegExp(`(?:^|:\\s*|คือ\\s*|,\\s*|\\(\\s*)${ev}(?:\\s*$|\\s*,|\\s*\\)|\\s*\\n)`);
+          if (tokenRe.test(hpiBlock) || tokenRe.test(spNarr)) {
+            rawEnumLeaks.push(`${sp.id}:${ev}`);
+          }
+        }
+
+        // C-AP15: If any Trauma parent anatomy flag is true, rapid/narrative must display location & not fallback to empty injury
+        const hasParentLoc = Object.entries(sp).some(([k, v]) => v === true && /Parent(?:HeadFace|Neck|Chest|Abdomen|UpperExtremity|LowerExtremity|Other)$/.test(k));
+        if (hasParentLoc) {
+          const hasFallbackEmpty = /ไม่มีบาดแผลภายนอกชัดเจน|ไม่ได้ระบุตำแหน่ง/.test(hpiBlock) || /ไม่มีบาดแผลภายนอกชัดเจน|ไม่ได้ระบุตำแหน่ง/.test(spNarr);
+          const hasLocLine = /ตำแหน่งบาดเจ็บ(?:และชนิดการบาดเจ็บ)?:\s*\S+/.test(hpiBlock) || /ตรวจพบตำแหน่งบาดเจ็บ/.test(spNarr);
+          if (hasFallbackEmpty || !hasLocLine) {
+            missingLocationCases.push(sp.id);
+          }
+        }
+      }
+
+      if (rawEnumLeaks.length > 0) {
+        fail(`โมดูล '${mod.id}': พบค่าตัวแปรภาษาอังกฤษแบบระบบหลุดลงรายงานแพทย์ (${rawEnumLeaks.join(', ')}) (C-AP14)`);
+      } else {
+        pass(`โมดูล '${mod.id}': รายงานแพทย์แปลงค่าตัวเลือกทุกข้อเป็นภาษาไทยกระชับ ไม่มี enum ดิบหลุด (C-AP14)`);
+      }
+
+      if (missingLocationCases.length > 0) {
+        fail(`โมดูล '${mod.id}': เคสที่มีการเลือกตำแหน่งบาดเจ็บ (${missingLocationCases.join(', ')}) ไม่แสดงตำแหน่ง/ชนิดบาดเจ็บในรายงานแพทย์ (C-AP15)`);
+      } else {
+        pass(`โมดูล '${mod.id}': ตำแหน่งบาดเจ็บและลักษณะบาดเจ็บแสดงผลครบถ้วนในรายงานแพทย์ (C-AP15)`);
+      }
+
+      const htmlStr = mod.formHtml || '';
+      if (htmlStr.includes('ด้าน / ข้าง') && htmlStr.includes('ลักษณะบาดเจ็บ')) {
+        const crunchedInline = /ด้าน\s*\/\s*ข้าง[\s\S]{0,600}\|\s*<\/span>[\s\S]{0,120}ลักษณะบาดเจ็บ/.test(htmlStr);
+        if (crunchedInline) {
+          fail(`โมดูล '${mod.id}': ช่อง 'ด้าน / ข้าง' และ 'ลักษณะบาดเจ็บ' วางชิดกันในแถวเดียวเกินไป (ควรแยกบรรทัด/เว้นระยะตาม C-AP15)`);
+        } else {
+          pass(`โมดูล '${mod.id}': แยกแถว 'ด้าน / ข้าง' ออกจาก 'ลักษณะบาดเจ็บ' ชัดเจน (C-AP15)`);
+        }
+      }
+
       const ddxList = [], workupList = [], managementList = [];
       mod.generateCds(seeds[0], { rfs: mod.evaluateRedFlags(seeds[0]) || [], ddxList, workupList, managementList });
       if (ddxList.length === 0 || workupList.length === 0 || managementList.length === 0) {

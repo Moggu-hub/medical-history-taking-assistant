@@ -1,95 +1,420 @@
-/**
- * =========================================================================
- * CC MODULE 33: SELF-HARM / SUICIDE ATTEMPT (ทำร้ายตนเอง / พยายามฆ่าตัวตาย)
- * Ratchaburi Hospital ER Clinical Decision Support System (ED-CDS)
- *
- * Designed according to SKILL_PLAN_CC and SKILL_CODE_CC standards:
- * - Dynamic Context Mechanism & Progressive Disclosure
- * - Clear separation of Side/Laterality vs. Injury Character Blocks
- * - Zero 🚩 in Patient View, uniform text-slate-800/500 palette
- * - C-AP1 to C-AP13 compliance, <= 2000 lines ceiling
- * =========================================================================
- */
-
 // =========================================================================
 // CC MODULE 33: SELF-HARM / SUICIDE ATTEMPT (ทำร้ายตนเอง / พยายามฆ่าตัวตาย)
 // Ratchaburi Hospital ER Clinical Decision Support System (ED-CDS)
+// - Aligned with Traffic Accident 7-Region Standard Anatomy Hierarchy
+// - Separated Side/Laterality vs. Injury Character rows (Clean Visual Gap)
+// - Full Thai Label Mapping Dictionaries (Zero Raw Enum Keys in Doctor Note)
+// - C-AP1 to C-AP15 Compliant
 // =========================================================================
 
-// --- Module-scoped UI Interaction Helpers ---
-function toggleShInformantDetails() {
-  const relRadio = document.getElementById('shInfo_relative');
-  const rescuerRadio = document.getElementById('shInfo_rescuer');
-  const relSub = document.getElementById('shInformantRelSub');
-  const rescuerSub = document.getElementById('shInformantRescuerSub');
-  if (relSub) relSub.classList.toggle('hidden', !(relRadio && relRadio.checked));
-  if (rescuerSub) rescuerSub.classList.toggle('hidden', !(rescuerRadio && rescuerRadio.checked));
+let shPainScoreTouched = false;
+
+// --- Anatomy Sub-part UI Builders (Traffic Standard Hierarchy + Separated Side/Injury UI) ---
+const SH_SUBPART_KEYS = [
+  'HeadScalp', 'HeadFace', 'HeadEye', 'HeadEar', 'HeadNoseMouth',
+  'NeckBack', 'NeckFront', 'NeckSide',
+  'ChestWall', 'ChestClavicle', 'ChestUpperBack',
+  'AbdWall', 'AbdFlank', 'AbdLowerBack', 'AbdPelvis', 'AbdGenitalia',
+  'ArmShoulder', 'ArmElbowForearm', 'ArmWristHand',
+  'LegThigh', 'LegKneeShin', 'LegAnkleFoot'
+];
+
+function renderShPart(id, detailId, label, fieldPrefix, hasCenter, inj3Label) {
+  const centerHtml = hasCenter
+    ? `<label class="selectable-card inline-flex items-center px-2.5 py-1 bg-white border border-slate-200 rounded-md cursor-pointer"><input type="checkbox" name="${fieldPrefix}Sides" value="center" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">กลาง</span></label>`
+    : '';
+  return `
+    <div class="space-y-1.5">
+      <label class="flex items-center cursor-pointer"><input type="checkbox" id="${id}" onchange="toggleShGroup('${detailId}', this.checked)" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800 font-medium">${label}</span></label>
+      <div id="${detailId}" class="hidden ml-5 bg-slate-50 border border-slate-200 p-2.5 rounded-xl text-xs space-y-2">
+        <div class="flex flex-wrap items-center gap-2">
+          <span class="font-semibold text-slate-600 min-w-[92px]">ด้าน / ข้าง:</span>
+          <label class="selectable-card inline-flex items-center px-2.5 py-1 bg-white border border-slate-200 rounded-md cursor-pointer"><input type="checkbox" name="${fieldPrefix}Sides" value="left" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">ซ้าย</span></label>
+          <label class="selectable-card inline-flex items-center px-2.5 py-1 bg-white border border-slate-200 rounded-md cursor-pointer"><input type="checkbox" name="${fieldPrefix}Sides" value="right" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">ขวา</span></label>
+          ${centerHtml}
+        </div>
+        <div class="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-200/80">
+          <span class="font-semibold text-slate-600 min-w-[92px]">ลักษณะบาดเจ็บ:</span>
+          <label class="selectable-card inline-flex items-center px-2.5 py-1 bg-white border border-slate-200 rounded-md cursor-pointer"><input type="checkbox" name="${fieldPrefix}Injuries" value="wound" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">มีแผล</span></label>
+          <label class="selectable-card inline-flex items-center px-2.5 py-1 bg-white border border-slate-200 rounded-md cursor-pointer"><input type="checkbox" name="${fieldPrefix}Injuries" value="pain_swelling" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">ปวด/บวม</span></label>
+          <label class="selectable-card inline-flex items-center px-2.5 py-1 bg-white border border-slate-200 rounded-md cursor-pointer"><input type="checkbox" name="${fieldPrefix}Injuries" value="deformity" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">${inj3Label || 'ผิดรูป'}</span></label>
+        </div>
+      </div>
+    </div>`;
 }
 
-function toggleShMethodSub(subId, isChecked) {
+function renderShDigits(id, detailId, label, prefix) {
+  const digits = [['thumb', 'โป้ง'], ['index', 'ชี้'], ['middle', 'กลาง'], ['ring', 'นาง'], ['little', 'ก้อย']];
+  const sideRow = (sideKey, sideLabel) => `
+    <div class="flex flex-wrap items-center gap-1.5">
+      <span class="font-semibold text-slate-600 w-10">${sideLabel}:</span>
+      ${digits.map(([v, t]) => `<label class="selectable-card inline-flex items-center px-2 py-0.5 bg-white border border-slate-200 rounded cursor-pointer"><input type="checkbox" name="${prefix}${sideKey}Digits" value="${v}" class="rounded text-medical-600 h-3 w-3"><span class="ml-2 text-slate-800">${t}</span></label>`).join('')}
+    </div>`;
+  return `
+    <div class="space-y-1.5">
+      <label class="flex items-center cursor-pointer"><input type="checkbox" id="${id}" onchange="toggleShGroup('${detailId}', this.checked)" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800 font-medium">${label}</span></label>
+      <div id="${detailId}" class="hidden ml-5 p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs space-y-2">
+        <div class="space-y-1.5">
+          <span class="block font-semibold text-slate-600">ข้างและนิ้วที่เป็น:</span>
+          ${sideRow('Left', 'ซ้าย')}
+          ${sideRow('Right', 'ขวา')}
+        </div>
+        <div class="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-200/80">
+          <span class="font-semibold text-slate-600 min-w-[92px]">ลักษณะบาดเจ็บ:</span>
+          <label class="selectable-card inline-flex items-center px-2.5 py-1 bg-white border border-slate-200 rounded-md cursor-pointer"><input type="checkbox" name="${prefix}Injuries" value="wound" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">มีแผล</span></label>
+          <label class="selectable-card inline-flex items-center px-2.5 py-1 bg-white border border-slate-200 rounded-md cursor-pointer"><input type="checkbox" name="${prefix}Injuries" value="pain_swelling" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">ปวด/บวม</span></label>
+          <label class="selectable-card inline-flex items-center px-2.5 py-1 bg-white border border-slate-200 rounded-md cursor-pointer"><input type="checkbox" name="${prefix}Injuries" value="deformity" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">ผิดรูป</span></label>
+        </div>
+      </div>
+    </div>`;
+}
+
+function renderShSignsBlock(name, items) {
+  return `
+    <div class="pt-2 border-t border-slate-100 space-y-1.5">
+      <span class="font-semibold text-slate-700 block">อาการสำคัญที่พบร่วมด้วย:</span>
+      ${items.map(([v, txt]) => `<label class="flex items-center cursor-pointer"><input type="checkbox" name="${name}" value="${v}" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">${txt}</span></label>`).join('')}
+    </div>`;
+}
+
+function buildShAnatomyHtml() {
+  return `
+    <!-- 2.2.1 ศีรษะ ใบหน้า -->
+    <div class="border border-slate-200 rounded-xl p-3 sm:p-4 space-y-3">
+      <label class="flex items-center cursor-pointer">
+        <input type="checkbox" id="shParentHeadFace" onchange="toggleShGroup('shHeadFaceSubGroup', this.checked)" class="rounded text-medical-600 h-4 w-4">
+        <span class="ml-2 text-xs sm:text-sm font-bold text-slate-900">2.2.1 บาดเจ็บที่ศีรษะ ใบหน้า ดวงตา หู จมูก หรือในช่องปาก</span>
+      </label>
+      <div id="shHeadFaceSubGroup" class="hidden space-y-3 pl-5 sm:pl-6 pt-2 border-t border-slate-100 text-xs sm:text-sm">
+        <div class="space-y-2.5">
+          ${renderShPart('shHeadScalp', 'shHeadScalpDetail', 'หนังศีรษะ/หน้าผาก/ท้ายทอย', 'shHeadScalp', true, 'ผิดรูป/ยุบ')}
+          ${renderShPart('shHeadFace', 'shHeadFaceDetail', 'ใบหน้า/โหนกแก้ม/คาง', 'shHeadFace', true, 'ผิดรูป')}
+          ${renderShPart('shHeadEye', 'shHeadEyeDetail', 'ดวงตา/เปลือกตา/เบ้าตา', 'shHeadEye', false, 'ผิดรูป')}
+          ${renderShPart('shHeadEar', 'shHeadEarDetail', 'ใบหู/กกหู', 'shHeadEar', false, 'ผิดรูป')}
+          ${renderShPart('shHeadNoseMouth', 'shHeadNoseMouthDetail', 'จมูก/ริมฝีปาก/ฟัน/ในช่องปาก', 'shHeadNoseMouth', true, 'ผิดรูป/ฟันหัก')}
+        </div>
+        ${renderShSignsBlock('shHeadSigns', [
+          ['loc_amnesia', 'มีอาการสลบ หมดสติชั่วขณะ หรือจำเหตุการณ์ไม่ได้'],
+          ['severe_headache_vomiting', 'ปวดศีรษะรุนแรง มึนงงสับสน ง่วงซึมลง หรือมีอาเจียน'],
+          ['diplopia_blurred', 'ตาพร่ามัว มองเห็นภาพซ้อน หรือมีเลือดออกในตา'],
+          ['basilar_discharge', 'มีเลือดหรือน้ำใสไหลออกจากรูหู หรือรูจมูก'],
+          ['maxillofacial_malocclusion', 'อ้าปากไม่ได้ ขากรรไกรค้าง/สบฟันไม่สนิท หรือมีฟันหักโยก']
+        ])}
+      </div>
+    </div>
+
+    <!-- 2.2.2 ลำคอ -->
+    <div class="border border-slate-200 rounded-xl p-3 sm:p-4 space-y-3">
+      <label class="flex items-center cursor-pointer">
+        <input type="checkbox" id="shParentNeck" onchange="toggleShGroup('shNeckSubGroup', this.checked); updateShContextSymptoms();" class="rounded text-medical-600 h-4 w-4">
+        <span class="ml-2 text-xs sm:text-sm font-bold text-slate-900">2.2.2 บาดเจ็บที่ลำคอ หรือต้นคอ</span>
+      </label>
+      <div id="shNeckSubGroup" class="hidden space-y-3 pl-5 sm:pl-6 pt-2 border-t border-slate-100 text-xs sm:text-sm">
+        <div class="space-y-2.5">
+          ${renderShPart('shNeckBack', 'shNeckBackDetail', 'ต้นคอด้านหลัง (แนวกระดูกคอ)', 'shNeckBack', true, 'ผิดรูป')}
+          ${renderShPart('shNeckFront', 'shNeckFrontDetail', 'ลำคอด้านหน้า (หลอดลม)', 'shNeckFront', true, 'ผิดรูป')}
+          ${renderShPart('shNeckSide', 'shNeckSideDetail', 'ลำคอด้านข้าง', 'shNeckSide', false, 'ผิดรูป')}
+        </div>
+        ${renderShSignsBlock('shNeckSigns', [
+          ['cspine_severe_pain_stiff', 'ปวดตึงแนวกระดูกต้นคอมาก หรือหันคอ/ก้มเงยคอไม่ได้'],
+          ['radiculopathy_weakness_numbness', 'มีอาการชา แปล๊บเหมือนไฟช็อต หรืออ่อนแรงร้าวลงแขนขา'],
+          ['airway_compromise_hoarseness', 'หายใจลำบาก กลืนน้ำลายลำบาก เสียงแหบ หรือคอบวมโตหลังเกิดเหตุ']
+        ])}
+      </div>
+    </div>
+
+    <!-- 2.2.3 หน้าอก -->
+    <div class="border border-slate-200 rounded-xl p-3 sm:p-4 space-y-3">
+      <label class="flex items-center cursor-pointer">
+        <input type="checkbox" id="shParentChest" onchange="toggleShGroup('shChestSubGroup', this.checked)" class="rounded text-medical-600 h-4 w-4">
+        <span class="ml-2 text-xs sm:text-sm font-bold text-slate-900">2.2.3 บาดเจ็บที่หน้าอก ซี่โครง ไหปลาร้า หรือหลังส่วนบน/สะบัก</span>
+      </label>
+      <div id="shChestSubGroup" class="hidden space-y-3 pl-5 sm:pl-6 pt-2 border-t border-slate-100 text-xs sm:text-sm">
+        <div class="space-y-2.5">
+          ${renderShPart('shChestWall', 'shChestWallDetail', 'หน้าอก/ซี่โครง/ราวนม', 'shChestWall', true, 'ผิดรูป/ยุบ')}
+          ${renderShPart('shChestClavicle', 'shChestClavicleDetail', 'ไหปลาร้า', 'shChestClavicle', false, 'ผิดรูป/ปูดนูน')}
+          ${renderShPart('shChestUpperBack', 'shChestUpperBackDetail', 'หลังส่วนบน/สะบัก', 'shChestUpperBack', true, 'ผิดรูป')}
+        </div>
+        ${renderShSignsBlock('shChestSigns', [
+          ['chest_dyspnea_tightness', 'หายใจหอบเหนื่อย แน่นหน้าอก หรือรู้สึกหายใจเข้าได้ไม่สุด'],
+          ['pleuritic_pain_cough', 'เจ็บแปล๊บที่หน้าอกหรือซี่โครงเวลาหายใจเข้าลึกๆ หรือไอ'],
+          ['rib_clavicle_deformity_tenderness', 'กระดูกไหปลาร้าหรือซี่โครงปูดนูน ผิดรูป หรือกดเจ็บมาก']
+        ])}
+      </div>
+    </div>
+
+    <!-- 2.2.4 หน้าท้อง เชิงกราน -->
+    <div class="border border-slate-200 rounded-xl p-3 sm:p-4 space-y-3">
+      <label class="flex items-center cursor-pointer">
+        <input type="checkbox" id="shParentAbdomen" onchange="toggleShGroup('shAbdSubGroup', this.checked)" class="rounded text-medical-600 h-4 w-4">
+        <span class="ml-2 text-xs sm:text-sm font-bold text-slate-900">2.2.4 บาดเจ็บที่หน้าท้อง บั้นเอว หลังส่วนล่าง หรือสะโพก/เชิงกราน</span>
+      </label>
+      <div id="shAbdSubGroup" class="hidden space-y-3 pl-5 sm:pl-6 pt-2 border-t border-slate-100 text-xs sm:text-sm">
+        <div class="space-y-2.5">
+          ${renderShPart('shAbdWall', 'shAbdWallDetail', 'หน้าท้อง/ชายโครง', 'shAbdWall', true, 'ท้องอืดตึง')}
+          ${renderShPart('shAbdFlank', 'shAbdFlankDetail', 'สีข้าง/บั้นเอว', 'shAbdFlank', false, 'ผิดรูป')}
+          ${renderShPart('shAbdLowerBack', 'shAbdLowerBackDetail', 'หลังส่วนล่าง (แนวกระดูกเอว)', 'shAbdLowerBack', true, 'ผิดรูป')}
+          ${renderShPart('shAbdPelvis', 'shAbdPelvisDetail', 'สะโพก/เชิงกราน/ก้นกบ', 'shAbdPelvis', true, 'ผิดรูป')}
+          ${renderShPart('shAbdGenitalia', 'shAbdGenitaliaDetail', 'ขาหนีบ/อวัยวะเพศ', 'shAbdGenitalia', true, 'ผิดรูป')}
+        </div>
+        ${renderShSignsBlock('shAbdSigns', [
+          ['peritonitis_guarding', 'ปวดท้องรุนแรง ท้องอืดตึง หรือหน้าท้องแข็งเกร็ง'],
+          ['pelvic_instability_pain', 'ปวดสะโพกหรือเชิงกรานมากจนขยับขาไม่ได้ หรือยืนลงน้ำหนักไม่ได้'],
+          ['cauda_equina_sciatica', 'ปวดหลังร้าวลงขา ขาชา/อ่อนแรง หรือกลั้นปัสสาวะ/อุจจาระไม่ได้'],
+          ['hematuria_anuria', 'ปัสสาวะไม่ออก หรือมีเลือดสดปนในปัสสาวะ']
+        ])}
+      </div>
+    </div>
+
+    <!-- 2.2.5 แขน มือ นิ้วมือ -->
+    <div class="border border-slate-200 rounded-xl p-3 sm:p-4 space-y-3">
+      <label class="flex items-center cursor-pointer">
+        <input type="checkbox" id="shParentUpperExtremity" onchange="toggleShGroup('shUpperExtSubGroup', this.checked)" class="rounded text-medical-600 h-4 w-4">
+        <span class="ml-2 text-xs sm:text-sm font-bold text-slate-900">2.2.5 บาดเจ็บที่ไหล่ แขน ข้อศอก ข้อมือ หรือมือ/นิ้วมือ</span>
+      </label>
+      <div id="shUpperExtSubGroup" class="hidden space-y-3 pl-5 sm:pl-6 pt-2 border-t border-slate-100 text-xs sm:text-sm">
+        <div class="space-y-2.5">
+          ${renderShPart('shArmShoulder', 'shArmShoulderDetail', 'หัวไหล่/ต้นแขน', 'shArmShoulder', false, 'ผิดรูป')}
+          ${renderShPart('shArmElbowForearm', 'shArmElbowForearmDetail', 'ข้อศอก/แขนท่อนล่าง', 'shArmElbowForearm', false, 'ผิดรูป')}
+          ${renderShPart('shArmWristHand', 'shArmWristHandDetail', 'ข้อมือ/ฝ่ามือ/หลังมือ', 'shArmWristHand', false, 'ผิดรูป')}
+          ${renderShDigits('shArmFingers', 'shArmFingersDetail', 'นิ้วมือ', 'shArmFingers')}
+        </div>
+        ${renderShSignsBlock('shUpperExtSigns', [
+          ['deformity_fracture_dislocation', 'ไหล่ แขน ข้อมือ หรือนิ้วมือ บวมโต ผิดรูป หรือสงสัยกระดูกหัก/ข้อหลุด'],
+          ['inability_to_move', 'ปวดมากจนยกแขน ขยับข้อศอก หมุนข้อมือ หรือกำมือ/เหยียดนิ้วไม่ได้'],
+          ['numbness_sensory_loss', 'มีอาการชา หรือไร้ความรู้สึกที่แขน ฝ่ามือ หรือปลายนิ้วมือ'],
+          ['pallor_pulseless_cold_cyanosis', 'ปลายนิ้วมือซีดขาว เย็นเฉียบ หรือม่วงคล้ำ'],
+          ['open_tendon_bone_exposed', 'มีแผลเปิดลึก มองเห็นชั้นไขมัน เส้นเอ็น หรือกระดูก']
+        ])}
+      </div>
+    </div>
+
+    <!-- 2.2.6 ขา เท้า นิ้วเท้า -->
+    <div class="border border-slate-200 rounded-xl p-3 sm:p-4 space-y-3">
+      <label class="flex items-center cursor-pointer">
+        <input type="checkbox" id="shParentLowerExtremity" onchange="toggleShGroup('shLowerExtSubGroup', this.checked)" class="rounded text-medical-600 h-4 w-4">
+        <span class="ml-2 text-xs sm:text-sm font-bold text-slate-900">2.2.6 บาดเจ็บที่ต้นขา เข่า หน้าแข้ง ข้อเท้า หรือเท้า/นิ้วเท้า</span>
+      </label>
+      <div id="shLowerExtSubGroup" class="hidden space-y-3 pl-5 sm:pl-6 pt-2 border-t border-slate-100 text-xs sm:text-sm">
+        <div class="space-y-2.5">
+          ${renderShPart('shLegThigh', 'shLegThighDetail', 'ต้นขา', 'shLegThigh', false, 'ผิดรูป')}
+          ${renderShPart('shLegKneeShin', 'shLegKneeShinDetail', 'หัวเข่า/หน้าแข้ง/น่อง', 'shLegKneeShin', false, 'ผิดรูป')}
+          ${renderShPart('shLegAnkleFoot', 'shLegAnkleFootDetail', 'ข้อเท้า/ส้นเท้า/ฝ่าเท้า/หลังเท้า', 'shLegAnkleFoot', false, 'ผิดรูป')}
+          ${renderShDigits('shLegToes', 'shLegToesDetail', 'นิ้วเท้า', 'shLegToes')}
+        </div>
+        ${renderShSignsBlock('shLowerExtSigns', [
+          ['deformity_fracture_shortening', 'ต้นขา เข่า หน้าแข้ง หรือข้อเท้า บวมโต ผิดรูป หรือขาสั้นยาวไม่เท่ากัน'],
+          ['inability_to_bear_weight', 'ปวดมากจนไม่สามารถยืนลงน้ำหนัก หรือเดินก้าวขาได้เลย'],
+          ['numbness_drop_foot_cyanosis', 'มีอาการชาปลายเท้า กระดกข้อเท้าไม่ขึ้น หรือปลายเท้าซีดเย็น'],
+          ['open_fracture_deep_wound', 'มีแผลเปิดลึกบริเวณกระดูก หรือแผลฉกรรจ์ที่ขา/เท้า']
+        ])}
+      </div>
+    </div>
+
+    <!-- 2.2.7 ตำแหน่งอื่นๆ -->
+    <div class="border border-slate-200 rounded-xl p-3 sm:p-4 space-y-3">
+      <label class="flex items-center cursor-pointer">
+        <input type="checkbox" id="shParentOther" onchange="toggleShGroup('shOtherSubGroup', this.checked)" class="rounded text-medical-600 h-4 w-4">
+        <span class="ml-2 text-xs sm:text-sm font-bold text-slate-900">2.2.7 บาดแผลที่ตำแหน่งอื่นๆ (พิมพ์ระบุ)</span>
+      </label>
+      <div id="shOtherSubGroup" class="hidden space-y-2.5 pl-5 sm:pl-6 pt-2 border-t border-slate-100 text-xs sm:text-sm">
+        <div class="flex flex-wrap items-center gap-2 bg-slate-50 border border-slate-200 p-2.5 rounded-xl text-xs">
+          <span class="font-semibold text-slate-600 min-w-[92px]">ลักษณะบาดเจ็บ:</span>
+          <label class="selectable-card inline-flex items-center px-2.5 py-1 bg-white border border-slate-200 rounded-md cursor-pointer"><input type="checkbox" name="shOtherLocationInjuries" value="wound" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">มีแผล</span></label>
+          <label class="selectable-card inline-flex items-center px-2.5 py-1 bg-white border border-slate-200 rounded-md cursor-pointer"><input type="checkbox" name="shOtherLocationInjuries" value="pain_swelling" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">ปวด/บวม</span></label>
+          <label class="selectable-card inline-flex items-center px-2.5 py-1 bg-white border border-slate-200 rounded-md cursor-pointer"><input type="checkbox" name="shOtherLocationInjuries" value="deformity" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">ผิดรูป</span></label>
+        </div>
+        <input type="text" id="shOtherLocationDetail" placeholder="พิมพ์ระบุตำแหน่งบาดแผลหรืออาการบาดเจ็บเพิ่มเติม..." class="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs sm:text-sm">
+      </div>
+    </div>`;
+}
+
+// --- Thai Formatting & Clinical Helpers ---
+function toggleShGroup(subId, show) {
   const el = document.getElementById(subId);
-  if (el) el.classList.toggle('hidden', !isChecked);
-}
-
-function toggleShLocSub(subId, isChecked) {
-  const el = document.getElementById(subId);
-  if (el) el.classList.toggle('hidden', !isChecked);
-}
-
-function updateShPainScoreDisplay(val) {
-  const disp = document.getElementById('selfHarmPainScoreDisplay');
-  if (!disp) return;
-  const v = parseInt(val, 10) || 0;
-  let emoji = '😊';
-  let label = 'ไม่ปวดเลย';
-  if (v >= 1 && v <= 3) { emoji = '🙂'; label = 'ปวดเล็กน้อย'; }
-  else if (v >= 4 && v <= 6) { emoji = '😐'; label = 'ปวดปานกลาง'; }
-  else if (v >= 7 && v <= 9) { emoji = '😣'; label = 'ปวดรุนแรง'; }
-  else if (v === 10) { emoji = '😫'; label = 'ปวดรุนแรงที่สุด'; }
-  disp.textContent = `${v} - ${label} ${emoji}`;
-}
-
-function toggleShPsychSub() {
-  const reg = document.getElementById('shPsych_regular');
-  const stopped = document.getElementById('shPsych_stopped');
-  const sub = document.getElementById('shPsychDetailSub');
-  if (sub) {
-    const show = Boolean((reg && reg.checked) || (stopped && stopped.checked));
-    sub.classList.toggle('hidden', !show);
+  if (!el) return;
+  if (show) {
+    el.classList.remove('hidden');
+  } else {
+    el.classList.add('hidden');
+    el.querySelectorAll('input[type="checkbox"], input[type="radio"]').forEach(cb => { cb.checked = false; });
+    el.querySelectorAll('input[type="text"], input[type="number"], textarea').forEach(ti => { ti.value = ''; });
   }
 }
 
+function toggleShInformantDetails() {
+  const rel = document.getElementById('shInfo_relative')?.checked;
+  const res = document.getElementById('shInfo_rescuer')?.checked;
+  const relSub = document.getElementById('shInformantRelSub');
+  const resSub = document.getElementById('shInformantRescuerSub');
+  if (relSub) relSub.classList.toggle('hidden', !rel);
+  if (resSub) resSub.classList.toggle('hidden', !res);
+}
+
+function toggleShPsychSub() {
+  const reg = document.getElementById('shPsych_regular')?.checked;
+  const stopped = document.getElementById('shPsych_stopped')?.checked;
+  const sub = document.getElementById('shPsychDetailSub');
+  if (sub) sub.classList.toggle('hidden', !(reg || stopped));
+}
+
 function updateShContextSymptoms() {
-  const hangingChecked = Boolean(document.getElementById('shMethod_hanging')?.checked);
-  const coChecked = Boolean(document.getElementById('shMethod_co')?.checked);
-  const sharpChecked = Boolean(document.getElementById('shMethod_sharp')?.checked);
-  const jumpingChecked = Boolean(document.getElementById('shMethod_jumping')?.checked);
+  const hanging = Boolean(document.getElementById('shMethod_hanging')?.checked);
+  const co = Boolean(document.getElementById('shMethod_co')?.checked);
+  const drowning = Boolean(document.getElementById('shMethod_drowning')?.checked);
+  const sharp = Boolean(document.getElementById('shMethod_sharp')?.checked);
+  const jumping = Boolean(document.getElementById('shMethod_jumping')?.checked);
+  const other = Boolean(document.getElementById('shMethod_other')?.checked);
+  const neckLoc = Boolean(document.getElementById('shParentNeck')?.checked);
+  const anyMethod = hanging || co || drowning || sharp || jumping || other;
 
-  const airwayGroup = document.getElementById('shGroup_airway');
-  const bleedingGroup = document.getElementById('shGroup_bleeding');
-  const traumaGroup = document.getElementById('shGroup_trauma');
+  const airwayGrp = document.getElementById('shGroup_airway');
+  const bleedGrp = document.getElementById('shGroup_bleeding');
+  const traumaGrp = document.getElementById('shGroup_trauma');
+  if (airwayGrp) airwayGrp.classList.toggle('hidden', anyMethod ? !(hanging || co || drowning || other || neckLoc) : false);
+  if (bleedGrp) bleedGrp.classList.toggle('hidden', anyMethod ? !(sharp || other) : false);
+  if (traumaGrp) traumaGrp.classList.toggle('hidden', anyMethod ? !(jumping || other) : false);
+}
 
-  if (airwayGroup) airwayGroup.classList.toggle('hidden', !(hangingChecked || coChecked));
-  if (bleedingGroup) bleedingGroup.classList.toggle('hidden', !sharpChecked);
-  if (traumaGroup) traumaGroup.classList.toggle('hidden', !jumpingChecked);
+function handleShPainScoreChange(val) {
+  shPainScoreTouched = true;
+  const num = parseInt(val, 10) || 0;
+  const badge = document.getElementById('shPainScoreBadge');
+  const emojiEl = document.getElementById('shPainScoreEmoji');
+  const textEl = document.getElementById('shPainScoreText');
+  const clearBtn = document.getElementById('shPainScoreClearBtn');
+  if (clearBtn) clearBtn.classList.remove('hidden');
+
+  let emoji = '😊', desc = '0 - ไม่ปวดเลย', cls = 'bg-emerald-100 text-emerald-800 border-emerald-300';
+  if (num >= 1 && num <= 3) { emoji = '🙂'; desc = `${num} - ปวดเล็กน้อย`; cls = 'bg-green-100 text-green-800 border-green-300'; }
+  else if (num >= 4 && num <= 6) { emoji = '😐'; desc = `${num} - ปวดปานกลาง`; cls = 'bg-amber-100 text-amber-800 border-amber-300'; }
+  else if (num >= 7 && num <= 9) { emoji = '😣'; desc = `${num} - ปวดรุนแรง`; cls = 'bg-orange-100 text-orange-800 border-orange-300'; }
+  else if (num === 10) { emoji = '😫'; desc = '10 - ปวดรุนแรงที่สุด'; cls = 'bg-rose-100 text-rose-800 border-rose-300'; }
+
+  if (emojiEl) emojiEl.textContent = emoji;
+  if (textEl) textEl.textContent = desc;
+  if (badge) badge.className = `inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-medium border ${cls}`;
+}
+
+function clearShPainScore() {
+  shPainScoreTouched = false;
+  const slider = document.getElementById('selfHarmPainScore');
+  const badge = document.getElementById('shPainScoreBadge');
+  const emojiEl = document.getElementById('shPainScoreEmoji');
+  const textEl = document.getElementById('shPainScoreText');
+  const clearBtn = document.getElementById('shPainScoreClearBtn');
+  if (slider) slider.value = 0;
+  if (emojiEl) emojiEl.textContent = '⚪';
+  if (textEl) textEl.textContent = 'ยังไม่ได้ระบุ (แตะแถบเพื่อระบุ)';
+  if (badge) badge.className = 'inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-600 border border-slate-300';
+  if (clearBtn) clearBtn.classList.add('hidden');
+}
+
+function fmtShDigits(leftDigits, rightDigits) {
+  const dMap = { thumb: 'นิ้วโป้ง', index: 'นิ้วชี้', middle: 'นิ้วกลาง', mid: 'นิ้วกลาง', ring: 'นิ้วนาง', little: 'นิ้วก้อย' };
+  const parts = [];
+  if (Array.isArray(leftDigits) && leftDigits.length > 0) parts.push(`ซ้าย: ${leftDigits.map(d => dMap[d] || d).join(', ')}`);
+  if (Array.isArray(rightDigits) && rightDigits.length > 0) parts.push(`ขวา: ${rightDigits.map(d => dMap[d] || d).join(', ')}`);
+  return parts.length > 0 ? ` (${parts.join(' | ')})` : '';
+}
+
+function fmtShSideAndInjury(sides, injuries) {
+  const sMap = { left: 'ซ้าย', right: 'ขวา', center: 'กลาง' };
+  const iMap = { wound: 'มีแผล', pain_swelling: 'ปวด/บวม', deformity: 'ผิดรูป' };
+  const sPart = Array.isArray(sides) && sides.length > 0 ? sides.map(s => sMap[s] || s).join('/') : '';
+  const iPart = Array.isArray(injuries) && injuries.length > 0 ? injuries.map(i => iMap[i] || i).join('+') : '';
+  if (sPart && iPart) return ` [${sPart} : ${iPart}]`;
+  if (sPart) return ` [ข้าง${sPart}]`;
+  if (iPart) return ` [${iPart}]`;
+  return '';
+}
+
+function formatShAnatomy(patient) {
+  const parts = [];
+
+  if (patient.shParentHeadFace) {
+    const subs = [];
+    if (patient.shHeadScalp) subs.push(`หนังศีรษะ/หน้าผาก${fmtShSideAndInjury(patient.shHeadScalpSides, patient.shHeadScalpInjuries)}`);
+    if (patient.shHeadFace) subs.push(`ใบหน้า/โหนกแก้ม/คาง${fmtShSideAndInjury(patient.shHeadFaceSides, patient.shHeadFaceInjuries)}`);
+    if (patient.shHeadEye) subs.push(`ดวงตา/เบ้าตา${fmtShSideAndInjury(patient.shHeadEyeSides, patient.shHeadEyeInjuries)}`);
+    if (patient.shHeadEar) subs.push(`ใบหู${fmtShSideAndInjury(patient.shHeadEarSides, patient.shHeadEarInjuries)}`);
+    if (patient.shHeadNoseMouth) subs.push(`จมูก/ปาก/ฟัน${fmtShSideAndInjury(patient.shHeadNoseMouthSides, patient.shHeadNoseMouthInjuries)}`);
+    parts.push(`ศีรษะ/ใบหน้า: ${subs.length > 0 ? subs.join(', ') : 'มีบาดเจ็บ'}`);
+  }
+
+  if (patient.shParentNeck) {
+    const subs = [];
+    if (patient.shNeckBack) subs.push(`ต้นคอด้านหลัง${fmtShSideAndInjury(patient.shNeckBackSides, patient.shNeckBackInjuries)}`);
+    if (patient.shNeckFront) subs.push(`ลำคอด้านหน้า${fmtShSideAndInjury(patient.shNeckFrontSides, patient.shNeckFrontInjuries)}`);
+    if (patient.shNeckSide) subs.push(`ลำคอด้านข้าง${fmtShSideAndInjury(patient.shNeckSideSides, patient.shNeckSideInjuries)}`);
+    parts.push(`ลำคอ: ${subs.length > 0 ? subs.join(', ') : 'มีบาดเจ็บ/รอยรัด'}`);
+  }
+
+  if (patient.shParentChest) {
+    const subs = [];
+    if (patient.shChestWall) subs.push(`หน้าอก/ซี่โครง${fmtShSideAndInjury(patient.shChestWallSides, patient.shChestWallInjuries)}`);
+    if (patient.shChestClavicle) subs.push(`ไหปลาร้า${fmtShSideAndInjury(patient.shChestClavicleSides, patient.shChestClavicleInjuries)}`);
+    if (patient.shChestUpperBack) subs.push(`หลังส่วนบน/สะบัก${fmtShSideAndInjury(patient.shChestUpperBackSides, patient.shChestUpperBackInjuries)}`);
+    parts.push(`หน้าอก/หลังบน: ${subs.length > 0 ? subs.join(', ') : 'มีบาดเจ็บ'}`);
+  }
+
+  if (patient.shParentAbdomen) {
+    const subs = [];
+    if (patient.shAbdWall) subs.push(`หน้าท้อง/ชายโครง${fmtShSideAndInjury(patient.shAbdWallSides, patient.shAbdWallInjuries)}`);
+    if (patient.shAbdFlank) subs.push(`สีข้าง/บั้นเอว${fmtShSideAndInjury(patient.shAbdFlankSides, patient.shAbdFlankInjuries)}`);
+    if (patient.shAbdLowerBack) subs.push(`หลังส่วนล่าง${fmtShSideAndInjury(patient.shAbdLowerBackSides, patient.shAbdLowerBackInjuries)}`);
+    if (patient.shAbdPelvis) subs.push(`สะโพก/เชิงกราน${fmtShSideAndInjury(patient.shAbdPelvisSides, patient.shAbdPelvisInjuries)}`);
+    if (patient.shAbdGenitalia) subs.push(`ขาหนีบ/อวัยวะเพศ${fmtShSideAndInjury(patient.shAbdGenitaliaSides, patient.shAbdGenitaliaInjuries)}`);
+    parts.push(`หน้าท้อง/เชิงกราน: ${subs.length > 0 ? subs.join(', ') : 'มีบาดเจ็บ'}`);
+  }
+
+  if (patient.shParentUpperExtremity) {
+    const subs = [];
+    if (patient.shArmShoulder) subs.push(`หัวไหล่/ต้นแขน${fmtShSideAndInjury(patient.shArmShoulderSides, patient.shArmShoulderInjuries)}`);
+    if (patient.shArmElbowForearm) subs.push(`ข้อศอก/แขนท่อนล่าง${fmtShSideAndInjury(patient.shArmElbowForearmSides, patient.shArmElbowForearmInjuries)}`);
+    if (patient.shArmWristHand) subs.push(`ข้อมือ/ฝ่ามือ${fmtShSideAndInjury(patient.shArmWristHandSides, patient.shArmWristHandInjuries)}`);
+    if (patient.shArmFingers) {
+      const dStr = fmtShDigits(patient.shArmFingersLeftDigits, patient.shArmFingersRightDigits);
+      subs.push(`นิ้วมือ${dStr}${fmtShSideAndInjury([], patient.shArmFingersInjuries)}`);
+    }
+    parts.push(`แขน/มือ: ${subs.length > 0 ? subs.join(', ') : 'มีบาดเจ็บ'}`);
+  }
+
+  if (patient.shParentLowerExtremity) {
+    const subs = [];
+    if (patient.shLegThigh) subs.push(`ต้นขา${fmtShSideAndInjury(patient.shLegThighSides, patient.shLegThighInjuries)}`);
+    if (patient.shLegKneeShin) subs.push(`เข่า/หน้าแข้ง/น่อง${fmtShSideAndInjury(patient.shLegKneeShinSides, patient.shLegKneeShinInjuries)}`);
+    if (patient.shLegAnkleFoot) subs.push(`ข้อเท้า/เท้า${fmtShSideAndInjury(patient.shLegAnkleFootSides, patient.shLegAnkleFootInjuries)}`);
+    if (patient.shLegToes) {
+      const dStr = fmtShDigits(patient.shLegToesLeftDigits, patient.shLegToesRightDigits);
+      subs.push(`นิ้วเท้า${dStr}${fmtShSideAndInjury([], patient.shLegToesInjuries)}`);
+    }
+    parts.push(`ขา/เท้า: ${subs.length > 0 ? subs.join(', ') : 'มีบาดเจ็บ'}`);
+  }
+
+  if (patient.shParentOther) {
+    const injTxt = fmtShSideAndInjury([], patient.shOtherLocationInjuries);
+    const det = patient.shOtherLocationDetail ? patient.shOtherLocationDetail.trim() : 'ตำแหน่งอื่น';
+    parts.push(`ตำแหน่งอื่นๆ: ${det}${injTxt}`);
+  }
+
+  return parts.length > 0 ? parts.join(' | ') : 'ไม่มีบาดแผลภายนอกชัดเจน หรือไม่ได้ระบุตำแหน่ง';
 }
 
 const selfHarmModule = {
   id: 'self_harm',
   recordCc: 'self_harm',
   titleTh: 'ทำร้ายตนเอง / พยายามฆ่าตัวตาย',
+  titleEn: 'Self-harm / Suicide attempt',
+  icon: 'heart-crack',
   algorithm: 'self-harm-crisis-protocol',
-  title: 'ทำร้ายตนเอง / พยายามฆ่าตัวตาย (Self-Harm)',
   sectionDomId: 'ccSelfHarmSection',
   doctorCcBadgeHtml: '<i data-lucide="heart-crack" class="w-3.5 h-3.5 mr-1 text-rose-600"></i> CC: ทำร้ายตนเอง / พยายามฆ่าตัวตาย (Self-Harm)',
 
-    // -----------------------------------------------------------------------
-    // PATIENT QUESTIONNAIRE HTML TEMPLATE
-    // -----------------------------------------------------------------------
-    formHtml: `
+  formHtml: `
     <div id="ccSelfHarmSection" class="space-y-6">
 
-      <!-- BANNER แจ้งเตือนกรณีรับประทานสารพิษ / กินยาเกินขนาด ให้ข้ามไปใช้ CC สารพิษ -->
+      <!-- BANNER แจ้งเตือนกรณีรับประทานสารพิษ / กินยาเกินขนาด -->
       <div class="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-start space-x-3">
         <div class="p-2 bg-amber-100 text-amber-800 rounded-xl flex-shrink-0 mt-0.5">
           <i data-lucide="alert-triangle" class="w-5 h-5"></i>
@@ -97,8 +422,7 @@ const selfHarmModule = {
         <div class="flex-1 text-xs sm:text-sm">
           <p class="font-bold text-amber-900">กรณีผู้ป่วยทำร้ายตนเองด้วยการ "รับประทานสารพิษ หรือ กินยาเกินขนาด":</p>
           <p class="text-amber-800 mt-0.5 font-normal">
-            หากเป็นการดื่มสารเคมี ยากำจัดศัตรูพืช น้ำยาล้างห้องน้ำ หรือกินยาเกินขนาด โปรดสลับไปบันทึกที่
-            <strong>"ได้รับสารพิษ / กินยาเกินขนาด (Poisoning)"</strong> เพื่อให้ได้ชุดคำถามเฉพาะทางเกี่ยวกับสารพิษอย่างครบถ้วน
+            โปรดสลับไปบันทึกที่ <strong>"ได้รับสารพิษ / กินยาเกินขนาด (Poisoning)"</strong> เพื่อให้ได้ชุดคำถามเฉพาะทางเกี่ยวกับสารพิษอย่างครบถ้วน
           </p>
           <div class="mt-2.5">
             <button type="button" onclick="if (typeof setPatientFormChiefComplaint === 'function') setPatientFormChiefComplaint('poisoning');" class="inline-flex items-center px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-semibold text-xs transition shadow-xs">
@@ -132,15 +456,13 @@ const selfHarmModule = {
               <div class="ml-3"><span class="block text-xs sm:text-sm font-semibold text-slate-800">เจ้าหน้าที่กู้ชีพ / พลเมืองดี</span><span class="block text-[11px] text-slate-500 font-normal mt-0.5">กู้ภัย ตำรวจ หรือผู้พบเหตุ</span></div>
             </label>
           </div>
-
-          <!-- Dynamic Informant Inputs -->
           <div id="shInformantRelSub" class="hidden mt-2 p-3 bg-slate-50 rounded-xl border border-slate-200">
             <label class="block text-xs font-semibold text-slate-700 mb-1">ระบุความสัมพันธ์กับผู้ป่วย:</label>
-            <input type="text" id="selfHarmInformantRelText" placeholder="เช่น บิดา, มารดา, สามี, ภรรยา, บุตร, เพื่อนสนิท" class="w-full text-xs sm:text-sm border-slate-300 rounded-lg p-2 focus:ring-medical-500 focus:border-medical-500">
+            <input type="text" id="selfHarmInformantRelText" placeholder="เช่น บิดา, มารดา, สามี, ภรรยา, บุตร, เพื่อนสนิท" class="w-full text-xs sm:text-sm border-slate-300 rounded-lg p-2 focus:ring-medical-500 focus:border-medical-500 bg-white">
           </div>
           <div id="shInformantRescuerSub" class="hidden mt-2 p-3 bg-slate-50 rounded-xl border border-slate-200">
             <label class="block text-xs font-semibold text-slate-700 mb-1">ระบุหน่วยงาน หรือบทบาทผู้พบเหตุ:</label>
-            <input type="text" id="selfHarmInformantRescuerText" placeholder="เช่น กู้ชีพสว่างราชบุรี, เจ้าหน้าที่ตำรวจ สภ.เมือง, พลเมืองดีผู้พบเห็น" class="w-full text-xs sm:text-sm border-slate-300 rounded-lg p-2 focus:ring-medical-500 focus:border-medical-500">
+            <input type="text" id="selfHarmInformantRescuerText" placeholder="เช่น กู้ชีพสว่างราชบุรี, เจ้าหน้าที่ตำรวจ สภ.เมือง, พลเมืองดีผู้พบเห็น" class="w-full text-xs sm:text-sm border-slate-300 rounded-lg p-2 focus:ring-medical-500 focus:border-medical-500 bg-white">
           </div>
         </div>
 
@@ -169,55 +491,43 @@ const selfHarmModule = {
           </div>
         </div>
 
-        <!-- 1.3 วิธีการทำร้ายตนเอง (เลือกได้มากกว่า 1 ข้อ) -->
+        <!-- 1.3 วิธีการทำร้ายตนเอง -->
         <div class="pt-2 border-t border-slate-100">
           <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">1.3 วิธีการที่ใช้ในการทำร้ายตนเอง (เลือกได้หลายข้อหากมีหลายวิธีร่วมกัน)</label>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            <!-- ผูกคอ / รัดคอ -->
             <label class="selectable-card flex items-start p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-              <input type="checkbox" id="shMethod_hanging" name="selfHarmMethod" value="hanging" onchange="toggleShMethodSub('shSub_hanging', this.checked); updateShContextSymptoms();" class="mt-0.5 text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
+              <input type="checkbox" id="shMethod_hanging" name="selfHarmMethod" value="hanging" onchange="toggleShGroup('shSub_hanging', this.checked); updateShContextSymptoms();" class="mt-0.5 text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
               <div class="ml-3"><span class="block text-xs sm:text-sm font-semibold text-slate-800">ผูกคอ รัดคอ หรือทำให้ขาดอากาศหายใจ</span><span class="block text-[11px] text-slate-500 font-normal mt-0.5">เช่น ใช้เชือก ผ้า รัดคอ หรือใช้ถุงคลุมศีรษะ</span></div>
             </label>
-
-            <!-- ของมีคม / กรีดข้อมือ -->
             <label class="selectable-card flex items-start p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-              <input type="checkbox" id="shMethod_sharp" name="selfHarmMethod" value="sharp" onchange="toggleShMethodSub('shSub_sharp', this.checked); updateShContextSymptoms();" class="mt-0.5 text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
+              <input type="checkbox" id="shMethod_sharp" name="selfHarmMethod" value="sharp" onchange="toggleShGroup('shSub_sharp', this.checked); updateShContextSymptoms();" class="mt-0.5 text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
               <div class="ml-3"><span class="block text-xs sm:text-sm font-semibold text-slate-800">ใช้ของมีคม กรีด ขีดข่วน หรือแทง</span><span class="block text-[11px] text-slate-500 font-normal mt-0.5">เช่น มีดคัตเตอร์ มีดโกน กรรไกร เศษแก้ว หรือแทงส่วนร่างกาย</span></div>
             </label>
-
-            <!-- กระโดดจากที่สูง / ตกจากที่สูง -->
             <label class="selectable-card flex items-start p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-              <input type="checkbox" id="shMethod_jumping" name="selfHarmMethod" value="jumping" onchange="toggleShMethodSub('shSub_jumping', this.checked); updateShContextSymptoms();" class="mt-0.5 text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
+              <input type="checkbox" id="shMethod_jumping" name="selfHarmMethod" value="jumping" onchange="toggleShGroup('shSub_jumping', this.checked); updateShContextSymptoms();" class="mt-0.5 text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
               <div class="ml-3"><span class="block text-xs sm:text-sm font-semibold text-slate-800">กระโดดจากที่สูง หรือตกจากที่สูง</span><span class="block text-[11px] text-slate-500 font-normal mt-0.5">เช่น ตึก ระเบียง สะพาน หรือที่ลาดชัน</span></div>
             </label>
-
-            <!-- กระโดดน้ำ / จมน้ำ (แยกข้อเด็ดขาดตาม Comment) -->
             <label class="selectable-card flex items-start p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-              <input type="checkbox" id="shMethod_drowning" name="selfHarmMethod" value="drowning" onchange="toggleShMethodSub('shSub_drowning', this.checked); updateShContextSymptoms();" class="mt-0.5 text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
+              <input type="checkbox" id="shMethod_drowning" name="selfHarmMethod" value="drowning" onchange="toggleShGroup('shSub_drowning', this.checked); updateShContextSymptoms();" class="mt-0.5 text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
               <div class="ml-3"><span class="block text-xs sm:text-sm font-semibold text-slate-800">กระโดดน้ำ หรือพยายามทำให้ตนเองจมน้ำ</span><span class="block text-[11px] text-slate-500 font-normal mt-0.5">เช่น กระโดดแม่น้ำ คลอง สระน้ำ หรือจมน้ำ</span></div>
             </label>
-
-            <!-- รมควัน / ก๊าซพิษ / เผาถ่าน -->
             <label class="selectable-card flex items-start p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-              <input type="checkbox" id="shMethod_co" name="selfHarmMethod" value="co_poisoning" onchange="toggleShMethodSub('shSub_co', this.checked); updateShContextSymptoms();" class="mt-0.5 text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
+              <input type="checkbox" id="shMethod_co" name="selfHarmMethod" value="co_poisoning" onchange="toggleShGroup('shSub_co', this.checked); updateShContextSymptoms();" class="mt-0.5 text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
               <div class="ml-3"><span class="block text-xs sm:text-sm font-semibold text-slate-800">รมควัน จุดเตาถ่าน หรือสูดดมก๊าซพิษในห้องปิด</span><span class="block text-[11px] text-slate-500 font-normal mt-0.5">จุดไฟในรถ หรือในห้องปิดสนิท</span></div>
             </label>
-
-            <!-- วิธีอื่นๆ เช่น วิ่งให้รถชน กระแทกของแข็ง ยิงปืน ไฟไหม้ -->
             <label class="selectable-card flex items-start p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-              <input type="checkbox" id="shMethod_other" name="selfHarmMethod" value="other_trauma" onchange="toggleShMethodSub('shSub_other', this.checked); updateShContextSymptoms();" class="mt-0.5 text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
+              <input type="checkbox" id="shMethod_other" name="selfHarmMethod" value="other_trauma" onchange="toggleShGroup('shSub_other', this.checked); updateShContextSymptoms();" class="mt-0.5 text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
               <div class="ml-3"><span class="block text-xs sm:text-sm font-semibold text-slate-800">วิธีอื่น เช่น วิ่งให้รถชน กระแทก อาวุธปืน หรือไฟลวก</span><span class="block text-[11px] text-slate-500 font-normal mt-0.5">การกระทำที่ก่อให้เกิดการบาดเจ็บรุนแรงอื่นๆ</span></div>
             </label>
           </div>
 
-          <!-- Progressive Disclosure Sub-options per Method -->
-          <!-- 1. Sub ผูกคอ/รัดคอ -->
+          <!-- Progressive Disclosure Sub-options -->
           <div id="shSub_hanging" class="hidden mt-3 p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
             <span class="block text-xs font-bold text-slate-700">รายละเอียดการผูกคอ / ขาดอากาศหายใจ:</span>
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
-              <label class="selectable-card flex items-center p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer"><input type="checkbox" id="shHanging_suspended" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0"><span class="ml-3 text-xs font-semibold text-slate-800">ตัวลอยพ้นพื้น (Full suspension)</span></label>
+              <label class="selectable-card flex items-center p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer"><input type="checkbox" id="shHanging_suspended" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0"><span class="ml-3 text-xs font-semibold text-slate-800">ตัวลอยพ้นพื้น</span></label>
               <label class="selectable-card flex items-center p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer"><input type="checkbox" id="shHanging_unconscious" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0"><span class="ml-3 text-xs font-semibold text-slate-800">หมดสติ ไม่รู้สึกตัวเมื่อพบ</span></label>
-              <label class="selectable-card flex items-center p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer"><input type="checkbox" id="shHanging_cyanosis" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0"><span class="ml-3 text-xs font-semibold text-slate-800">พบหน้าเขียว คล้ำ หรือมีจุดเลือดออก</span></label>
+              <label class="selectable-card flex items-center p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer"><input type="checkbox" id="shHanging_cyanosis" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0"><span class="ml-3 text-xs font-semibold text-slate-800">พบหน้าเขียว คล้ำ หรือจุดเลือดออก</span></label>
             </div>
             <div>
               <span class="block text-[11px] font-semibold text-slate-600 mb-1">ระยะเวลาที่ถูกแขวน/รัดคอ (ถ้าทราบ):</span>
@@ -225,7 +535,6 @@ const selfHarmModule = {
             </div>
           </div>
 
-          <!-- 2. Sub ของมีคม -->
           <div id="shSub_sharp" class="hidden mt-3 p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
             <span class="block text-xs font-bold text-slate-700">รายละเอียดการใช้ของมีคม:</span>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -244,7 +553,6 @@ const selfHarmModule = {
             </div>
           </div>
 
-          <!-- 3. Sub กระโดดที่สูง -->
           <div id="shSub_jumping" class="hidden mt-3 p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
             <span class="block text-xs font-bold text-slate-700">รายละเอียดการตก/กระโดดจากที่สูง:</span>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -259,7 +567,6 @@ const selfHarmModule = {
             </div>
           </div>
 
-          <!-- 4. Sub กระโดดน้ำ / จมน้ำ -->
           <div id="shSub_drowning" class="hidden mt-3 p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
             <span class="block text-xs font-bold text-slate-700">รายละเอียดการกระโดดน้ำ / จมน้ำ:</span>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -278,7 +585,6 @@ const selfHarmModule = {
             </div>
           </div>
 
-          <!-- 5. Sub รมควัน / ก๊าซพิษ -->
           <div id="shSub_co" class="hidden mt-3 p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
             <span class="block text-xs font-bold text-slate-700">รายละเอียดการรมควัน / สูดก๊าซพิษ:</span>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -293,7 +599,6 @@ const selfHarmModule = {
             </div>
           </div>
 
-          <!-- 6. Sub อื่นๆ -->
           <div id="shSub_other" class="hidden mt-3 p-3.5 bg-slate-50 rounded-xl border border-slate-200">
             <span class="block text-xs font-semibold text-slate-700 mb-1">ระบุรายละเอียดวิธีการทำร้ายตนเองอื่นๆ:</span>
             <textarea id="selfHarmOtherMethodText" rows="2" placeholder="อธิบายเหตุการณ์ เช่น วิ่งชนสิ่งกีดขวาง, ไฟลวก ฯลฯ" class="w-full text-xs sm:text-sm border-slate-300 rounded-lg p-2 focus:ring-medical-500 focus:border-medical-500 bg-white"></textarea>
@@ -301,18 +606,17 @@ const selfHarmModule = {
         </div>
       </div>
 
-      <!-- CARD 2: SYMPTOMS, ANATOMICAL REGIONS & INJURY CHARACTER -->
+      <!-- CARD 2: SYMPTOMS, STANDARD 7 ANATOMICAL REGIONS & PAIN SCORE -->
       <div class="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-xs space-y-4">
         <div class="flex items-center space-x-2 border-b border-slate-100 pb-3">
           <div class="w-7 h-7 rounded-lg bg-medical-100 text-medical-700 flex items-center justify-center font-bold text-xs">2</div>
-          <h3 class="text-sm font-bold text-slate-800">อาการผิดปกติ ตำแหน่งร่างกาย และลักษณะบาดแผล</h3>
+          <h3 class="text-sm font-bold text-slate-800">อาการผิดปกติ ตำแหน่งร่างกายที่ได้รับบาดเจ็บ และชนิดการบาดเจ็บ</h3>
         </div>
 
-        <!-- 2.1 อาการผิดปกติสำคัญที่พบร่วมด้วย -->
+        <!-- 2.1 อาการผิดปกติสำคัญที่พบในขณะนี้ (Route-Aware Filtering) -->
         <div>
           <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">2.1 อาการผิดปกติสำคัญที่พบในขณะนี้ (เลือกได้หลายข้อ)</label>
           <div class="space-y-3">
-            <!-- กลุ่มอาการทางเดินหายใจ & คอ (กรองอัตโนมัติเมื่อเลือกผูกคอ/รมควัน) -->
             <div id="shGroup_airway" class="space-y-1.5">
               <span class="block text-[11px] font-bold text-slate-600">ทางเดินหายใจ เสียงแหบ และการหายใจ:</span>
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -327,7 +631,6 @@ const selfHarmModule = {
               </div>
             </div>
 
-            <!-- กลุ่มบาดแผล เลือดออก & หลอดเลือด/เส้นประสาท (กรองเมื่อเลือกของมีคม) -->
             <div id="shGroup_bleeding" class="space-y-1.5 pt-2 border-t border-slate-100">
               <span class="block text-[11px] font-bold text-slate-600">เลือดออก บาดแผลลึก และการทำงานของระบบประสาท/เส้นเอ็น:</span>
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -341,7 +644,7 @@ const selfHarmModule = {
                 </label>
                 <label class="selectable-card flex items-start p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
                   <input type="checkbox" id="shSym_motor_deficit" class="mt-0.5 text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
-                  <div class="ml-3"><span class="block text-xs sm:text-sm font-semibold text-slate-800">กระดิกนิ้ว กำมือ หรือขยับแขนขาไม่ได้</span><span class="block text-[11px] text-slate-500 font-normal mt-0.5">สงสัยเส้นเอ็นหรือเส้นประสาทได้รับบาดเจ็บ</span></div>
+                  <div class="ml-3"><span class="block text-xs sm:text-sm font-semibold text-slate-800">กระดิกนิ้ว กำมือ หรือขยับแขนขาไม่ได้</span><span class="block text-[11px] text-slate-500 font-normal mt-0.5">ขยับข้อต่อหรือนิ้วไม่ได้หลังเกิดบาดแผล</span></div>
                 </label>
                 <label class="selectable-card flex items-start p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
                   <input type="checkbox" id="shSym_wound_depth" class="mt-0.5 text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
@@ -350,7 +653,6 @@ const selfHarmModule = {
               </div>
             </div>
 
-            <!-- กลุ่มการบาดเจ็บรุนแรงจากการตกที่สูง (กรองเมื่อเลือกกระโดดที่สูง) -->
             <div id="shGroup_trauma" class="space-y-1.5 pt-2 border-t border-slate-100">
               <span class="block text-[11px] font-bold text-slate-600">การบาดเจ็บกระดูก และอวัยวะภายในจากการกระแทก:</span>
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -360,12 +662,11 @@ const selfHarmModule = {
                 </label>
                 <label class="selectable-card flex items-start p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
                   <input type="checkbox" id="shSym_severe_abdpain" class="mt-0.5 text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
-                  <div class="ml-3"><span class="block text-xs sm:text-sm font-semibold text-slate-800">ปวดแน่นหน้าอก แน่นท้องมาก ท้องเกร็ง</span><span class="block text-[11px] text-slate-500 font-normal mt-0.5">สงสัยภาวะบาดเจ็บอวัยวะภายในช่องท้องหรือทรวงอก</span></div>
+                  <div class="ml-3"><span class="block text-xs sm:text-sm font-semibold text-slate-800">ปวดแน่นหน้าอก แน่นท้องมาก ท้องเกร็ง</span><span class="block text-[11px] text-slate-500 font-normal mt-0.5">ปวดบริเวณหน้าอกหรือช่องท้องอย่างรุนแรงหลังตกที่สูง</span></div>
                 </label>
               </div>
             </div>
 
-            <!-- กลุ่มอาการทั่วไปและสติสัมปชัญญะ -->
             <div class="space-y-1.5 pt-2 border-t border-slate-100">
               <span class="block text-[11px] font-bold text-slate-600">สติสัมปชัญญะและอาการทั่วไป:</span>
               <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
@@ -375,7 +676,7 @@ const selfHarmModule = {
                 </label>
                 <label class="selectable-card flex items-start p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
                   <input type="checkbox" id="shSym_dizziness_shock" class="mt-0.5 text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
-                  <div class="ml-3"><span class="block text-xs sm:text-sm font-semibold text-slate-800">หน้ามืด วิงเวียน เหงื่อแตกตัวเย็น</span><span class="block text-[11px] text-slate-500 font-normal mt-0.5">สัญญาณชีพอาจมีความดันโลหิตตก</span></div>
+                  <div class="ml-3"><span class="block text-xs sm:text-sm font-semibold text-slate-800">หน้ามืด วิงเวียน เหงื่อแตกตัวเย็น</span><span class="block text-[11px] text-slate-500 font-normal mt-0.5">ใจสั่น ตัวเย็นซีด หน้ามืดคล้ายจะเป็นลม</span></div>
                 </label>
                 <label class="selectable-card flex items-start p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
                   <input type="checkbox" id="shSym_none" class="mt-0.5 text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
@@ -386,222 +687,30 @@ const selfHarmModule = {
           </div>
         </div>
 
-        <!-- 2.2 ตำแหน่งร่างกาย 7 โซน (UI แยกระหว่าง ด้าน/ข้าง กับ ชนิดแผล ชัดเจน) -->
-        <div class="pt-2 border-t border-slate-100">
-          <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">2.2 ตำแหน่งของร่างกายที่มีการบาดเจ็บ รอยแผล หรือรอยรัด (เลือกได้หลายส่วน)</label>
-          <div class="space-y-3">
-
-            <!-- 2.2.1 ศีรษะ หนังศีรษะ ใบหน้า -->
-            <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
-              <label class="selectable-card flex items-center p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer">
-                <input type="checkbox" id="shLoc_head_parent" onchange="toggleShLocSub('shLocSub_head', this.checked)" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
-                <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800">ศีรษะ หนังศีรษะ หน้าผาก หรือใบหน้า</span>
-              </label>
-              <div id="shLocSub_head" class="hidden pl-2 sm:pl-3 space-y-2 pt-1">
-                <div class="bg-white p-2.5 rounded-lg border border-slate-200">
-                  <span class="block text-[11px] font-bold text-slate-600 mb-1">ด้านที่เป็น:</span>
-                  <div class="flex flex-wrap gap-2">
-                    <label class="selectable-card inline-flex items-center px-2.5 py-1 rounded-md border border-slate-200 cursor-pointer text-xs"><input type="checkbox" id="shSide_head_scalp_left" class="text-medical-600 focus:ring-medical-500 h-3.5 w-3.5 rounded"><span class="ml-2 font-medium text-slate-800">ซ้าย</span></label>
-                    <label class="selectable-card inline-flex items-center px-2.5 py-1 rounded-md border border-slate-200 cursor-pointer text-xs"><input type="checkbox" id="shSide_head_scalp_right" class="text-medical-600 focus:ring-medical-500 h-3.5 w-3.5 rounded"><span class="ml-2 font-medium text-slate-800">ขวา</span></label>
-                    <label class="selectable-card inline-flex items-center px-2.5 py-1 rounded-md border border-slate-200 cursor-pointer text-xs"><input type="checkbox" id="shSide_head_scalp_mid" class="text-medical-600 focus:ring-medical-500 h-3.5 w-3.5 rounded"><span class="ml-2 font-medium text-slate-800">ตรงกลาง</span></label>
-                  </div>
-                </div>
-                <div class="bg-slate-100/70 p-2.5 rounded-lg border border-slate-200">
-                  <span class="block text-[11px] font-bold text-slate-700 mb-1">ลักษณะบาดแผลที่พบ:</span>
-                  <div class="flex flex-wrap gap-2">
-                    <label class="selectable-card inline-flex items-center px-2.5 py-1 rounded-md border border-slate-200 bg-white cursor-pointer text-xs"><input type="checkbox" id="shType_head_scalp_wound" class="text-medical-600 focus:ring-medical-500 h-3.5 w-3.5 rounded"><span class="ml-2 font-medium text-slate-800">มีแผลเปิด</span></label>
-                    <label class="selectable-card inline-flex items-center px-2.5 py-1 rounded-md border border-slate-200 bg-white cursor-pointer text-xs"><input type="checkbox" id="shType_head_scalp_pain" class="text-medical-600 focus:ring-medical-500 h-3.5 w-3.5 rounded"><span class="ml-2 font-medium text-slate-800">ปวด/บวม/ฟกช้ำ</span></label>
-                    <label class="selectable-card inline-flex items-center px-2.5 py-1 rounded-md border border-slate-200 bg-white cursor-pointer text-xs"><input type="checkbox" id="shType_head_scalp_deform" class="text-medical-600 focus:ring-medical-500 h-3.5 w-3.5 rounded"><span class="ml-2 font-medium text-slate-800">ผิดรูป/กะโหลกยุบ</span></label>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- 2.2.2 ลำคอ รอยรัดคอ -->
-            <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
-              <label class="selectable-card flex items-center p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer">
-                <input type="checkbox" id="shLoc_neck_parent" onchange="toggleShLocSub('shLocSub_neck', this.checked); updateShContextSymptoms();" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
-                <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800">ลำคอ ลูกกระเดือก รอยรัดคอ หรือต้นคอ</span>
-              </label>
-              <div id="shLocSub_neck" class="hidden pl-2 sm:pl-3 space-y-2 pt-1">
-                <div class="bg-white p-2.5 rounded-lg border border-slate-200">
-                  <span class="block text-[11px] font-bold text-slate-600 mb-1">ด้านที่เป็น:</span>
-                  <div class="flex flex-wrap gap-2">
-                    <label class="selectable-card inline-flex items-center px-2.5 py-1 rounded-md border border-slate-200 cursor-pointer text-xs"><input type="checkbox" id="shSide_neck_left" class="text-medical-600 focus:ring-medical-500 h-3.5 w-3.5 rounded"><span class="ml-2 font-medium text-slate-800">ซ้าย</span></label>
-                    <label class="selectable-card inline-flex items-center px-2.5 py-1 rounded-md border border-slate-200 cursor-pointer text-xs"><input type="checkbox" id="shSide_neck_right" class="text-medical-600 focus:ring-medical-500 h-3.5 w-3.5 rounded"><span class="ml-2 font-medium text-slate-800">ขวา</span></label>
-                    <label class="selectable-card inline-flex items-center px-2.5 py-1 rounded-md border border-slate-200 cursor-pointer text-xs"><input type="checkbox" id="shSide_neck_mid" class="text-medical-600 focus:ring-medical-500 h-3.5 w-3.5 rounded"><span class="ml-2 font-medium text-slate-800">รอบคอ / ตรงกลาง</span></label>
-                  </div>
-                </div>
-                <div class="bg-slate-100/70 p-2.5 rounded-lg border border-slate-200">
-                  <span class="block text-[11px] font-bold text-slate-700 mb-1">ลักษณะบาดแผลที่พบ:</span>
-                  <div class="flex flex-wrap gap-2">
-                    <label class="selectable-card inline-flex items-center px-2.5 py-1 rounded-md border border-slate-200 bg-white cursor-pointer text-xs"><input type="checkbox" id="shType_neck_wound" class="text-medical-600 focus:ring-medical-500 h-3.5 w-3.5 rounded"><span class="ml-2 font-medium text-slate-800">มีแผลเปิด/แผลกรีด</span></label>
-                    <label class="selectable-card inline-flex items-center px-2.5 py-1 rounded-md border border-slate-200 bg-white cursor-pointer text-xs"><input type="checkbox" id="shType_neck_pain" class="text-medical-600 focus:ring-medical-500 h-3.5 w-3.5 rounded"><span class="ml-2 font-medium text-slate-800">รอยรัด/บวมช้ำ</span></label>
-                    <label class="selectable-card inline-flex items-center px-2.5 py-1 rounded-md border border-slate-200 bg-white cursor-pointer text-xs"><input type="checkbox" id="shType_neck_deform" class="text-medical-600 focus:ring-medical-500 h-3.5 w-3.5 rounded"><span class="ml-2 font-medium text-slate-800">บวมโต/ผิดรูป</span></label>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- 2.2.3 หน้าอก ซี่โครง -->
-            <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
-              <label class="selectable-card flex items-center p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer">
-                <input type="checkbox" id="shLoc_chest_parent" onchange="toggleShLocSub('shLocSub_chest', this.checked)" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
-                <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800">หน้าอก ซี่โครง หรือแผ่นหลังช่วงบน</span>
-              </label>
-              <div id="shLocSub_chest" class="hidden pl-2 sm:pl-3 space-y-2 pt-1">
-                <div class="bg-white p-2.5 rounded-lg border border-slate-200">
-                  <span class="block text-[11px] font-bold text-slate-600 mb-1">ด้านที่เป็น:</span>
-                  <div class="flex flex-wrap gap-2">
-                    <label class="selectable-card inline-flex items-center px-2.5 py-1 rounded-md border border-slate-200 cursor-pointer text-xs"><input type="checkbox" id="shSide_chest_left" class="text-medical-600 focus:ring-medical-500 h-3.5 w-3.5 rounded"><span class="ml-2 font-medium text-slate-800">ซ้าย</span></label>
-                    <label class="selectable-card inline-flex items-center px-2.5 py-1 rounded-md border border-slate-200 cursor-pointer text-xs"><input type="checkbox" id="shSide_chest_right" class="text-medical-600 focus:ring-medical-500 h-3.5 w-3.5 rounded"><span class="ml-2 font-medium text-slate-800">ขวา</span></label>
-                    <label class="selectable-card inline-flex items-center px-2.5 py-1 rounded-md border border-slate-200 cursor-pointer text-xs"><input type="checkbox" id="shSide_chest_mid" class="text-medical-600 focus:ring-medical-500 h-3.5 w-3.5 rounded"><span class="ml-2 font-medium text-slate-800">ตรงกลาง</span></label>
-                  </div>
-                </div>
-                <div class="bg-slate-100/70 p-2.5 rounded-lg border border-slate-200">
-                  <span class="block text-[11px] font-bold text-slate-700 mb-1">ลักษณะบาดแผลที่พบ:</span>
-                  <div class="flex flex-wrap gap-2">
-                    <label class="selectable-card inline-flex items-center px-2.5 py-1 rounded-md border border-slate-200 bg-white cursor-pointer text-xs"><input type="checkbox" id="shType_chest_wound" class="text-medical-600 focus:ring-medical-500 h-3.5 w-3.5 rounded"><span class="ml-2 font-medium text-slate-800">มีแผลเปิด/แผลแทง</span></label>
-                    <label class="selectable-card inline-flex items-center px-2.5 py-1 rounded-md border border-slate-200 bg-white cursor-pointer text-xs"><input type="checkbox" id="shType_chest_pain" class="text-medical-600 focus:ring-medical-500 h-3.5 w-3.5 rounded"><span class="ml-2 font-medium text-slate-800">ปวด/บวม/ฟกช้ำ</span></label>
-                    <label class="selectable-card inline-flex items-center px-2.5 py-1 rounded-md border border-slate-200 bg-white cursor-pointer text-xs"><input type="checkbox" id="shType_chest_deform" class="text-medical-600 focus:ring-medical-500 h-3.5 w-3.5 rounded"><span class="ml-2 font-medium text-slate-800">ผิดรูป/ซี่โครงยุบ</span></label>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- 2.2.4 หน้าท้อง บั้นเอว -->
-            <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
-              <label class="selectable-card flex items-center p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer">
-                <input type="checkbox" id="shLoc_abd_parent" onchange="toggleShLocSub('shLocSub_abd', this.checked)" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
-                <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800">หน้าท้อง บั้นเอว หลังส่วนล่าง หรือสะโพก</span>
-              </label>
-              <div id="shLocSub_abd" class="hidden pl-2 sm:pl-3 space-y-2 pt-1">
-                <div class="bg-white p-2.5 rounded-lg border border-slate-200">
-                  <span class="block text-[11px] font-bold text-slate-600 mb-1">ด้านที่เป็น:</span>
-                  <div class="flex flex-wrap gap-2">
-                    <label class="selectable-card inline-flex items-center px-2.5 py-1 rounded-md border border-slate-200 cursor-pointer text-xs"><input type="checkbox" id="shSide_abd_left" class="text-medical-600 focus:ring-medical-500 h-3.5 w-3.5 rounded"><span class="ml-2 font-medium text-slate-800">ซ้าย</span></label>
-                    <label class="selectable-card inline-flex items-center px-2.5 py-1 rounded-md border border-slate-200 cursor-pointer text-xs"><input type="checkbox" id="shSide_abd_right" class="text-medical-600 focus:ring-medical-500 h-3.5 w-3.5 rounded"><span class="ml-2 font-medium text-slate-800">ขวา</span></label>
-                    <label class="selectable-card inline-flex items-center px-2.5 py-1 rounded-md border border-slate-200 cursor-pointer text-xs"><input type="checkbox" id="shSide_abd_mid" class="text-medical-600 focus:ring-medical-500 h-3.5 w-3.5 rounded"><span class="ml-2 font-medium text-slate-800">ตรงกลาง</span></label>
-                  </div>
-                </div>
-                <div class="bg-slate-100/70 p-2.5 rounded-lg border border-slate-200">
-                  <span class="block text-[11px] font-bold text-slate-700 mb-1">ลักษณะบาดแผลที่พบ:</span>
-                  <div class="flex flex-wrap gap-2">
-                    <label class="selectable-card inline-flex items-center px-2.5 py-1 rounded-md border border-slate-200 bg-white cursor-pointer text-xs"><input type="checkbox" id="shType_abd_wound" class="text-medical-600 focus:ring-medical-500 h-3.5 w-3.5 rounded"><span class="ml-2 font-medium text-slate-800">มีแผลเปิด/แผลแทง</span></label>
-                    <label class="selectable-card inline-flex items-center px-2.5 py-1 rounded-md border border-slate-200 bg-white cursor-pointer text-xs"><input type="checkbox" id="shType_abd_pain" class="text-medical-600 focus:ring-medical-500 h-3.5 w-3.5 rounded"><span class="ml-2 font-medium text-slate-800">ปวด/บวม/ฟกช้ำ</span></label>
-                    <label class="selectable-card inline-flex items-center px-2.5 py-1 rounded-md border border-slate-200 bg-white cursor-pointer text-xs"><input type="checkbox" id="shType_abd_deform" class="text-medical-600 focus:ring-medical-500 h-3.5 w-3.5 rounded"><span class="ml-2 font-medium text-slate-800">ท้องเกร็งตึง</span></label>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- 2.2.5 แขน ข้อมือ ฝ่ามือ นิ้วมือ (พบบ่อยสุด) -->
-            <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
-              <label class="selectable-card flex items-center p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer">
-                <input type="checkbox" id="shLoc_arm_parent" onchange="toggleShLocSub('shLocSub_arm', this.checked)" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
-                <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800">แขน ข้อมือ ฝ่ามือ หรือนิ้วมือ (พบบ่อยในของมีคม)</span>
-              </label>
-              <div id="shLocSub_arm" class="hidden pl-2 sm:pl-3 space-y-2 pt-1">
-                <div class="bg-white p-2.5 rounded-lg border border-slate-200 space-y-2">
-                  <span class="block text-[11px] font-bold text-slate-600">ตำแหน่งและข้างที่เป็น:</span>
-                  <div class="flex flex-wrap gap-2">
-                    <label class="selectable-card inline-flex items-center px-2.5 py-1 rounded-md border border-slate-200 cursor-pointer text-xs"><input type="checkbox" id="shSide_arm_wrist_left" class="text-medical-600 focus:ring-medical-500 h-3.5 w-3.5 rounded"><span class="ml-2 font-medium text-slate-800">ข้อมือ/แขน ซ้าย</span></label>
-                    <label class="selectable-card inline-flex items-center px-2.5 py-1 rounded-md border border-slate-200 cursor-pointer text-xs"><input type="checkbox" id="shSide_arm_wrist_right" class="text-medical-600 focus:ring-medical-500 h-3.5 w-3.5 rounded"><span class="ml-2 font-medium text-slate-800">ข้อมือ/แขน ขวา</span></label>
-                  </div>
-                  <!-- นิ้วมือ ซ้าย / ขวา (ใช้ ml-2 ตามมาตรฐานป้องกัน C-AP1) -->
-                  <div class="pt-1 border-t border-slate-100 text-xs">
-                    <span class="block text-[11px] font-semibold text-slate-500 mb-1">นิ้วมือซ้าย:</span>
-                    <div class="flex flex-wrap gap-1.5">
-                      <label class="selectable-card inline-flex items-center px-2 py-0.5 rounded border border-slate-200 text-xs cursor-pointer"><input type="checkbox" id="shFinger_left_thumb" class="h-3 w-3"><span class="ml-2 text-slate-800">โป้ง</span></label>
-                      <label class="selectable-card inline-flex items-center px-2 py-0.5 rounded border border-slate-200 text-xs cursor-pointer"><input type="checkbox" id="shFinger_left_index" class="h-3 w-3"><span class="ml-2 text-slate-800">ชี้</span></label>
-                      <label class="selectable-card inline-flex items-center px-2 py-0.5 rounded border border-slate-200 text-xs cursor-pointer"><input type="checkbox" id="shFinger_left_mid" class="h-3 w-3"><span class="ml-2 text-slate-800">กลาง</span></label>
-                      <label class="selectable-card inline-flex items-center px-2 py-0.5 rounded border border-slate-200 text-xs cursor-pointer"><input type="checkbox" id="shFinger_left_ring" class="h-3 w-3"><span class="ml-2 text-slate-800">นาง</span></label>
-                      <label class="selectable-card inline-flex items-center px-2 py-0.5 rounded border border-slate-200 text-xs cursor-pointer"><input type="checkbox" id="shFinger_left_little" class="h-3 w-3"><span class="ml-2 text-slate-800">ก้อย</span></label>
-                    </div>
-                  </div>
-                  <div class="pt-1 border-t border-slate-100 text-xs">
-                    <span class="block text-[11px] font-semibold text-slate-500 mb-1">นิ้วมือขวา:</span>
-                    <div class="flex flex-wrap gap-1.5">
-                      <label class="selectable-card inline-flex items-center px-2 py-0.5 rounded border border-slate-200 text-xs cursor-pointer"><input type="checkbox" id="shFinger_right_thumb" class="h-3 w-3"><span class="ml-2 text-slate-800">โป้ง</span></label>
-                      <label class="selectable-card inline-flex items-center px-2 py-0.5 rounded border border-slate-200 text-xs cursor-pointer"><input type="checkbox" id="shFinger_right_index" class="h-3 w-3"><span class="ml-2 text-slate-800">ชี้</span></label>
-                      <label class="selectable-card inline-flex items-center px-2 py-0.5 rounded border border-slate-200 text-xs cursor-pointer"><input type="checkbox" id="shFinger_right_mid" class="h-3 w-3"><span class="ml-2 text-slate-800">กลาง</span></label>
-                      <label class="selectable-card inline-flex items-center px-2 py-0.5 rounded border border-slate-200 text-xs cursor-pointer"><input type="checkbox" id="shFinger_right_ring" class="h-3 w-3"><span class="ml-2 text-slate-800">นาง</span></label>
-                      <label class="selectable-card inline-flex items-center px-2 py-0.5 rounded border border-slate-200 text-xs cursor-pointer"><input type="checkbox" id="shFinger_right_little" class="h-3 w-3"><span class="ml-2 text-slate-800">ก้อย</span></label>
-                    </div>
-                  </div>
-                </div>
-                <div class="bg-slate-100/70 p-2.5 rounded-lg border border-slate-200">
-                  <span class="block text-[11px] font-bold text-slate-700 mb-1">ลักษณะบาดแผลที่พบ:</span>
-                  <div class="flex flex-wrap gap-2">
-                    <label class="selectable-card inline-flex items-center px-2.5 py-1 rounded-md border border-slate-200 bg-white cursor-pointer text-xs"><input type="checkbox" id="shType_arm_wound" class="text-medical-600 focus:ring-medical-500 h-3.5 w-3.5 rounded"><span class="ml-2 font-medium text-slate-800">มีแผลเปิด/แผลกรีด</span></label>
-                    <label class="selectable-card inline-flex items-center px-2.5 py-1 rounded-md border border-slate-200 bg-white cursor-pointer text-xs"><input type="checkbox" id="shType_arm_pain" class="text-medical-600 focus:ring-medical-500 h-3.5 w-3.5 rounded"><span class="ml-2 font-medium text-slate-800">ปวด/บวม/ฟกช้ำ</span></label>
-                    <label class="selectable-card inline-flex items-center px-2.5 py-1 rounded-md border border-slate-200 bg-white cursor-pointer text-xs"><input type="checkbox" id="shType_arm_deep" class="text-medical-600 focus:ring-medical-500 h-3.5 w-3.5 rounded"><span class="ml-2 font-medium text-slate-800">แผลลึกถึงชั้นเส้นเอ็น</span></label>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- 2.2.6 ขา ข้อเท้า ฝ่าเท้า นิ้วเท้า -->
-            <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
-              <label class="selectable-card flex items-center p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer">
-                <input type="checkbox" id="shLoc_leg_parent" onchange="toggleShLocSub('shLocSub_leg', this.checked)" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
-                <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800">ขา เข่า ข้อเท้า ฝ่าเท้า หรือนิ้วเท้า</span>
-              </label>
-              <div id="shLocSub_leg" class="hidden pl-2 sm:pl-3 space-y-2 pt-1">
-                <div class="bg-white p-2.5 rounded-lg border border-slate-200">
-                  <span class="block text-[11px] font-bold text-slate-600 mb-1">ด้านที่เป็น:</span>
-                  <div class="flex flex-wrap gap-2">
-                    <label class="selectable-card inline-flex items-center px-2.5 py-1 rounded-md border border-slate-200 cursor-pointer text-xs"><input type="checkbox" id="shSide_leg_left" class="text-medical-600 focus:ring-medical-500 h-3.5 w-3.5 rounded"><span class="ml-2 font-medium text-slate-800">ซ้าย</span></label>
-                    <label class="selectable-card inline-flex items-center px-2.5 py-1 rounded-md border border-slate-200 cursor-pointer text-xs"><input type="checkbox" id="shSide_leg_right" class="text-medical-600 focus:ring-medical-500 h-3.5 w-3.5 rounded"><span class="ml-2 font-medium text-slate-800">ขวา</span></label>
-                  </div>
-                </div>
-                <div class="bg-slate-100/70 p-2.5 rounded-lg border border-slate-200">
-                  <span class="block text-[11px] font-bold text-slate-700 mb-1">ลักษณะบาดแผลที่พบ:</span>
-                  <div class="flex flex-wrap gap-2">
-                    <label class="selectable-card inline-flex items-center px-2.5 py-1 rounded-md border border-slate-200 bg-white cursor-pointer text-xs"><input type="checkbox" id="shType_leg_wound" class="text-medical-600 focus:ring-medical-500 h-3.5 w-3.5 rounded"><span class="ml-2 font-medium text-slate-800">มีแผลเปิด</span></label>
-                    <label class="selectable-card inline-flex items-center px-2.5 py-1 rounded-md border border-slate-200 bg-white cursor-pointer text-xs"><input type="checkbox" id="shType_leg_pain" class="text-medical-600 focus:ring-medical-500 h-3.5 w-3.5 rounded"><span class="ml-2 font-medium text-slate-800">ปวด/บวม/ลงน้ำหนักไม่ได้</span></label>
-                    <label class="selectable-card inline-flex items-center px-2.5 py-1 rounded-md border border-slate-200 bg-white cursor-pointer text-xs"><input type="checkbox" id="shType_leg_deform" class="text-medical-600 focus:ring-medical-500 h-3.5 w-3.5 rounded"><span class="ml-2 font-medium text-slate-800">ผิดรูป ชัดเจน</span></label>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- 2.2.7 ตำแหน่งอื่นๆ -->
-            <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
-              <label class="selectable-card flex items-center p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer">
-                <input type="checkbox" id="shLoc_other_parent" onchange="toggleShLocSub('shLocSub_other', this.checked)" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
-                <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800">ตำแหน่งอื่นๆ นอกเหนือจากข้างต้น</span>
-              </label>
-              <div id="shLocSub_other" class="hidden pl-2 sm:pl-3 space-y-2 pt-1">
-                <input type="text" id="selfHarmLocOtherText" placeholder="ระบุตำแหน่ง เช่น แผ่นหลัง, บริเวณต้นขาด้านใน" class="w-full text-xs sm:text-sm border-slate-300 rounded-lg p-2 focus:ring-medical-500 focus:border-medical-500 bg-white mb-2">
-                <div class="bg-slate-100/70 p-2.5 rounded-lg border border-slate-200">
-                  <span class="block text-[11px] font-bold text-slate-700 mb-1">ลักษณะบาดแผลที่พบ:</span>
-                  <div class="flex flex-wrap gap-2">
-                    <label class="selectable-card inline-flex items-center px-2.5 py-1 rounded-md border border-slate-200 bg-white cursor-pointer text-xs"><input type="checkbox" id="shType_other_wound" class="text-medical-600 focus:ring-medical-500 h-3.5 w-3.5 rounded"><span class="ml-2 font-medium text-slate-800">มีแผลเปิด</span></label>
-                    <label class="selectable-card inline-flex items-center px-2.5 py-1 rounded-md border border-slate-200 bg-white cursor-pointer text-xs"><input type="checkbox" id="shType_other_pain" class="text-medical-600 focus:ring-medical-500 h-3.5 w-3.5 rounded"><span class="ml-2 font-medium text-slate-800">ปวด/บวม/ฟกช้ำ</span></label>
-                    <label class="selectable-card inline-flex items-center px-2.5 py-1 rounded-md border border-slate-200 bg-white cursor-pointer text-xs"><input type="checkbox" id="shType_other_deform" class="text-medical-600 focus:ring-medical-500 h-3.5 w-3.5 rounded"><span class="ml-2 font-medium text-slate-800">ผิดรูป</span></label>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-          </div>
+        <!-- 2.2 ตำแหน่งร่างกาย 7 โซน (Standard Traffic Hierarchy + Separated Side & Injury UI) -->
+        <div class="pt-2 border-t border-slate-100 space-y-3">
+          <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider">2.2 ตำแหน่งของร่างกายที่ได้รับบาดเจ็บ รอยแผล หรือรอยรัด และชนิดการบาดเจ็บ (เลือกได้หลายส่วน)</label>
+          <p class="text-xs text-slate-500 -mt-1">ติ๊กเลือกบริเวณที่บาดเจ็บเพื่อเปิดรายละเอียดตำแหน่งย่อย ด้าน/ข้าง และลักษณะบาดเจ็บ</p>
+          ${buildShAnatomyHtml()}
         </div>
 
-        <!-- 2.3 การประเมินระดับความปวด (Pain Score 0-10) -->
-        <div class="pt-2 border-t border-slate-100">
-          <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">2.3 ระดับความปวดของบาดแผลในขณะนี้ (Pain Score 0 - 10)</label>
-          <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-2">
-            <div class="flex justify-between items-center">
-              <span class="text-xs font-semibold text-slate-700">คะแนนความปวด:</span>
-              <span id="selfHarmPainScoreDisplay" class="text-sm font-bold text-medical-600 bg-white px-3 py-0.5 rounded-full border border-medical-200">0 - ไม่ปวดเลย 😊</span>
+        <!-- 2.3 ระดับความปวด (Pain Score 0 - 10) -->
+        <div class="pt-2 border-t border-slate-100 space-y-2">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">2.3 ระดับความปวดของบาดแผลในขณะนี้ (Pain Score 0 - 10)</label>
+            <div id="shPainScoreBadge" class="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-600 border border-slate-300">
+              <span id="shPainScoreEmoji">⚪</span>
+              <span id="shPainScoreText">ยังไม่ได้ระบุ (แตะแถบเพื่อระบุ)</span>
             </div>
-            <input type="range" id="selfHarmPainScore" min="0" max="10" value="0" oninput="updateShPainScoreDisplay(this.value)" class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-medical-600">
-            <div class="flex justify-between text-[11px] text-slate-500">
-              <span>0 (ไม่ปวดเลย)</span>
-              <span>5 (ปวดปานกลาง)</span>
-              <span>10 (ปวดรุนแรงที่สุด)</span>
-            </div>
+          </div>
+          <input type="range" id="selfHarmPainScore" min="0" max="10" value="0" oninput="handleShPainScoreChange(this.value)" class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-medical-600">
+          <div class="flex justify-between text-[11px] text-slate-500 font-medium px-1">
+            <span>0 (ไม่ปวดเลย)</span>
+            <span>5 (ปวดปานกลาง)</span>
+            <span>10 (ปวดรุนแรงที่สุด)</span>
+          </div>
+          <div class="text-right">
+            <button type="button" id="shPainScoreClearBtn" onclick="clearShPainScore()" class="hidden text-xs text-slate-500 hover:text-rose-600 underline transition-colors">ล้างค่าคะแนนความปวด</button>
           </div>
         </div>
       </div>
@@ -615,11 +724,11 @@ const selfHarmModule = {
 
         <!-- 3.1 ความรู้สึกในขณะนี้ -->
         <div>
-          <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">3.1 ในขณะนี้ ท่าน (หรือผู้ป่วย) มีความรู้สึกหรือความคิดอย่างไร</label>
+          <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">3.1 ในขณะนี้ผู้ป่วย มีความรู้สึกหรือความคิดอย่างไร</label>
           <div class="space-y-2">
             <label class="selectable-card flex items-start p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
               <input type="radio" name="selfHarmFeelings" value="regret_stop" class="mt-0.5 text-medical-600 focus:ring-medical-500 h-4 w-4">
-              <div class="ml-3"><span class="block text-xs sm:text-sm font-semibold text-slate-800">เสียใจกับสิ่งที่เกิดขึ้น และไม่อยากทำซ้ำอีก</span><span class="block text-[11px] text-slate-500 font-normal mt-0.5">ตอนนี้ไม่ต้องการให้ถึงแก่ชีวิต และพร้อมรับการดูแลรักษา</span></div>
+              <div class="ml-3"><span class="block text-xs sm:text-sm font-semibold text-slate-800">เสียใจกับสิ่งที่ทำ และไม่อยากทำซ้ำอีก</span><span class="block text-[11px] text-slate-500 font-normal mt-0.5">ตอนนี้ไม่ต้องการให้ถึงแก่ชีวิต และพร้อมรับการดูแลรักษา</span></div>
             </label>
             <label class="selectable-card flex items-start p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
               <input type="radio" name="selfHarmFeelings" value="impulsive_stress_relief" class="mt-0.5 text-medical-600 focus:ring-medical-500 h-4 w-4">
@@ -744,7 +853,7 @@ const selfHarmModule = {
           </div>
         </div>
 
-        <!-- 4.3 ประวัติการฉีดวัคซีนบาดทะยัก (Tetanus Vaccine) -->
+        <!-- 4.3 ประวัติการได้รับวัคซีนป้องกันบาดทะยัก -->
         <div class="pt-2 border-t border-slate-100">
           <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">4.3 ประวัติการได้รับวัคซีนป้องกันบาดทะยัก (Tetanus Vaccine)</label>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -754,22 +863,22 @@ const selfHarmModule = {
             </label>
             <label class="selectable-card flex items-start p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
               <input type="radio" name="selfHarmTetanus" value="5_to_10y" class="mt-0.5 text-medical-600 focus:ring-medical-500 h-4 w-4">
-              <div class="ml-3"><span class="block text-xs sm:text-sm font-semibold text-slate-800">เคยฉีดในช่วง 5 ถึง 10 ปีที่ผ่านมา</span><span class="block text-[11px] text-slate-500 font-normal mt-0.5">อาจจำเป็นต้องฉีดกระตุ้น 1 เข็มหากแผลสกปรก</span></div>
+              <div class="ml-3"><span class="block text-xs sm:text-sm font-semibold text-slate-800">เคยฉีดในช่วง 5 ถึง 10 ปีที่ผ่านมา</span><span class="block text-[11px] text-slate-500 font-normal mt-0.5">อาจต้องฉีดกระตุ้น 1 เข็มหากมีบาดแผลสกปรก</span></div>
             </label>
             <label class="selectable-card flex items-start p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-              <input type="radio" name="selfHarmTetanus" value="over_10y_or_unknown" class="mt-0.5 text-medical-600 focus:ring-medical-500 h-4 w-4">
-              <div class="ml-3"><span class="block text-xs sm:text-sm font-semibold text-slate-800">เกิน 10 ปีแล้ว หรือจำประวัติไม่ได้</span><span class="block text-[11px] text-slate-500 font-normal mt-0.5">จำเป็นต้องได้รับการฉีดวัคซีนป้องกันบาดทะยัก</span></div>
+              <input type="radio" name="selfHarmTetanus" value="over_10y" class="mt-0.5 text-medical-600 focus:ring-medical-500 h-4 w-4">
+              <div class="ml-3"><span class="block text-xs sm:text-sm font-semibold text-slate-800">เคยฉีดครบ แต่เกิน 10 ปีแล้ว</span><span class="block text-[11px] text-slate-500 font-normal mt-0.5">ควรได้รับเข็มกระตุ้นป้องกันบาดทะยักหากมีแผลเปิด</span></div>
             </label>
             <label class="selectable-card flex items-start p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-              <input type="radio" name="selfHarmTetanus" value="no_open_wound" class="mt-0.5 text-medical-600 focus:ring-medical-500 h-4 w-4">
-              <div class="ml-3"><span class="block text-xs sm:text-sm font-semibold text-slate-800">ไม่มีบาดแผลเปิดฉีกขาด</span><span class="block text-[11px] text-slate-500 font-normal mt-0.5">เช่น กรณีผูกคอรัดคอโดยไม่มีแผลเปิด</span></div>
+              <input type="radio" name="selfHarmTetanus" value="unknown_or_never" class="mt-0.5 text-medical-600 focus:ring-medical-500 h-4 w-4">
+              <div class="ml-3"><span class="block text-xs sm:text-sm font-semibold text-slate-800">ไม่เคยฉีด หรือจำประวัติไม่ได้</span><span class="block text-[11px] text-slate-500 font-normal mt-0.5">จำเป็นต้องประเมินการฉีดวัคซีนและเซรุ่ม (TIG) หากมีบาดแผล</span></div>
             </label>
           </div>
         </div>
 
-        <!-- 4.4 เวลาที่รับประทานอาหารหรือน้ำครั้งสุดท้าย (NPO Time) -->
+        <!-- 4.4 NPO Time -->
         <div class="pt-2 border-t border-slate-100">
-          <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">4.4 เวลาที่รับประทานอาหารหรือดื่มน้ำครั้งสุดท้าย (สำหรับเตรียมหัตถการหรือผ่าตัดเย็บแผล)</label>
+          <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">4.4 เวลาที่รับประทานอาหารหรือดื่มน้ำครั้งสุดท้าย (สำหรับเตรียมหัตถการหรือเย็บแผล)</label>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-slate-50 p-3 rounded-xl border border-slate-200">
             <div>
               <span class="block text-xs font-semibold text-slate-600 mb-1">เวลารับประทานครั้งสุดท้าย:</span>
@@ -782,7 +891,7 @@ const selfHarmModule = {
           </div>
         </div>
 
-        <!-- 4.5 ส่วนเฉพาะผู้ป่วยสตรี (LMP / การตั้งครรภ์) - C-AP13 Hidden by default -->
+        <!-- 4.5 ส่วนเฉพาะผู้ป่วยสตรี (Hidden by default - C-AP13) -->
         <div id="selfHarmFemaleSection" class="hidden pt-2 border-t border-slate-100 space-y-3">
           <div class="flex items-center space-x-2">
             <span class="px-2 py-0.5 text-[10px] font-bold bg-pink-100 text-pink-700 rounded-md">เฉพาะสตรี</span>
@@ -804,855 +913,923 @@ const selfHarmModule = {
             </div>
           </div>
         </div>
-
       </div>
 
-    </div>
-    `,
+    </div>`,
 
-    // -----------------------------------------------------------------------
-    // LIFECYCLE: COLLECT INTAKE (Read DOM into patient record)
-    // -----------------------------------------------------------------------
-    collectIntake: function (ctx) {
-      const p = (ctx && ctx.patient) ? ctx.patient : {
-        id: ctx?.recordId || `case-${Date.now()}`,
-        queue_number: ctx?.queueNumber || 'SH-001',
-        hn: ctx?.hn || '6700000',
-        name: ctx?.patientName || 'ผู้ป่วย ทำร้ายตนเอง',
-        age: ctx?.patientAge !== undefined ? ctx?.patientAge : 25,
-        gender: ctx?.gender || 'หญิง',
+  // -------------------------------------------------------------------------
+  // LIFECYCLE: COLLECT INTAKE
+  // -------------------------------------------------------------------------
+  collectIntake: function (ctx = {}) {
+    const getRadio = (name) => document.querySelector(`input[name="${name}"]:checked`)?.value || '';
+    const getVals = (name) => Array.from(document.querySelectorAll(`input[name="${name}"]:checked`)).map(el => el.value);
+    const getChecked = (id) => Boolean(document.getElementById(id)?.checked);
+    const getVal = (id) => (document.getElementById(id)?.value || '').trim();
+
+    const p = ctx.patient || {
+      id: ctx.recordId || `case-${Date.now()}-${Math.floor(100 + Math.random() * 900)}`,
+      queue_number: ctx.queueNumber || 'SH-001',
+      hn: ctx.randomHn || ctx.hn || '6700000',
+      name: ctx.patientName || 'ผู้ป่วย ทำร้ายตนเอง',
+      age: ctx.patientAge !== undefined ? ctx.patientAge : 'ไม่ระบุ',
+      gender: ctx.gender || 'ไม่ระบุ',
+      chief_complaint: 'self_harm',
+      chief_complaint_title: 'ทำร้ายตนเอง / พยายามฆ่าตัวตาย',
+      timestamp: new Date().toISOString(),
+      status: ctx.recordStatus || 'waiting',
+      hospRecordStatus: ctx.hospRecordStatus || 'complete',
+      underlying: ctx.underlying || [],
+      drugAllergy: ctx.drugAllergy || 'ปฏิเสธ',
+      currentMeds: ctx.currentMeds || 'ไม่มี',
+      otherSymptomsFree: ctx.otherSymptomsFree || '',
+      doctor_notes: ctx.preservedDoctorNotes || { additional_hpi: '', physical_exam: '', preliminary_dx: '', plan: '' }
+    };
+
+    p.chief_complaint = 'self_harm';
+    p.chief_complaint_title = 'ทำร้ายตนเอง / พยายามฆ่าตัวตาย';
+    p.patientTitle = getVal('patientTitleSelect');
+
+    // Card 1: Informant, Timeline & Methods
+    p.selfHarmInformant = getRadio('selfHarmInformant');
+    p.selfHarmInformantRelText = getVal('selfHarmInformantRelText');
+    p.selfHarmInformantRescuerText = getVal('selfHarmInformantRescuerText');
+    p.durationVal = parseInt(document.getElementById('selfHarmDurationVal')?.value, 10) || 0;
+    p.durationUnit = document.getElementById('selfHarmDurationUnit')?.value || 'minutes';
+    p.selfHarmExactDate = getVal('selfHarmExactDate');
+    p.selfHarmExactTime = getVal('selfHarmExactTime');
+    p.selfHarmMethods = getVals('selfHarmMethod');
+
+    p.selfHarmHanging_suspended = getChecked('shHanging_suspended');
+    p.selfHarmHanging_unconscious = getChecked('shHanging_unconscious');
+    p.selfHarmHanging_cyanosis = getChecked('shHanging_cyanosis');
+    p.selfHarmHangingDuration = getVal('selfHarmHangingDuration');
+
+    p.selfHarmSharpDevice = getVal('selfHarmSharpDevice');
+    p.selfHarmBleedingStatus = p.selfHarmMethods.includes('sharp') ? (document.getElementById('selfHarmBleedingStatus')?.value || 'stopped') : '';
+
+    p.selfHarmJumpingHeight = getVal('selfHarmJumpingHeight');
+    p.selfHarmJumpingSurface = getVal('selfHarmJumpingSurface');
+
+    p.selfHarmDrowningPlace = getVal('selfHarmDrowningPlace');
+    p.selfHarmDrowningAspiration = document.getElementById('selfHarmDrowningAspiration')?.value || 'no';
+
+    p.selfHarmCoSource = getVal('selfHarmCoSource');
+    p.selfHarmCoDuration = getVal('selfHarmCoDuration');
+    p.selfHarmOtherMethodText = getVal('selfHarmOtherMethodText');
+
+    // Card 2: Symptoms, Standard 7 Regions & Pain
+    const symIds = ['hoarseness', 'stridor', 'active_bleeding', 'numbness_distal', 'motor_deficit', 'wound_depth', 'severe_pain_deformity', 'severe_abdpain', 'unconscious', 'dizziness_shock', 'none'];
+    p.selfHarmSymptoms = symIds.filter(s => getChecked(`shSym_${s}`));
+
+    p.shParentHeadFace = getChecked('shParentHeadFace');
+    p.shParentNeck = getChecked('shParentNeck');
+    p.shParentChest = getChecked('shParentChest');
+    p.shParentAbdomen = getChecked('shParentAbdomen');
+    p.shParentUpperExtremity = getChecked('shParentUpperExtremity');
+    p.shParentLowerExtremity = getChecked('shParentLowerExtremity');
+    p.shParentOther = getChecked('shParentOther');
+    p.shOtherLocationInjuries = getVals('shOtherLocationInjuries');
+    p.shOtherLocationDetail = getVal('shOtherLocationDetail');
+
+    p.shHeadSigns = getVals('shHeadSigns');
+    p.shNeckSigns = getVals('shNeckSigns');
+    p.shChestSigns = getVals('shChestSigns');
+    p.shAbdSigns = getVals('shAbdSigns');
+    p.shUpperExtSigns = getVals('shUpperExtSigns');
+    p.shLowerExtSigns = getVals('shLowerExtSigns');
+
+    p.shArmFingers = getChecked('shArmFingers');
+    p.shArmFingersLeftDigits = getVals('shArmFingersLeftDigits');
+    p.shArmFingersRightDigits = getVals('shArmFingersRightDigits');
+    p.shArmFingersInjuries = getVals('shArmFingersInjuries');
+
+    p.shLegToes = getChecked('shLegToes');
+    p.shLegToesLeftDigits = getVals('shLegToesLeftDigits');
+    p.shLegToesRightDigits = getVals('shLegToesRightDigits');
+    p.shLegToesInjuries = getVals('shLegToesInjuries');
+
+    SH_SUBPART_KEYS.forEach(k => {
+      p[`sh${k}`] = getChecked(`sh${k}`);
+      p[`sh${k}Sides`] = getVals(`sh${k}Sides`);
+      p[`sh${k}Injuries`] = getVals(`sh${k}Injuries`);
+    });
+
+    p.selfHarmPainScore = shPainScoreTouched ? (parseInt(document.getElementById('selfHarmPainScore')?.value, 10) || 0) : null;
+
+    // Card 3: Feelings, Pre-conditions & Stressors
+    p.selfHarmFeelings = getRadio('selfHarmFeelings');
+    p.selfHarmPreConditions = ['planned', 'note', 'hallucination', 'alcohol', 'none'].filter(k => getChecked(`selfHarmPre_${k}`));
+    p.selfHarmStressors = ['relation', 'finance', 'illness', 'psych', 'loss', 'other'].filter(k => getChecked(`shStressor_${k}`));
+
+    // Card 4: Psych History, Past Attempts, Tetanus, NPO, Female
+    p.selfHarmPsychHistory = getRadio('selfHarmPsychHistory');
+    p.selfHarmPsychDetail = getVal('selfHarmPsychDetail');
+    p.selfHarmPastAttempts = getRadio('selfHarmPastAttempts');
+    p.selfHarmTetanus = getRadio('selfHarmTetanus');
+    p.selfHarmNpoTime = getVal('selfHarmNpoTime');
+    p.selfHarmNpoLastMeal = getVal('selfHarmNpoLastMeal');
+
+    const isFem = p.gender === 'female' || p.gender === 'หญิง' || /นาง|น\.ส\./.test(p.patientTitle || '');
+    if (isFem) {
+      p.selfHarmLmpDate = getVal('selfHarmLmpDate');
+      p.selfHarmPregnancyStatus = document.getElementById('selfHarmPregnancyStatus')?.value || 'not_pregnant';
+    } else {
+      delete p.selfHarmLmpDate;
+      delete p.selfHarmPregnancyStatus;
+    }
+
+    const outputs = this.updateOutputs(p);
+    p.rapidHpi = outputs.rapid;
+    p.narrativeHpi = outputs.narrative;
+    p.medicalJson = outputs.json;
+    return p;
+  },
+
+  // -------------------------------------------------------------------------
+  // LIFECYCLE: HYDRATE FORM
+  // -------------------------------------------------------------------------
+  hydrateForm: function (patient) {
+    this.clearForm();
+    if (!patient) return;
+
+    const setRadio = (name, val) => {
+      if (!val) return;
+      const rb = document.querySelector(`input[name="${name}"][value="${val}"]`);
+      if (rb) rb.checked = true;
+    };
+    const setVals = (name, arr) => {
+      if (!Array.isArray(arr)) return;
+      document.querySelectorAll(`input[name="${name}"]`).forEach(cb => { cb.checked = arr.includes(cb.value); });
+    };
+    const setChecked = (id, val) => {
+      const el = document.getElementById(id);
+      if (el) el.checked = Boolean(val);
+    };
+    const setVal = (id, val) => {
+      const el = document.getElementById(id);
+      if (el && val !== undefined && val !== null) el.value = val;
+    };
+
+    // Card 1
+    setRadio('selfHarmInformant', patient.selfHarmInformant);
+    setVal('selfHarmInformantRelText', patient.selfHarmInformantRelText || '');
+    setVal('selfHarmInformantRescuerText', patient.selfHarmInformantRescuerText || '');
+    toggleShInformantDetails();
+
+    setVal('selfHarmDurationVal', patient.durationVal !== undefined ? patient.durationVal : '');
+    if (document.getElementById('selfHarmDurationUnit')) document.getElementById('selfHarmDurationUnit').value = patient.durationUnit || 'minutes';
+    setVal('selfHarmExactDate', patient.selfHarmExactDate || '');
+    setVal('selfHarmExactTime', patient.selfHarmExactTime || '');
+
+    const methods = Array.isArray(patient.selfHarmMethods) ? patient.selfHarmMethods : [];
+    [['hanging', 'hanging'], ['sharp', 'sharp'], ['jumping', 'jumping'], ['drowning', 'drowning'], ['co', 'co_poisoning'], ['other', 'other_trauma']].forEach(([m, v]) => {
+      const checked = methods.includes(v) || methods.includes(m);
+      setChecked(`shMethod_${m}`, checked);
+      toggleShGroup(`shSub_${m}`, checked);
+    });
+
+    setChecked('shHanging_suspended', patient.selfHarmHanging_suspended);
+    setChecked('shHanging_unconscious', patient.selfHarmHanging_unconscious);
+    setChecked('shHanging_cyanosis', patient.selfHarmHanging_cyanosis);
+    setVal('selfHarmHangingDuration', patient.selfHarmHangingDuration || '');
+
+    setVal('selfHarmSharpDevice', patient.selfHarmSharpDevice || '');
+    if (document.getElementById('selfHarmBleedingStatus')) document.getElementById('selfHarmBleedingStatus').value = patient.selfHarmBleedingStatus || 'stopped';
+    setVal('selfHarmJumpingHeight', patient.selfHarmJumpingHeight || '');
+    setVal('selfHarmJumpingSurface', patient.selfHarmJumpingSurface || '');
+    setVal('selfHarmDrowningPlace', patient.selfHarmDrowningPlace || '');
+    if (document.getElementById('selfHarmDrowningAspiration')) document.getElementById('selfHarmDrowningAspiration').value = patient.selfHarmDrowningAspiration || 'no';
+    setVal('selfHarmCoSource', patient.selfHarmCoSource || '');
+    setVal('selfHarmCoDuration', patient.selfHarmCoDuration || '');
+    setVal('selfHarmOtherMethodText', patient.selfHarmOtherMethodText || '');
+
+    // Card 2
+    const symList = Array.isArray(patient.selfHarmSymptoms) ? patient.selfHarmSymptoms : [];
+    ['hoarseness', 'stridor', 'active_bleeding', 'numbness_distal', 'motor_deficit', 'wound_depth', 'severe_pain_deformity', 'severe_abdpain', 'unconscious', 'dizziness_shock', 'none'].forEach(s => {
+      setChecked(`shSym_${s}`, symList.includes(s));
+    });
+
+    const parentMap = [
+      ['shParentHeadFace', 'shHeadFaceSubGroup'],
+      ['shParentNeck', 'shNeckSubGroup'],
+      ['shParentChest', 'shChestSubGroup'],
+      ['shParentAbdomen', 'shAbdSubGroup'],
+      ['shParentUpperExtremity', 'shUpperExtSubGroup'],
+      ['shParentLowerExtremity', 'shLowerExtSubGroup'],
+      ['shParentOther', 'shOtherSubGroup']
+    ];
+    parentMap.forEach(([pid, sub]) => {
+      setChecked(pid, patient[pid]);
+      toggleShGroup(sub, Boolean(patient[pid]));
+    });
+
+    ['shHeadSigns', 'shNeckSigns', 'shChestSigns', 'shAbdSigns', 'shUpperExtSigns', 'shLowerExtSigns'].forEach(s => setVals(s, patient[s]));
+    setVals('shOtherLocationInjuries', patient.shOtherLocationInjuries);
+    setVal('shOtherLocationDetail', patient.shOtherLocationDetail || '');
+
+    setChecked('shArmFingers', patient.shArmFingers);
+    toggleShGroup('shArmFingersDetail', Boolean(patient.shArmFingers));
+    setVals('shArmFingersLeftDigits', patient.shArmFingersLeftDigits);
+    setVals('shArmFingersRightDigits', patient.shArmFingersRightDigits);
+    setVals('shArmFingersInjuries', patient.shArmFingersInjuries);
+
+    setChecked('shLegToes', patient.shLegToes);
+    toggleShGroup('shLegToesDetail', Boolean(patient.shLegToes));
+    setVals('shLegToesLeftDigits', patient.shLegToesLeftDigits);
+    setVals('shLegToesRightDigits', patient.shLegToesRightDigits);
+    setVals('shLegToesInjuries', patient.shLegToesInjuries);
+
+    SH_SUBPART_KEYS.forEach(k => {
+      setChecked(`sh${k}`, patient[`sh${k}`]);
+      toggleShGroup(`sh${k}Detail`, Boolean(patient[`sh${k}`]));
+      setVals(`sh${k}Sides`, patient[`sh${k}Sides`]);
+      setVals(`sh${k}Injuries`, patient[`sh${k}Injuries`]);
+    });
+
+    updateShContextSymptoms();
+
+    if (patient.selfHarmPainScore !== null && patient.selfHarmPainScore !== undefined) {
+      const pEl = document.getElementById('selfHarmPainScore');
+      if (pEl) pEl.value = patient.selfHarmPainScore;
+      handleShPainScoreChange(patient.selfHarmPainScore);
+    } else {
+      clearShPainScore();
+    }
+
+    // Card 3
+    setRadio('selfHarmFeelings', patient.selfHarmFeelings);
+    const preList = Array.isArray(patient.selfHarmPreConditions) ? patient.selfHarmPreConditions : [];
+    ['planned', 'note', 'hallucination', 'alcohol', 'none'].forEach(k => setChecked(`selfHarmPre_${k}`, preList.includes(k)));
+    const stressList = Array.isArray(patient.selfHarmStressors) ? patient.selfHarmStressors : [];
+    ['relation', 'finance', 'illness', 'psych', 'loss', 'other'].forEach(k => setChecked(`shStressor_${k}`, stressList.includes(k)));
+
+    // Card 4
+    setRadio('selfHarmPsychHistory', patient.selfHarmPsychHistory);
+    setVal('selfHarmPsychDetail', patient.selfHarmPsychDetail || '');
+    toggleShPsychSub();
+    setRadio('selfHarmPastAttempts', patient.selfHarmPastAttempts);
+    setRadio('selfHarmTetanus', patient.selfHarmTetanus);
+    setVal('selfHarmNpoTime', patient.selfHarmNpoTime || '');
+    setVal('selfHarmNpoLastMeal', patient.selfHarmNpoLastMeal || '');
+
+    const isFem = patient.gender === 'female' || patient.gender === 'หญิง' || /นาง|น\.ส\./.test(patient.patientTitle || '');
+    const femSec = document.getElementById('selfHarmFemaleSection');
+    if (femSec) {
+      femSec.classList.toggle('hidden', !isFem);
+      if (isFem) {
+        setVal('selfHarmLmpDate', patient.selfHarmLmpDate || '');
+        if (document.getElementById('selfHarmPregnancyStatus')) document.getElementById('selfHarmPregnancyStatus').value = patient.selfHarmPregnancyStatus || 'not_pregnant';
+      }
+    }
+  },
+
+  // -------------------------------------------------------------------------
+  // LIFECYCLE: CLEAR FORM
+  // -------------------------------------------------------------------------
+  clearForm: function () {
+    const sec = document.getElementById('ccSelfHarmSection');
+    if (!sec) return;
+    sec.querySelectorAll('input[type="text"], input[type="number"], textarea').forEach(el => { el.value = ''; });
+    sec.querySelectorAll('input[type="checkbox"], input[type="radio"]').forEach(el => { el.checked = false; });
+    sec.querySelectorAll('select').forEach(el => { el.selectedIndex = 0; });
+    clearShPainScore();
+
+    const toHide = [
+      'shInformantRelSub', 'shInformantRescuerSub',
+      'shSub_hanging', 'shSub_sharp', 'shSub_jumping', 'shSub_drowning', 'shSub_co', 'shSub_other',
+      'shHeadFaceSubGroup', 'shNeckSubGroup', 'shChestSubGroup', 'shAbdSubGroup',
+      'shUpperExtSubGroup', 'shLowerExtSubGroup', 'shArmFingersDetail', 'shLegToesDetail', 'shOtherSubGroup',
+      'shPsychDetailSub', 'selfHarmFemaleSection',
+      ...SH_SUBPART_KEYS.map(k => `sh${k}Detail`)
+    ];
+    toHide.forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.classList.add('hidden');
+    });
+    updateShContextSymptoms();
+  },
+
+  // -------------------------------------------------------------------------
+  // LIFECYCLE: RED FLAG EVALUATION
+  // -------------------------------------------------------------------------
+  isRedFlag: function (patient) {
+    const rfs = this.evaluateRedFlags(patient);
+    return Array.isArray(rfs) && rfs.length > 0;
+  },
+
+  evaluateRedFlags: function (patient) {
+    const redFlags = [];
+    if (!patient) return redFlags;
+
+    const methods = Array.isArray(patient.selfHarmMethods) ? patient.selfHarmMethods : [];
+    const symptoms = Array.isArray(patient.selfHarmSymptoms) ? patient.selfHarmSymptoms : [];
+    const headSigns = Array.isArray(patient.shHeadSigns) ? patient.shHeadSigns : [];
+    const neckSigns = Array.isArray(patient.shNeckSigns) ? patient.shNeckSigns : [];
+    const chestSigns = Array.isArray(patient.shChestSigns) ? patient.shChestSigns : [];
+    const abdSigns = Array.isArray(patient.shAbdSigns) ? patient.shAbdSigns : [];
+    const upperSigns = Array.isArray(patient.shUpperExtSigns) ? patient.shUpperExtSigns : [];
+    const lowerSigns = Array.isArray(patient.shLowerExtSigns) ? patient.shLowerExtSigns : [];
+
+    // 1. Airway / Near-Hanging / C-spine
+    if (methods.includes('hanging') || symptoms.includes('hoarseness') || symptoms.includes('stridor') || neckSigns.includes('airway_compromise_hoarseness') || neckSigns.includes('cspine_severe_pain_stiff')) {
+      redFlags.push({
+        key: 'airway_compromise_near_hanging',
+        textTh: 'สงสัยภาวะทางเดินหายใจอุดกั้น / บาดเจ็บกระดูกคอและกล่องเสียง (Airway & Laryngeal Trauma)',
+        risk: 'ความเสี่ยงสูงต่อภาวะกล่องเสียงบวมน้ำ หลอดลมตีบเฉียบพลัน หรือกระดูกสันหลังส่วนคอหักหลังการรัดคอ/ผูกคอ'
+      });
+    }
+
+    // 2. Massive Hemorrhage / Neurovascular or Tendon Injury
+    if (patient.selfHarmBleedingStatus === 'pulsatile' || symptoms.includes('active_bleeding') || upperSigns.includes('pallor_pulseless_cold_cyanosis') || upperSigns.includes('open_tendon_bone_exposed')) {
+      redFlags.push({
+        key: 'active_massive_hemorrhage',
+        textTh: 'ภาวะเลือดออกรุนแรง / สงสัยบาดเจ็บหลอดเลือดและเส้นเอ็น (Major Vascular & Tendon Injury)',
+        risk: 'ความเสี่ยงต่อภาวะช็อกจากการเสียเลือด (Hemorrhagic Shock) และความพิการถาวรของเส้นประสาทและเส้นเอ็น'
+      });
+    }
+
+    // 3. TBI / Skull Fracture
+    if (headSigns.includes('loc_amnesia') || headSigns.includes('severe_headache_vomiting') || headSigns.includes('basilar_discharge')) {
+      redFlags.push({
+        key: 'suspected_tbi_skull_fracture',
+        textTh: 'สงสัยภาวะบาดเจ็บทางสมอง / กะโหลกศีรษะแตกร้าว (Traumatic Brain Injury)',
+        risk: 'ความเสี่ยงต่อเลือดออกในกะโหลกศีรษะและความดันในกะโหลกศีรษะสูง'
+      });
+    }
+
+    // 4. High-Energy Multiple Trauma / Chest-Abdomen
+    if (methods.includes('jumping') || symptoms.includes('severe_pain_deformity') || symptoms.includes('severe_abdpain') || chestSigns.includes('chest_dyspnea_tightness') || abdSigns.includes('peritonitis_guarding') || abdSigns.includes('pelvic_instability_pain') || lowerSigns.includes('deformity_fracture_shortening')) {
+      redFlags.push({
+        key: 'high_energy_multiple_trauma',
+        textTh: 'ภาวะบาดเจ็บรุนแรงหลายระบบ / ช่องอก-ช่องท้อง (High-Energy Multiple Trauma)',
+        risk: 'ความเสี่ยงต่อภาวะเลือดออกในช่องอก/ช่องท้อง กระดูกเชิงกรานหรือกระดูกสันหลังหัก'
+      });
+    }
+
+    // 5. CO Inhalation / Submersion Arrest Risk
+    if (methods.includes('co_poisoning') || methods.includes('co') || (methods.includes('drowning') && patient.selfHarmDrowningAspiration && patient.selfHarmDrowningAspiration !== 'no')) {
+      redFlags.push({
+        key: 'hypoxic_inhalation_or_submersion',
+        textTh: 'ภาวะสูดดมก๊าซพิษหรือจมน้ำสำลัก (Hypoxic Inhalation / Drowning Injury)',
+        risk: 'ความเสี่ยงต่อภาวะพร่องออกซิเจนเฉียบพลัน ARDS สมองขาดออกซิเจน และหัวใจเต้นผิดจังหวะ'
+      });
+    }
+
+    // 6. Acute Suicide Risk
+    if (patient.selfHarmFeelings === 'active_suicidal_intent' || (Array.isArray(patient.selfHarmPreConditions) && patient.selfHarmPreConditions.includes('note'))) {
+      redFlags.push({
+        key: 'high_lethality_active_intent',
+        textTh: 'ความเสี่ยงสูงต่อการทำร้ายตนเองซ้ำในหอผู้ป่วยฉุกเฉิน (High Imminent Suicide Risk)',
+        risk: 'ผู้ป่วยยังมีความคิดอยากทำร้ายตนเองหรือมีจดหมายสั่งเสีย ต้องจัดให้อยู่ในจุดสังเกตการณ์ 1:1 ตลอดเวลา'
+      });
+    }
+
+    // 7. Altered Mental Status
+    if (symptoms.includes('unconscious') || patient.selfHarmFeelings === 'uncommunicative_unresponsive') {
+      redFlags.push({
+        key: 'altered_mental_status_self_harm',
+        textTh: 'ภาวะหมดสติ หรือระดับความรู้สึกตัวลดลงอย่างรุนแรง (Altered Mental Status)',
+        risk: 'ความเสี่ยงต่อภาวะทางเดินหายใจล้มเหลว หรืออาจมีภาวะได้รับสารพิษ/ยาร่วมด้วย'
+      });
+    }
+
+    return redFlags;
+  },
+
+  // -------------------------------------------------------------------------
+  // LIFECYCLE: UPDATE OUTPUTS (All Enum Keys Mapped 100% to Concise Thai)
+  // -------------------------------------------------------------------------
+  updateOutputs: function (patient) {
+    if (!patient) return { rapid: '', narrative: '', json: '' };
+
+    const durVal = patient.durationVal || 0;
+    const durUnitMap = { minutes: 'นาที', hours: 'ชั่วโมง', days: 'วัน' };
+    const durText = durVal ? `${durVal} ${durUnitMap[patient.durationUnit] || 'นาที'}` : 'ไม่ระบุระยะเวลา';
+    const exactDt = (patient.selfHarmExactDate || patient.selfHarmExactTime)
+      ? ` (เวลาเกิดเหตุ: ${patient.selfHarmExactDate || ''}${patient.selfHarmExactTime ? ` ${patient.selfHarmExactTime} น.` : ''})`.trim()
+      : '';
+
+    // 1. Complete Thai Dictionaries (Prevent raw enum leaks - C-AP14)
+    const informantMap = { patient: 'ผู้ป่วยแจ้งประวัติด้วยตนเอง', relative: 'ญาติหรือคนใกล้ชิด', rescuer: 'เจ้าหน้าที่กู้ชีพ/พลเมืองดี' };
+    let informantStr = informantMap[patient.selfHarmInformant] || 'ไม่ได้ระบุ';
+    if (patient.selfHarmInformant === 'relative' && patient.selfHarmInformantRelText) informantStr += ` (${patient.selfHarmInformantRelText})`;
+    if (patient.selfHarmInformant === 'rescuer' && patient.selfHarmInformantRescuerText) informantStr += ` (${patient.selfHarmInformantRescuerText})`;
+
+    const bleedMap = { stopped: 'เลือดหยุดไหลแล้ว หรือซึมเล็กน้อย', oozing: 'เลือดยังไหลซึมต่อเนื่อง', pulsatile: 'เลือดพุ่งเป็นจังหวะ/ไหลไม่หยุด' };
+    const drownMap = { no: 'ไม่สำลักน้ำ/รู้สึกตัวดี', cough_gasping: 'มีอาการไอ สำลักน้ำ หรือหอบเหนื่อย', unconscious_cpr: 'หมดสติ/มีการทำ CPR ในที่เกิดเหตุ' };
+
+    const methods = Array.isArray(patient.selfHarmMethods) ? patient.selfHarmMethods : [];
+    const methodParts = [];
+    if (methods.includes('hanging')) {
+      const hSub = [];
+      if (patient.selfHarmHanging_suspended) hSub.push('ตัวลอยพ้นพื้น');
+      if (patient.selfHarmHanging_unconscious) hSub.push('หมดสติเมื่อพบ');
+      if (patient.selfHarmHanging_cyanosis) hSub.push('หน้าเขียวคล้ำ');
+      if (patient.selfHarmHangingDuration) hSub.push(`แขวนนาน ${patient.selfHarmHangingDuration}`);
+      methodParts.push(`ผูกคอ/รัดคอ${hSub.length > 0 ? ` (${hSub.join(', ')})` : ''}`);
+    }
+    if (methods.includes('sharp')) {
+      methodParts.push(`ใช้ของมีคม (${patient.selfHarmSharpDevice || 'ไม่ระบุอุปกรณ์'})`);
+    }
+    if (methods.includes('jumping')) {
+      const jSub = [patient.selfHarmJumpingHeight, patient.selfHarmJumpingSurface].filter(Boolean);
+      methodParts.push(`กระโดดจากที่สูง${jSub.length > 0 ? ` (${jSub.join(', ')})` : ''}`);
+    }
+    if (methods.includes('drowning')) {
+      const dSub = [patient.selfHarmDrowningPlace, drownMap[patient.selfHarmDrowningAspiration]].filter(Boolean);
+      methodParts.push(`กระโดดน้ำ/จมน้ำ${dSub.length > 0 ? ` (${dSub.join(', ')})` : ''}`);
+    }
+    if (methods.includes('co_poisoning') || methods.includes('co')) {
+      const cSub = [patient.selfHarmCoSource, patient.selfHarmCoDuration].filter(Boolean);
+      methodParts.push(`รมควัน/จุดเตาถ่าน${cSub.length > 0 ? ` (${cSub.join(', ')})` : ''}`);
+    }
+    if (methods.includes('other_trauma') || methods.includes('other')) {
+      methodParts.push(`วิธีอื่นๆ (${patient.selfHarmOtherMethodText || 'ระบุเพิ่มเติม'})`);
+    }
+    const methodStr = methodParts.length > 0 ? methodParts.join(' + ') : 'ทำร้ายตนเอง (ไม่ระบุวิธี)';
+
+    const anatomyStr = formatShAnatomy(patient);
+
+    const feelingMap = {
+      regret_stop: 'เสียใจกับสิ่งที่ทำ และไม่อยากทำซ้ำอีก',
+      impulsive_stress_relief: 'ทำเพื่อระบายความเครียด/อารมณ์ชั่ววูบ',
+      active_suicidal_intent: 'ยังรู้สึกท้อแท้ หรือยังอยากทำร้ายตนเองซ้ำ',
+      uncommunicative_unresponsive: 'ยังไม่พร้อมพูดคุย/เงียบซึม'
+    };
+    const feelingStr = feelingMap[patient.selfHarmFeelings] || 'ไม่ได้ระบุ';
+
+    const stressorMap = {
+      relation: 'ปัญหาความสัมพันธ์/ครอบครัว',
+      finance: 'ปัญหาการเงิน/การงาน/การเรียน',
+      illness: 'ความเจ็บป่วยทางกายเรื้อรัง',
+      psych: 'โรคซึมเศร้า/โรคจิตเวชกำเริบ',
+      loss: 'การสูญเสียบุคคลอันเป็นที่รัก',
+      other: 'สาเหตุอื่นๆ/ไม่ประสงค์ระบุ'
+    };
+    const stressorArr = Array.isArray(patient.selfHarmStressors) ? patient.selfHarmStressors : [];
+    const stressorStr = stressorArr.length > 0 ? stressorArr.map(s => stressorMap[s] || s).join(', ') : 'ไม่ได้ระบุ';
+
+    const psychMap = {
+      none: 'ไม่เคยมีประวัติรักษาโรคทางจิตเวช',
+      regular_meds: 'มีประวัติรักษาและรับประทานยาต่อเนื่อง',
+      non_compliant_stopped: 'มีประวัติรักษาแต่ขาดยา/หยุดยาเอง'
+    };
+    const psychStr = (psychMap[patient.selfHarmPsychHistory] || 'ไม่ได้ระบุ') + (patient.selfHarmPsychDetail ? ` (${patient.selfHarmPsychDetail})` : '');
+
+    const pastMap = { none: 'ครั้งนี้เป็นครั้งแรก', once: 'เคยทำ 1 ครั้งในอดีต', multiple: 'เคยทำมากกว่า 1 ครั้งในอดีต' };
+    const pastStr = pastMap[patient.selfHarmPastAttempts] || 'ไม่ได้ระบุ';
+
+    const tetanusMap = {
+      within_5y: 'เคยฉีดเข็มกระตุ้นภายใน 5 ปีที่ผ่านมา',
+      '5_to_10y': 'เคยฉีดในช่วง 5–10 ปีที่ผ่านมา',
+      over_10y: 'เคยฉีดครบ แต่เกิน 10 ปีแล้ว',
+      unknown_or_never: 'ไม่เคยฉีด หรือจำประวัติไม่ได้',
+      over_10y_or_unknown: 'เคยฉีดครบ แต่เกิน 10 ปีแล้ว หรือจำประวัติไม่ได้',
+      no_open_wound: 'ไม่มีบาดแผลเปิดฉีกขาด'
+    };
+    const tetanusStr = tetanusMap[patient.selfHarmTetanus] || 'ไม่ได้ระบุ';
+
+    const pregMap = {
+      not_pregnant: 'ไม่ได้ตั้งครรภ์ / ประจำเดือนมาปกติ',
+      suspected_or_missed: 'ขาดประจำเดือน / สงสัยอาจตั้งครรภ์',
+      confirmed_pregnant: 'ยืนยันกำลังตั้งครรภ์',
+      menopause_or_hysterectomy: 'วัยหมดประจำเดือน / ผ่าตัดมดลูกแล้ว'
+    };
+    const isFemalePatient = patient.gender === 'female' || patient.gender === 'หญิง' || /นาง|น\.ส\./.test(patient.patientTitle || '');
+    const femaleStr = `LMP ${patient.selfHarmLmpDate || 'ไม่ระบุ'} (${pregMap[patient.selfHarmPregnancyStatus] || 'ไม่ระบุสถานะ'})`;
+
+    const painStr = (patient.selfHarmPainScore !== null && patient.selfHarmPainScore !== undefined) ? `${patient.selfHarmPainScore}/10` : 'ไม่ได้ระบุ';
+    const hospMap = { complete: 'เคยมีประวัติและรับยาต่อเนื่องที่นี่', incomplete: 'มีประวัติเดิมแต่จำรายละเอียดยาไม่ครบ', none: 'ผู้ป่วยใหม่ / ไม่มีประวัติที่นี่', new: 'ผู้ป่วยใหม่ / ไม่มีประวัติที่นี่' };
+    const hospLabel = hospMap[patient.hospRecordStatus] || 'เคยมีประวัติ รพ.ราชบุรี';
+
+    // 2. Pertinent Positives & Negatives (Symptoms, Per-Region Signs & Pre-conditions — Single-Placement)
+    const positives = [];
+    const negatives = [];
+    const symList = Array.isArray(patient.selfHarmSymptoms) ? patient.selfHarmSymptoms : [];
+    const symThMap = {
+      hoarseness: 'เสียงแหบ หายใจมีเสียงวี้ด หรือกลืนลำบาก',
+      stridor: 'หายใจลำบาก หอบเหนื่อย หรือริมฝีปากเขียวคล้ำ',
+      active_bleeding: 'มีเลือดออกมาก กดห้ามเลือดแล้วไม่หยุด',
+      numbness_distal: 'มีอาการชาปลายมือ ปลายนิ้ว หรือปลายเท้า',
+      motor_deficit: 'ขยับนิ้ว กำมือ หรือขยับแขนขาไม่ได้',
+      wound_depth: 'แผลเปิดลึกถึงชั้นไขมัน เส้นเอ็น หรือกระดูก',
+      severe_pain_deformity: 'กระดูกหักผิดรูปชัดเจนหรือปวดรุนแรง',
+      severe_abdpain: 'ปวดแน่นหน้าอก แน่นท้องมาก หรือท้องเกร็ง',
+      unconscious: 'หมดสติ หรือซึมลงมาก',
+      dizziness_shock: 'หน้ามืด วิงเวียน เหงื่อแตกตัวเย็น'
+    };
+    Object.entries(symThMap).forEach(([k, lbl]) => { if (symList.includes(k)) positives.push(lbl); });
+
+    const signThMap = {
+      loc_amnesia: 'มีอาการสลบชั่วขณะ หรือจำเหตุการณ์ไม่ได้',
+      severe_headache_vomiting: 'ปวดศีรษะรุนแรง มึนงงสับสน หรืออาเจียน',
+      diplopia_blurred: 'ตาพร่ามัว มองเห็นภาพซ้อน หรือเลือดออกในตา',
+      basilar_discharge: 'เลือดหรือน้ำใสไหลออกจากรูหูหรือรูจมูก',
+      maxillofacial_malocclusion: 'อ้าปากไม่ได้ ขากรรไกรค้าง หรือฟันหักโยก',
+      cspine_severe_pain_stiff: 'ปวดตึงแนวกระดูกต้นคอมาก หรือหันคอไม่ได้',
+      radiculopathy_weakness_numbness: 'ชาแปล๊บเหมือนไฟช็อตหรืออ่อนแรงร้าวลงแขนขา',
+      airway_compromise_hoarseness: 'หายใจลำบาก กลืนลำบาก เสียงแหบ หรือคอบวมโต',
+      chest_dyspnea_tightness: 'หายใจหอบเหนื่อย แน่นหน้าอก หรือหายใจเข้าไม่สุด',
+      pleuritic_pain_cough: 'เจ็บแปล๊บหน้าอกหรือซี่โครงเวลาหายใจลึก/ไอ',
+      rib_clavicle_deformity_tenderness: 'ไหปลาร้าหรือซี่โครงปูดนูนผิดรูปหรือกดเจ็บมาก',
+      peritonitis_guarding: 'ปวดท้องรุนแรง ท้องอืดตึง หรือหน้าท้องแข็งเกร็ง',
+      pelvic_instability_pain: 'ปวดสะโพกหรือเชิงกรานมากจนขยับขาไม่ได้',
+      cauda_equina_sciatica: 'ปวดหลังร้าวลงขา ขาชา หรือกลั้นปัสสาวะ/อุจจาระไม่ได้',
+      hematuria_anuria: 'ปัสสาวะไม่ออก หรือมีเลือดสดปนในปัสสาวะ',
+      deformity_fracture_dislocation: 'ไหล่ แขน ข้อมือ หรือนิ้วมือ บวมโตผิดรูป',
+      inability_to_move: 'ปวดมากจนขยับแขน ข้อมือ หรือกำ/เหยียดนิ้วไม่ได้',
+      numbness_sensory_loss: 'ชาหรือไร้ความรู้สึกที่แขน ฝ่ามือ หรือปลายนิ้วมือ',
+      pallor_pulseless_cold_cyanosis: 'ปลายนิ้วมือซีดขาว เย็นเฉียบ หรือม่วงคล้ำ',
+      open_tendon_bone_exposed: 'แผลเปิดลึกเห็นชั้นไขมัน เส้นเอ็น หรือกระดูก',
+      deformity_fracture_shortening: 'ขา เข่า หรือข้อเท้าบวมโตผิดรูป หรือขาสั้นยาวไม่เท่ากัน',
+      inability_to_bear_weight: 'ปวดมากจนยืนลงน้ำหนักหรือเดินไม่ได้',
+      numbness_drop_foot_cyanosis: 'ชาปลายเท้า กระดกข้อเท้าไม่ขึ้น หรือปลายเท้าซีดเย็น',
+      open_fracture_deep_wound: 'แผลเปิดลึกบริเวณกระดูกหรือแผลฉกรรจ์ที่ขา/เท้า'
+    };
+    ['shHeadSigns', 'shNeckSigns', 'shChestSigns', 'shAbdSigns', 'shUpperExtSigns', 'shLowerExtSigns'].forEach(field => {
+      const arr = Array.isArray(patient[field]) ? patient[field] : [];
+      arr.forEach(s => { if (signThMap[s] && !positives.includes(signThMap[s])) positives.push(signThMap[s]); });
+    });
+
+    const preThMap = {
+      planned: 'มีการวางแผนเตรียมการไว้ล่วงหน้า',
+      note: 'มีการเขียนจดหมาย หรือส่งข้อความสั่งเสีย',
+      hallucination: 'มีอาการหูแว่วได้ยินเสียงสั่ง หรือเห็นภาพหลอน',
+      alcohol: 'ดื่มเครื่องดื่มแอลกอฮอล์ร่วมด้วยก่อนเกิดเหตุ'
+    };
+    const preList = Array.isArray(patient.selfHarmPreConditions) ? patient.selfHarmPreConditions : [];
+    preList.forEach(k => { if (preThMap[k]) positives.push(preThMap[k]); });
+
+    if (positives.length === 0) positives.push(`มีประวัติทำร้ายตนเองโดยวิธี${methodStr}`);
+
+    if (!symList.includes('hoarseness') && !symList.includes('stridor') && !(patient.shNeckSigns || []).includes('airway_compromise_hoarseness')) {
+      negatives.push('ไม่มีเสียงแหบ กลืนลำบาก หรือหายใจเหนื่อยหอบ');
+    }
+    if (!symList.includes('active_bleeding') && patient.selfHarmBleedingStatus !== 'pulsatile') {
+      negatives.push('ไม่มีเลือดออกพุ่งหรือไหลไม่หยุด');
+    }
+    if (!symList.includes('unconscious') && !(patient.shHeadSigns || []).includes('loc_amnesia')) {
+      negatives.push('รู้สึกตัวดี ถามตอบรู้เรื่อง ไม่สลบ');
+    }
+    if (!symList.includes('numbness_distal') && !symList.includes('motor_deficit') && !(patient.shUpperExtSigns || []).includes('numbness_sensory_loss')) {
+      negatives.push('ไม่มีอาการชาหรืออ่อนแรงของรยางค์ส่วนปลาย');
+    }
+    if (preList.includes('none') || !preList.includes('note')) {
+      negatives.push('ไม่มีจดหมายหรือข้อความสั่งเสีย');
+    }
+
+    patient.pertinentPositives = positives;
+    patient.pertinentNegatives = negatives;
+
+    const effectiveRfs = this.evaluateRedFlags(patient) || [];
+    const docNotes = patient.doctor_notes || {};
+    const medsText = (!patient.currentMeds || patient.currentMeds === 'ไม่ได้ระบุ' || patient.currentMeds === 'ไม่มี') ? 'ไม่มี' : patient.currentMeds;
+    const bleedLine = patient.selfHarmBleedingStatus ? `\n• ภาวะเลือดออก: ${bleedMap[patient.selfHarmBleedingStatus] || patient.selfHarmBleedingStatus}` : '';
+    const femLine = (isFemalePatient && (patient.selfHarmLmpDate || patient.selfHarmPregnancyStatus)) ? `\n• ประวัติสตรี: ${femaleStr}` : '';
+
+    // 3. RAPID NOTE
+    let rapid = `[Chief Complaint (CC)]
+ทำร้ายตนเอง / พยายามฆ่าตัวตาย (Self-Harm) เป็นมาประมาณ ${durText}${exactDt ? ' ' + exactDt : ''}
+
+[History of Present Illness (HPI)]
+• ผู้ให้ข้อมูล: ${informantStr}
+• วิธีการทำร้ายตนเอง: ${methodStr}${bleedLine}
+• ตำแหน่งบาดเจ็บและชนิดการบาดเจ็บ: ${anatomyStr}
+• ความรู้สึกและความคิดในขณะนี้: ${feelingStr}
+• ปัจจัยกระตุ้น/ความเครียด: ${stressorStr}
+• ประวัติจิตเวชเดิม: ${psychStr}
+• ประวัติทำร้ายตนเองในอดีต: ${pastStr}
+• ระดับความปวด: ${painStr}
+• NPO Time: ${patient.selfHarmNpoTime ? `${patient.selfHarmNpoTime} น.${patient.selfHarmNpoLastMeal ? ` (${patient.selfHarmNpoLastMeal})` : ''}` : 'ไม่ได้ระบุ'}
+• วัคซีนป้องกันบาดทะยัก: ${tetanusStr}${femLine}
+
+• Pertinent Positives:
+  - ${positives.join('\n  - ')}
+
+• Pertinent Negatives:
+  - ${negatives.join('\n  - ')}
+
+[Past Medical History & Medications]
+• สถานะประวัติ รพ.ราชบุรี: ${hospLabel}
+• โรคประจำตัว (U/D): ${(Array.isArray(patient.underlying) && patient.underlying.length > 0) ? patient.underlying.join(', ') : 'ปฏิเสธ'}
+• ยาประจำตัว (Current Meds): ${medsText}
+• ประวัติแพ้ยา/แพ้อาหาร (Allergies): ${patient.drugAllergy || 'ปฏิเสธ'}
+
+[Emergency Risk Assessment (Red Flags)]
+${effectiveRfs.length > 0 ? `🚩 RED FLAGS DETECTED:\n${effectiveRfs.map(r => `  * ${r.textTh}`).join('\n')}` : '✓ ไม่พบสัญญาณวิกฤตเฉพาะหน้า (Low-Risk)'}
+• ESI Triage Level: ESI ${patient.esi_level || (effectiveRfs.length > 0 ? 2 : 3)}
+
+[Doctor's Clinical Addendum & Exam]
+• ประวัติเพิ่มเติม/แก้ไขโดยแพทย์: ${docNotes.additional_hpi || '-'}
+• สัญญาณชีพและการตรวจร่างกาย: ${docNotes.physical_exam || '-'}
+• การวินิจฉัยเบื้องต้น (Impression): ${docNotes.preliminary_dx || '-'}
+• แผนการรักษา (Plan/Orders): ${docNotes.plan || '-'}`;
+
+    // 4. NARRATIVE NOTE
+    let narrative = `ผู้ป่วย [${patient.name || 'ไม่ระบุชื่อ'}] อายุ ${patient.age !== undefined && patient.age !== null ? patient.age + ' ปี' : '-'} เพศ ${patient.gender || 'ไม่ระบุ'} มาตรวจที่ห้องฉุกเฉิน รพ.ราชบุรี ด้วยเรื่องทำร้ายตนเอง / พยายามฆ่าตัวตาย เกิดเหตุเมื่อประมาณ ${durText} ก่อนมาโรงพยาบาล (ผู้ให้ข้อมูล: ${informantStr}) โดยใช้วิธี${methodStr} `;
+    narrative += `ตรวจพบตำแหน่งบาดเจ็บและชนิดการบาดเจ็บคือ ${anatomyStr} `;
+    narrative += `ระดับความปวด ${painStr} ความรู้สึกขณะนี้: ${feelingStr} ปัจจัยกระตุ้นคือ ${stressorStr} ประวัติจิตเวช: ${psychStr} ประวัติทำร้ายตนเองในอดีต: ${pastStr} วัคซีนบาดทะยัก: ${tetanusStr} `;
+    if (isFemalePatient && (patient.selfHarmLmpDate || patient.selfHarmPregnancyStatus)) narrative += `ประวัติสตรี: ${femaleStr} `;
+    narrative += `\n\nอาการสำคัญที่ตรวจพบ: ${positives.join(', ')}\nอาการสำคัญที่ปฏิเสธ: ${negatives.join(', ')}`;
+
+    // 5. MEDICAL JSON SCHEMA
+    const jsonSchema = {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      encounter: {
+        hospital_site: 'Ratchaburi Hospital',
+        queue_id: patient.queue_number || null,
+        hn: patient.hn || null,
+        patient_name: patient.name || null,
+        age: patient.age !== undefined ? patient.age : null,
+        gender: patient.gender || null,
         chief_complaint: 'self_harm',
-        chief_complaint_title: 'ทำร้ายตนเอง / พยายามฆ่าตัวตาย'
-      };
-
-      p.chief_complaint = 'self_harm';
-      p.chief_complaint_title = 'ทำร้ายตนเอง / พยายามฆ่าตัวตาย';
-
-      // 1. Informant
-      const infoRadio = document.querySelector('input[name="selfHarmInformant"]:checked');
-      p.selfHarmInformant = infoRadio ? infoRadio.value : '';
-      p.selfHarmInformantRelText = (document.getElementById('selfHarmInformantRelText')?.value || '').trim();
-      p.selfHarmInformantRescuerText = (document.getElementById('selfHarmInformantRescuerText')?.value || '').trim();
-
-      // 2. Duration / Timeline
-      p.durationVal = parseInt(document.getElementById('selfHarmDurationVal')?.value, 10) || 0;
-      p.durationUnit = document.getElementById('selfHarmDurationUnit')?.value || 'hours';
-      p.selfHarmExactDate = (document.getElementById('selfHarmExactDate')?.value || '').trim();
-      p.selfHarmExactTime = (document.getElementById('selfHarmExactTime')?.value || '').trim();
-
-      // 3. Methods (Multiple)
-      const methods = [];
-      ['hanging', 'sharp', 'jumping', 'drowning', 'co', 'other'].forEach(m => {
-        const cb = document.getElementById(`shMethod_${m}`);
-        if (cb && cb.checked) {
-          methods.push(cb.value);
-        }
-      });
-      p.selfHarmMethods = methods;
-
-      // Method Sub-details
-      p.selfHarmHanging_suspended = Boolean(document.getElementById('shHanging_suspended')?.checked);
-      p.selfHarmHanging_unconscious = Boolean(document.getElementById('shHanging_unconscious')?.checked);
-      p.selfHarmHanging_cyanosis = Boolean(document.getElementById('shHanging_cyanosis')?.checked);
-      p.selfHarmHangingDuration = (document.getElementById('selfHarmHangingDuration')?.value || '').trim();
-
-      p.selfHarmSharpDevice = (document.getElementById('selfHarmSharpDevice')?.value || '').trim();
-      p.selfHarmBleedingStatus = document.getElementById('selfHarmBleedingStatus')?.value || 'stopped';
-
-      p.selfHarmJumpingHeight = (document.getElementById('selfHarmJumpingHeight')?.value || '').trim();
-      p.selfHarmJumpingSurface = (document.getElementById('selfHarmJumpingSurface')?.value || '').trim();
-
-      p.selfHarmDrowningPlace = (document.getElementById('selfHarmDrowningPlace')?.value || '').trim();
-      p.selfHarmDrowningAspiration = document.getElementById('selfHarmDrowningAspiration')?.value || 'no';
-
-      p.selfHarmCoSource = (document.getElementById('selfHarmCoSource')?.value || '').trim();
-      p.selfHarmCoDuration = (document.getElementById('selfHarmCoDuration')?.value || '').trim();
-
-      p.selfHarmOtherMethodText = (document.getElementById('selfHarmOtherMethodText')?.value || '').trim();
-
-      // 4. Symptoms
-      const symList = [];
-      const symIds = [
-        'hoarseness', 'stridor', 'active_bleeding', 'numbness_distal', 'motor_deficit',
-        'wound_depth', 'severe_pain_deformity', 'severe_abdpain', 'unconscious',
-        'dizziness_shock', 'none'
-      ];
-      symIds.forEach(s => {
-        const el = document.getElementById(`shSym_${s}`);
-        if (el && el.checked) symList.push(s);
-      });
-      p.selfHarmSymptoms = symList;
-
-      // 5. Anatomical Regions & Wound Details
-      p.selfHarmLocations = {
-        head: Boolean(document.getElementById('shLoc_head_parent')?.checked),
-        neck: Boolean(document.getElementById('shLoc_neck_parent')?.checked),
-        chest: Boolean(document.getElementById('shLoc_chest_parent')?.checked),
-        abd: Boolean(document.getElementById('shLoc_abd_parent')?.checked),
-        arm: Boolean(document.getElementById('shLoc_arm_parent')?.checked),
-        leg: Boolean(document.getElementById('shLoc_leg_parent')?.checked),
-        other: Boolean(document.getElementById('shLoc_other_parent')?.checked)
-      };
-
-      // Sides & Types
-      const sideAndTypeIds = [
-        'shSide_head_scalp_left', 'shSide_head_scalp_right', 'shSide_head_scalp_mid',
-        'shType_head_scalp_wound', 'shType_head_scalp_pain', 'shType_head_scalp_deform',
-        'shSide_neck_left', 'shSide_neck_right', 'shSide_neck_mid',
-        'shType_neck_wound', 'shType_neck_pain', 'shType_neck_deform',
-        'shSide_chest_left', 'shSide_chest_right', 'shSide_chest_mid',
-        'shType_chest_wound', 'shType_chest_pain', 'shType_chest_deform',
-        'shSide_abd_left', 'shSide_abd_right', 'shSide_abd_mid',
-        'shType_abd_wound', 'shType_abd_pain', 'shType_abd_deform',
-        'shSide_arm_wrist_left', 'shSide_arm_wrist_right',
-        'shType_arm_wound', 'shType_arm_pain', 'shType_arm_deep',
-        'shFinger_left_thumb', 'shFinger_left_index', 'shFinger_left_mid', 'shFinger_left_ring', 'shFinger_left_little',
-        'shFinger_right_thumb', 'shFinger_right_index', 'shFinger_right_mid', 'shFinger_right_ring', 'shFinger_right_little',
-        'shSide_leg_left', 'shSide_leg_right',
-        'shType_leg_wound', 'shType_leg_pain', 'shType_leg_deform',
-        'shType_other_wound', 'shType_other_pain', 'shType_other_deform'
-      ];
-      sideAndTypeIds.forEach(id => {
-        p[id] = Boolean(document.getElementById(id)?.checked);
-      });
-      p.selfHarmLocOtherText = (document.getElementById('selfHarmLocOtherText')?.value || '').trim();
-
-      // 6. Pain Score
-      p.selfHarmPainScore = parseInt(document.getElementById('selfHarmPainScore')?.value, 10) || 0;
-
-      // 7. Feelings & Pre-conditions
-      const feelingRadio = document.querySelector('input[name="selfHarmFeelings"]:checked');
-      p.selfHarmFeelings = feelingRadio ? feelingRadio.value : '';
-
-      const preConditions = [];
-      ['planned', 'note', 'hallucination', 'alcohol', 'none'].forEach(k => {
-        if (document.getElementById(`selfHarmPre_${k}`)?.checked) preConditions.push(k);
-      });
-      p.selfHarmPreConditions = preConditions;
-
-      // Stressors
-      const stressors = [];
-      ['relation', 'finance', 'illness', 'psych', 'loss', 'other'].forEach(k => {
-        if (document.getElementById(`shStressor_${k}`)?.checked) stressors.push(k);
-      });
-      p.selfHarmStressors = stressors;
-
-      // 8. Psychiatric Background & Past Attempts
-      const psychRadio = document.querySelector('input[name="selfHarmPsychHistory"]:checked');
-      p.selfHarmPsychHistory = psychRadio ? psychRadio.value : '';
-      p.selfHarmPsychDetail = (document.getElementById('selfHarmPsychDetail')?.value || '').trim();
-
-      const pastRadio = document.querySelector('input[name="selfHarmPastAttempts"]:checked');
-      p.selfHarmPastAttempts = pastRadio ? pastRadio.value : '';
-
-      // Tetanus & NPO
-      const tetRadio = document.querySelector('input[name="selfHarmTetanus"]:checked');
-      p.selfHarmTetanus = tetRadio ? tetRadio.value : '';
-
-      p.selfHarmNpoTime = (document.getElementById('selfHarmNpoTime')?.value || '').trim();
-      p.selfHarmNpoLastMeal = (document.getElementById('selfHarmNpoLastMeal')?.value || '').trim();
-
-      // Female specific (C-AP13)
-      const isFemale = p.gender === 'female' || p.gender === 'หญิง' || p.patientPrefix === 'นาง' || p.patientPrefix === 'น.ส.';
-      if (isFemale) {
-        p.selfHarmLmpDate = (document.getElementById('selfHarmLmpDate')?.value || '').trim();
-        p.selfHarmPregnancyStatus = document.getElementById('selfHarmPregnancyStatus')?.value || 'not_pregnant';
-      } else {
-        delete p.selfHarmLmpDate;
-        delete p.selfHarmPregnancyStatus;
-      }
-
-      return p;
-    },
-
-    // -----------------------------------------------------------------------
-    // LIFECYCLE: HYDRATE FORM (Write patient record into DOM)
-    // -----------------------------------------------------------------------
-    hydrateForm: function (patient) {
-      if (!patient) return;
-
-      // 1. Informant
-      if (patient.selfHarmInformant) {
-        const r = document.querySelector(`input[name="selfHarmInformant"][value="${patient.selfHarmInformant}"]`);
-        if (r) r.checked = true;
-      }
-      if (document.getElementById('selfHarmInformantRelText')) {
-        document.getElementById('selfHarmInformantRelText').value = patient.selfHarmInformantRelText || '';
-      }
-      if (document.getElementById('selfHarmInformantRescuerText')) {
-        document.getElementById('selfHarmInformantRescuerText').value = patient.selfHarmInformantRescuerText || '';
-      }
-      if (typeof window.toggleShInformantDetails === 'function') window.toggleShInformantDetails();
-
-      // 2. Timeline
-      if (document.getElementById('selfHarmDurationVal')) {
-        document.getElementById('selfHarmDurationVal').value = patient.durationVal !== undefined ? patient.durationVal : '';
-      }
-      if (document.getElementById('selfHarmDurationUnit')) {
-        document.getElementById('selfHarmDurationUnit').value = patient.durationUnit || 'hours';
-      }
-      if (document.getElementById('selfHarmExactDate')) {
-        document.getElementById('selfHarmExactDate').value = patient.selfHarmExactDate || '';
-      }
-      if (document.getElementById('selfHarmExactTime')) {
-        document.getElementById('selfHarmExactTime').value = patient.selfHarmExactTime || '';
-      }
-
-      // 3. Methods
-      const methods = Array.isArray(patient.selfHarmMethods) ? patient.selfHarmMethods : [];
-      ['hanging', 'sharp', 'jumping', 'drowning', 'co', 'other'].forEach(m => {
-        const cb = document.getElementById(`shMethod_${m}`);
-        if (cb) {
-          const matchVal = m === 'co' ? 'co_poisoning' : (m === 'other' ? 'other_trauma' : m);
-          cb.checked = methods.includes(matchVal) || methods.includes(m);
-        }
-        const subId = `shSub_${m}`;
-        const subEl = document.getElementById(subId);
-        if (subEl) {
-          const isChecked = Boolean(cb && cb.checked);
-          subEl.classList.toggle('hidden', !isChecked);
-        }
-      });
-
-      // Method Sub-details
-      if (document.getElementById('shHanging_suspended')) document.getElementById('shHanging_suspended').checked = Boolean(patient.selfHarmHanging_suspended);
-      if (document.getElementById('shHanging_unconscious')) document.getElementById('shHanging_unconscious').checked = Boolean(patient.selfHarmHanging_unconscious);
-      if (document.getElementById('shHanging_cyanosis')) document.getElementById('shHanging_cyanosis').checked = Boolean(patient.selfHarmHanging_cyanosis);
-      if (document.getElementById('selfHarmHangingDuration')) document.getElementById('selfHarmHangingDuration').value = patient.selfHarmHangingDuration || '';
-
-      if (document.getElementById('selfHarmSharpDevice')) document.getElementById('selfHarmSharpDevice').value = patient.selfHarmSharpDevice || '';
-      if (document.getElementById('selfHarmBleedingStatus')) document.getElementById('selfHarmBleedingStatus').value = patient.selfHarmBleedingStatus || 'stopped';
-
-      if (document.getElementById('selfHarmJumpingHeight')) document.getElementById('selfHarmJumpingHeight').value = patient.selfHarmJumpingHeight || '';
-      if (document.getElementById('selfHarmJumpingSurface')) document.getElementById('selfHarmJumpingSurface').value = patient.selfHarmJumpingSurface || '';
-
-      if (document.getElementById('selfHarmDrowningPlace')) document.getElementById('selfHarmDrowningPlace').value = patient.selfHarmDrowningPlace || '';
-      if (document.getElementById('selfHarmDrowningAspiration')) document.getElementById('selfHarmDrowningAspiration').value = patient.selfHarmDrowningAspiration || 'no';
-
-      if (document.getElementById('selfHarmCoSource')) document.getElementById('selfHarmCoSource').value = patient.selfHarmCoSource || '';
-      if (document.getElementById('selfHarmCoDuration')) document.getElementById('selfHarmCoDuration').value = patient.selfHarmCoDuration || '';
-
-      if (document.getElementById('selfHarmOtherMethodText')) document.getElementById('selfHarmOtherMethodText').value = patient.selfHarmOtherMethodText || '';
-
-      // 4. Symptoms
-      const symList = Array.isArray(patient.selfHarmSymptoms) ? patient.selfHarmSymptoms : [];
-      const symIds = [
-        'hoarseness', 'stridor', 'active_bleeding', 'numbness_distal', 'motor_deficit',
-        'wound_depth', 'severe_pain_deformity', 'severe_abdpain', 'unconscious',
-        'dizziness_shock', 'none'
-      ];
-      symIds.forEach(s => {
-        const el = document.getElementById(`shSym_${s}`);
-        if (el) el.checked = symList.includes(s);
-      });
-      if (typeof window.updateShContextSymptoms === 'function') window.updateShContextSymptoms();
-
-      // 5. Locations & Anatomical details
-      const locs = patient.selfHarmLocations || {};
-      ['head', 'neck', 'chest', 'abd', 'arm', 'leg', 'other'].forEach(loc => {
-        const cb = document.getElementById(`shLoc_${loc}_parent`);
-        const sub = document.getElementById(`shLocSub_${loc}`);
-        const isChecked = Boolean(locs[loc]);
-        if (cb) cb.checked = isChecked;
-        if (sub) sub.classList.toggle('hidden', !isChecked);
-      });
-
-      const sideAndTypeIds = [
-        'shSide_head_scalp_left', 'shSide_head_scalp_right', 'shSide_head_scalp_mid',
-        'shType_head_scalp_wound', 'shType_head_scalp_pain', 'shType_head_scalp_deform',
-        'shSide_neck_left', 'shSide_neck_right', 'shSide_neck_mid',
-        'shType_neck_wound', 'shType_neck_pain', 'shType_neck_deform',
-        'shSide_chest_left', 'shSide_chest_right', 'shSide_chest_mid',
-        'shType_chest_wound', 'shType_chest_pain', 'shType_chest_deform',
-        'shSide_abd_left', 'shSide_abd_right', 'shSide_abd_mid',
-        'shType_abd_wound', 'shType_abd_pain', 'shType_abd_deform',
-        'shSide_arm_wrist_left', 'shSide_arm_wrist_right',
-        'shType_arm_wound', 'shType_arm_pain', 'shType_arm_deep',
-        'shFinger_left_thumb', 'shFinger_left_index', 'shFinger_left_mid', 'shFinger_left_ring', 'shFinger_left_little',
-        'shFinger_right_thumb', 'shFinger_right_index', 'shFinger_right_mid', 'shFinger_right_ring', 'shFinger_right_little',
-        'shSide_leg_left', 'shSide_leg_right',
-        'shType_leg_wound', 'shType_leg_pain', 'shType_leg_deform',
-        'shType_other_wound', 'shType_other_pain', 'shType_other_deform'
-      ];
-      sideAndTypeIds.forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.checked = Boolean(patient[id]);
-      });
-      if (document.getElementById('selfHarmLocOtherText')) {
-        document.getElementById('selfHarmLocOtherText').value = patient.selfHarmLocOtherText || '';
-      }
-
-      // 6. Pain Score
-      const painScore = patient.selfHarmPainScore !== undefined ? patient.selfHarmPainScore : 0;
-      const painEl = document.getElementById('selfHarmPainScore');
-      if (painEl) {
-        painEl.value = painScore;
-        if (typeof window.updateShPainScoreDisplay === 'function') window.updateShPainScoreDisplay(painScore);
-      }
-
-      // 7. Feelings & Pre-conditions
-      if (patient.selfHarmFeelings) {
-        const r = document.querySelector(`input[name="selfHarmFeelings"][value="${patient.selfHarmFeelings}"]`);
-        if (r) r.checked = true;
-      }
-      const preList = Array.isArray(patient.selfHarmPreConditions) ? patient.selfHarmPreConditions : [];
-      ['planned', 'note', 'hallucination', 'alcohol', 'none'].forEach(k => {
-        const el = document.getElementById(`selfHarmPre_${k}`);
-        if (el) el.checked = preList.includes(k);
-      });
-
-      const stressList = Array.isArray(patient.selfHarmStressors) ? patient.selfHarmStressors : [];
-      ['relation', 'finance', 'illness', 'psych', 'loss', 'other'].forEach(k => {
-        const el = document.getElementById(`shStressor_${k}`);
-        if (el) el.checked = stressList.includes(k);
-      });
-
-      // 8. Psych & Past Attempts
-      if (patient.selfHarmPsychHistory) {
-        const r = document.querySelector(`input[name="selfHarmPsychHistory"][value="${patient.selfHarmPsychHistory}"]`);
-        if (r) r.checked = true;
-      }
-      if (document.getElementById('selfHarmPsychDetail')) {
-        document.getElementById('selfHarmPsychDetail').value = patient.selfHarmPsychDetail || '';
-      }
-      if (typeof window.toggleShPsychSub === 'function') window.toggleShPsychSub();
-
-      if (patient.selfHarmPastAttempts) {
-        const r = document.querySelector(`input[name="selfHarmPastAttempts"][value="${patient.selfHarmPastAttempts}"]`);
-        if (r) r.checked = true;
-      }
-
-      // Tetanus & NPO
-      if (patient.selfHarmTetanus) {
-        const r = document.querySelector(`input[name="selfHarmTetanus"][value="${patient.selfHarmTetanus}"]`);
-        if (r) r.checked = true;
-      }
-      if (document.getElementById('selfHarmNpoTime')) {
-        document.getElementById('selfHarmNpoTime').value = patient.selfHarmNpoTime || '';
-      }
-      if (document.getElementById('selfHarmNpoLastMeal')) {
-        document.getElementById('selfHarmNpoLastMeal').value = patient.selfHarmNpoLastMeal || '';
-      }
-
-      // 9. Female section (C-AP13)
-      const isFemale = patient.gender === 'female' || patient.gender === 'หญิง' || patient.patientPrefix === 'นาง' || patient.patientPrefix === 'น.ส.';
-      const femSec = document.getElementById('selfHarmFemaleSection');
-      if (femSec) {
-        femSec.classList.toggle('hidden', !isFemale);
-        if (isFemale) {
-          if (document.getElementById('selfHarmLmpDate')) document.getElementById('selfHarmLmpDate').value = patient.selfHarmLmpDate || '';
-          if (document.getElementById('selfHarmPregnancyStatus')) document.getElementById('selfHarmPregnancyStatus').value = patient.selfHarmPregnancyStatus || 'not_pregnant';
-        }
-      }
-    },
-
-    // -----------------------------------------------------------------------
-    // LIFECYCLE: CLEAR FORM (Reset all inputs in section)
-    // -----------------------------------------------------------------------
-    clearForm: function () {
-      const sec = document.getElementById('ccSelfHarmSection');
-      if (!sec) return;
-
-      sec.querySelectorAll('input[type="text"], input[type="number"], textarea').forEach(el => el.value = '');
-      sec.querySelectorAll('input[type="checkbox"], input[type="radio"]').forEach(el => el.checked = false);
-      sec.querySelectorAll('select').forEach(el => el.selectedIndex = 0);
-
-      const painEl = document.getElementById('selfHarmPainScore');
-      if (painEl) {
-        painEl.value = 0;
-        if (typeof window.updateShPainScoreDisplay === 'function') window.updateShPainScoreDisplay(0);
-      }
-
-      // Hide all dynamic sub-containers
-      [
-        'shInformantRelSub', 'shInformantRescuerSub',
-        'shSub_hanging', 'shSub_sharp', 'shSub_jumping', 'shSub_drowning', 'shSub_co', 'shSub_other',
-        'shLocSub_head', 'shLocSub_neck', 'shLocSub_chest', 'shLocSub_abd', 'shLocSub_arm', 'shLocSub_leg', 'shLocSub_other',
-        'shPsychDetailSub', 'selfHarmFemaleSection'
-      ].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.classList.add('hidden');
-      });
-    },
-
-    // -----------------------------------------------------------------------
-    // LIFECYCLE: EVALUATE RED FLAGS (Clinical Safety Gate)
-    // -----------------------------------------------------------------------
-    isRedFlag: function (patient) {
-      const rfs = this.evaluateRedFlags(patient);
-      return Array.isArray(rfs) && rfs.length > 0;
-    },
-
-    evaluateRedFlags: function (patient) {
-      const redFlags = [];
-      if (!patient) return redFlags;
-
-      const methods = Array.isArray(patient.selfHarmMethods) ? patient.selfHarmMethods : [];
-      const symptoms = Array.isArray(patient.selfHarmSymptoms) ? patient.selfHarmSymptoms : [];
-
-      // 1. Red Flag: Airway Compromise / Near-hanging
-      if (methods.includes('hanging') || symptoms.includes('hoarseness') || symptoms.includes('stridor') || patient.shType_neck_deform) {
-        redFlags.push({
-          key: 'airway_compromise_near_hanging',
-          textTh: 'สงสัยภาวะทางเดินหายใจอุดกั้น / บาดเจ็บกระดูกคอและกล่องเสียง (Airway Compromise & Laryngeal Trauma)',
-          risk: 'ความเสี่ยงสูงต่อภาวะกล่องเสียงบวมน้ำ หลอดลมตีบเฉียบพลัน หรือกระดูกสันหลังส่วนคอหักหลังการรัดคอ/ผูกคอ'
-        });
-      }
-
-      // 2. Red Flag: Active Massive Hemorrhage / Pulsatile Bleeding
-      if (patient.selfHarmBleedingStatus === 'pulsatile' || symptoms.includes('active_bleeding') || (patient.shType_arm_deep && symptoms.includes('motor_deficit'))) {
-        redFlags.push({
-          key: 'active_massive_hemorrhage',
-          textTh: 'มีภาวะเลือดออกรุนแรง / บาดเจ็บหลอดเลือดแดงใหญ่และเส้นเอ็น (Major Vascular & Tendon Injury)',
-          risk: 'ความเสี่ยงต่อภาวะช็อกจากการเสียเลือด (Hemorrhagic Shock) และความพิการถาวรของเส้นประสาทและเส้นเอ็น'
-        });
-      }
-
-      // 3. Red Flag: Multiple Severe Trauma from Jumping
-      if (methods.includes('jumping') || symptoms.includes('severe_pain_deformity') || symptoms.includes('severe_abdpain')) {
-        redFlags.push({
-          key: 'high_energy_multiple_trauma',
-          textTh: 'ภาวะบาดเจ็บรุนแรงหลายระบบจากการตกที่สูง (High-Energy Multiple Trauma)',
-          risk: 'ความเสี่ยงต่อภาวะเลือดออกในช่องท้อง/ช่องอก กระดูกเชิงกรานหัก และกระดูกสันหลังบาดเจ็บรุนแรง'
-        });
-      }
-
-      // 4. Red Flag: Severe Carbon Monoxide Toxicity / Inhalation
-      if (methods.includes('co_poisoning') || methods.includes('co')) {
-        redFlags.push({
-          key: 'carbon_monoxide_inhalation',
-          textTh: 'ภาวะสูดดมก๊าซคาร์บอนมอนอกไซด์ในห้องปิด (Acute Carbon Monoxide Poisoning)',
-          risk: 'ความเสี่ยงต่อภาวะขาดออกซิเจนในระดับเซลล์ สมองบวม และกล้ามเนื้อหัวใจขาดเลือดเฉียบพลัน'
-        });
-      }
-
-      // 5. Red Flag: Acute Lethality / Active Suicidal Intent
-      if (patient.selfHarmFeelings === 'active_suicidal_intent' || (Array.isArray(patient.selfHarmPreConditions) && patient.selfHarmPreConditions.includes('note'))) {
-        redFlags.push({
-          key: 'high_lethality_active_intent',
-          textTh: 'ความเสี่ยงสูงต่อการฆ่าตัวตายซ้ำในหอผู้ป่วยฉุกเฉิน (High Imminent Suicide Risk)',
-          risk: 'ผู้ป่วยยังมีความคิดอยากทำร้ายตนเองหรือมีการเตรียมการสั่งเสีย ต้องจัดให้อยู่ในจุดที่สังเกตได้ตลอดเวลา 1:1'
-        });
-      }
-
-      // 6. Red Flag: Unconscious / Altered Mental Status
-      if (symptoms.includes('unconscious') || patient.selfHarmFeelings === 'uncommunicative_unresponsive') {
-        redFlags.push({
-          key: 'altered_mental_status_self_harm',
-          textTh: 'ภาวะหมดสติ หรือการรู้สึกตัวลดลงอย่างรุนแรง (Altered Mental Status / Coma)',
-          risk: 'ความเสี่ยงต่อภาวะทางเดินหายใจล้มเหลว หรือได้รับสารพิษ/ยาอื่นร่วมด้วย'
-        });
-      }
-
-      return redFlags;
-    },
-
-    // -----------------------------------------------------------------------
-    // LIFECYCLE: UPDATE OUTPUTS (Generate Doctor Rapid, Narrative & JSON)
-    // -----------------------------------------------------------------------
-    updateOutputs: function (patient) {
-      if (!patient) return { rapid: '', narrative: '', json: '' };
-
-      const durVal = patient.durationVal !== undefined ? patient.durationVal : 0;
-      const durUnit = patient.durationUnit || 'hours';
-      const durUnitTh = durUnit === 'minutes' ? 'นาที' : (durUnit === 'hours' ? 'ชั่วโมง' : 'วัน');
-      const durText = `${durVal} ${durUnitTh}`;
-
-      // 1. Methods & Mechanism Summary
-      const methods = Array.isArray(patient.selfHarmMethods) ? patient.selfHarmMethods : [];
-      const methodLabels = [];
-      if (methods.includes('hanging')) methodLabels.push('ผูกคอ/รัดคอ');
-      if (methods.includes('sharp')) methodLabels.push(`ใช้ของมีคม (${patient.selfHarmSharpDevice || 'มีด/ของมีคม'})`);
-      if (methods.includes('jumping')) methodLabels.push(`กระโดดจากที่สูง (${patient.selfHarmJumpingHeight || 'ที่สูง'})`);
-      if (methods.includes('drowning')) methodLabels.push(`กระโดดน้ำ/จมน้ำ (${patient.selfHarmDrowningPlace || 'แหล่งน้ำ'})`);
-      if (methods.includes('co_poisoning') || methods.includes('co')) methodLabels.push('รมควัน/จุดเตาถ่าน');
-      if (methods.includes('other_trauma') || methods.includes('other')) methodLabels.push(`วิธีอื่นๆ (${patient.selfHarmOtherMethodText || 'ระบุเพิ่มเติม'})`);
-      const methodStr = methodLabels.length > 0 ? methodLabels.join(', ') : 'ทำร้ายตนเอง';
-
-      // 2. Pertinent Positives & Negatives (Single-Placement Rule, No Category Prefix)
-      const positives = [];
-      const negatives = [];
-
-      // Symptoms
-      const symList = Array.isArray(patient.selfHarmSymptoms) ? patient.selfHarmSymptoms : [];
-      if (symList.includes('hoarseness')) positives.push('เสียงแหบ/กลืนลำบาก');
-      if (symList.includes('stridor')) positives.push('หายใจลำบาก/ริมฝีปากเขียวคล้ำ');
-      if (symList.includes('active_bleeding')) positives.push('มีเลือดออกมากห้ามไม่หยุด');
-      if (symList.includes('numbness_distal')) positives.push('ชาปลายมือ/ปลายเท้า');
-      if (symList.includes('motor_deficit')) positives.push('ขยับนิ้ว/แขนขาไม่ได้ (Motor deficit)');
-      if (symList.includes('wound_depth')) positives.push('แผลเปิดลึกถึงชั้นเส้นเอ็น/กระดูก');
-      if (symList.includes('severe_pain_deformity')) positives.push('กระดูกหักผิดรูปชัดเจน');
-      if (symList.includes('severe_abdpain')) positives.push('ปวดแน่นท้องมาก/ท้องเกร็งตึง');
-      if (symList.includes('unconscious')) positives.push('หมดสติ/ไม่รู้สึกตัว');
-      if (symList.includes('dizziness_shock')) positives.push('หน้ามืด วิงเวียน เหงื่อแตกตัวเย็น');
-
-      // Locations & Wounds
-      if (patient.shType_head_scalp_wound) positives.push('แผลเปิดที่ศีรษะ/ใบหน้า');
-      if (patient.shType_neck_pain) positives.push('รอยรัด/บวมช้ำที่ลำคอ');
-      if (patient.shType_neck_wound) positives.push('แผลเปิด/แผลกรีดที่ลำคอ');
-      if (patient.shType_chest_wound) positives.push('แผลเปิด/แผลแทงที่หน้าอก');
-      if (patient.shType_abd_wound) positives.push('แผลเปิด/แผลแทงที่หน้าท้อง');
-      if (patient.shType_arm_wound) {
-        let armDesc = 'แผลกรีดที่ข้อมือ/แขน';
-        if (patient.shSide_arm_wrist_left) armDesc += ' ซ้าย';
-        if (patient.shSide_arm_wrist_right) armDesc += ' ขวา';
-        positives.push(armDesc);
-      }
-      if (patient.shType_leg_wound) positives.push('แผลเปิดที่ขา/เท้า');
-
-      // Feelings & Intent
-      let feelingStr = 'ไม่ระบุ';
-      if (patient.selfHarmFeelings === 'regret_stop') feelingStr = 'เสียใจกับสิ่งที่เกิดขึ้น ไม่อยากทำซ้ำ';
-      else if (patient.selfHarmFeelings === 'impulsive_stress_relief') feelingStr = 'ทำเพื่อระบายความเครียด/อารมณ์ชั่ววูบ';
-      else if (patient.selfHarmFeelings === 'active_suicidal_intent') feelingStr = 'ยังมีความคิดอยากทำร้ายตนเองซ้ำ (Active suicidal intent)';
-      else if (patient.selfHarmFeelings === 'uncommunicative_unresponsive') feelingStr = 'ยังไม่พร้อมสื่อสาร/เงียบซึม';
-      positives.push(`สภาพจิตใจขณะนี้: ${feelingStr}`);
-
-      // Negatives
-      if (!symList.includes('hoarseness') && !symList.includes('stridor')) negatives.push('ไม่มีเสียงแหบหรือหายใจลำบาก');
-      if (!symList.includes('active_bleeding')) negatives.push('ไม่มีเลือดออกพุ่งทะลัก');
-      if (!symList.includes('unconscious')) negatives.push('รู้สึกตัวดี ถามตอบรู้เรื่อง');
-      if (!symList.includes('numbness_distal') && !symList.includes('motor_deficit')) negatives.push('ไม่มีอาการชาหรืออ่อนแรงส่วนปลาย');
-
-      // Ensure pertinentPositives is not empty
-      if (positives.length === 0) {
-        positives.push(`มีพฤติกรรมทำร้ายตนเองโดยวิธี ${methodStr}`);
-      }
-
-      patient.pertinentPositives = positives;
-      patient.pertinentNegatives = negatives;
-
-      // 3. RAPID NOTE
-      let rapid = `[Chief Complaint (CC)]\nทำร้ายตนเอง / พยายามฆ่าตัวตาย (Self-Harm)\n\n`;
-      rapid += `[History of Present Illness (HPI)]\n`;
-      rapid += `ผู้ป่วยมาด้วยอาการทำร้ายตนเอง / พยายามฆ่าตัวตาย เกิดเหตุประมาณ ${durText} ก่อนมาโรงพยาบาล\n`;
-      rapid += `• วิธีการเกิดเหตุ: ${methodStr}\n`;
-      if (patient.selfHarmBleedingStatus) rapid += `• ภาวะเลือดออก: ${patient.selfHarmBleedingStatus === 'pulsatile' ? 'เลือดพุ่ง/ไม่หยุด' : (patient.selfHarmBleedingStatus === 'oozing' ? 'ไหลซึมต่อเนื่อง' : 'เลือดหยุดแล้ว')}\n`;
-      rapid += `• ระดับความปวด (Pain Score): ${patient.selfHarmPainScore || 0}/10\n`;
-      rapid += `• ปัจจัยกระตุ้น/ความเครียด: ${(patient.selfHarmStressors || []).join(', ') || 'ไม่ระบุ'}\n`;
-      rapid += `• ประวัติจิตเวชเดิม: ${patient.selfHarmPsychHistory || 'ปฏิเสธ'}${patient.selfHarmPsychDetail ? ` (${patient.selfHarmPsychDetail})` : ''}\n`;
-      rapid += `• ประวัติทำร้ายตนเองในอดีต: ${patient.selfHarmPastAttempts || 'ครั้งแรก'}\n`;
-      rapid += `• NPO Time: ${patient.selfHarmNpoTime || 'ไม่ระบุ'}${patient.selfHarmNpoLastMeal ? ` (อาหารล่าสุด: ${patient.selfHarmNpoLastMeal})` : ''}\n`;
-      rapid += `• ประวัติบาดทะยัก: ${patient.selfHarmTetanus || 'ไม่ระบุ'}\n`;
-
-      // Female history filter (C-AP13)
-      const isFemalePatient = patient.gender === 'female' || patient.gender === 'หญิง' || patient.patientPrefix === 'นาง' || patient.patientPrefix === 'น.ส.';
-      if (isFemalePatient && (patient.selfHarmLmpDate || patient.selfHarmPregnancyStatus)) {
-        rapid += `• ประวัติสตรี: LMP ${patient.selfHarmLmpDate || 'ไม่ระบุ'} (${patient.selfHarmPregnancyStatus || 'ปกติ'})\n`;
-      }
-
-      rapid += `\n• Pertinent Positives:\n  - ${positives.join('\n  - ')}\n`;
-      rapid += `\n• Pertinent Negatives:\n  - ${negatives.join('\n  - ')}\n`;
-
-      rapid += `\n[Doctor's Clinical Addendum & Exam]\n`;
-      rapid += `• PE: ${patient.doctor_notes?.physical_exam || 'รอตรวจ'}\n`;
-      rapid += `• Additional HPI: ${patient.doctor_notes?.additional_hpi || 'ไม่มี'}\n`;
-
-      // 4. NARRATIVE NOTE
-      let narrative = `ผู้ป่วยมาด้วยอาการทำร้ายตนเอง / พยายามฆ่าตัวตาย เกิดเหตุเมื่อประมาณ ${durText} ก่อนมาโรงพยาบาล `;
-      narrative += `โดยใช้วิธี${methodStr} `;
-      if (patient.selfHarmSharpDevice) narrative += `ใช้อุปกรณ์คือ ${patient.selfHarmSharpDevice} `;
-      narrative += `ขณะนี้มีความคิดความรู้สึก: ${feelingStr} `;
-      if (positives.length > 0) narrative += `ตรวจพบอาการสำคัญและรอยโรคคือ ${positives.join(', ')} `;
-
-      // 5. JSON SCHEMA (with encounter and patient_identification metadata)
-      const effectiveRfs = this.evaluateRedFlags(patient) || [];
-      const jsonSchema = {
-        "$schema": "https://json-schema.org/draft/2020-12/schema",
-        encounter: {
-          hospital_site: 'Ratchaburi Hospital',
-          queue_id: patient.queue_number || null,
-          hn: patient.hn || null,
-          patient_name: patient.name || null,
-          age: patient.age !== undefined ? patient.age : null,
-          gender: patient.gender || null,
-          chief_complaint: 'self_harm',
-          duration_value: patient.durationVal,
-          duration_unit: patient.durationUnit,
-          timeline_summary: durText,
-          triage_urgency_flag: effectiveRfs.length > 0,
-          hospital_record_status: patient.hospRecordStatus || null
-        },
-        patient_identification: {
-          hn: patient.hn || null,
-          name: patient.name || null,
-          age: patient.age,
-          gender: patient.gender
-        },
-        self_harm_details: {
-          informant: patient.selfHarmInformant,
-          informant_rel_text: patient.selfHarmInformantRelText || null,
-          informant_rescuer_text: patient.selfHarmInformantRescuerText || null,
-          methods: patient.selfHarmMethods || [],
-          bleeding_status: patient.selfHarmBleedingStatus || null,
-          pain_score: patient.selfHarmPainScore,
-          feelings: patient.selfHarmFeelings || '',
-          pre_conditions: patient.selfHarmPreConditions || [],
-          stressors: patient.selfHarmStressors || [],
-          psychiatric_history: patient.selfHarmPsychHistory || '',
-          past_attempts: patient.selfHarmPastAttempts || '',
-          tetanus_status: patient.selfHarmTetanus || null,
-          npo_time: patient.selfHarmNpoTime || null,
-          female_lmp: isFemalePatient ? (patient.selfHarmLmpDate || null) : null,
-          pregnancy_status: isFemalePatient ? (patient.selfHarmPregnancyStatus || null) : null
-        },
-        clinical_symptoms: {
-          pertinent_positives: positives,
-          pertinent_negatives: negatives
-        },
-        red_flags: effectiveRfs.map(r => r.key),
-        doctor_clinical_addendum: patient.doctor_notes || {}
-      };
-
-      const medicalJsonStr = JSON.stringify(jsonSchema, null, 2);
-
-      patient.rapidHpi = rapid;
-      patient.narrativeHpi = narrative;
-      patient.medicalJson = jsonSchema;
-
-      // DOM Binding (C-AP9 Contract)
-      const rapidEl = document.getElementById('rapidTextView');
-      const narrEl = document.getElementById('narrativeTextView');
-      const jsonEl = document.getElementById('jsonViewer');
-      if (rapidEl) rapidEl.value = rapid;
-      if (narrEl) narrEl.value = narrative;
-      if (jsonEl) jsonEl.textContent = medicalJsonStr;
-
-      return { rapid, narrative, json: medicalJsonStr };
-    },
-
-    // -----------------------------------------------------------------------
-    // LIFECYCLE: GENERATE CDS (Clinical Decision Support - C-AP12)
-    // -----------------------------------------------------------------------
-    generateCds: function (patient, ctx) {
-      if (!ctx) return;
-      if (!Array.isArray(ctx.ddxList)) ctx.ddxList = [];
-      if (!Array.isArray(ctx.workupList)) ctx.workupList = [];
-      if (!Array.isArray(ctx.managementList)) ctx.managementList = [];
-
-      const methods = Array.isArray(patient?.selfHarmMethods) ? patient.selfHarmMethods : [];
-
-      // Differential Diagnoses
-      ctx.ddxList.push('Non-suicidal self-injury (NSSI) vs. Suicidal attempt with high lethality');
-      if (methods.includes('hanging')) ctx.ddxList.push('Near-hanging injury with delayed laryngotracheal edema / Cervical spine injury');
-      if (methods.includes('sharp')) ctx.ddxList.push('Sharp penetrating trauma with peripheral neurovascular & tendon injury');
-      if (methods.includes('jumping')) ctx.ddxList.push('High-energy multiple trauma (Spinal / Pelvic / Calcaneal fractures)');
-      if (methods.includes('co_poisoning') || methods.includes('co')) ctx.ddxList.push('Acute Carbon Monoxide toxicity / Inhalation injury');
-
-      // ER Workup
-      ctx.workupList.push('Complete Blood Count (CBC), Electrolytes, BUN, Cr');
-      if (methods.includes('hanging')) ctx.workupList.push('CT Cervical Spine, Soft Tissue Neck CT or Laryngoscopy evaluation');
-      if (methods.includes('sharp')) ctx.workupList.push('X-ray of affected extremity (rule out retained foreign body / fractures)');
-      if (methods.includes('jumping')) ctx.workupList.push('Trauma Pan-Scan (CT Brain, C-spine, Chest, Whole Abdomen, Pelvis)');
-      if (methods.includes('co_poisoning') || methods.includes('co')) ctx.workupList.push('Arterial Blood Gas (ABG) with Co-oximetry for Carboxyhemoglobin (COHb), EKG');
-
-      // ER Management
-      ctx.managementList.push('1:1 Close Observation & Suicide Precaution (Remove sharp/harmful items)');
-      ctx.managementList.push('Wound care: Direct pressure hemostasis, antiseptic irrigation, sterile dressing');
-      ctx.managementList.push('Tetanus toxoid / TIG prophylaxis based on vaccination history and wound status');
-      ctx.managementList.push('Emergency Psychiatric Consultation / Mental Health crisis evaluation');
-    },
-
-    // -----------------------------------------------------------------------
-    // LIFECYCLE HOOKS: C-AP13 Support
-    // -----------------------------------------------------------------------
-    onTitleChange: function (arg) {
-      let isFemale = false;
-      if (typeof arg === 'boolean') {
-        isFemale = arg;
-      } else if (typeof arg === 'object' && arg !== null) {
-        if (typeof arg.isFemale === 'boolean') isFemale = arg.isFemale;
-        else if (typeof arg.title === 'string') isFemale = /นาง|น\.ส\.|หญิง|Mrs|Miss|Ms/i.test(arg.title);
-      } else if (typeof arg === 'string') {
-        isFemale = /นาง|น\.ส\.|หญิง|Mrs|Miss|Ms/i.test(arg);
-      }
-      const femSec = document.getElementById('selfHarmFemaleSection');
-      if (femSec) {
-        femSec.classList.toggle('hidden', !isFemale);
-      }
-    },
-
-    onSelectForm: function () {
-      const pfx = document.getElementById('patientTitleSelect')?.value || '';
-      this.onTitleChange(pfx);
-    },
-
-    onActivate: function () {
-      this.onSelectForm();
-    },
-
-    resetForm: function () {
-      this.clearForm();
-    },
-
-    // -----------------------------------------------------------------------
-    // SEED CLINICAL CASES (3 Red Flags + 1 Clean Low-Risk)
-    // -----------------------------------------------------------------------
-    seedPatients: [
-      {
-        id: 'case-selfharm-01',
-        queue_number: 'A-005',
-        hn: '6741021',
-        name: 'น.ส.กมลวรรณ จันทร์เพ็ญ',
-        age: 24,
-        gender: 'หญิง',
-        status: 'waiting',
-        chief_complaint: 'self_harm',
-        chief_complaint_title: 'ทำร้ายตนเอง / พยายามฆ่าตัวตาย',
-        durationVal: 1,
-        durationUnit: 'hours',
-        selfHarmInformant: 'relative',
-        selfHarmInformantRelText: 'มารดา',
-        selfHarmMethods: ['sharp'],
-        selfHarmSharpDevice: 'มีดคัตเตอร์',
-        selfHarmBleedingStatus: 'oozing',
-        selfHarmSymptoms: ['numbness_distal', 'motor_deficit'],
-        selfHarmLocations: { arm: true },
-        shSide_arm_wrist_left: true,
-        shType_arm_wound: true,
-        shType_arm_deep: true,
-        shFinger_left_index: true,
-        shFinger_left_mid: true,
-        selfHarmPainScore: 7,
-        selfHarmFeelings: 'active_suicidal_intent',
-        selfHarmPreConditions: ['planned', 'note'],
-        selfHarmStressors: ['relation', 'psych'],
-        selfHarmPsychHistory: 'non_compliant_stopped',
-        selfHarmPsychDetail: 'Major Depressive Disorder (ขาดยา 1 เดือน)',
-        selfHarmPastAttempts: 'once',
-        selfHarmLmpDate: '02/11/2026',
-        selfHarmPregnancyStatus: 'not_pregnant',
-        selfHarmTetanus: '5_to_10y',
-        selfHarmNpoTime: '11:00',
-        underlying: ['โรคซึมเศร้า'],
-        drugAllergy: 'ปฏิเสธ',
-        currentMeds: 'Sertraline 50 mg (หยุดยาเอง)'
+        duration_value: durVal,
+        duration_unit: patient.durationUnit || 'minutes',
+        timeline_summary: durText,
+        triage_urgency_flag: effectiveRfs.length > 0,
+        hospital_record_status: patient.hospRecordStatus || null
       },
-      {
-        id: 'case-selfharm-02',
-        queue_number: 'A-012',
-        hn: '6741022',
-        name: 'นายธวัชชัย รัตนกุล',
-        age: 35,
-        gender: 'ชาย',
-        status: 'waiting',
-        chief_complaint: 'self_harm',
-        chief_complaint_title: 'ทำร้ายตนเอง / พยายามฆ่าตัวตาย',
-        durationVal: 45,
-        durationUnit: 'minutes',
-        selfHarmInformant: 'rescuer',
-        selfHarmInformantRescuerText: 'กู้ภัยสว่างราชบุรี',
-        selfHarmMethods: ['hanging'],
-        selfHarmHanging_suspended: true,
-        selfHarmHanging_unconscious: true,
-        selfHarmHanging_cyanosis: true,
-        selfHarmSymptoms: ['hoarseness', 'stridor'],
-        selfHarmLocations: { neck: true },
-        shSide_neck_mid: true,
-        shType_neck_pain: true,
-        shType_neck_deform: true,
-        selfHarmPainScore: 8,
-        selfHarmFeelings: 'uncommunicative_unresponsive',
-        selfHarmPreConditions: ['hallucination', 'alcohol'],
-        selfHarmStressors: ['finance'],
-        selfHarmPsychHistory: 'non_compliant_stopped',
-        selfHarmPsychDetail: 'จิตเวช รพ.ราชบุรี',
-        selfHarmPastAttempts: 'multiple',
-        selfHarmTetanus: 'no_open_wound',
-        selfHarmNpoTime: '08:00',
-        underlying: ['ปฏิเสธ'],
-        drugAllergy: 'ปฏิเสธ',
-        currentMeds: 'ไม่มี'
+      patient_identification: {
+        hn: patient.hn || null,
+        name: patient.name || null,
+        age: patient.age,
+        gender: patient.gender
       },
-      {
-        id: 'case-selfharm-03',
-        queue_number: 'B-042',
-        hn: '6741023',
-        name: 'น.ส.วรรณา ชนะพล',
-        age: 30,
-        gender: 'หญิง',
-        status: 'waiting',
-        chief_complaint: 'self_harm',
-        chief_complaint_title: 'ทำร้ายตนเอง / พยายามฆ่าตัวตาย',
-        durationVal: 2,
-        durationUnit: 'hours',
-        selfHarmInformant: 'relative',
-        selfHarmInformantRelText: 'พี่สาว',
-        selfHarmMethods: ['jumping'],
-        selfHarmJumpingHeight: 'ชั้น 2 (ประมาณ 4 เมตร)',
-        selfHarmJumpingSurface: 'พื้นปูนซีเมนต์',
-        selfHarmSymptoms: ['severe_abdpain', 'motor_deficit'],
-        selfHarmLocations: { abd: true, leg: true },
-        shSide_abd_mid: true,
-        shType_abd_pain: true,
-        shSide_leg_left: true,
-        shSide_leg_right: true,
-        shType_leg_pain: true,
-        shType_leg_deform: true,
-        selfHarmPainScore: 9,
-        selfHarmFeelings: 'active_suicidal_intent',
-        selfHarmPreConditions: ['planned'],
-        selfHarmStressors: ['finance', 'loss'],
-        selfHarmPsychHistory: 'regular_meds',
-        selfHarmPsychDetail: 'Depression',
-        selfHarmPastAttempts: 'none',
-        selfHarmLmpDate: '15/10/2026',
-        selfHarmPregnancyStatus: 'not_pregnant',
-        selfHarmTetanus: 'within_5y',
-        selfHarmNpoTime: '12:00',
-        underlying: ['ความดันโลหิตสูง'],
-        drugAllergy: 'ปฏิเสธ',
-        currentMeds: 'Amlodipine 5 mg'
+      self_harm_details: {
+        informant: informantStr,
+        methods: methodParts,
+        anatomy_summary: anatomyStr,
+        bleeding_status: patient.selfHarmBleedingStatus ? (bleedMap[patient.selfHarmBleedingStatus] || patient.selfHarmBleedingStatus) : null,
+        pain_score: patient.selfHarmPainScore,
+        feelings: feelingStr,
+        pre_conditions: preList,
+        stressors: stressorArr.map(s => stressorMap[s] || s),
+        psychiatric_history: psychStr,
+        past_attempts: pastStr,
+        tetanus_status: tetanusStr,
+        npo_time: patient.selfHarmNpoTime || null,
+        female_lmp: isFemalePatient ? (patient.selfHarmLmpDate || null) : null,
+        pregnancy_status: isFemalePatient ? (pregMap[patient.selfHarmPregnancyStatus] || null) : null
       },
-      {
-        id: 'case-selfharm-04',
-        queue_number: 'C-085',
-        hn: '6741024',
-        name: 'น.ส.ชลธิชา มิ่งเมือง',
-        age: 19,
-        gender: 'หญิง',
-        status: 'waiting',
-        chief_complaint: 'self_harm',
-        chief_complaint_title: 'ทำร้ายตนเอง / พยายามฆ่าตัวตาย',
-        durationVal: 30,
-        durationUnit: 'minutes',
-        selfHarmInformant: 'patient',
-        selfHarmMethods: ['sharp'],
-        selfHarmSharpDevice: 'เศษไม้บรรทัดพลาสติกขูดผิวหนัง',
-        selfHarmBleedingStatus: 'stopped',
-        selfHarmSymptoms: ['none'],
-        selfHarmLocations: { arm: true },
-        shSide_arm_wrist_left: true,
-        shType_arm_wound: true,
-        selfHarmPainScore: 2,
-        selfHarmFeelings: 'impulsive_stress_relief',
-        selfHarmPreConditions: ['none'],
-        selfHarmStressors: ['relation'],
-        selfHarmPsychHistory: 'none',
-        selfHarmPastAttempts: 'none',
-        selfHarmLmpDate: '28/10/2026',
-        selfHarmPregnancyStatus: 'not_pregnant',
-        selfHarmTetanus: 'within_5y',
-        selfHarmNpoTime: '15:00',
-        underlying: ['ปฏิเสธ'],
-        drugAllergy: 'ปฏิเสธ',
-        currentMeds: 'ไม่มี'
-      }
-    ]
-  };
+      clinical_symptoms: {
+        pertinent_positives: positives,
+        pertinent_negatives: negatives
+      },
+      red_flags: effectiveRfs.map(r => r.key),
+      doctor_clinical_addendum: docNotes
+    };
 
-  if (typeof registerCcModule === 'function') {
-    registerCcModule(selfHarmModule);
-  } else if (typeof window !== 'undefined' && typeof window.registerCcModule === 'function') {
-    window.registerCcModule(selfHarmModule);
-  }
+    const jsonStr = JSON.stringify(jsonSchema, null, 2);
+    patient.rapidHpi = patient.custom_rapid_note || rapid;
+    patient.narrativeHpi = patient.custom_narrative_note || narrative;
+    patient.medicalJson = jsonSchema;
 
-  if (typeof window !== 'undefined') {
-    window.toggleShInformantDetails = toggleShInformantDetails;
-    window.toggleShMethodSub = toggleShMethodSub;
-    window.toggleShLocSub = toggleShLocSub;
-    window.updateShPainScoreDisplay = updateShPainScoreDisplay;
-    window.toggleShPsychSub = toggleShPsychSub;
-    window.updateShContextSymptoms = updateShContextSymptoms;
-  }
+    // DOM Binding (C-AP9 Contract)
+    const rapidEl = document.getElementById('rapidTextView');
+    const narrEl = document.getElementById('narrativeTextView');
+    const jsonEl = document.getElementById('jsonViewer');
+    if (rapidEl) rapidEl.value = patient.rapidHpi;
+    if (narrEl) narrEl.value = patient.narrativeHpi;
+    if (jsonEl) jsonEl.textContent = jsonStr;
 
+    return { rapid, narrative, json: jsonStr };
+  },
+
+  // -------------------------------------------------------------------------
+  // LIFECYCLE: CLINICAL DECISION SUPPORT (C-AP12)
+  // -------------------------------------------------------------------------
+  generateCds: function (patient, ctx) {
+    if (!ctx) return;
+    if (!Array.isArray(ctx.ddxList)) ctx.ddxList = [];
+    if (!Array.isArray(ctx.workupList)) ctx.workupList = [];
+    if (!Array.isArray(ctx.managementList)) ctx.managementList = [];
+
+    const methods = Array.isArray(patient?.selfHarmMethods) ? patient.selfHarmMethods : [];
+    ctx.ddxList.push('Non-suicidal self-injury (NSSI) vs. Suicidal attempt with high lethality');
+    if (methods.includes('hanging')) ctx.ddxList.push('Near-hanging injury with delayed laryngotracheal edema / Cervical spine injury');
+    if (methods.includes('sharp')) ctx.ddxList.push('Sharp penetrating trauma with peripheral neurovascular & tendon injury');
+    if (methods.includes('jumping')) ctx.ddxList.push('High-energy multiple trauma (Spinal / Pelvic / Calcaneal fractures)');
+    if (methods.includes('drowning')) ctx.ddxList.push('Near-drowning aspiration pneumonitis / Hypoxic encephalopathy');
+    if (methods.includes('co_poisoning') || methods.includes('co')) ctx.ddxList.push('Acute Carbon Monoxide toxicity / Inhalation injury');
+
+    ctx.workupList.push('Complete Blood Count (CBC), Electrolytes, BUN, Cr, Urine Pregnancy Test (if female)');
+    if (methods.includes('hanging')) ctx.workupList.push('CT Cervical Spine, Soft Tissue Neck CT or Laryngoscopy evaluation');
+    if (methods.includes('sharp')) ctx.workupList.push('X-ray of affected extremity (rule out retained foreign body / fracture)');
+    if (methods.includes('jumping')) ctx.workupList.push('Trauma Pan-Scan (CT Brain, C-spine, Chest, Whole Abdomen, Pelvis), eFAST');
+    if (methods.includes('drowning') || methods.includes('co_poisoning') || methods.includes('co')) ctx.workupList.push('Chest X-ray, ABG with Co-oximetry (COHb), SpO2, EKG 12-lead');
+
+    ctx.managementList.push('1:1 Close Observation & Suicide Precaution (Remove sharp/harmful objects)');
+    ctx.managementList.push('Wound care: Direct pressure hemostasis, antiseptic irrigation, explore neurovascular/tendon integrity');
+    ctx.managementList.push('Tetanus toxoid / TIG prophylaxis per vaccination history');
+    ctx.managementList.push('Emergency Psychiatric Consultation / Mental Health crisis evaluation');
+  },
+
+  // -------------------------------------------------------------------------
+  // LIFECYCLE HOOKS (C-AP13 Female LMP Guard)
+  // -------------------------------------------------------------------------
+  onTitleChange: function (arg) {
+    let isFemale = false;
+    if (typeof arg === 'boolean') isFemale = arg;
+    else if (typeof arg === 'object' && arg !== null) {
+      if (typeof arg.isFemale === 'boolean') isFemale = arg.isFemale;
+      else if (typeof arg.title === 'string') isFemale = /นาง|น\.ส\.|หญิง|Mrs|Miss|Ms/i.test(arg.title);
+    } else if (typeof arg === 'string') {
+      isFemale = /นาง|น\.ส\.|หญิง|Mrs|Miss|Ms/i.test(arg);
+    }
+    const femSec = document.getElementById('selfHarmFemaleSection');
+    if (femSec) femSec.classList.toggle('hidden', !isFemale);
+  },
+
+  onSelectForm: function () {
+    const pfx = document.getElementById('patientTitleSelect')?.value || '';
+    this.onTitleChange(pfx);
+  },
+
+  onActivate: function () {
+    this.onSelectForm();
+  },
+
+  resetForm: function () {
+    this.clearForm();
+  },
+
+  // -------------------------------------------------------------------------
+  // SEED CLINICAL CASES (3 Red Flags + 1 Clean Low-Risk)
+  // -------------------------------------------------------------------------
+  seedPatients: [
+    {
+      id: 'case-selfharm-01',
+      queue_number: 'A-005',
+      hn: '6741021',
+      name: 'น.ส.กมลวรรณ จันทร์เพ็ญ',
+      age: 24,
+      gender: 'หญิง',
+      status: 'waiting',
+      chief_complaint: 'self_harm',
+      chief_complaint_title: 'ทำร้ายตนเอง / พยายามฆ่าตัวตาย',
+      durationVal: 1,
+      durationUnit: 'hours',
+      selfHarmInformant: 'relative',
+      selfHarmInformantRelText: 'มารดา',
+      selfHarmMethods: ['sharp'],
+      selfHarmSharpDevice: 'มีดคัตเตอร์',
+      selfHarmBleedingStatus: 'oozing',
+      selfHarmSymptoms: ['numbness_distal', 'motor_deficit', 'wound_depth'],
+      shParentUpperExtremity: true,
+      shArmWristHand: true,
+      shArmWristHandSides: ['left'],
+      shArmWristHandInjuries: ['wound'],
+      shArmFingers: true,
+      shArmFingersLeftDigits: ['index', 'middle'],
+      shArmFingersInjuries: ['wound'],
+      shUpperExtSigns: ['numbness_sensory_loss', 'open_tendon_bone_exposed'],
+      selfHarmPainScore: 7,
+      selfHarmFeelings: 'active_suicidal_intent',
+      selfHarmPreConditions: ['planned', 'note'],
+      selfHarmStressors: ['relation', 'psych'],
+      selfHarmPsychHistory: 'non_compliant_stopped',
+      selfHarmPsychDetail: 'Major Depressive Disorder (ขาดยา 1 เดือน)',
+      selfHarmPastAttempts: 'once',
+      selfHarmLmpDate: '02/11/2026',
+      selfHarmPregnancyStatus: 'not_pregnant',
+      selfHarmTetanus: 'over_10y',
+      selfHarmNpoTime: '11:00',
+      underlying: ['โรคซึมเศร้า'],
+      drugAllergy: 'ปฏิเสธ',
+      currentMeds: 'Sertraline 50 mg (หยุดยาเอง)'
+    },
+    {
+      id: 'case-selfharm-02',
+      queue_number: 'A-012',
+      hn: '6741022',
+      name: 'นายธวัชชัย รัตนกุล',
+      age: 35,
+      gender: 'ชาย',
+      status: 'waiting',
+      chief_complaint: 'self_harm',
+      chief_complaint_title: 'ทำร้ายตนเอง / พยายามฆ่าตัวตาย',
+      durationVal: 45,
+      durationUnit: 'minutes',
+      selfHarmInformant: 'rescuer',
+      selfHarmInformantRescuerText: 'กู้ภัยสว่างราชบุรี',
+      selfHarmMethods: ['hanging'],
+      selfHarmHanging_suspended: true,
+      selfHarmHanging_unconscious: true,
+      selfHarmHanging_cyanosis: true,
+      selfHarmSymptoms: ['hoarseness', 'stridor'],
+      shParentNeck: true,
+      shNeckFront: true,
+      shNeckFrontSides: ['left', 'right', 'center'],
+      shNeckFrontInjuries: ['pain_swelling'],
+      shNeckSide: true,
+      shNeckSideSides: ['left', 'right'],
+      shNeckSideInjuries: ['pain_swelling'],
+      shNeckSigns: ['airway_compromise_hoarseness', 'cspine_severe_pain_stiff'],
+      selfHarmPainScore: 8,
+      selfHarmFeelings: 'uncommunicative_unresponsive',
+      selfHarmPreConditions: ['hallucination', 'alcohol'],
+      selfHarmStressors: ['finance'],
+      selfHarmPsychHistory: 'non_compliant_stopped',
+      selfHarmPsychDetail: 'จิตเวช รพ.ราชบุรี',
+      selfHarmPastAttempts: 'multiple',
+      selfHarmTetanus: 'unknown_or_never',
+      selfHarmNpoTime: '08:00',
+      underlying: ['ปฏิเสธ'],
+      drugAllergy: 'ปฏิเสธ',
+      currentMeds: 'ไม่มี'
+    },
+    {
+      id: 'case-selfharm-03',
+      queue_number: 'B-042',
+      hn: '6741023',
+      name: 'น.ส.วรรณา ชนะพล',
+      age: 30,
+      gender: 'หญิง',
+      status: 'waiting',
+      chief_complaint: 'self_harm',
+      chief_complaint_title: 'ทำร้ายตนเอง / พยายามฆ่าตัวตาย',
+      durationVal: 2,
+      durationUnit: 'hours',
+      selfHarmInformant: 'relative',
+      selfHarmInformantRelText: 'พี่สาว',
+      selfHarmMethods: ['jumping'],
+      selfHarmJumpingHeight: 'ชั้น 2 (ประมาณ 4 เมตร)',
+      selfHarmJumpingSurface: 'พื้นปูนซีเมนต์',
+      selfHarmSymptoms: ['severe_abdpain', 'severe_pain_deformity'],
+      shParentAbdomen: true,
+      shAbdPelvis: true,
+      shAbdPelvisSides: ['left', 'right'],
+      shAbdPelvisInjuries: ['pain_swelling'],
+      shAbdSigns: ['pelvic_instability_pain'],
+      shParentLowerExtremity: true,
+      shLegAnkleFoot: true,
+      shLegAnkleFootSides: ['left', 'right'],
+      shLegAnkleFootInjuries: ['pain_swelling', 'deformity'],
+      shLowerExtSigns: ['deformity_fracture_shortening', 'inability_to_bear_weight'],
+      selfHarmPainScore: 9,
+      selfHarmFeelings: 'active_suicidal_intent',
+      selfHarmPreConditions: ['planned'],
+      selfHarmStressors: ['finance', 'loss'],
+      selfHarmPsychHistory: 'regular_meds',
+      selfHarmPsychDetail: 'โรคซึมเศร้า',
+      selfHarmPastAttempts: 'none',
+      selfHarmLmpDate: '15/10/2026',
+      selfHarmPregnancyStatus: 'not_pregnant',
+      selfHarmTetanus: '5_to_10y',
+      selfHarmNpoTime: '12:00',
+      underlying: ['ความดันโลหิตสูง'],
+      drugAllergy: 'ปฏิเสธ',
+      currentMeds: 'Amlodipine 5 mg'
+    },
+    {
+      id: 'case-selfharm-04',
+      queue_number: 'C-085',
+      hn: '6741024',
+      name: 'น.ส.ชลธิชา มิ่งเมือง',
+      age: 19,
+      gender: 'หญิง',
+      status: 'waiting',
+      chief_complaint: 'self_harm',
+      chief_complaint_title: 'ทำร้ายตนเอง / พยายามฆ่าตัวตาย',
+      durationVal: 30,
+      durationUnit: 'minutes',
+      selfHarmInformant: 'patient',
+      selfHarmMethods: ['sharp'],
+      selfHarmSharpDevice: 'เศษไม้บรรทัดพลาสติกขูดผิวหนัง',
+      selfHarmBleedingStatus: 'stopped',
+      selfHarmSymptoms: ['none'],
+      shParentUpperExtremity: true,
+      shArmWristHand: true,
+      shArmWristHandSides: ['left'],
+      shArmWristHandInjuries: ['wound'],
+      selfHarmPainScore: 2,
+      selfHarmFeelings: 'regret_stop',
+      selfHarmPreConditions: ['none'],
+      selfHarmStressors: ['relation'],
+      selfHarmPsychHistory: 'none',
+      selfHarmPastAttempts: 'none',
+      selfHarmLmpDate: '28/10/2026',
+      selfHarmPregnancyStatus: 'not_pregnant',
+      selfHarmTetanus: 'within_5y',
+      selfHarmNpoTime: '15:00',
+      underlying: ['ปฏิเสธ'],
+      drugAllergy: 'ปฏิเสธ',
+      currentMeds: 'ไม่มี'
+    }
+  ]
+};
+
+if (typeof registerCcModule === 'function') {
+  registerCcModule(selfHarmModule);
+} else if (typeof window !== 'undefined' && typeof window.registerCcModule === 'function') {
+  window.registerCcModule(selfHarmModule);
+}
+
+if (typeof window !== 'undefined') {
+  window.toggleShGroup = toggleShGroup;
+  window.toggleShInformantDetails = toggleShInformantDetails;
+  window.toggleShPsychSub = toggleShPsychSub;
+  window.updateShContextSymptoms = updateShContextSymptoms;
+  window.handleShPainScoreChange = handleShPainScoreChange;
+  window.clearShPainScore = clearShPainScore;
+}
