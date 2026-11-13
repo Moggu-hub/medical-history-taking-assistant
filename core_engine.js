@@ -33,8 +33,8 @@
 const DB_STORAGE_KEY = 'medhistory_patients_v16';
 const AI_KEY_STORAGE = 'medhistory_ai_api_key_v1';
 
-// Canonical Registry of Active Chief Complaints
-const CC_REGISTRY = {
+// Canonical Registry of Active Chief Complaints (shared with clinical_knowledge_core.js; dynamically populated for unlimited CCs)
+Object.assign(CC_REGISTRY, {
   fever: {
     formId: 'fever',
     recordKey: 'fever_and_chills',
@@ -134,7 +134,51 @@ const CC_REGISTRY = {
     headerEn: '(Nausea & Severe Vomiting / Intractable Vomiting)',
     badgeHtml: '<i data-lucide="frown" class="w-5 h-5 sm:w-6 sm:h-6 flex-shrink-0"></i><span class="whitespace-nowrap">คลื่นไส้ / อาเจียนรุนแรง</span>'
   }
-};
+});
+
+function ensureCcRegistryEntry(ccIdOrCode) {
+  if (!ccIdOrCode) return null;
+  if (Object.prototype.hasOwnProperty.call(CC_REGISTRY, ccIdOrCode)) return CC_REGISTRY[ccIdOrCode];
+  const dynMod = typeof getCcModule === 'function' ? getCcModule(ccIdOrCode) : null;
+  const ccEntry = typeof CHIEF_COMPLAINTS !== 'undefined'
+    ? CHIEF_COMPLAINTS.find(c => c.id === (dynMod ? dynMod.id : ccIdOrCode) || c.schemaCode === ccIdOrCode)
+    : null;
+  const targetMod = dynMod || (ccEntry && typeof getCcModule === 'function' ? getCcModule(ccEntry.id) : null);
+  if (!targetMod) return null;
+  if (!Object.prototype.hasOwnProperty.call(CC_REGISTRY, targetMod.id)) {
+    CC_REGISTRY[targetMod.id] = {
+      formId: targetMod.id,
+      recordKey: targetMod.recordCc || (ccEntry ? ccEntry.schemaCode : targetMod.id),
+      sectionId: targetMod.sectionDomId || `${targetMod.id}QuestionnaireSection`,
+      titleTh: targetMod.titleTh || (ccEntry ? ccEntry.titleTh : targetMod.id),
+      headerTh: targetMod.headerTh || `แบบฟอร์มซักประวัติ: ${targetMod.titleTh || (ccEntry ? ccEntry.titleTh : targetMod.id)}`,
+      headerEn: targetMod.headerEn || (ccEntry ? `(${ccEntry.titleEn})` : ''),
+      badgeHtml: targetMod.patientBadgeHtml || `<i data-lucide="${ccEntry ? ccEntry.icon : 'activity'}" class="w-5 h-5 sm:w-6 sm:h-6 flex-shrink-0"></i><span class="whitespace-nowrap">${targetMod.titleTh || (ccEntry ? ccEntry.titleTh : targetMod.id)}</span>`
+    };
+  }
+  return CC_REGISTRY[targetMod.id];
+}
+
+function resolveCcFormId(ccIdOrCode) {
+  const reg = ensureCcRegistryEntry(ccIdOrCode);
+  if (reg) return reg.formId;
+  const legacyAlias = { altered_mental_status: 'altered_mental', severe_nausea_vomiting: 'vomiting' };
+  return legacyAlias[ccIdOrCode] || null;
+}
+
+function resolveCcTitleTh(ccIdOrCode) {
+  if (!ccIdOrCode) return '';
+  const reg = ensureCcRegistryEntry(ccIdOrCode);
+  if (reg && reg.titleTh) return reg.titleTh;
+  const ccEntry = typeof CHIEF_COMPLAINTS !== 'undefined'
+    ? CHIEF_COMPLAINTS.find(c => c.id === ccIdOrCode || c.schemaCode === ccIdOrCode)
+    : null;
+  return ccEntry ? ccEntry.titleTh : '';
+}
+
+if (typeof CC_MODULES !== 'undefined') {
+  Object.values(CC_MODULES).forEach(mod => { if (mod && mod.id) ensureCcRegistryEntry(mod.id); });
+}
 
 function sanitizePatientRecord(p) {
   if (!p || typeof p !== 'object') return p;
@@ -491,8 +535,8 @@ function initQrQueueFromUrl() {
 
     if (roleParam === 'patient' || queueParam) {
       applyQrDemographicsToForm();
-      if (ccParam && Object.prototype.hasOwnProperty.call(CC_REGISTRY, ccParam)) {
-        setPatientFormChiefComplaint(ccParam);
+      const resolvedUrlCc = ccParam ? resolveCcFormId(ccParam.trim()) : null;
+      if (resolvedUrlCc && setPatientFormChiefComplaint(resolvedUrlCc)) {
         switchUserRole('patient', { targetView: 'patient', silent: true });
       } else {
         switchUserRole('patient', { targetView: 'landing', silent: true });
@@ -796,14 +840,7 @@ function populateFormFromPatient(patient) {
   };
 
   // 1. Map chief_complaint schema code to form CC id
-  const ccMap = {
-    abdominal_pain: 'abdpain', chest_pain: 'chestpain', dyspnea: 'dyspnea', fever_and_chills: 'fever',
-    dizziness: 'dizziness', headache: 'headache', stroke_deficit: 'stroke_deficit', seizure: 'seizure',
-    syncope: 'syncope', altered_mental: 'altered_mental', altered_mental_status: 'altered_mental',
-    vomiting: 'vomiting', severe_nausea_vomiting: 'vomiting'
-  };
-  const resolvedMod = typeof getCcModule === 'function' ? getCcModule(patient.chief_complaint) : null;
-  const formCc = ccMap[patient.chief_complaint] || (resolvedMod ? resolvedMod.id : 'fever');
+  const formCc = resolveCcFormId(patient.chief_complaint) || 'fever';
   setPatientFormChiefComplaint(formCc);
 
   // 2. Demographics (Title, Name, Age)
@@ -945,19 +982,11 @@ function clearQueueSearch() {
 }
 
 function getFilteredQueuePatients() {
-  const ccFallbackMap = {
-    abdominal_pain: 'ปวดท้อง', chest_pain: 'เจ็บแน่นหน้าอก', dyspnea: 'หายใจหอบเหนื่อย',
-    dizziness: 'เวียนศีรษะ / บ้านหมุน', headache: 'ปวดศีรษะ', stroke_deficit: 'ปากเบี้ยว อ่อนแรง ชา ข้างใดข้างหนึ่ง พูดไม่ชัด',
-    seizure: 'ชัก / เกร็งกระตุก', syncope: 'หมดสติ / วูบ / เป็นลม', altered_mental: 'ซึมลง / สับสนเฉียบพลัน / ระดับความรู้สึกตัวเปลี่ยนแปลง',
-    vomiting: 'คลื่นไส้ / อาเจียนรุนแรง', diarrhea: 'ถ่ายเหลว / ถ่ายเป็นน้ำ', gi_bleed: 'อาเจียนเป็นเลือด / ถ่ายดำ / ถ่ายเป็นเลือด',
-    palpitation: 'ใจสั่น / หัวใจเต้นผิดจังหวะ', weakness: 'อ่อนเพลีย / กินไม่ได้ / ไม่มีแรง', allergy: 'ผื่นแพ้เฉียบพลัน / แน่นคอ ตาบวม ปากบวม',
-    urinary_retention: 'ปัสสาวะไม่ออก / เล็ดราด / กะปริดกะปรอย', dysuria: 'ปัสสาวะแสบขัด', fever_and_chills: 'ไข้ / หนาวสั่น'
-  };
   const q = (currentQueueSearchQuery || '').trim().toLowerCase();
   return patientDatabase.filter(p => {
     if (p.status !== currentQueueFilter) return false;
     if (!q) return true;
-    const ccTitle = p.chief_complaint_title || ccFallbackMap[p.chief_complaint] || '';
+    const ccTitle = p.chief_complaint_title || resolveCcTitleTh(p.chief_complaint) || '';
     const searchable = [
       p.name || '',
       p.queue_number || '',
@@ -1074,27 +1103,7 @@ function renderQueueCards() {
     const safeGender = escapeHtml(p.gender || 'ไม่ระบุ');
     const safeAge = (p.age && p.age !== 'ไม่ระบุ') ? `${escapeHtml(p.age)} ปี` : 'ไม่ระบุ';
     const safeHn = p.hn ? escapeHtml(p.hn) : '';
-    const ccFallbackMap = {
-      abdominal_pain: 'ปวดท้อง',
-      chest_pain: 'เจ็บแน่นหน้าอก',
-      dyspnea: 'หายใจหอบเหนื่อย',
-      dizziness: 'เวียนศีรษะ / บ้านหมุน',
-      headache: 'ปวดศีรษะ',
-      stroke_deficit: 'ปากเบี้ยว อ่อนแรง ชา ข้างใดข้างหนึ่ง พูดไม่ชัด',
-      seizure: 'ชัก / เกร็งกระตุก',
-      syncope: 'หมดสติ / วูบ / เป็นลม',
-      altered_mental: 'ซึมลง / สับสนเฉียบพลัน / ระดับความรู้สึกตัวเปลี่ยนแปลง',
-      vomiting: 'คลื่นไส้ / อาเจียนรุนแรง',
-      diarrhea: 'ถ่ายเหลว / ถ่ายเป็นน้ำ',
-      gi_bleed: 'อาเจียนเป็นเลือด / ถ่ายดำ / ถ่ายเป็นเลือด',
-      palpitation: 'ใจสั่น / หัวใจเต้นผิดจังหวะ',
-      weakness: 'อ่อนเพลีย / กินไม่ได้ / ไม่มีแรง',
-      allergy: 'ผื่นแพ้เฉียบพลัน / แน่นคอ ตาบวม ปากบวม',
-      urinary_retention: 'ปัสสาวะไม่ออก / เล็ดราด / กะปริดกะปรอย',
-      dysuria: 'ปัสสาวะแสบขัด',
-      fever_and_chills: 'ไข้ / หนาวสั่น'
-    };
-    const rawCcTitle = p.chief_complaint_title || ccFallbackMap[p.chief_complaint] || 'ไข้ / หนาวสั่น';
+    const rawCcTitle = p.chief_complaint_title || resolveCcTitleTh(p.chief_complaint) || 'ไข้ / หนาวสั่น';
     const safeCcTitle = escapeHtml(rawCcTitle);
 
     return `
@@ -1410,29 +1419,18 @@ function selectChiefComplaint(id, isActive) {
 }
 
 function setPatientFormChiefComplaint(ccId) {
-  const dynMod = typeof getCcModule === 'function' ? getCcModule(ccId) : null;
-  if (!Object.prototype.hasOwnProperty.call(CC_REGISTRY, ccId) && dynMod) {
-    const ccEntry = typeof CHIEF_COMPLAINTS !== 'undefined' ? CHIEF_COMPLAINTS.find(c => c.id === dynMod.id) : null;
-    CC_REGISTRY[dynMod.id] = {
-      formId: dynMod.id,
-      recordKey: dynMod.recordCc || dynMod.id,
-      sectionId: dynMod.sectionDomId || `${dynMod.id}QuestionnaireSection`,
-      titleTh: dynMod.titleTh || (ccEntry ? ccEntry.titleTh : dynMod.id),
-      headerTh: dynMod.headerTh || `แบบฟอร์มซักประวัติ: ${dynMod.titleTh || (ccEntry ? ccEntry.titleTh : dynMod.id)}`,
-      headerEn: dynMod.headerEn || (ccEntry ? `(${ccEntry.titleEn})` : ''),
-      badgeHtml: dynMod.patientBadgeHtml || `<i data-lucide="${ccEntry ? ccEntry.icon : 'activity'}" class="w-5 h-5 sm:w-6 sm:h-6 flex-shrink-0"></i><span class="whitespace-nowrap">${dynMod.titleTh || (ccEntry ? ccEntry.titleTh : dynMod.id)}</span>`
-    };
-  }
-  if (!Object.prototype.hasOwnProperty.call(CC_REGISTRY, ccId)) {
-    const found = typeof CHIEF_COMPLAINTS !== 'undefined' ? CHIEF_COMPLAINTS.find(c => c.id === ccId) : null;
+  const reg = ensureCcRegistryEntry(ccId);
+  if (!reg) {
+    const found = typeof CHIEF_COMPLAINTS !== 'undefined' ? CHIEF_COMPLAINTS.find(c => c.id === ccId || c.schemaCode === ccId) : null;
     showToast(`กำลังพัฒนาแบบประเมิน: ${found ? found.titleTh : ccId} (โปรดแจ้งเจ้าหน้าที่พยาบาลจุดคัดกรอง)`);
     return false;
   }
+  ccId = reg.formId;
+  const dynMod = typeof getCcModule === 'function' ? getCcModule(ccId) : null;
 
   mountAllCcQuestionnaires();
   initUniversalDateTimeInputs();
   currentPatientFormCC = ccId;
-  const reg = CC_REGISTRY[ccId];
 
   Object.values(CC_REGISTRY).forEach(entry => {
     const sec = document.getElementById(entry.sectionId);

@@ -180,7 +180,7 @@ ${cleanSummary || 'ไม่มีรายงานประวัติย่�
 // =========================================================================
 // 5. MODULAR CHIEF COMPLAINT REGISTRY & PLUGIN LOADER (Double-Click file:/// Ready)
 // =========================================================================
-const CC_MODULES = {};
+const CC_MODULES = {}, CC_REGISTRY = {};
 const SEED_PATIENTS_REGISTRY = [];
 
 function mountCcQuestionnaireHtml(mod) {

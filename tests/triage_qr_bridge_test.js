@@ -106,6 +106,8 @@ class MockElement {
     if (idx !== -1) this.children.splice(idx, 1);
     return child;
   }
+  querySelector() { return null; }
+  querySelectorAll() { return []; }
   focus() {}
   select() {}
   reset() {}

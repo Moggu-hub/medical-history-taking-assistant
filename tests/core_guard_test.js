@@ -1073,14 +1073,26 @@ assert(splitTrafficText.includes('ซ้าย: นิ้วนาง, นิ้
 assert(splitTrafficText.includes('ซ้าย: นิ้วกลาง') && splitTrafficText.includes('ขวา: นิ้วโป้ง'), 'Traffic accident renders toe digits split by left and right');
 assert(splitTrafficText.includes('แผ่นหลังส่วนล่างขวา'), 'Traffic accident renders 2.7 other location in Rapid Note');
 
-// Test doctorCcBadgeHtml presence across all registered CC modules
+// Test doctorCcBadgeHtml & unified dynamic CC_REGISTRY coverage across all registered CC modules
 const allCcMods = vm.runInContext('CC_MODULES', sandbox);
 Object.values(allCcMods).forEach(mod => {
   assert(
     typeof mod.doctorCcBadgeHtml === 'string' && mod.doctorCcBadgeHtml.trim().length > 0,
     `Module ${mod.id} has valid non-empty doctorCcBadgeHtml`
   );
+  assert(
+    Boolean(sandbox.ensureCcRegistryEntry(mod.id)),
+    `Module ${mod.id} is dynamically registered in CC_REGISTRY`
+  );
 });
+assert(
+  sandbox.resolveCcFormId('poisoning') === 'poisoning' && sandbox.resolveCcFormId('abdominal_pain') === 'abdpain',
+  'resolveCcFormId dynamically resolves both module ids (poisoning) and legacy schemaCodes (abdominal_pain)'
+);
+assert(
+  sandbox.setPatientFormChiefComplaint('poisoning') === true && sandbox.resolveCcTitleTh('poisoning') === 'ได้รับสารพิษ / กินยาเกินขนาด',
+  'setPatientFormChiefComplaint and resolveCcTitleTh support poisoning without static core hardcoding'
+);
 
 // Test Active Consultation CC Badge updating when switching between patients
 sandbox.switchUserRole('doctor', { silent: true });
