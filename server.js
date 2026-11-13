@@ -159,6 +159,18 @@ const server = http.createServer(async (req, res) => {
       // Upsert: replace if exists, else append to beginning (most recent first)
       const existingIdx = cases.findIndex(c => c.id === patient.id);
       if (existingIdx >= 0) {
+        const prev = cases[existingIdx];
+        const hasPrevDocNotes = prev.doctor_notes && Object.values(prev.doctor_notes).some(v => v && String(v).trim());
+        const hasIncomingDocNotes = patient.doctor_notes && Object.values(patient.doctor_notes).some(v => v && String(v).trim());
+        if (hasPrevDocNotes && !hasIncomingDocNotes) patient.doctor_notes = prev.doctor_notes;
+        if (prev.custom_rapid_note !== undefined && patient.custom_rapid_note === undefined) patient.custom_rapid_note = prev.custom_rapid_note;
+        if (prev.custom_narrative_note !== undefined && patient.custom_narrative_note === undefined) patient.custom_narrative_note = prev.custom_narrative_note;
+        if (prev.aiConsultResult && !patient.aiConsultResult) patient.aiConsultResult = prev.aiConsultResult;
+        if (prev.status === 'completed' && !patient.doctor_updated_at) {
+          patient.status = prev.status;
+          if (prev.completed_at) patient.completed_at = prev.completed_at;
+        }
+        if (prev.doctor_updated_at && !patient.doctor_updated_at) patient.doctor_updated_at = prev.doctor_updated_at;
         cases[existingIdx] = patient;
       } else {
         cases.unshift(patient);
@@ -191,6 +203,69 @@ const server = http.createServer(async (req, res) => {
       count: cases.length,
       cases: cases
     });
+  }
+
+  // Update Doctor Notes, Direct Clinical Summary Edits, AI Result, or Case Status (Protected by PIN)
+  if (pathname === '/api/cases/update' && req.method === 'POST') {
+    const pin = req.headers['x-doctor-pin'] || parsedUrl.searchParams.get('pin');
+    if (String(pin).trim() !== DOCTOR_PIN) {
+      return sendJson(res, 401, { error: 'Unauthorized: Doctor PIN required' });
+    }
+    try {
+      const body = await parseJsonBody(req);
+      if (!body || !body.id) {
+        return sendJson(res, 400, { error: 'Missing case id' });
+      }
+
+      const cases = readCases();
+      let idx = cases.findIndex(c => c.id === body.id);
+      const doctorUpdatedAt = new Date().toISOString();
+
+      if (idx === -1) {
+        if (body.fallbackPatient && body.fallbackPatient.chief_complaint) {
+          const recovered = { ...body.fallbackPatient, id: body.id };
+          cases.unshift(recovered);
+          idx = 0;
+        } else {
+          return sendJson(res, 404, { error: 'Case not found' });
+        }
+      }
+
+      const target = cases[idx];
+      if ('doctor_notes' in body && body.doctor_notes && typeof body.doctor_notes === 'object') {
+        target.doctor_notes = body.doctor_notes;
+      }
+      if ('custom_rapid_note' in body) {
+        if (body.custom_rapid_note === null) delete target.custom_rapid_note;
+        else target.custom_rapid_note = String(body.custom_rapid_note);
+      }
+      if ('custom_narrative_note' in body) {
+        if (body.custom_narrative_note === null) delete target.custom_narrative_note;
+        else target.custom_narrative_note = String(body.custom_narrative_note);
+      }
+      if ('aiConsultResult' in body && body.aiConsultResult) {
+        target.aiConsultResult = body.aiConsultResult;
+      }
+      if ('status' in body && (body.status === 'waiting' || body.status === 'completed')) {
+        target.status = body.status;
+      }
+      if ('completed_at' in body) {
+        if (body.completed_at) target.completed_at = body.completed_at;
+        else delete target.completed_at;
+      }
+      target.doctor_updated_at = doctorUpdatedAt;
+
+      writeCases(cases);
+      return sendJson(res, 200, {
+        success: true,
+        id: target.id,
+        doctor_updated_at: doctorUpdatedAt,
+        case: target
+      });
+    } catch (err) {
+      console.error('[Server] Doctor case update failed:', err.message);
+      return sendJson(res, 500, { error: 'Failed to update case: ' + err.message });
+    }
   }
 
   // Clear Cases (Reset for testing - Protected by PIN)
@@ -232,7 +307,7 @@ const server = http.createServer(async (req, res) => {
       res.writeHead(200, {
         'Content-Type': contentType,
         'Content-Length': stats.size,
-        'Cache-Control': ext === '.html' ? 'no-cache' : 'public, max-age=3600'
+        'Cache-Control': (ext === '.html' || ext === '.js') ? 'no-cache' : 'public, max-age=3600'
       });
 
       if (req.method === 'HEAD') {

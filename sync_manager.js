@@ -50,8 +50,64 @@
   const SYNC_STATE = {
     isConnected: false,
     doctorPin: sessionStorage.getItem('er_doctor_pin') || '',
-    pollingInterval: null
+    pollingInterval: null,
+    dirtyCases: new Map(),
+    revisionCounter: 0,
+    lastDoctorInputAt: 0,
+    doctorHooksInstalled: false,
+    unloadHookInstalled: false
   };
+
+  const DOCTOR_EDITOR_IDS = new Set([
+    'doctorAdditionalHpi', 'doctorPhysicalExam', 'doctorPrelimDx', 'doctorPlan',
+    'rapidTextView', 'narrativeTextView'
+  ]);
+
+  function isDoctorActivelyEditing() {
+    const active = document.activeElement;
+    return Boolean(active && DOCTOR_EDITOR_IDS.has(active.id));
+  }
+
+  function isCaseProtectedLocally(caseId) {
+    if (!caseId) return false;
+    if (SYNC_STATE.dirtyCases.has(caseId)) return true;
+    const curId = typeof activePatientId !== 'undefined' ? activePatientId : null;
+    return caseId === curId && isDoctorActivelyEditing();
+  }
+
+  function hasDoctorAnnotations(p) {
+    if (!p) return false;
+    const notes = p.doctor_notes || {};
+    const hasNotes = Boolean(
+      (notes.additional_hpi && String(notes.additional_hpi).trim()) ||
+      (notes.physical_exam && String(notes.physical_exam).trim()) ||
+      (notes.preliminary_dx && String(notes.preliminary_dx).trim()) ||
+      (notes.plan && String(notes.plan).trim())
+    );
+    return Boolean(
+      hasNotes ||
+      p.custom_rapid_note !== undefined ||
+      p.custom_narrative_note !== undefined ||
+      p.aiConsultResult ||
+      p.status === 'completed'
+    );
+  }
+
+  function setCloudSaveStatus(state) {
+    const ind = document.getElementById('saveStatusIndicator');
+    if (!ind) return;
+    if (state === 'syncing') {
+      ind.className = 'text-[11px] text-sky-600 font-medium hidden sm:flex items-center mr-2';
+      ind.innerHTML = '<i data-lucide="refresh-cw" class="w-3.5 h-3.5 mr-1 animate-spin"></i> กำลังซิงค์ขึ้น Cloud...';
+    } else if (state === 'saved') {
+      ind.className = 'text-[11px] text-emerald-600 font-medium hidden sm:flex items-center mr-2';
+      ind.innerHTML = '<i data-lucide="check" class="w-3.5 h-3.5 mr-1"></i> บันทึกขึ้น Cloud แล้ว';
+    } else if (state === 'pending') {
+      ind.className = 'text-[11px] text-amber-600 font-medium hidden sm:flex items-center mr-2';
+      ind.innerHTML = '<i data-lucide="alert-circle" class="w-3.5 h-3.5 mr-1"></i> บันทึกในเครื่องแล้ว (รอซิงค์)';
+    }
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+  }
 
   // --- 1. INITIALIZATION & HEALTH CHECK ---
   async function initSyncManager() {
@@ -120,6 +176,7 @@
 
     hideSimulatedUiElements();
     hookRoleSwitching();
+    hookDoctorActions();
 
     // If PIN is already authenticated in this session, fetch cases immediately
     if (SYNC_STATE.doctorPin) {
@@ -205,10 +262,235 @@
         origSwitchRole(role, options);
       }
       hideSimulatedUiElements();
-      if (role === 'doctor' && SYNC_STATE.isConnected && SYNC_STATE.doctorPin) {
-        fetchCasesFromServer(true);
+      if (role === 'doctor' && !options.skipAutoFetch && SYNC_STATE.isConnected && SYNC_STATE.doctorPin) {
+        flushAllPendingDoctorSyncs().then(() => fetchCasesFromServer(true));
       }
     };
+  }
+
+  // --- 2.5 DOCTOR ACTIONS SYNC HOOKS (ADDENDUM, CLINICAL SUMMARY EDIT, AI APPLY, CASE STATUS) ---
+  function markCaseDirty(patientId, immediate = false) {
+    if (!patientId || !SYNC_STATE.isConnected) return;
+    SYNC_STATE.lastDoctorInputAt = Date.now();
+    const prev = SYNC_STATE.dirtyCases.get(patientId) || {};
+    if (prev.timer) clearTimeout(prev.timer);
+
+    const revision = ++SYNC_STATE.revisionCounter;
+    const entry = {
+      revision,
+      inFlight: Boolean(prev.inFlight),
+      retryCount: 0,
+      timer: null
+    };
+
+    if (!SYNC_STATE.doctorPin) {
+      setCloudSaveStatus('pending');
+      SYNC_STATE.dirtyCases.set(patientId, entry);
+      return;
+    }
+
+    setCloudSaveStatus('syncing');
+    entry.timer = setTimeout(() => {
+      syncDoctorCaseToServer(patientId);
+    }, immediate ? 0 : 600);
+    SYNC_STATE.dirtyCases.set(patientId, entry);
+  }
+
+  async function syncDoctorCaseToServer(patientId, options = {}) {
+    if (!patientId || !SYNC_STATE.isConnected || !SYNC_STATE.doctorPin) return false;
+    if (typeof patientDatabase === 'undefined' || !Array.isArray(patientDatabase)) return false;
+
+    const patient = patientDatabase.find(p => p.id === patientId);
+    if (!patient) {
+      SYNC_STATE.dirtyCases.delete(patientId);
+      return false;
+    }
+
+    const entry = SYNC_STATE.dirtyCases.get(patientId);
+    if (entry && entry.inFlight && !options.keepalive) {
+      return false;
+    }
+
+    const sentRevision = entry ? entry.revision : ++SYNC_STATE.revisionCounter;
+    if (entry) {
+      if (entry.timer) clearTimeout(entry.timer);
+      entry.timer = null;
+      entry.inFlight = true;
+    }
+
+    const payload = {
+      id: patient.id,
+      doctor_notes: patient.doctor_notes || { additional_hpi: '', physical_exam: '', preliminary_dx: '', plan: '' },
+      custom_rapid_note: patient.custom_rapid_note !== undefined ? patient.custom_rapid_note : null,
+      custom_narrative_note: patient.custom_narrative_note !== undefined ? patient.custom_narrative_note : null,
+      aiConsultResult: patient.aiConsultResult || null,
+      status: patient.status || 'waiting',
+      completed_at: patient.completed_at || null
+    };
+
+    try {
+      let res = await fetch('/api/cases/update', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-doctor-pin': SYNC_STATE.doctorPin
+        },
+        body: JSON.stringify(payload),
+        keepalive: Boolean(options.keepalive)
+      });
+
+      if (res.status === 404 && !options.keepalive) {
+        res = await fetch('/api/cases/update', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-doctor-pin': SYNC_STATE.doctorPin
+          },
+          body: JSON.stringify({ ...payload, fallbackPatient: patient })
+        });
+      }
+
+      if (res.status === 401) {
+        if (entry) entry.inFlight = false;
+        setCloudSaveStatus('pending');
+        return false;
+      }
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data.doctor_updated_at) {
+          patient.doctor_updated_at = data.doctor_updated_at;
+        }
+        try {
+          localStorage.setItem('medhistory_patients_v16', JSON.stringify(patientDatabase));
+        } catch (err) {}
+
+        const latest = SYNC_STATE.dirtyCases.get(patientId);
+        if (latest) {
+          latest.inFlight = false;
+          if (latest.revision === sentRevision) {
+            SYNC_STATE.dirtyCases.delete(patientId);
+            setCloudSaveStatus('saved');
+          } else {
+            // New edits happened while this request was in flight
+            latest.timer = setTimeout(() => syncDoctorCaseToServer(patientId), 400);
+          }
+        } else {
+          setCloudSaveStatus('saved');
+        }
+        return true;
+      }
+      throw new Error(`HTTP ${res.status}`);
+    } catch (err) {
+      console.warn('[SyncManager] Doctor case sync retry scheduled:', err.message);
+      const latest = SYNC_STATE.dirtyCases.get(patientId);
+      if (latest) {
+        latest.inFlight = false;
+        latest.retryCount = (latest.retryCount || 0) + 1;
+        setCloudSaveStatus('pending');
+        if (!options.keepalive && latest.retryCount <= 4) {
+          latest.timer = setTimeout(() => syncDoctorCaseToServer(patientId), 2000 * latest.retryCount);
+        }
+      }
+      return false;
+    }
+  }
+
+  async function flushDoctorSync(patientId) {
+    if (!patientId || !SYNC_STATE.dirtyCases.has(patientId)) return;
+    const entry = SYNC_STATE.dirtyCases.get(patientId);
+    if (entry && entry.timer) {
+      clearTimeout(entry.timer);
+      entry.timer = null;
+    }
+    await syncDoctorCaseToServer(patientId);
+  }
+
+  async function flushAllPendingDoctorSyncs() {
+    const ids = Array.from(SYNC_STATE.dirtyCases.keys());
+    if (ids.length === 0) return;
+    await Promise.all(ids.map(id => flushDoctorSync(id)));
+  }
+
+  function hookDoctorActions() {
+    if (SYNC_STATE.doctorHooksInstalled) return;
+    SYNC_STATE.doctorHooksInstalled = true;
+
+    const origAddendum = window.handleDoctorAddendumChange;
+    if (typeof origAddendum === 'function') {
+      window.handleDoctorAddendumChange = function () {
+        const targetId = typeof activePatientId !== 'undefined' ? activePatientId : null;
+        const result = origAddendum.apply(this, arguments);
+        if (targetId) markCaseDirty(targetId, false);
+        return result;
+      };
+    }
+
+    const origDirectNote = window.handleDirectNoteEdit;
+    if (typeof origDirectNote === 'function') {
+      window.handleDirectNoteEdit = function () {
+        const targetId = typeof activePatientId !== 'undefined' ? activePatientId : null;
+        const result = origDirectNote.apply(this, arguments);
+        if (targetId) markCaseDirty(targetId, false);
+        return result;
+      };
+    }
+
+    const origCloseCase = window.executeCloseActiveCase;
+    if (typeof origCloseCase === 'function') {
+      window.executeCloseActiveCase = function () {
+        const targetId = typeof activePatientId !== 'undefined' ? activePatientId : null;
+        const result = origCloseCase.apply(this, arguments);
+        if (targetId) markCaseDirty(targetId, true);
+        return result;
+      };
+    }
+
+    const origReopenCase = window.executeReopenActiveCase;
+    if (typeof origReopenCase === 'function') {
+      window.executeReopenActiveCase = function () {
+        const targetId = typeof activePatientId !== 'undefined' ? activePatientId : null;
+        const result = origReopenCase.apply(this, arguments);
+        if (targetId) markCaseDirty(targetId, true);
+        return result;
+      };
+    }
+
+    const origRunAi = window.runAiConsultantAnalysis;
+    if (typeof origRunAi === 'function') {
+      window.runAiConsultantAnalysis = async function () {
+        const targetId = typeof activePatientId !== 'undefined' ? activePatientId : null;
+        const res = await origRunAi.apply(this, arguments);
+        if (targetId && typeof patientDatabase !== 'undefined') {
+          const p = patientDatabase.find(x => x.id === targetId);
+          if (p && p.aiConsultResult) {
+            if (typeof saveDatabase === 'function') saveDatabase();
+            markCaseDirty(targetId, false);
+          }
+        }
+        return res;
+      };
+    }
+
+    const origSelectPatient = window.selectPatient;
+    if (typeof origSelectPatient === 'function') {
+      window.selectPatient = function (patientId) {
+        const prevId = typeof activePatientId !== 'undefined' ? activePatientId : null;
+        if (prevId && prevId !== patientId && SYNC_STATE.dirtyCases.has(prevId)) {
+          flushDoctorSync(prevId);
+        }
+        return origSelectPatient.apply(this, arguments);
+      };
+    }
+
+    if (!SYNC_STATE.unloadHookInstalled) {
+      SYNC_STATE.unloadHookInstalled = true;
+      window.addEventListener('beforeunload', () => {
+        SYNC_STATE.dirtyCases.forEach((_, id) => {
+          syncDoctorCaseToServer(id, { keepalive: true });
+        });
+      });
+    }
   }
 
   // --- 3. MOBILE INTAKE HOOK: UPLOAD CASE TO SERVER ---
@@ -223,7 +505,7 @@
 
       setTimeout(async () => {
         try {
-          // Retrieve newly submitted patient from global patientDatabase or localStorage
+          // Retrieve newly submitted or edited patient from global patientDatabase or localStorage
           let allPatients = [];
           if (typeof patientDatabase !== 'undefined' && Array.isArray(patientDatabase) && patientDatabase.length > 0) {
             allPatients = patientDatabase;
@@ -232,11 +514,12 @@
             allPatients = raw ? JSON.parse(raw) : [];
           }
 
-          const patientRecord = allPatients[allPatients.length - 1];
+          const targetId = typeof lastSubmittedPatientId !== 'undefined' ? lastSubmittedPatientId : null;
+          const patientRecord = (targetId && allPatients.find(p => p.id === targetId))
+            || allPatients[allPatients.length - 1];
 
           if (patientRecord) {
             cleanPilotPatientRecord(patientRecord);
-            // Save cleaned record to local storage
             try {
               localStorage.setItem('medhistory_patients_v16', JSON.stringify(allPatients));
             } catch (err) {}
@@ -270,6 +553,49 @@
     }
   }
 
+  function mergeServerCaseWithLocal(srv, loc) {
+    if (!loc) return srv;
+
+    const keepLocalDoctorFields =
+      isCaseProtectedLocally(srv.id) ||
+      (loc.doctor_updated_at && (!srv.doctor_updated_at || loc.doctor_updated_at > srv.doctor_updated_at)) ||
+      (hasDoctorAnnotations(loc) && !hasDoctorAnnotations(srv) && !srv.doctor_updated_at);
+
+    if (keepLocalDoctorFields && srv.server_received_at === loc.server_received_at) {
+      if (hasDoctorAnnotations(loc) && !hasDoctorAnnotations(srv) && !srv.doctor_updated_at) {
+        markCaseDirty(srv.id, false);
+      }
+      return loc;
+    }
+
+    if (keepLocalDoctorFields) {
+      if (hasDoctorAnnotations(loc) && !hasDoctorAnnotations(srv) && !srv.doctor_updated_at) {
+        markCaseDirty(srv.id, false);
+      }
+      const merged = { ...srv };
+      if (loc.doctor_notes) merged.doctor_notes = loc.doctor_notes;
+      if (loc.custom_rapid_note !== undefined) merged.custom_rapid_note = loc.custom_rapid_note;
+      if (loc.custom_narrative_note !== undefined) merged.custom_narrative_note = loc.custom_narrative_note;
+      if (loc.aiConsultResult) merged.aiConsultResult = loc.aiConsultResult;
+      if (loc.status) merged.status = loc.status;
+      if (loc.completed_at) merged.completed_at = loc.completed_at;
+      if (loc.doctor_updated_at) merged.doctor_updated_at = loc.doctor_updated_at;
+      return merged;
+    }
+
+    // Preserve in-memory AI consultation if server doesn't have it yet
+    if (!srv.aiConsultResult && loc.aiConsultResult) {
+      srv.aiConsultResult = loc.aiConsultResult;
+    }
+
+    // If nothing on server changed for this record, keep existing object reference untouched
+    if (srv.server_received_at === loc.server_received_at && srv.doctor_updated_at === loc.doctor_updated_at) {
+      return loc;
+    }
+
+    return srv;
+  }
+
   // --- 4. HOSPITAL PC: FETCH CASES & REFRESH ---
   async function fetchCasesFromServer(isSilent = false) {
     if (!SYNC_STATE.doctorPin) return;
@@ -292,31 +618,63 @@
         const data = await res.json();
         const serverCases = (data.cases || []).filter(p => !isSeedPatientRecord(p));
 
+        const existingList = (typeof patientDatabase !== 'undefined' && Array.isArray(patientDatabase)) ? patientDatabase : [];
+        const localMap = new Map(existingList.map(p => [p.id, p]));
+        const prevActiveId = typeof activePatientId !== 'undefined' ? activePatientId : null;
+        const prevActive = prevActiveId ? localMap.get(prevActiveId) : null;
+        const prevQueueSig = existingList.map(p => `${p.id}:${p.status || ''}:${p.queue_number || ''}`).join('|');
+
+        const mergedCases = serverCases.map(srv => mergeServerCaseWithLocal(srv, localMap.get(srv.id)));
+
+        // Keep any dirty/local-only newly saved walk-in case not yet confirmed by /api/intake
+        existingList.forEach(loc => {
+          if (SYNC_STATE.dirtyCases.has(loc.id) && !mergedCases.some(m => m.id === loc.id)) {
+            mergedCases.unshift(loc);
+          }
+        });
+
         // Update global patientDatabase in place so all core_engine functions see it
         if (typeof patientDatabase !== 'undefined') {
           patientDatabase.length = 0;
-          patientDatabase.push(...serverCases);
+          patientDatabase.push(...mergedCases);
         }
 
         try {
-          localStorage.setItem('medhistory_patients_v16', JSON.stringify(serverCases));
+          localStorage.setItem('medhistory_patients_v16', JSON.stringify(mergedCases));
         } catch (e) {}
 
-        // Set active patient to most recent if not selected or current one no longer exists
+        let nextActiveId = prevActiveId;
         if (typeof activePatientId !== 'undefined') {
-          if (!activePatientId || !serverCases.some(c => c.id === activePatientId)) {
-            activePatientId = serverCases.length > 0 ? serverCases[0].id : null;
+          if (!activePatientId || !mergedCases.some(c => c.id === activePatientId)) {
+            activePatientId = mergedCases.length > 0 ? mergedCases[0].id : null;
           }
+          nextActiveId = activePatientId;
         }
 
-        if (typeof renderQueueCards === 'function') renderQueueCards();
-        if (typeof renderDoctorDashboard === 'function') renderDoctorDashboard();
-        if (typeof updateTopCounter === 'function') updateTopCounter();
+        const nextQueueSig = mergedCases.map(p => `${p.id}:${p.status || ''}:${p.queue_number || ''}`).join('|');
+        const activeChanged = nextActiveId !== prevActiveId;
+        const mergedActive = nextActiveId ? mergedCases.find(c => c.id === nextActiveId) : null;
+        const activeContentChanged = Boolean(
+          mergedActive && (!prevActive ||
+            mergedActive.server_received_at !== prevActive.server_received_at ||
+            mergedActive.doctor_updated_at !== prevActive.doctor_updated_at)
+        );
+
+        if (nextQueueSig !== prevQueueSig || !isSilent) {
+          if (typeof renderQueueCards === 'function') renderQueueCards();
+          if (typeof updateTopCounter === 'function') updateTopCounter();
+        }
+
+        // Only re-render Doctor Dashboard if initial/manual fetch, patient switched, or server record changed safely
+        const shouldRenderDoctor = !isSilent || activeChanged || (activeContentChanged && !isCaseProtectedLocally(nextActiveId));
+        if (shouldRenderDoctor && typeof renderDoctorDashboard === 'function') {
+          renderDoctorDashboard();
+        }
 
         hideSimulatedUiElements();
 
         if (!isSilent) {
-          showSyncToast(`🔄 อัปเดตรายชื่อเคสล่าสุดแล้ว (${serverCases.length} เคส)`, 'info');
+          showSyncToast(`🔄 อัปเดตรายชื่อเคสล่าสุดแล้ว (${mergedCases.length} เคส)`, 'info');
         }
       }
     } catch (err) {
@@ -327,8 +685,9 @@
     }
   }
 
-  window.manualRefreshDoctorCases = function () {
-    fetchCasesFromServer(false);
+  window.manualRefreshDoctorCases = async function () {
+    await flushAllPendingDoctorSyncs();
+    await fetchCasesFromServer(false);
   };
 
   function injectRefreshButton() {
@@ -433,7 +792,8 @@
         SYNC_STATE.doctorPin = pin;
         sessionStorage.setItem('er_doctor_pin', pin);
         closeDoctorPinModal();
-        if (typeof window.switchUserRole === 'function') window.switchUserRole('doctor');
+        if (typeof window.switchUserRole === 'function') window.switchUserRole('doctor', { skipAutoFetch: true });
+        await flushAllPendingDoctorSyncs();
         fetchCasesFromServer();
       } else {
         const errElem = document.querySelector('#doctorPinErrorText');
