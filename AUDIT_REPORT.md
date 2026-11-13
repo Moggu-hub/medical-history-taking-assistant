@@ -1,6 +1,6 @@
 # 🕵️‍♂️ รายงานการตรวจสอบคุณภาพโค้ดและสถาปัตยกรรม (AUTOMATED & AI AUDIT REPORT)
 
-- **วันที่ตรวจสอบ:** `13/11/2026` เวลา `09:24` น. (24-Hour Format)
+- **วันที่ตรวจสอบ:** `13/11/2026` เวลา `11:43` น. (24-Hour Format)
 - **สถานะภาพรวม (Overall Verdict):** **✅ PASS (ผ่านการตรวจสอบครบทุกมิติ)**
 - **จำนวนหัวข้อที่ผ่าน (Passed Checks):** 7 รายการ
 - **จำนวนคำเตือน (Warnings):** 0 รายการ
@@ -12,9 +12,9 @@
 
 | ไฟล์ (File Path) | จำนวนบรรทัด (Lines) | เพดานสูงสุด (Max Limit) | สถานะ (Status) |
 | :--- | :---: | :---: | :---: |
-| `index.html` | 1,994 | 2,000 | ✅ ปกติ (Safe) |
+| `index.html` | 1,995 | 2,000 | ✅ ปกติ (Safe) |
 | `clinical_knowledge_core.js` | 997 | 1,000 | ✅ ปกติ (Safe) |
-| `core_engine.js` | 2,949 | 3,200 | ✅ ปกติ (Safe) |
+| `core_engine.js` | 2,947 | 3,200 | ✅ ปกติ (Safe) |
 | `cc_modules/01_abdpain.js` | 1,251 | 2,000 | ✅ ปกติ (Safe) |
 | `cc_modules/02_chestpain.js` | 1,346 | 2,000 | ✅ ปกติ (Safe) |
 | `cc_modules/03_dyspnea.js` | 1,062 | 2,000 | ✅ ปกติ (Safe) |
@@ -47,16 +47,17 @@
 | `cc_modules/30_physical_assault.js` | 1,675 | 2,000 | ✅ ปกติ (Safe) |
 | `cc_modules/31_traffic_accident.js` | 1,885 | 2,000 | ✅ ปกติ (Safe) |
 | `cc_modules/32_poisoning.js` | 1,997 | 2,000 | ✅ ปกติ (Safe) |
+| `cc_modules/33_self_harm.js` | 1,659 | 2,000 | ✅ ปกติ (Safe) |
 
 ---
 
 ## 2. สรุปรายการที่ตรวจผ่าน (Passed Verification Checks)
 
-- ✅ index.html: 1994 บรรทัด (อยู่ในเกณฑ์ปลอดภัย <= 2000 บรรทัด)
+- ✅ index.html: 1995 บรรทัด (อยู่ในเกณฑ์ปลอดภัย <= 2000 บรรทัด)
 - ✅ clinical_knowledge_core.js: 997 บรรทัด (อยู่ในเกณฑ์ปลอดภัย <= 1000 บรรทัด)
-- ✅ core_engine.js: 2949 บรรทัด (อยู่ในเกณฑ์ปลอดภัย <= 3200 บรรทัด)
-- ✅ Core System Freeze: core_engine.js ไม่ถูกแก้ไขนับจากจุดเซฟ 'v2.68-poisoning-lmp-cc-fix' (SHA-256 ตรงกัน 100%)
-- ✅ พบไฟล์โมดูลรายอาการใน cc_modules/ จำนวน 32 โมดูล
+- ✅ core_engine.js: 2947 บรรทัด (อยู่ในเกณฑ์ปลอดภัย <= 3200 บรรทัด)
+- ✅ Core System Freeze: core_engine.js ไม่ถูกแก้ไขนับจากจุดเซฟ 'v2.69-dynamic-cc-registry' (SHA-256 ตรงกัน 100%)
+- ✅ พบไฟล์โมดูลรายอาการใน cc_modules/ จำนวน 33 โมดูล
 - ✅ ทุกโมดูลใน cc_modules/ ผ่านเกณฑ์โครงสร้าง Lifecycle Hooks, ความปลอดภัย UI คนไข้ และมาตรฐานวันที่ dd/mm/yyyy + เวลา 24 ชั่วโมง HH:mm
 - ✅ ชุดทดสอบ Mandatory 4-Dimension Core Guard TDD (tests/core_guard_test.js) ผ่านครบ 100% ทั้ง 4 มิติ!
 
@@ -75,7 +76,7 @@
 === มิติที่ (ก): ARCHITECTURE, DOM INTEGRITY, UX HYGIENE & UNIVERSAL DATE/TIME ===
 ✅ PASS: index.html โหลด clinical_knowledge_core.js
 ✅ PASS: index.html โหลด core_engine.js
-✅ PASS: index.html โหลดโมดูลอาการนำจาก cc_modules/ ครบ 32 โมดูล
+✅ PASS: index.html โหลดโมดูลอาการนำจาก cc_modules/ ครบ 33 โมดูล
 ✅ PASS: Zero missing static DOM IDs across all modules (found: none)
 ✅ PASS: Zero 🚩 emojis inside #patientView & all cc_modules formHtml
 ✅ PASS: Zero pre-checked inputs inside #patientView (Zero Default Bias) (found: 0)
@@ -84,15 +85,15 @@
 ✅ PASS: Universal Date descriptor converts ISO '2026-10-26' -> '26/10/2026' (dd/mm/yyyy)
 ✅ PASS: Universal Time descriptor converts '3:30 PM' -> '15:30' (24-hour HH:mm)
 
-=== มิติที่ (ง): DOCTOR UI RENDER, JSON SCHEMA & BUILT-IN CDS (ALL 121 SEED CASES) ===
-✅ PASS: Seed database has all 121 clinical cases across 32 Chief Complaints (found 121)
-✅ PASS: All 121 seed cases render Rapid Note, Narrative Note & JSON Schema on Doctor Dashboard with 0 errors
-✅ PASS: All 121 seed cases generate Built-in CDS Analysis with 0 errors
-✅ PASS: Zero Date/Time format violations across all 121 seed cases
-✅ PASS: Zero De-duplication, Clean Negative Syntax & Score Offloading violations across all 121 seed cases
+=== มิติที่ (ง): DOCTOR UI RENDER, JSON SCHEMA & BUILT-IN CDS (ALL 125 SEED CASES) ===
+✅ PASS: Seed database has all 125 clinical cases across 33 Chief Complaints (found 125)
+✅ PASS: All 125 seed cases render Rapid Note, Narrative Note & JSON Schema on Doctor Dashboard with 0 errors
+✅ PASS: All 125 seed cases generate Built-in CDS Analysis with 0 errors
+✅ PASS: Zero Date/Time format violations across all 125 seed cases
+✅ PASS: Zero De-duplication, Clean Negative Syntax & Score Offloading violations across all 125 seed cases
 
 === มิติที่ (ข): SAVE PERSISTENCE CHECK (PATIENT SUBMIT -> STATE & LOCALSTORAGE -> STATUS VIEW) ===
-✅ PASS: Save Persistence verified across all 32 active Chief Complaints (State + localStorage + #patientStatusView)
+✅ PASS: Save Persistence verified across all 33 active Chief Complaints (State + localStorage + #patientStatusView)
 
 === มิติที่ (ค): PATIENT ISOLATION & CONTEXT SWITCHING CHECK (PATIENT A <-> PATIENT B) ===
 ✅ PASS: Switching to Patient B cleanly isolates Patient B context from Patient A
@@ -106,7 +107,7 @@
 ✅ PASS: Zero seed patients stuck on legacy dummy vital signs (found: 0)
 ✅ PASS: Empty patient submission records age='ไม่ระบุ' and durationVal=null instead of fake defaults (got age=ไม่ระบุ, durationVal=null)
 ✅ PASS: Empty patient submission displays "ไม่ระบุ" in Doctor Rapid Note without fabricated age or duration
-✅ PASS: PDPA Shield 100% compliant: Zero leaks of Name, HN, Queue, or Hospital name across all 121 patients (leaks: 0)
+✅ PASS: PDPA Shield 100% compliant: Zero leaks of Name, HN, Queue, or Hospital name across all 125 patients (leaks: 0)
 ✅ PASS: parseAiConsultantResponse isolates Provisional & Differential Diagnosis cleanly
 ✅ PASS: parseAiConsultantResponse isolates ER Orders checklist with "- [ ]" cleanly
 ✅ PASS: 1-Click Apply populates both Dx and Plan fields directly when empty
@@ -207,44 +208,87 @@
 ✅ PASS: Traffic accident renders toe digits split by left and right
 ✅ PASS: Traffic accident renders 2.7 other location in Rapid Note
 ✅ PASS: Module abdpain has valid non-empty doctorCcBadgeHtml
+✅ PASS: Module abdpain is dynamically registered in CC_REGISTRY
 ✅ PASS: Module abdpain has valid non-empty doctorCcBadgeHtml
+✅ PASS: Module abdpain is dynamically registered in CC_REGISTRY
 ✅ PASS: Module chestpain has valid non-empty doctorCcBadgeHtml
+✅ PASS: Module chestpain is dynamically registered in CC_REGISTRY
 ✅ PASS: Module chestpain has valid non-empty doctorCcBadgeHtml
+✅ PASS: Module chestpain is dynamically registered in CC_REGISTRY
 ✅ PASS: Module dyspnea has valid non-empty doctorCcBadgeHtml
+✅ PASS: Module dyspnea is dynamically registered in CC_REGISTRY
 ✅ PASS: Module fever has valid non-empty doctorCcBadgeHtml
+✅ PASS: Module fever is dynamically registered in CC_REGISTRY
 ✅ PASS: Module fever has valid non-empty doctorCcBadgeHtml
+✅ PASS: Module fever is dynamically registered in CC_REGISTRY
 ✅ PASS: Module dizziness has valid non-empty doctorCcBadgeHtml
+✅ PASS: Module dizziness is dynamically registered in CC_REGISTRY
 ✅ PASS: Module headache has valid non-empty doctorCcBadgeHtml
+✅ PASS: Module headache is dynamically registered in CC_REGISTRY
 ✅ PASS: Module stroke_deficit has valid non-empty doctorCcBadgeHtml
+✅ PASS: Module stroke_deficit is dynamically registered in CC_REGISTRY
 ✅ PASS: Module seizure has valid non-empty doctorCcBadgeHtml
+✅ PASS: Module seizure is dynamically registered in CC_REGISTRY
 ✅ PASS: Module syncope has valid non-empty doctorCcBadgeHtml
+✅ PASS: Module syncope is dynamically registered in CC_REGISTRY
 ✅ PASS: Module altered_mental has valid non-empty doctorCcBadgeHtml
+✅ PASS: Module altered_mental is dynamically registered in CC_REGISTRY
 ✅ PASS: Module vomiting has valid non-empty doctorCcBadgeHtml
+✅ PASS: Module vomiting is dynamically registered in CC_REGISTRY
 ✅ PASS: Module diarrhea has valid non-empty doctorCcBadgeHtml
+✅ PASS: Module diarrhea is dynamically registered in CC_REGISTRY
 ✅ PASS: Module gi_bleed has valid non-empty doctorCcBadgeHtml
+✅ PASS: Module gi_bleed is dynamically registered in CC_REGISTRY
 ✅ PASS: Module gi_bleed has valid non-empty doctorCcBadgeHtml
+✅ PASS: Module gi_bleed is dynamically registered in CC_REGISTRY
 ✅ PASS: Module palpitation has valid non-empty doctorCcBadgeHtml
+✅ PASS: Module palpitation is dynamically registered in CC_REGISTRY
 ✅ PASS: Module palpitation has valid non-empty doctorCcBadgeHtml
+✅ PASS: Module palpitation is dynamically registered in CC_REGISTRY
 ✅ PASS: Module weakness has valid non-empty doctorCcBadgeHtml
+✅ PASS: Module weakness is dynamically registered in CC_REGISTRY
 ✅ PASS: Module weakness has valid non-empty doctorCcBadgeHtml
+✅ PASS: Module weakness is dynamically registered in CC_REGISTRY
 ✅ PASS: Module allergy has valid non-empty doctorCcBadgeHtml
+✅ PASS: Module allergy is dynamically registered in CC_REGISTRY
 ✅ PASS: Module allergy has valid non-empty doctorCcBadgeHtml
+✅ PASS: Module allergy is dynamically registered in CC_REGISTRY
 ✅ PASS: Module urinary_retention has valid non-empty doctorCcBadgeHtml
+✅ PASS: Module urinary_retention is dynamically registered in CC_REGISTRY
 ✅ PASS: Module dysuria has valid non-empty doctorCcBadgeHtml
+✅ PASS: Module dysuria is dynamically registered in CC_REGISTRY
 ✅ PASS: Module hematuria has valid non-empty doctorCcBadgeHtml
+✅ PASS: Module hematuria is dynamically registered in CC_REGISTRY
 ✅ PASS: Module back_pain has valid non-empty doctorCcBadgeHtml
+✅ PASS: Module back_pain is dynamically registered in CC_REGISTRY
 ✅ PASS: Module neck_shoulder_pain has valid non-empty doctorCcBadgeHtml
+✅ PASS: Module neck_shoulder_pain is dynamically registered in CC_REGISTRY
 ✅ PASS: Module hemoptysis has valid non-empty doctorCcBadgeHtml
+✅ PASS: Module hemoptysis is dynamically registered in CC_REGISTRY
 ✅ PASS: Module epistaxis has valid non-empty doctorCcBadgeHtml
+✅ PASS: Module epistaxis is dynamically registered in CC_REGISTRY
 ✅ PASS: Module hypertension has valid non-empty doctorCcBadgeHtml
+✅ PASS: Module hypertension is dynamically registered in CC_REGISTRY
 ✅ PASS: Module psychiatric_emergency has valid non-empty doctorCcBadgeHtml
+✅ PASS: Module psychiatric_emergency is dynamically registered in CC_REGISTRY
 ✅ PASS: Module laceration_bleeding has valid non-empty doctorCcBadgeHtml
+✅ PASS: Module laceration_bleeding is dynamically registered in CC_REGISTRY
 ✅ PASS: Module fall_trauma has valid non-empty doctorCcBadgeHtml
+✅ PASS: Module fall_trauma is dynamically registered in CC_REGISTRY
 ✅ PASS: Module animal_bite has valid non-empty doctorCcBadgeHtml
+✅ PASS: Module animal_bite is dynamically registered in CC_REGISTRY
 ✅ PASS: Module venomous_bite has valid non-empty doctorCcBadgeHtml
+✅ PASS: Module venomous_bite is dynamically registered in CC_REGISTRY
 ✅ PASS: Module physical_assault has valid non-empty doctorCcBadgeHtml
+✅ PASS: Module physical_assault is dynamically registered in CC_REGISTRY
 ✅ PASS: Module traffic_accident has valid non-empty doctorCcBadgeHtml
+✅ PASS: Module traffic_accident is dynamically registered in CC_REGISTRY
 ✅ PASS: Module poisoning has valid non-empty doctorCcBadgeHtml
+✅ PASS: Module poisoning is dynamically registered in CC_REGISTRY
+✅ PASS: Module self_harm has valid non-empty doctorCcBadgeHtml
+✅ PASS: Module self_harm is dynamically registered in CC_REGISTRY
+✅ PASS: resolveCcFormId dynamically resolves both module ids (poisoning) and legacy schemaCodes (abdominal_pain)
+✅ PASS: setPatientFormChiefComplaint and resolveCcTitleTh support poisoning without static core hardcoding
 ✅ PASS: Patient case-040 shows Fever CC badge
 ✅ PASS: Patient case-bite-01 updates activeCcDisplay to animal bite badge instead of keeping previous CC
 ✅ PASS: Patient case-lac-01 updates activeCcDisplay to laceration badge
