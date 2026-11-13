@@ -19,8 +19,9 @@
    - `collectIntake(ctx)` ต้องดึงฟิลด์จาก `ctx` (`patientName`, `patientAge`, `gender`, `recordId`, `queueNumber` ฯลฯ) และ fallback สร้าง object ผู้ป่วยใหม่ที่สมบูรณ์ แล้วคืนค่า (`return p`) เสมอ
    - ทุกฟิลด์และทุกแถวของ Dynamic Repeater ที่อ่านใน `collectIntake(ctx)` ต้องถูกคืนค่าเข้า DOM และอัปเดตสถานะการเปิดกิ่ง/การกรองอาการใน `hydrateForm(patient)` แบบ 100%
    - ช่องวันที่/เวลาทั้งแบบ Static และ Dynamic Repeater ต้องรองรับรูปแบบ `dd/mm/yyyy` และ `HH:mm` (24 ชม.) และเมื่อ append แถว dynamic ใน DOM ต้องเรียก `initUniversalDateTimeInputs()` เสมอ (ป้องกัน C-AP10)
-4. **การแสดงผลข้อความในหน้าจอแพทย์ (Doctor View Binding):**
-   - ใน `updateOutputs(patient)` ต้องเขียนค่าลง `#rapidTextView`, `#narrativeTextView`, `#jsonViewer` และเซ็ต `patient.rapidHpi`, `patient.narrativeHpi`, `patient.medicalJson` เสมอ ห้าม return เปล่าๆ เด็ดขาด (ป้องกัน C-AP9)
+4. **การแสดงผลข้อความในหน้าจอแพทย์และการคัดกรองเพศ (Doctor View & Lifecycle Hooks):**
+   - ใน `updateOutputs(patient)` Rapid Note ต้องขึ้นต้นด้วย `[Chief Complaint (CC)]`, มี `[Doctor's Clinical Addendum & Exam]`, `doctorCcBadgeHtml` ต้องระบุ `CC:`, ต้องเขียนค่าลง `#rapidTextView`, `#narrativeTextView`, `#jsonViewer` และเซ็ต `patient.rapidHpi`, `patient.narrativeHpi`, `patient.medicalJson` เสมอ พร้อมทั้งให้ `generateCds(patient, ctx)` เติม `ctx.ddxList`, `ctx.workupList`, `ctx.managementList` (ป้องกัน C-AP9, C-AP12)
+   - ส่วนคำถามเฉพาะสตรี (LMP / ตั้งครรภ์) ต้องเริ่มด้วยคลาส `hidden` ใน `formHtml` และรองรับ `onTitleChange`, `onSelectForm`, `onActivate`, `resetForm`, `branchIds` เพื่อซ่อนและล้างค่าเมื่อเลือกคำนำหน้าเพศชาย เช่น `นาย` / `ด.ช.` (ป้องกัน C-AP13)
 5. **ด่านตรวจบังคับก่อนส่งงาน:**
    - ต้องรัน `node scripts/verify_cc.js --cc <cc_id>` จนผ่าน 100% (0 Failures) ก่อนรายงานว่างานเสร็จ
 6. **กฎ Auto-Immunization:**

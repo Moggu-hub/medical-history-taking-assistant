@@ -71,6 +71,8 @@ description: มาตรฐานบังคับสำหรับการ�
 | **C-AP9** | ลืมผูกค่า DOM ใน `updateOutputs(patient)` ทำให้หน้าจอแพทย์ค้างเป็นของคนเก่า (Critical Error) | ใน `updateOutputs(patient)` ต้องเขียนค่าลง `#rapidTextView`, `#narrativeTextView`, `#jsonViewer` ร่วมกับกำหนดค่าใน `p.rapidHpi`, `p.narrativeHpi`, `p.medicalJson` เสมอ ห้าม return เฉพาะ object โดยไม่แตะ DOM |
 | **C-AP10** | Dynamic Input ที่กด `+` เพิ่มแถวใหม่กลายเป็น Plaintext ไม่เป็นปฏิทิน/เวลา | ฟังก์ชันที่สร้างแถว dynamic ที่มี `data-universal-date` หรือ `data-universal-time` ต้องเรียก `if (typeof initUniversalDateTimeInputs === 'function') initUniversalDateTimeInputs();` ทันทีหลัง append แถวลง DOM |
 | **C-AP11** | Wordy Negation ใน `seedPatients` ขัดกับเกณฑ์ Clean Syntax | ใน `seedPatients` ประวัติแพ้ยา `drugAllergy` และโรคประจำตัว หากปฏิเสธต้องใช้คำสั้นๆ คือ `'ปฏิเสธ'` เท่านั้น ห้ามใส่ประโยคยาว เช่น 'ปฏิเสธประวัติแพ้ยาและแพ้อาหาร' |
+| **C-AP12** | รายงานแพทย์ขาดหัวข้อ `[Chief Complaint (CC)]`, แบนเนอร์ CC ขาด `CC:`, หรือ `generateCds` ไม่เติม `ctx` | ใน `updateOutputs(patient)` ของ Rapid Note ต้องขึ้นต้นด้วย `[Chief Complaint (CC)]` และมี `[Doctor's Clinical Addendum & Exam]`, `doctorCcBadgeHtml` ต้องขึ้นต้นด้วย `CC:` ตามมาตรฐานโมดูล 01-31 และ `generateCds(patient, ctx)` ต้อง push ข้อมูลลง `ctx.ddxList`, `ctx.workupList`, `ctx.managementList` เสมอ |
+| **C-AP13** | ส่วนคำถามเฉพาะเพศหญิง (LMP / ตั้งครรภ์) โผล่ให้คนไข้ชายตอบเมื่อเลือกคำนำหน้า "นาย" หรือข้ามเคส | Section เฉพาะสตรี (เช่น `#<cc>FemaleSection`) ต้องใส่คลาส `hidden` ตั้งแต่ใน `formHtml`, ต้องลงทะเบียน Lifecycle Hooks ครบ (`onTitleChange`, `onSelectForm`, `onActivate`, `resetForm`, `branchIds`) เพื่อซ่อน/ล้างค่าเมื่อไม่ใช่สตรี และต้องกรองไม่ออกสรุป/ไม่เก็บค่า LMP สำหรับเพศชาย |
 
 ---
 

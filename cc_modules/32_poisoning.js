@@ -166,8 +166,32 @@ function handlePoisoningAlcoholChange() {
 function handlePoisoningPregnancyChange() {
   const checked = document.querySelector('input[name="poisoningPregnancyStatus"]:checked');
   const container = document.getElementById('poisoningPregnancyWeeksWrap');
-  if (container) {
-    container.classList.toggle('hidden', !(checked && checked.value === 'pregnant'));
+  if (container) container.classList.toggle('hidden', !(checked && checked.value === 'pregnant'));
+}
+
+function isPoisoningPatientFemale(titleOrBool) {
+  if (typeof titleOrBool === 'boolean') return titleOrBool;
+  const titleVal = typeof titleOrBool === 'string' ? titleOrBool : (document.getElementById('patientTitleSelect')?.value || '');
+  if (/นาง|น\.ส\.|ด\.ญ\.|Mrs|Ms|Miss|Female|หญิง/i.test(titleVal)) return true;
+  if (/นาย|ด\.ช\.|\(Mr\.\)|Master|ชาย/i.test(titleVal)) return false;
+  if (typeof titleOrBool === 'string') return false;
+  const triageGender = document.getElementById('triageGenderSelect')?.value || '';
+  return /หญิง|female/i.test(triageGender);
+}
+
+function syncPoisoningFemaleSection(overrideIsFemale) {
+  const wrap = document.getElementById('poisoningFemaleSection');
+  if (!wrap) return;
+  const isFemale = isPoisoningPatientFemale(overrideIsFemale);
+  wrap.classList.toggle('hidden', !isFemale);
+  if (!isFemale) {
+    const lmp = document.getElementById('poisoningLmpDate');
+    if (lmp) lmp.value = '';
+    document.querySelectorAll('input[name="poisoningPregnancyStatus"]').forEach(rb => { rb.checked = false; });
+    const pregWeeks = document.getElementById('poisoningPregnancyWeeks');
+    if (pregWeeks) pregWeeks.value = '';
+    const pregWrap = document.getElementById('poisoningPregnancyWeeksWrap');
+    if (pregWrap) pregWrap.classList.add('hidden');
   }
 }
 
@@ -188,19 +212,37 @@ function clearPoisoningPainScore() {
   if (display) display.textContent = 'ไม่ได้ระบุ';
 }
 
-// =========================================================================
-// REGISTRATION WITH CLINICAL CORE
-// =========================================================================
 registerCcModule({
   id: 'poisoning',
   recordCc: 'poisoning',
   titleTh: 'ได้รับสารพิษ / กินยาเกินขนาด',
-  headerTh: 'ได้รับสารพิษ / กินยาเกินขนาด',
-  headerEn: 'Poisoning / Drug Overdose / Toxic Exposure',
-  doctorCcBadgeHtml: '<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-purple-100 text-purple-800 border border-purple-200"><i data-lucide="skull" class="w-3 h-3 mr-1"></i> ได้รับสารพิษ/ยาเกินขนาด</span>',
+  headerTh: 'แบบฟอร์มซักประวัติ: ได้รับสารพิษ / กินยาเกินขนาด',
+  headerEn: '(Poisoning / Drug overdose)',
+  doctorCcBadgeHtml: '<i data-lucide="skull" class="w-3.5 h-3.5 mr-1 text-purple-600"></i> CC: ได้รับสารพิษ / กินยาเกินขนาด (Poisoning / Overdose)',
   pmhSectionNumber: 5,
   getPmhSectionNumber: () => 5,
   sectionDomId: 'ccPoisoningSection',
+  dateFields: ['poisoningLmpDate'],
+  timeFields: ['poisoningNpoTime'],
+  branchIds: ['poisoningFemaleSection', 'poisoningPregnancyWeeksWrap', 'poisoningAlcoholDetailWrap', 'poisoningSuicideRiskBranch'],
+  onSelectForm: function({ editingPatientId } = {}) {
+    syncPoisoningFemaleSection();
+    if (!editingPatientId) {
+      clearPoisoningPainScore();
+      updatePoisoningRouteSymptoms();
+    }
+  },
+  onActivate: function(patient) {
+    const g = patient?.gender;
+    syncPoisoningFemaleSection(g === 'หญิง' ? true : (g === 'ชาย' ? false : undefined));
+  },
+  onTitleChange: function({ title, isFemale } = {}) {
+    const effective = (typeof title === 'string' && /น\.ส\./.test(title)) ? true : isFemale;
+    syncPoisoningFemaleSection(effective);
+  },
+  resetForm: function() {
+    this.clearForm();
+  },
 
   // -----------------------------------------------------------------------
   // CLINICAL ALGORITHM METADATA
@@ -1085,7 +1127,7 @@ registerCcModule({
         </div>
 
         <!-- 4.4 ประวัติประจำเดือนและการตั้งครรภ์ (แสดงเฉพาะหญิง) -->
-        <div id="poisoningFemaleSection" class="space-y-2.5 pt-2 border-t border-slate-100">
+        <div id="poisoningFemaleSection" class="hidden space-y-2.5 pt-2 border-t border-slate-100">
           <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">4.4 ประวัติประจำเดือนและการตั้งครรภ์ (สำหรับผู้ป่วยหญิง)</label>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
             <div>
@@ -1234,43 +1276,38 @@ registerCcModule({
     });
 
     const contRb = document.querySelector('input[name="poisoningContainerStatus"]:checked');
-    const poisoningContainerStatus = contRb ? contRb.value : 'none';
+    const poisoningContainerStatus = contRb ? contRb.value : '';
 
-    const poisoningSymptoms = [];
     const symKeys = [
       'oral_burn', 'nausea_vomit_abdpain', 'hematemesis_melena', 'stridor_hoarseness', 'cough_soot',
       'skin_burn', 'eye_burn', 'injection_site', 'drowsy_unconscious', 'seizure', 'confusion_agitation',
       'dyspnea_abnormal_resp', 'salivation_secretions', 'diaphoresis', 'incontinence', 'dry_mouth_anhidrosis',
       'blurred_vision', 'numbness_weakness', 'palpitations_syncope', 'dark_urine_jaundice', 'asymptomatic'
     ];
-    symKeys.forEach(k => {
-      const cb = document.getElementById(`poisoningSym_${k}`);
-      if (cb && cb.checked) poisoningSymptoms.push(k);
-    });
+    const poisoningSymptoms = symKeys.filter(k => document.getElementById(`poisoningSym_${k}`)?.checked);
 
     const poisoningPainScoreVal = poisoningPainScoreTouched ? parseInt(document.getElementById('poisoningPainScore')?.value || '0', 10) : null;
     const poisoningWeightKg = document.getElementById('poisoningWeightKg')?.value ? parseFloat(document.getElementById('poisoningWeightKg').value) : null;
-
     const intentRb = document.querySelector('input[name="poisoningIntent"]:checked');
-    const poisoningIntent = intentRb ? intentRb.value : 'accident';
-
+    const poisoningIntent = intentRb ? intentRb.value : '';
     const suicideRb = document.querySelector('input[name="poisoningSuicideActiveRisk"]:checked');
-    const poisoningSuicideActiveRisk = suicideRb ? suicideRb.value : '';
-
+    const poisoningSuicideActiveRisk = poisoningIntent === 'intentional_self_harm' && suicideRb ? suicideRb.value : '';
     const alcRb = document.querySelector('input[name="poisoningAlcoholUse"]:checked');
-    const poisoningAlcoholUsed = alcRb ? alcRb.value : 'no';
-    const poisoningAlcoholDetail = document.getElementById('poisoningAlcoholDetail')?.value?.trim() || '';
+    const poisoningAlcoholUsed = alcRb ? alcRb.value : '';
+    const poisoningAlcoholDetail = poisoningAlcoholUsed === 'yes' ? (document.getElementById('poisoningAlcoholDetail')?.value?.trim() || '') : '';
 
-    const poisoningLmpDate = document.getElementById('poisoningLmpDate')?.value?.trim() || '';
+    const isFemaleCase = gender === 'หญิง';
+    const poisoningLmpDate = isFemaleCase ? (document.getElementById('poisoningLmpDate')?.value?.trim() || '') : '';
     const pregRb = document.querySelector('input[name="poisoningPregnancyStatus"]:checked');
-    const poisoningPregnancyStatus = pregRb ? pregRb.value : 'not_pregnant';
-    const poisoningPregnancyWeeks = document.getElementById('poisoningPregnancyWeeks')?.value?.trim() || '';
+    const poisoningPregnancyStatus = isFemaleCase && pregRb ? pregRb.value : '';
+    const poisoningPregnancyWeeks = (isFemaleCase && poisoningPregnancyStatus === 'pregnant')
+      ? (document.getElementById('poisoningPregnancyWeeks')?.value?.trim() || '')
+      : '';
 
     const poisoningNpoTime = document.getElementById('poisoningNpoTime')?.value?.trim() || '';
     const poisoningNpoLastMeal = document.getElementById('poisoningNpoLastMeal')?.value?.trim() || '';
-
     const informantRb = document.querySelector('input[name="poisoningInformant"]:checked');
-    const poisoningInformant = informantRb ? informantRb.value : 'patient';
+    const poisoningInformant = informantRb ? informantRb.value : '';
 
     const p = ctx.patient || {
       id: recordId || `case-${Date.now()}-${Math.floor(100 + Math.random() * 900)}`,
@@ -1291,53 +1328,41 @@ registerCcModule({
       doctor_notes: preservedDoctorNotes || { additional_hpi: '', physical_exam: '', preliminary_dx: '', plan: '' }
     };
 
-    p.durationVal = durationVal;
-    p.durationUnit = durationUnit;
-    p.poisoningInformant = poisoningInformant;
-    p.poisoningTimeUnknown = poisoningTimeUnknown;
-    p.poisoningTimeline = poisoningTimeline;
-    p.poisoningRoutes = poisoningRoutes;
-    p.poisoningSubstances = poisoningSubstances;
-    p.poisoningCategories = poisoningCategories;
-    p.poisoningFirstAid = poisoningFirstAid;
-    p.poisoningContainerStatus = poisoningContainerStatus;
-    p.poisoningSymptoms = poisoningSymptoms;
-    p.poisoningPainScoreVal = poisoningPainScoreVal;
-    p.poisoningWeightKg = poisoningWeightKg;
-    p.poisoningIntent = poisoningIntent;
-    p.poisoningSuicideActiveRisk = poisoningSuicideActiveRisk;
-    p.poisoningAlcoholUsed = poisoningAlcoholUsed;
-    p.poisoningAlcoholDetail = poisoningAlcoholDetail;
-    p.poisoningLmpDate = poisoningLmpDate;
-    p.poisoningPregnancyStatus = poisoningPregnancyStatus;
-    p.poisoningPregnancyWeeks = poisoningPregnancyWeeks;
-    p.poisoningNpoTime = poisoningNpoTime;
-    p.poisoningNpoLastMeal = poisoningNpoLastMeal;
+    Object.assign(p, {
+      durationVal, durationUnit, poisoningInformant, poisoningTimeUnknown, poisoningTimeline,
+      poisoningRoutes, poisoningSubstances, poisoningCategories, poisoningFirstAid, poisoningContainerStatus,
+      poisoningSymptoms, poisoningPainScoreVal, poisoningWeightKg, poisoningIntent, poisoningSuicideActiveRisk,
+      poisoningAlcoholUsed, poisoningAlcoholDetail, poisoningLmpDate, poisoningPregnancyStatus,
+      poisoningPregnancyWeeks, poisoningNpoTime, poisoningNpoLastMeal
+    });
 
     const outputs = this.updateOutputs(p);
     p.rapidHpi = outputs.rapid;
     p.narrativeHpi = outputs.narrative;
     p.medicalJson = outputs.json;
-
     return p;
   },
 
-  // -----------------------------------------------------------------------
-  // HYDRATE FORM (WRITE PATIENT OBJECT INTO DOM)
-  // -----------------------------------------------------------------------
   hydrateForm: function(patient) {
     const p = patient;
+    if (!p) return;
+    this.clearForm();
 
-    // Reset counters & clean dynamic rows
     poisoningPainScoreTouched = p.poisoningPainScoreVal !== null && p.poisoningPainScoreVal !== undefined;
-    poisoningTimeRowCount = 1;
-    poisoningSubstanceRowCount = 1;
+    const setRadio = (name, val) => {
+      if (!val) return;
+      const rb = document.querySelector(`input[name="${name}"][value="${val}"]`);
+      if (rb) rb.checked = true;
+    };
+    const setCheckboxes = (prefix, keys, arr) => {
+      const list = Array.isArray(arr) ? arr : [];
+      keys.forEach(k => {
+        const cb = document.getElementById(`${prefix}_${k}`);
+        if (cb) cb.checked = list.includes(k);
+      });
+    };
 
-    // 1.1 Informant
-    const infRb = document.querySelector(`input[name="poisoningInformant"][value="${p.poisoningInformant || 'patient'}"]`);
-    if (infRb) infRb.checked = true;
-
-    // 1.2 Duration & Timeline
+    setRadio('poisoningInformant', p.poisoningInformant);
     if (document.getElementById('poisoningDurationVal')) document.getElementById('poisoningDurationVal').value = p.durationVal ?? '';
     if (document.getElementById('poisoningDurationUnit')) document.getElementById('poisoningDurationUnit').value = p.durationUnit || 'minutes';
 
@@ -1347,149 +1372,69 @@ registerCcModule({
       handlePoisoningTimeUnknownChange();
     }
 
-    // Clean dynamic time rows
-    const timeContainer = document.getElementById('poisoningTimeRowsContainer');
-    if (timeContainer) {
-      const extraRows = timeContainer.querySelectorAll('[id^="poisoningTimeRow_"]');
-      extraRows.forEach(r => {
-        if (r.id !== 'poisoningTimeRow_0') r.remove();
-      });
-    }
-
     const tLines = Array.isArray(p.poisoningTimeline) ? p.poisoningTimeline : [];
     if (tLines.length > 0) {
       if (document.getElementById('poisoningDate_0')) document.getElementById('poisoningDate_0').value = tLines[0].date || '';
       if (document.getElementById('poisoningTime_0')) document.getElementById('poisoningTime_0').value = tLines[0].time || '';
-      for (let i = 1; i < tLines.length; i++) {
-        addPoisoningTimeRow(tLines[i].date || '', tLines[i].time || '');
-      }
-    } else {
-      if (document.getElementById('poisoningDate_0')) document.getElementById('poisoningDate_0').value = '';
-      if (document.getElementById('poisoningTime_0')) document.getElementById('poisoningTime_0').value = '';
+      for (let i = 1; i < tLines.length; i++) addPoisoningTimeRow(tLines[i].date || '', tLines[i].time || '');
     }
 
-    // 1.3 Routes
-    const rList = Array.isArray(p.poisoningRoutes) ? p.poisoningRoutes : [];
-    ['ingestion', 'inhalation', 'skin_contact', 'eye_contact', 'injection'].forEach(k => {
-      const cb = document.getElementById(`poisoningRoute_${k}`);
-      if (cb) cb.checked = rList.includes(k);
-    });
+    setCheckboxes('poisoningRoute', ['ingestion', 'inhalation', 'skin_contact', 'eye_contact', 'injection'], p.poisoningRoutes);
 
-    // 1.4 Substances
-    const sContainer = document.getElementById('poisoningSubstanceRowsContainer');
-    if (sContainer) {
-      const extraSRows = sContainer.querySelectorAll('[id^="poisoningSubstanceRow_"]');
-      extraSRows.forEach(r => {
-        if (r.id !== 'poisoningSubstanceRow_0') r.remove();
-      });
-    }
     const sList = Array.isArray(p.poisoningSubstances) ? p.poisoningSubstances : [];
     if (sList.length > 0) {
       if (document.getElementById('poisoningSubstanceName_0')) document.getElementById('poisoningSubstanceName_0').value = sList[0].name || '';
       if (document.getElementById('poisoningSubstanceAmount_0')) document.getElementById('poisoningSubstanceAmount_0').value = sList[0].amount || '';
-      for (let j = 1; j < sList.length; j++) {
-        addPoisoningSubstanceRow(sList[j].name || '', sList[j].amount || '');
-      }
-    } else {
-      if (document.getElementById('poisoningSubstanceName_0')) document.getElementById('poisoningSubstanceName_0').value = '';
-      if (document.getElementById('poisoningSubstanceAmount_0')) document.getElementById('poisoningSubstanceAmount_0').value = '';
+      for (let j = 1; j < sList.length; j++) addPoisoningSubstanceRow(sList[j].name || '', sList[j].amount || '');
     }
 
-    // 2.1 Categories
-    const cList = Array.isArray(p.poisoningCategories) ? p.poisoningCategories : [];
-    [
+    setCheckboxes('poisoningCat', [
       'paracetamol', 'sedative_psych', 'cardio_diabetic', 'nsaids_anticoag', 'other_meds',
       'corrosives', 'pesticides', 'household_hydrocarbon', 'illicit_alcohol', 'plants_animals',
       'narcotics', 'toxic_gas_smoke', 'unknown'
-    ].forEach(k => {
-      const cb = document.getElementById(`poisoningCat_${k}`);
-      if (cb) cb.checked = cList.includes(k);
-    });
-
-    // 2.2 First Aid
-    const faList = Array.isArray(p.poisoningFirstAid) ? p.poisoningFirstAid : [];
-    ['vomited', 'induced', 'washed', 'none'].forEach(k => {
-      const cb = document.getElementById(`poisoningFirstAid_${k}`);
-      if (cb) cb.checked = faList.includes(k);
-    });
-
-    // 2.3 Container
-    const contRb = document.querySelector(`input[name="poisoningContainerStatus"][value="${p.poisoningContainerStatus || 'none'}"]`);
-    if (contRb) contRb.checked = true;
-
-    // 3.1 Symptoms
-    const symList = Array.isArray(p.poisoningSymptoms) ? p.poisoningSymptoms : [];
-    [
+    ], p.poisoningCategories);
+    setCheckboxes('poisoningFirstAid', ['vomited', 'induced', 'washed', 'none'], p.poisoningFirstAid);
+    setRadio('poisoningContainerStatus', p.poisoningContainerStatus);
+    setCheckboxes('poisoningSym', [
       'oral_burn', 'nausea_vomit_abdpain', 'hematemesis_melena', 'stridor_hoarseness', 'cough_soot',
       'skin_burn', 'eye_burn', 'injection_site', 'drowsy_unconscious', 'seizure', 'confusion_agitation',
       'dyspnea_abnormal_resp', 'salivation_secretions', 'diaphoresis', 'incontinence', 'dry_mouth_anhidrosis',
       'blurred_vision', 'numbness_weakness', 'palpitations_syncope', 'dark_urine_jaundice', 'asymptomatic'
-    ].forEach(k => {
-      const cb = document.getElementById(`poisoningSym_${k}`);
-      if (cb) cb.checked = symList.includes(k);
-    });
-
-    // Update Route-Aware Visibility
+    ], p.poisoningSymptoms);
     updatePoisoningRouteSymptoms();
 
-    // 3.2 Pain Score
-    if (p.poisoningPainScoreVal !== null && p.poisoningPainScoreVal !== undefined) {
-      setPoisoningPainScore(p.poisoningPainScoreVal);
-    } else {
-      clearPoisoningPainScore();
-    }
+    if (p.poisoningPainScoreVal !== null && p.poisoningPainScoreVal !== undefined) setPoisoningPainScore(p.poisoningPainScoreVal);
+    else clearPoisoningPainScore();
 
-    // 4.1 Weight
-    if (document.getElementById('poisoningWeightKg')) {
-      document.getElementById('poisoningWeightKg').value = p.poisoningWeightKg ?? '';
-    }
+    if (document.getElementById('poisoningWeightKg')) document.getElementById('poisoningWeightKg').value = p.poisoningWeightKg ?? '';
 
-    // 4.2 Intent
-    const intentRb = document.querySelector(`input[name="poisoningIntent"][value="${p.poisoningIntent || 'accident'}"]`);
-    if (intentRb) intentRb.checked = true;
+    setRadio('poisoningIntent', p.poisoningIntent);
     handlePoisoningIntentChange();
+    setRadio('poisoningSuicideActiveRisk', p.poisoningSuicideActiveRisk);
 
-    if (p.poisoningSuicideActiveRisk) {
-      const sRiskRb = document.querySelector(`input[name="poisoningSuicideActiveRisk"][value="${p.poisoningSuicideActiveRisk}"]`);
-      if (sRiskRb) sRiskRb.checked = true;
-    }
-
-    // 4.3 Alcohol
-    const alcRb = document.querySelector(`input[name="poisoningAlcoholUse"][value="${p.poisoningAlcoholUsed || 'no'}"]`);
-    if (alcRb) alcRb.checked = true;
+    setRadio('poisoningAlcoholUse', p.poisoningAlcoholUsed);
     handlePoisoningAlcoholChange();
-    if (document.getElementById('poisoningAlcoholDetail')) {
-      document.getElementById('poisoningAlcoholDetail').value = p.poisoningAlcoholDetail || '';
+    if (document.getElementById('poisoningAlcoholDetail')) document.getElementById('poisoningAlcoholDetail').value = p.poisoningAlcoholDetail || '';
+
+    let isFemale;
+    if (p.gender === 'หญิง') isFemale = true;
+    else if (p.gender === 'ชาย') isFemale = false;
+    else {
+      const titleVal = document.getElementById('patientTitleSelect')?.value || '';
+      isFemale = /นาง|น\.ส\.|ด\.ญ\.|Mrs|Ms|Miss/i.test(titleVal || p.name || '');
+    }
+    syncPoisoningFemaleSection(isFemale);
+    if (isFemale) {
+      if (document.getElementById('poisoningLmpDate')) document.getElementById('poisoningLmpDate').value = p.poisoningLmpDate || '';
+      setRadio('poisoningPregnancyStatus', p.poisoningPregnancyStatus);
+      handlePoisoningPregnancyChange();
+      if (document.getElementById('poisoningPregnancyWeeks')) document.getElementById('poisoningPregnancyWeeks').value = p.poisoningPregnancyWeeks || '';
     }
 
-    // 4.4 Female Section & LMP
-    const isFemale = p.gender === 'หญิง' || /^(นาง|นางสาว|ด\.ญ\.|ms|mrs|miss)/i.test(p.name || '');
-    const femaleWrap = document.getElementById('poisoningFemaleSection');
-    if (femaleWrap) {
-      femaleWrap.classList.toggle('hidden', !isFemale);
-    }
-    if (document.getElementById('poisoningLmpDate')) {
-      document.getElementById('poisoningLmpDate').value = p.poisoningLmpDate || '';
-    }
-    const pregRb = document.querySelector(`input[name="poisoningPregnancyStatus"][value="${p.poisoningPregnancyStatus || 'not_pregnant'}"]`);
-    if (pregRb) pregRb.checked = true;
-    handlePoisoningPregnancyChange();
-    if (document.getElementById('poisoningPregnancyWeeks')) {
-      document.getElementById('poisoningPregnancyWeeks').value = p.poisoningPregnancyWeeks || '';
-    }
-
-    // 4.5 NPO
-    if (document.getElementById('poisoningNpoTime')) {
-      document.getElementById('poisoningNpoTime').value = p.poisoningNpoTime || '';
-    }
-    if (document.getElementById('poisoningNpoLastMeal')) {
-      document.getElementById('poisoningNpoLastMeal').value = p.poisoningNpoLastMeal || '';
-    }
+    if (document.getElementById('poisoningNpoTime')) document.getElementById('poisoningNpoTime').value = p.poisoningNpoTime || '';
+    if (document.getElementById('poisoningNpoLastMeal')) document.getElementById('poisoningNpoLastMeal').value = p.poisoningNpoLastMeal || '';
   },
 
-  // -----------------------------------------------------------------------
-  // CLEAR FORM (RESET INPUTS & DYNAMIC ROWS)
-  // -----------------------------------------------------------------------
   clearForm: function() {
     const sec = document.getElementById(this.sectionDomId);
     if (!sec) return;
@@ -1500,22 +1445,23 @@ registerCcModule({
 
     const durUnit = document.getElementById('poisoningDurationUnit');
     if (durUnit) durUnit.value = 'minutes';
+    const timeWrap = document.getElementById('poisoningTimeDetailsWrap');
+    if (timeWrap) timeWrap.classList.remove('hidden');
+
+    ['poisoningSuicideRiskBranch', 'poisoningAlcoholDetailWrap', 'poisoningFemaleSection', 'poisoningPregnancyWeeksWrap'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.classList.add('hidden');
+    });
 
     const timeContainer = document.getElementById('poisoningTimeRowsContainer');
     if (timeContainer) {
-      const extraRows = timeContainer.querySelectorAll('[id^="poisoningTimeRow_"]');
-      extraRows.forEach(r => {
-        if (r.id !== 'poisoningTimeRow_0') r.remove();
-      });
+      timeContainer.querySelectorAll('[id^="poisoningTimeRow_"]').forEach(r => { if (r.id !== 'poisoningTimeRow_0') r.remove(); });
     }
     poisoningTimeRowCount = 1;
 
     const subContainer = document.getElementById('poisoningSubstanceRowsContainer');
     if (subContainer) {
-      const extraSRows = subContainer.querySelectorAll('[id^="poisoningSubstanceRow_"]');
-      extraSRows.forEach(r => {
-        if (r.id !== 'poisoningSubstanceRow_0') r.remove();
-      });
+      subContainer.querySelectorAll('[id^="poisoningSubstanceRow_"]').forEach(r => { if (r.id !== 'poisoningSubstanceRow_0') r.remove(); });
     }
     poisoningSubstanceRowCount = 1;
 
@@ -1661,7 +1607,21 @@ registerCcModule({
   // -----------------------------------------------------------------------
   updateOutputs: function(patient) {
     const p = patient;
+    if (!p) return null;
     const durStr = p.durationVal ? `${p.durationVal} ${UNIVERSAL_DURATION_UNITS[p.durationUnit] || p.durationUnit}` : 'ไม่ระบุระยะเวลา';
+
+    // Informant & Hospital Status Dicts
+    const informantDict = {
+      patient: 'ผู้ป่วยให้ข้อมูลเอง',
+      relative_bystander: 'ญาติหรือผู้อยู่ในเหตุการณ์ให้ข้อมูลแทน'
+    };
+    const informantText = informantDict[p.poisoningInformant] || 'ไม่ได้ระบุ';
+    const hospLabel = {
+      complete: 'มีประวัติกับ รพ.ราชบุรี ครบถ้วน (ดึงข้อมูลเดิมจากระบบ)',
+      additional: 'มีประวัติกับ รพ.ราชบุรี และขอให้ข้อมูลเพิ่มเติม',
+      self: 'ขอให้ข้อมูลด้วยตนเองทั้งหมด',
+      unspecified: 'ไม่ได้ระบุ'
+    }[p.hospRecordStatus] || 'ไม่ได้ระบุ';
 
     // Routes Dict
     const routeDict = {
@@ -1738,7 +1698,7 @@ registerCcModule({
       food_plant_animal: 'รับประทานอาหาร/พืช/เห็ดโดยไม่ทราบว่ามีพิษ',
       suspected_poisoned: 'สงสัยว่าอาจได้รับสารพิษโดยผู้อื่นผสมให้'
     };
-    let intentText = intentDict[p.poisoningIntent] || 'อุบัติเหตุ';
+    let intentText = intentDict[p.poisoningIntent] || 'ไม่ได้ระบุ';
     if (p.poisoningIntent === 'intentional_self_harm' && p.poisoningSuicideActiveRisk) {
       const sRiskDict = {
         active_ideation: 'ยังมีความคิดอยากทำร้ายตนเองซ้ำ',
@@ -1789,18 +1749,40 @@ registerCcModule({
     if (syms.includes('asymptomatic')) {
       positives.push('ยังไม่มีอาการผิดปกติใดๆ ในขณะนี้');
     }
+    if (p.otherSymptomsFree && String(p.otherSymptomsFree).trim()) {
+      positives.push(`ประวัติเพิ่มเติมจากผู้ป่วย: ${String(p.otherSymptomsFree).trim()}`);
+    }
 
     // Set pertinentPositives for Patient Status View
     p.pertinentPositives = positives.length > 0 ? positives : ['ได้รับสารพิษ/ยาเกินขนาด (ยังไม่มีอาการผิดปกติชัดเจน)'];
 
-    // Pain Score
+    // Pain Score & Alcohol & Female LMP/Pregnancy
     const painStr = p.poisoningPainScoreVal !== null && p.poisoningPainScoreVal !== undefined
       ? `${p.poisoningPainScoreVal}/10`
       : 'ไม่ได้ระบุ';
+    const alcoholText = p.poisoningAlcoholUsed === 'yes'
+      ? `มีดื่มแอลกอฮอล์ร่วม (${p.poisoningAlcoholDetail || 'ไม่ระบุรายละเอียด'})`
+      : p.poisoningAlcoholUsed === 'no' ? 'ปฏิเสธการดื่มแอลกอฮอล์' : 'ไม่ได้ระบุ';
+    const isFemalePatient = p.gender === 'หญิง' || (typeof p.patientTitle === 'string' && isPoisoningPatientFemale(p.patientTitle));
+    const femaleText = p.poisoningPregnancyStatus === 'pregnant'
+      ? `กำลังตั้งครรภ์ (${p.poisoningPregnancyWeeks || '-'} สัปดาห์)`
+      : p.poisoningPregnancyStatus === 'uncertain'
+        ? 'ไม่แน่ใจว่าตั้งครรภ์'
+        : p.poisoningPregnancyStatus === 'not_pregnant'
+          ? 'ปฏิเสธการตั้งครรภ์'
+          : 'ไม่ได้ระบุ';
+    const femaleLine = isFemalePatient ? `\n• ประวัติสตรี: LMP ${p.poisoningLmpDate || 'ไม่ระบุ'}, ตั้งครรภ์: ${femaleText}` : '';
+    const medsText = (!p.currentMeds || p.currentMeds === 'ไม่ได้ระบุ' || p.currentMeds === 'ไม่มี') ? 'ไม่มี' : p.currentMeds;
+    const effectiveRfs = (Array.isArray(p.redFlags) && p.redFlags.length > 0) ? p.redFlags : this.evaluateRedFlags(p);
+    const docNotes = p.doctor_notes || {};
 
     // 1. RAPID NOTE
-    const rapidNote = `[History of Present Illness (HPI)]
-ผู้ป่วย ${p.gender || 'ไม่ระบุเพศ'} อายุ ${p.age !== undefined && p.age !== null ? p.age + ' ปี' : 'ไม่ระบุอายุ'} มา รพ. ด้วยอาการได้รับสารพิษหรือกินยาเกินขนาด เป็นมาประมาณ ${durStr}
+    const rapidNote = `[Chief Complaint (CC)]
+ได้รับสารพิษ / กินยาเกินขนาด เป็นมาประมาณ ${durStr}
+
+[History of Present Illness (HPI)]
+ผู้ป่วย [${p.name || 'ไม่ระบุชื่อ'}] ${p.gender || 'ไม่ระบุเพศ'} อายุ ${p.age !== undefined && p.age !== null ? p.age + ' ปี' : 'ไม่ระบุอายุ'} มา รพ. ด้วยอาการได้รับสารพิษหรือกินยาเกินขนาด เป็นมาประมาณ ${durStr}
+• ผู้ให้ข้อมูล: ${informantText}
 • ลำดับเวลาที่ได้รับสาร: ${timelineText}
 • ช่องทางที่ได้รับสาร: ${routeText}
 • รายการยา/สารพิษและปริมาณ: ${subText}
@@ -1809,38 +1791,61 @@ registerCcModule({
 • ภาชนะบรรจุ/ฉลาก: ${containerText}
 • น้ำหนักตัวโดยประมาณ: ${p.poisoningWeightKg ? p.poisoningWeightKg + ' กก.' : 'ไม่ระบุ'}
 • ลักษณะเหตุการณ์: ${intentText}
-• การดื่มแอลกอฮอล์ร่วมด้วย: ${p.poisoningAlcoholUsed === 'yes' ? 'มีดื่มแอลกอฮอล์ร่วม (' + (p.poisoningAlcoholDetail || 'ไม่ระบุรายละเอียด') + ')' : 'ปฏิเสธการดื่มแอลกอฮอล์'}
+• การดื่มแอลกอฮอล์ร่วมด้วย: ${alcoholText}
 • ระดับความปวด/แสบทรมาน: ${painStr}
-• NPO Time: ${p.poisoningNpoTime ? p.poisoningNpoTime + ' น. (' + (p.poisoningNpoLastMeal || 'ไม่ระบุอาหาร') + ')' : 'ไม่ระบุ'}
-${p.gender === 'หญิง' ? `• ประวัติสตรี: LMP ${p.poisoningLmpDate || 'ไม่ระบุ'}, โอกาสตั้งครรภ์: ${p.poisoningPregnancyStatus === 'pregnant' ? 'กำลังตั้งครรภ์ (' + (p.poisoningPregnancyWeeks || '-') + ' สัปดาห์)' : p.poisoningPregnancyStatus === 'uncertain' ? 'ไม่แน่ใจ' : 'ปฏิเสธการตั้งครรภ์'}` : ''}
+• NPO Time: ${p.poisoningNpoTime ? p.poisoningNpoTime + ' น. (' + (p.poisoningNpoLastMeal || 'ไม่ระบุอาหาร') + ')' : 'ไม่ระบุ'}${femaleLine}
 
 • Pertinent Positives:
-${positives.length > 0 ? positives.map(s => `- ${s}`).join('\n') : '- ยังไม่มีอาการผิดปกติชัดเจนในขณะนี้'}
+${positives.length > 0 ? positives.map(s => `  - ${s}`).join('\n') : '  - ยังไม่มีอาการผิดปกติชัดเจนในขณะนี้'}
 
 • Pertinent Negatives:
-${negatives.slice(0, 10).map(s => `- ${s}`).join('\n')}
+${negatives.slice(0, 10).map(s => `  - ${s}`).join('\n')}
 
 [Past Medical History & Medications]
+• สถานะประวัติ รพ.ราชบุรี: ${hospLabel}
 • โรคประจำตัว (U/D): ${(p.underlying && p.underlying.length > 0) ? p.underlying.join(', ') : 'ปฏิเสธ'}
-• ยาประจำตัว (Current Meds): ${p.currentMeds || 'ไม่มี'}
+• ยาประจำตัว (Current Meds): ${medsText}
 • ประวัติแพ้ยา/แพ้อาหาร (Allergies): ${p.drugAllergy || 'ปฏิเสธ'}
 
-[Emergency Risk Assessment]
-• Red Flags ที่ตรวจพบ: ${this.evaluateRedFlags(p).length > 0 ? this.evaluateRedFlags(p).map(r => r.textTh).join(', ') : 'ไม่พบสัญญาณวิกฤต (Low-Risk Exposure)'}
+[Emergency Risk Assessment (Red Flags)]
+${effectiveRfs.length > 0 ? `🚩 RED FLAGS DETECTED:\n${effectiveRfs.map(r => `  * ${r.textTh}`).join('\n')}` : '✓ ไม่พบสัญญาณวิกฤต (Low-Risk Exposure)'}
 • ESI Triage Level: ESI ${p.esi_level || 3}
-`;
+
+[Doctor's Clinical Addendum & Exam]
+• ประวัติเพิ่มเติม/แก้ไขโดยแพทย์: ${docNotes.additional_hpi || '-'}
+• สัญญาณชีพและการตรวจร่างกาย: ${docNotes.physical_exam || '-'}
+• การวินิจฉัยเบื้องต้น (Impression): ${docNotes.preliminary_dx || '-'}
+• แผนการรักษา (Plan/Orders): ${docNotes.plan || '-'}`;
 
     // 2. NARRATIVE NOTE
-    const narrativeNote = `ผู้ป่วย ${p.gender || 'ไม่ระบุเพศ'} อายุ ${p.age !== undefined && p.age !== null ? p.age + ' ปี' : 'ไม่ระบุอายุ'} มาโรงพยาบาลด้วยอาการได้รับสารพิษหรือกินยาเกินขนาด เป็นมาประมาณ ${durStr} โดยข้อมูลระบุว่าได้รับสารผ่านช่องทาง ${routeText} รายการสารได้แก่ ${subText} (จัดอยู่ในกลุ่ม ${catText}) ${timelineText} ภายหลังเกิดเหตุได้รับการปฐมพยาบาลเบื้องต้นคือ ${firstAidText} โดย${containerText} เหตุการณ์เกิดจาก ${intentText} ในขณะนี้ตรวจพบอาการสำคัญได้แก่ ${positives.length > 0 ? positives.join(', ') : 'ยังไม่มีอาการผิดปกติ'} ปฏิเสธ${negatives.slice(0, 6).join(', ')} น้ำหนักตัวโดยประมาณ ${p.poisoningWeightKg ? p.poisoningWeightKg + ' กก.' : 'ไม่ระบุ'} ระดับความปวด ${painStr} งดน้ำอาหารล่าสุดเวลา ${p.poisoningNpoTime || 'ไม่ระบุ'} น.`;
+    const narrativeNote = `ผู้ป่วย [${p.name || 'ไม่ระบุชื่อ'}] อายุ ${p.age !== undefined && p.age !== null ? p.age + ' ปี' : '-'} เพศ ${p.gender || 'ไม่ระบุ'} มารับการตรวจที่ห้องฉุกเฉิน รพ.ราชบุรี ด้วยอาการได้รับสารพิษหรือกินยาเกินขนาด เป็นมาประมาณ ${durStr} (ผู้ให้ข้อมูล: ${informantText})
+ได้รับสารผ่านช่องทาง: ${routeText} รายการสารได้แก่ ${subText} (กลุ่มสาร: ${catText}) ${timelineText} ภายหลังเกิดเหตุได้รับการปฐมพยาบาลเบื้องต้นคือ ${firstAidText} สถานะฉลาก/ภาชนะ: ${containerText} เหตุการณ์เกิดจาก: ${intentText} ร่วมกับดื่มแอลกอฮอล์: ${alcoholText} น้ำหนักตัวโดยประมาณ ${p.poisoningWeightKg ? p.poisoningWeightKg + ' กก.' : 'ไม่ระบุ'} ระดับความปวด ${painStr} งดน้ำอาหารล่าสุด ${p.poisoningNpoTime ? p.poisoningNpoTime + ' น.' : 'ไม่ระบุ'}${isFemalePatient ? ` ประวัติสตรี LMP ${p.poisoningLmpDate || 'ไม่ระบุ'} (${femaleText})` : ''}
+
+อาการสำคัญที่ตรวจพบ: ${positives.length > 0 ? positives.join(', ') : 'ยังไม่มีอาการผิดปกติชัดเจน'}
+อาการสำคัญที่ปฏิเสธ: ${negatives.slice(0, 6).join(', ')}
+
+ประวัติการเจ็บป่วยในอดีต: [${hospLabel}], โรคประจำตัว: ${(p.underlying && p.underlying.length > 0) ? p.underlying.join(', ') : 'ปฏิเสธ'}, ยาประจำตัว: ${medsText}, ประวัติแพ้ยา/แพ้อาหาร: ${p.drugAllergy || 'ปฏิเสธ'}${effectiveRfs.length > 0 ? `\n\n[🚩 แจ้งเตือนสัญญาณวิกฤต (Red Flags)]: ตรวจพบ ${effectiveRfs.map(r => r.textTh).join(', ')}` : ''}
+
+[บันทึกการตรวจและการประเมินโดยแพทย์]:
+${docNotes.additional_hpi ? `• ประวัติเพิ่มเติม: ${docNotes.additional_hpi}\n` : ''}${docNotes.physical_exam ? `• การตรวจร่างกาย: ${docNotes.physical_exam}\n` : ''}${docNotes.preliminary_dx ? `• การวินิจฉัย: ${docNotes.preliminary_dx}\n` : ''}${docNotes.plan ? `• แผนการรักษา: ${docNotes.plan}` : ''}`;
 
     // 3. JSON SCHEMA
     const jsonSchema = {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
       encounter: {
+        hospital_site: 'Ratchaburi Hospital',
+        queue_id: p.queue_number || null,
+        hn: p.hn || null,
+        patient_name: p.name || null,
+        age: p.age !== undefined ? p.age : null,
+        gender: p.gender || null,
         chief_complaint: 'poisoning_overdose',
         duration_value: p.durationVal,
         duration_unit: p.durationUnit,
         timeline_summary: timelineText,
-        staggered_exposure: tLines.length > 1
+        staggered_exposure: tLines.length > 1,
+        triage_urgency_flag: effectiveRfs.length > 0,
+        hospital_record_status: p.hospRecordStatus || null
       },
       exposure_details: {
         informant: p.poisoningInformant,
@@ -1857,14 +1862,16 @@ ${negatives.slice(0, 10).map(s => `- ${s}`).join('\n')}
         pain_score: p.poisoningPainScoreVal,
         npo_time: p.poisoningNpoTime || null,
         npo_last_meal: p.poisoningNpoLastMeal || null,
-        female_lmp: p.gender === 'หญิง' ? p.poisoningLmpDate : null,
-        pregnancy_status: p.gender === 'หญิง' ? p.poisoningPregnancyStatus : null
+        female_lmp: isFemalePatient ? (p.poisoningLmpDate || null) : null,
+        pregnancy_status: isFemalePatient ? (p.poisoningPregnancyStatus || null) : null
       },
       clinical_symptoms: {
+        other_symptoms_free: p.otherSymptomsFree || '',
         pertinent_positives: positives,
         pertinent_negatives: negatives
       },
-      red_flags: this.evaluateRedFlags(p).map(r => r.key)
+      red_flags: effectiveRfs.map(r => r.key),
+      doctor_clinical_addendum: docNotes
     };
 
     // DOM Binding for Doctor View
@@ -1896,83 +1903,94 @@ ${negatives.slice(0, 10).map(s => `- ${s}`).join('\n')}
   // BUILT-IN CLINICAL DECISION SUPPORT (CDS)
   // -----------------------------------------------------------------------
   generateCds: function(patient, ctx) {
-    const p = patient;
+    const p = patient || {};
     const cats = Array.isArray(p.poisoningCategories) ? p.poisoningCategories : [];
     const syms = Array.isArray(p.poisoningSymptoms) ? p.poisoningSymptoms : [];
     const routes = Array.isArray(p.poisoningRoutes) ? p.poisoningRoutes : [];
-    const rfs = this.evaluateRedFlags(p);
+    const rfs = (ctx && Array.isArray(ctx.rfs)) ? ctx.rfs : this.evaluateRedFlags(p);
 
-    let ddxLines = [];
-    let orderLines = [];
-
-    // Differential Diagnosis Logic
+    const ddxLines = [];
     if (cats.includes('pesticides') || syms.includes('salivation_secretions')) {
-      ddxLines.push('• 1. Acute Organophosphate / Carbamate Poisoning (ความน่าจะเป็นสูงมาก: 85%)');
-      ddxLines.push('• 2. Cholinergic Toxidrome from other anticholinesterase agents (15%)');
+      ddxLines.push('1. Acute Organophosphate / Carbamate Poisoning (ความน่าจะเป็นสูงมาก: 85%)', '2. Cholinergic Toxidrome from other anticholinesterase agents (15%)');
     } else if (cats.includes('corrosives') || syms.includes('oral_burn')) {
-      ddxLines.push('• 1. Severe Caustic / Corrosive Ingestion with Chemical Burn (ความน่าจะเป็น: 90%)');
-      ddxLines.push('• 2. Upper gastrointestinal perforation / transmural necrosis (Rule out)');
+      ddxLines.push('1. Severe Caustic / Corrosive Ingestion with Chemical Burn (ความน่าจะเป็น: 90%)', '2. Upper gastrointestinal perforation / transmural necrosis (Rule out)');
     } else if (cats.includes('paracetamol')) {
-      ddxLines.push('• 1. Acute or Staggered Paracetamol (Acetaminophen) Hepatotoxicity (ความน่าจะเป็น: 90%)');
-      ddxLines.push('• 2. Co-ingestion with other hidden antipyretic / sedatives');
+      ddxLines.push('1. Acute or Staggered Paracetamol (Acetaminophen) Hepatotoxicity (ความน่าจะเป็น: 90%)', '2. Co-ingestion with other hidden antipyretic / sedatives');
     } else if (cats.includes('illicit_alcohol') || syms.includes('blurred_vision')) {
-      ddxLines.push('• 1. Acute Methanol Toxicity / Toxic Alcohol Ingestion (ความน่าจะเป็นสูง: 80%)');
-      ddxLines.push('• 2. High Anion Gap Metabolic Acidosis');
+      ddxLines.push('1. Acute Methanol Toxicity / Toxic Alcohol Ingestion (ความน่าจะเป็นสูง: 80%)', '2. High Anion Gap Metabolic Acidosis');
     } else if (routes.includes('eye_contact')) {
-      ddxLines.push('• 1. Chemical Ocular Burn (Corneal / Conjunctival burn) (ความน่าจะเป็น: 95%)');
+      ddxLines.push('1. Chemical Ocular Burn (Corneal / Conjunctival burn) (ความน่าจะเป็น: 95%)');
     } else {
-      ddxLines.push('• 1. Acute Poisoning / Drug Overdose (To be differentiated by toxidrome and lab) (70%)');
-      ddxLines.push('• 2. Unintentional Polypharmacy Adverse Reaction (30%)');
+      ddxLines.push('1. Acute Poisoning / Drug Overdose (To be differentiated by toxidrome and lab) (70%)', '2. Unintentional Polypharmacy Adverse Reaction (30%)');
     }
 
-    // Orders Checklist
-    orderLines.push('2.1 Immediate Investigations & Triage Workup:');
-    orderLines.push('- [ ] Stat capillary blood glucose (DTX stat) & 12-lead EKG (monitor QRS/QTc duration)');
-    orderLines.push('- [ ] CBC, Electrolytes, BUN, Cr, AST, ALT, Total Bilirubin, PT/INR, PTT');
-    orderLines.push('- [ ] Venous or Arterial Blood Gas (VBG/ABG with Anion Gap and Lactate)');
+    const workups = [
+      '• Stat capillary blood glucose (DTX stat) & 12-lead EKG (monitor QRS/QTc duration)',
+      '• CBC, Electrolytes, BUN, Cr, AST, ALT, Total Bilirubin, PT/INR, PTT',
+      '• Venous or Arterial Blood Gas (VBG/ABG with Anion Gap and Lactate)'
+    ];
     if (cats.includes('paracetamol') || p.poisoningTimeline?.length > 1) {
-      orderLines.push('- [ ] Stat Serum Acetaminophen (Paracetamol) level (draw at >= 4 hours post-ingestion)');
+      workups.push('• Stat Serum Acetaminophen (Paracetamol) level (draw at >= 4 hours post-ingestion)');
     }
     if (cats.includes('illicit_alcohol') || syms.includes('blurred_vision')) {
-      orderLines.push('- [ ] Serum Osmolality & calculated Osmolar Gap (suspected Methanol)');
+      workups.push('• Serum Osmolality & calculated Osmolar Gap (suspected Methanol)');
     }
     if (routes.includes('inhalation') || syms.includes('dyspnea_abnormal_resp')) {
-      orderLines.push('- [ ] Portable Chest X-ray (CXR) & SpO2 monitoring');
+      workups.push('• Portable Chest X-ray (CXR) & SpO2 monitoring');
     }
 
-    orderLines.push('\n2.2 Initial Management & Antidote Protocol:');
+    const managements = [];
     if (cats.includes('corrosives') || syms.includes('oral_burn')) {
-      orderLines.push('- [ ] **CONTRAINDICATION WARNING**: ห้ามใส่สาย NG ล้างท้อง และห้ามให้ผงถ่านกัมมันต์ (NO Activated Charcoal) โดยเด็ดขาด');
-      orderLines.push('- [ ] Strict NPO, IV fluid resuscitation, Early airway evaluation');
-      orderLines.push('- [ ] Consult GI specialist for urgent EGD within 12-24 hours');
+      managements.push(
+        '• **CONTRAINDICATION WARNING**: ห้ามใส่สาย NG ล้างท้อง และห้ามให้ผงถ่านกัมมันต์ (NO Activated Charcoal) โดยเด็ดขาด',
+        '• Strict NPO, IV fluid resuscitation, Early airway evaluation',
+        '• Consult GI specialist for urgent EGD within 12-24 hours'
+      );
     } else if (cats.includes('pesticides') || syms.includes('salivation_secretions')) {
-      orderLines.push('- [ ] Dermal decontamination: ถอดเสื้อผ้า ล้างตัวด้วยสบู่และน้ำสะอาดอย่างทั่วถึง');
-      orderLines.push('- [ ] Suction airway, Pre-oxygenate');
-      orderLines.push('- [ ] **Antidote**: Atropine IV 2-4 mg every 5-10 min until lungs are clear (Atropinization)');
-      orderLines.push('- [ ] **Antidote**: Pralidoxime (2-PAM) IV 1-2 g in 100 mL NSS over 30 min, then 500 mg/hr');
+      managements.push(
+        '• Dermal decontamination: ถอดเสื้อผ้า ล้างตัวด้วยสบู่และน้ำสะอาดอย่างทั่วถึง',
+        '• Suction airway, Pre-oxygenate',
+        '• **Antidote**: Atropine IV 2-4 mg every 5-10 min until lungs are clear (Atropinization)',
+        '• **Antidote**: Pralidoxime (2-PAM) IV 1-2 g in 100 mL NSS over 30 min, then 500 mg/hr'
+      );
     } else if (cats.includes('paracetamol')) {
-      orderLines.push('- [ ] Calculate toxic dose (mg/kg based on body weight)');
-      orderLines.push('- [ ] **Antidote**: N-acetylcysteine (NAC) IV or Oral protocol immediately if high dose or staggered ingestion');
-      orderLines.push('- [ ] Oral Activated charcoal 50g (if ingestion within 1-2 hours and airway intact)');
+      managements.push(
+        '• Calculate toxic dose (mg/kg based on body weight)',
+        '• **Antidote**: N-acetylcysteine (NAC) IV or Oral protocol immediately if high dose or staggered ingestion',
+        '• Oral Activated charcoal 50g (if ingestion within 1-2 hours and airway intact)'
+      );
     } else if (routes.includes('eye_contact')) {
-      orderLines.push('- [ ] Continuous eye irrigation with 0.9% NSS (at least 1-2 liters) until eye pH 7.0-7.4');
-      orderLines.push('- [ ] Consult Ophthalmologist stat after irrigation');
+      managements.push(
+        '• Continuous eye irrigation with 0.9% NSS (at least 1-2 liters) until eye pH 7.0-7.4',
+        '• Consult Ophthalmologist stat after irrigation'
+      );
     } else {
-      orderLines.push('- [ ] Consider Activated Charcoal 50 g PO if ingested within 1-2 hours and patient alert');
-      orderLines.push('- [ ] Continuous cardiac and SpO2 monitoring');
+      managements.push(
+        '• Consider Activated Charcoal 50 g PO if ingested within 1-2 hours and patient alert',
+        '• Continuous cardiac and SpO2 monitoring'
+      );
+    }
+    if (p.poisoningIntent === 'intentional_self_harm') {
+      managements.push('• **SAFETY**: 1:1 Close Suicide Precaution in ER, remove sharp objects, psychiatric consultation after medical stabilization');
     }
 
-    if (p.poisoningIntent === 'intentional_self_harm') {
-      orderLines.push('- [ ] **SAFETY**: 1:1 Close Suicide Precaution in ER, remove sharp objects, psychiatric consultation after medical stabilization');
+    if (ctx) {
+      if (Array.isArray(ctx.ddxList)) ctx.ddxList.push(...ddxLines);
+      if (Array.isArray(ctx.workupList)) ctx.workupList.push(...workups);
+      if (Array.isArray(ctx.managementList)) ctx.managementList.push(...managements);
     }
 
     return `[PROVISIONAL_DDX]
-${ddxLines.join('\n')}
+${ddxLines.map(d => `• ${d}`).join('\n')}
 
 **ภาวะวิกฤตที่ต้องเฝ้าระวังหรือ Rule out:**
 ${rfs.length > 0 ? rfs.map(r => `- 🚩 ${r.textTh}`).join('\n') : '- ภาวะแทรกซ้อนจากการดูดซึมยาและสารพิษล่าช้า (Delayed absorption/toxicity)'}
 
 [ER_ORDERS]
-${orderLines.join('\n')}`;
+2.1 Immediate Investigations & Triage Workup:
+${workups.join('\n')}
+
+2.2 Initial Management & Antidote Protocol:
+${managements.join('\n')}`;
   }
 });

@@ -172,6 +172,42 @@ for (const mod of modsToInspect) {
         pass(`โมดูล '${mod.id}': มีการเรียก initUniversalDateTimeInputs() รองรับ Dynamic Date/Time Picker ครบถ้วน (C-AP10)`);
       }
     }
+
+    // Check C-AP12: Standard [Chief Complaint (CC)] header, CC: badge, and ctx CDS lists
+    if (!modScriptItem.code.includes('[Chief Complaint (CC)]')) {
+      fail(`โมดูล '${mod.id}': ขาดหัวข้อ '[Chief Complaint (CC)]' ใน Rapid Note สำหรับแพทย์ (C-AP12)`);
+    } else {
+      pass(`โมดูล '${mod.id}': มีหัวข้อ '[Chief Complaint (CC)]' ในรายงานแพทย์ครบถ้วน (C-AP12)`);
+    }
+    if (targetCcId && mod.id === targetCcId) {
+      if (!mod.doctorCcBadgeHtml.includes('CC:')) {
+        fail(`โมดูล '${mod.id}': doctorCcBadgeHtml ขาดข้อความ 'CC:' ตามมาตรฐานแบนเนอร์แพทย์ (C-AP12)`);
+      }
+      if (!modScriptItem.code.includes('ddxList') || !modScriptItem.code.includes('workupList') || !modScriptItem.code.includes('managementList')) {
+        fail(`โมดูล '${mod.id}': generateCds(patient, ctx) ไม่ได้เติมข้อมูลลง ctx.ddxList / workupList / managementList (C-AP12)`);
+      } else {
+        pass(`โมดูล '${mod.id}': generateCds(patient, ctx) รองรับการส่ง DDX/Workup/Management เข้า Core CDS (C-AP12)`);
+      }
+    }
+
+    // Check C-AP13: Female LMP/Pregnancy section must start hidden and implement lifecycle hooks
+    const fHtmlCheck = mod.formHtml || '';
+    if (/FemaleSection|LmpWrapper/i.test(fHtmlCheck)) {
+      const hiddenStartRegex = /<[a-z]+[^>]*id=["'][^"']*(?:Female|Lmp)(?:Section|Wrapper)[^"']*["'][^>]*class=["'][^"']*\bhidden\b|<[a-z]+[^>]*class=["'][^"']*\bhidden\b[^>]*id=["'][^"']*(?:Female|Lmp)(?:Section|Wrapper)/i;
+      if (!hiddenStartRegex.test(fHtmlCheck)) {
+        fail(`โมดูล '${mod.id}': Section คำถาม LMP/สตรี ไม่ได้ใส่คลาส hidden ตั้งแต่ต้นใน formHtml (C-AP13)`);
+      } else {
+        pass(`โมดูล '${mod.id}': Section คำถาม LMP/สตรี เริ่มต้นด้วย hidden ถูกต้อง (C-AP13)`);
+      }
+      if (targetCcId && mod.id === targetCcId) {
+        const missingLifecycle = ['onTitleChange', 'onSelectForm', 'onActivate', 'resetForm'].filter(fn => typeof mod[fn] !== 'function');
+        if (missingLifecycle.length > 0) {
+          fail(`โมดูล '${mod.id}': ขาด Lifecycle Hooks สำหรับสลับคำถามสตรี/รีเซ็ตฟอร์ม: ${missingLifecycle.join(', ')} (C-AP13)`);
+        } else {
+          pass(`โมดูล '${mod.id}': มี Lifecycle Hooks ครบ (${['onTitleChange', 'onSelectForm', 'onActivate', 'resetForm'].join(', ')}) (C-AP13)`);
+        }
+      }
+    }
   }
 }
 
@@ -278,6 +314,67 @@ for (const mod of modsToInspect) {
 
   if (badRedFlagShape > 0) {
     fail(`โมดูล '${mod.id}': พบ Red Flag ที่มี key, textTh หรือ risk ว่างเปล่า จำนวน ${badRedFlagShape} รายการ`);
+  }
+
+  if (targetCcId && mod.id === targetCcId) {
+    const domEls = {};
+    const makeEl = () => {
+      const classes = new Set(['hidden']);
+      return {
+        value: '', textContent: '', innerHTML: '',
+        classList: {
+          toggle: (c, f) => (typeof f === 'boolean' ? (f ? classes.add(c) : classes.delete(c)) : (classes.has(c) ? classes.delete(c) : classes.add(c))),
+          add: (...cs) => cs.forEach(c => classes.add(c)),
+          remove: (...cs) => cs.forEach(c => classes.delete(c)),
+          contains: c => classes.has(c)
+        }
+      };
+    };
+    const prevDoc = preSandbox.document;
+    preSandbox.document = {
+      getElementById: id => (domEls[id] || (domEls[id] = makeEl())),
+      querySelector: () => null,
+      querySelectorAll: () => []
+    };
+    try {
+      const sampleMale = seeds.find(s => s.gender === 'ชาย') || Object.assign({}, seeds[0], { gender: 'ชาย' });
+      const sampleClone = JSON.parse(JSON.stringify(sampleMale));
+      const outRes = mod.updateOutputs(sampleClone);
+      const rapidVal = domEls.rapidTextView?.value || outRes?.rapid || '';
+      if (!rapidVal.startsWith('[Chief Complaint (CC)]')) {
+        fail(`โมดูล '${mod.id}': ผลลัพธ์จาก updateOutputs() ไม่ได้ขึ้นต้นด้วย '[Chief Complaint (CC)]' (C-AP12)`);
+      } else if (rapidVal.includes('• ประวัติสตรี:')) {
+        fail(`โมดูล '${mod.id}': Rapid Note ของผู้ป่วยชายยังมีบรรทัด '• ประวัติสตรี:' แสดงออกมา (C-AP13)`);
+      } else {
+        pass(`โมดูล '${mod.id}': updateOutputs() สร้าง [Chief Complaint (CC)] และกรองเพศชายถูกต้อง 100% (C-AP12/C-AP13)`);
+      }
+
+      const ddxList = [], workupList = [], managementList = [];
+      mod.generateCds(seeds[0], { rfs: mod.evaluateRedFlags(seeds[0]) || [], ddxList, workupList, managementList });
+      if (ddxList.length === 0 || workupList.length === 0 || managementList.length === 0) {
+        fail(`โมดูล '${mod.id}': generateCds(patient, ctx) คืนค่า ddxList/workupList/managementList ว่างเปล่า (C-AP12)`);
+      } else {
+        pass(`โมดูล '${mod.id}': generateCds(patient, ctx) สร้าง DDX (${ddxList.length}), Workup (${workupList.length}), Management (${managementList.length}) ครบถ้วน (C-AP12)`);
+      }
+
+      if (typeof mod.onTitleChange === 'function' && /FemaleSection|LmpWrapper/i.test(mod.formHtml || '')) {
+        const femaleMatch = (mod.formHtml || '').match(/id=["']([^"']*(?:Female|Lmp)(?:Section|Wrapper))["']/i);
+        const femaleSecId = femaleMatch ? femaleMatch[1] : null;
+        if (femaleSecId) {
+          mod.onTitleChange({ title: 'นาง (Mrs.)', isFemale: true });
+          const shownForFemale = !preSandbox.document.getElementById(femaleSecId).classList.contains('hidden');
+          mod.onTitleChange({ title: 'นาย (Mr.)', isFemale: false });
+          const hiddenForMale = preSandbox.document.getElementById(femaleSecId).classList.contains('hidden');
+          if (!shownForFemale || !hiddenForMale) {
+            fail(`โมดูล '${mod.id}': onTitleChange() สลับการซ่อน/แสดง #${femaleSecId} ไม่ถูกต้อง (หญิง=${shownForFemale}, ชาย=${hiddenForMale}) (C-AP13)`);
+          } else {
+            pass(`โมดูล '${mod.id}': ทดสอบ Runtime onTitleChange('นาย' vs 'นาง') ซ่อน/แสดง #${femaleSecId} ถูกต้อง 100% (C-AP13)`);
+          }
+        }
+      }
+    } finally {
+      preSandbox.document = prevDoc;
+    }
   }
 }
 
