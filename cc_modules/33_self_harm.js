@@ -1,15 +1,14 @@
 // =========================================================================
 // CC MODULE 33: SELF-HARM / SUICIDE ATTEMPT (ทำร้ายตนเอง / พยายามฆ่าตัวตาย)
 // Ratchaburi Hospital ER Clinical Decision Support System (ED-CDS)
-// - Aligned with Traffic Accident 7-Region Standard Anatomy Hierarchy
-// - Separated Side/Laterality vs. Injury Character rows (Clean Visual Gap)
+// - Aligned with Traffic Accident 7-Region Standard Anatomy & Inline Side/Injury UI
 // - Full Thai Label Mapping Dictionaries (Zero Raw Enum Keys in Doctor Note)
 // - C-AP1 to C-AP15 Compliant
 // =========================================================================
 
 let shPainScoreTouched = false;
 
-// --- Anatomy Sub-part UI Builders (Traffic Standard Hierarchy + Separated Side/Injury UI) ---
+// --- Anatomy Sub-part UI Builders (Traffic Standard Hierarchy & Inline Side/Injury UI) ---
 const SH_SUBPART_KEYS = [
   'HeadScalp', 'HeadFace', 'HeadEye', 'HeadEar', 'HeadNoseMouth',
   'NeckBack', 'NeckFront', 'NeckSide',
@@ -21,24 +20,21 @@ const SH_SUBPART_KEYS = [
 
 function renderShPart(id, detailId, label, fieldPrefix, hasCenter, inj3Label) {
   const centerHtml = hasCenter
-    ? `<label class="selectable-card inline-flex items-center px-2.5 py-1 bg-white border border-slate-200 rounded-md cursor-pointer"><input type="checkbox" name="${fieldPrefix}Sides" value="center" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">กลาง</span></label>`
+    ? `<label class="flex items-center"><input type="checkbox" name="${fieldPrefix}Sides" value="center" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">กลาง</span></label>`
     : '';
   return `
-    <div class="space-y-1.5">
-      <label class="flex items-center cursor-pointer"><input type="checkbox" id="${id}" onchange="toggleShGroup('${detailId}', this.checked)" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800 font-medium">${label}</span></label>
-      <div id="${detailId}" class="hidden ml-5 bg-slate-50 border border-slate-200 p-2.5 rounded-xl text-xs space-y-2">
-        <div class="flex flex-wrap items-center gap-2">
-          <span class="font-semibold text-slate-600 min-w-[92px]">ด้าน / ข้าง:</span>
-          <label class="selectable-card inline-flex items-center px-2.5 py-1 bg-white border border-slate-200 rounded-md cursor-pointer"><input type="checkbox" name="${fieldPrefix}Sides" value="left" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">ซ้าย</span></label>
-          <label class="selectable-card inline-flex items-center px-2.5 py-1 bg-white border border-slate-200 rounded-md cursor-pointer"><input type="checkbox" name="${fieldPrefix}Sides" value="right" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">ขวา</span></label>
-          ${centerHtml}
-        </div>
-        <div class="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-200/80">
-          <span class="font-semibold text-slate-600 min-w-[92px]">ลักษณะบาดเจ็บ:</span>
-          <label class="selectable-card inline-flex items-center px-2.5 py-1 bg-white border border-slate-200 rounded-md cursor-pointer"><input type="checkbox" name="${fieldPrefix}Injuries" value="wound" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">มีแผล</span></label>
-          <label class="selectable-card inline-flex items-center px-2.5 py-1 bg-white border border-slate-200 rounded-md cursor-pointer"><input type="checkbox" name="${fieldPrefix}Injuries" value="pain_swelling" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">ปวด/บวม</span></label>
-          <label class="selectable-card inline-flex items-center px-2.5 py-1 bg-white border border-slate-200 rounded-md cursor-pointer"><input type="checkbox" name="${fieldPrefix}Injuries" value="deformity" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">${inj3Label || 'ผิดรูป'}</span></label>
-        </div>
+    <div class="flex flex-wrap items-center gap-2">
+      <label class="flex items-center cursor-pointer"><input type="checkbox" id="${id}" onchange="toggleShGroup('${detailId}', this.checked)" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-1.5 text-slate-800">${label}</span></label>
+      <div id="${detailId}" class="hidden flex flex-wrap items-center gap-2 bg-slate-50 border border-slate-200 px-2 py-1 rounded-lg text-xs">
+        <span class="text-slate-500 font-medium">ด้าน:</span>
+        <label class="flex items-center"><input type="checkbox" name="${fieldPrefix}Sides" value="left" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ซ้าย</span></label>
+        <label class="flex items-center"><input type="checkbox" name="${fieldPrefix}Sides" value="right" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ขวา</span></label>
+        ${centerHtml}
+        <span class="text-slate-300 mx-1.5">|</span>
+        <span class="text-slate-500 font-medium">การบาดเจ็บ:</span>
+        <label class="flex items-center"><input type="checkbox" name="${fieldPrefix}Injuries" value="wound" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">มีแผล</span></label>
+        <label class="flex items-center"><input type="checkbox" name="${fieldPrefix}Injuries" value="pain_swelling" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ปวด/บวม</span></label>
+        <label class="flex items-center"><input type="checkbox" name="${fieldPrefix}Injuries" value="deformity" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">${inj3Label || 'ผิดรูป'}</span></label>
       </div>
     </div>`;
 }
@@ -46,24 +42,21 @@ function renderShPart(id, detailId, label, fieldPrefix, hasCenter, inj3Label) {
 function renderShDigits(id, detailId, label, prefix) {
   const digits = [['thumb', 'โป้ง'], ['index', 'ชี้'], ['middle', 'กลาง'], ['ring', 'นาง'], ['little', 'ก้อย']];
   const sideRow = (sideKey, sideLabel) => `
-    <div class="flex flex-wrap items-center gap-1.5">
-      <span class="font-semibold text-slate-600 w-10">${sideLabel}:</span>
-      ${digits.map(([v, t]) => `<label class="selectable-card inline-flex items-center px-2 py-0.5 bg-white border border-slate-200 rounded cursor-pointer"><input type="checkbox" name="${prefix}${sideKey}Digits" value="${v}" class="rounded text-medical-600 h-3 w-3"><span class="ml-2 text-slate-800">${t}</span></label>`).join('')}
+    <div class="flex flex-wrap items-center gap-2">
+      <span class="font-medium text-slate-600 w-10">${sideLabel}:</span>
+      ${digits.map(([v, t]) => `<label class="flex items-center"><input type="checkbox" name="${prefix}${sideKey}Digits" value="${v}" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">${t}</span></label>`).join('')}
     </div>`;
   return `
-    <div class="space-y-1.5">
-      <label class="flex items-center cursor-pointer"><input type="checkbox" id="${id}" onchange="toggleShGroup('${detailId}', this.checked)" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800 font-medium">${label}</span></label>
-      <div id="${detailId}" class="hidden ml-5 p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs space-y-2">
-        <div class="space-y-1.5">
-          <span class="block font-semibold text-slate-600">ข้างและนิ้วที่เป็น:</span>
-          ${sideRow('Left', 'ซ้าย')}
-          ${sideRow('Right', 'ขวา')}
-        </div>
-        <div class="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-200/80">
-          <span class="font-semibold text-slate-600 min-w-[92px]">ลักษณะบาดเจ็บ:</span>
-          <label class="selectable-card inline-flex items-center px-2.5 py-1 bg-white border border-slate-200 rounded-md cursor-pointer"><input type="checkbox" name="${prefix}Injuries" value="wound" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">มีแผล</span></label>
-          <label class="selectable-card inline-flex items-center px-2.5 py-1 bg-white border border-slate-200 rounded-md cursor-pointer"><input type="checkbox" name="${prefix}Injuries" value="pain_swelling" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">ปวด/บวม</span></label>
-          <label class="selectable-card inline-flex items-center px-2.5 py-1 bg-white border border-slate-200 rounded-md cursor-pointer"><input type="checkbox" name="${prefix}Injuries" value="deformity" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">ผิดรูป</span></label>
+    <div class="space-y-1">
+      <label class="flex items-center cursor-pointer"><input type="checkbox" id="${id}" onchange="toggleShGroup('${detailId}', this.checked)" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-1.5 text-slate-800">${label}</span></label>
+      <div id="${detailId}" class="hidden ml-5 p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs space-y-2">
+        ${sideRow('Left', 'ซ้าย')}
+        ${sideRow('Right', 'ขวา')}
+        <div class="flex flex-wrap items-center gap-2 pt-1 border-t border-slate-200">
+          <span class="font-medium text-slate-600">ชนิดบาดเจ็บ:</span>
+          <label class="flex items-center"><input type="checkbox" name="${prefix}Injuries" value="wound" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">มีแผล</span></label>
+          <label class="flex items-center"><input type="checkbox" name="${prefix}Injuries" value="pain_swelling" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ปวด/บวม</span></label>
+          <label class="flex items-center"><input type="checkbox" name="${prefix}Injuries" value="deformity" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ผิดรูป</span></label>
         </div>
       </div>
     </div>`;
@@ -85,8 +78,8 @@ function buildShAnatomyHtml() {
         <input type="checkbox" id="shParentHeadFace" onchange="toggleShGroup('shHeadFaceSubGroup', this.checked)" class="rounded text-medical-600 h-4 w-4">
         <span class="ml-2 text-xs sm:text-sm font-bold text-slate-900">2.2.1 บาดเจ็บที่ศีรษะ ใบหน้า ดวงตา หู จมูก หรือในช่องปาก</span>
       </label>
-      <div id="shHeadFaceSubGroup" class="hidden space-y-3 pl-5 sm:pl-6 pt-2 border-t border-slate-100 text-xs sm:text-sm">
-        <div class="space-y-2.5">
+      <div id="shHeadFaceSubGroup" class="hidden space-y-3 pl-6 pt-2 border-t border-slate-100 text-xs sm:text-sm">
+        <div class="space-y-2">
           ${renderShPart('shHeadScalp', 'shHeadScalpDetail', 'หนังศีรษะ/หน้าผาก/ท้ายทอย', 'shHeadScalp', true, 'ผิดรูป/ยุบ')}
           ${renderShPart('shHeadFace', 'shHeadFaceDetail', 'ใบหน้า/โหนกแก้ม/คาง', 'shHeadFace', true, 'ผิดรูป')}
           ${renderShPart('shHeadEye', 'shHeadEyeDetail', 'ดวงตา/เปลือกตา/เบ้าตา', 'shHeadEye', false, 'ผิดรูป')}
@@ -109,8 +102,8 @@ function buildShAnatomyHtml() {
         <input type="checkbox" id="shParentNeck" onchange="toggleShGroup('shNeckSubGroup', this.checked); updateShContextSymptoms();" class="rounded text-medical-600 h-4 w-4">
         <span class="ml-2 text-xs sm:text-sm font-bold text-slate-900">2.2.2 บาดเจ็บที่ลำคอ หรือต้นคอ</span>
       </label>
-      <div id="shNeckSubGroup" class="hidden space-y-3 pl-5 sm:pl-6 pt-2 border-t border-slate-100 text-xs sm:text-sm">
-        <div class="space-y-2.5">
+      <div id="shNeckSubGroup" class="hidden space-y-3 pl-6 pt-2 border-t border-slate-100 text-xs sm:text-sm">
+        <div class="space-y-2">
           ${renderShPart('shNeckBack', 'shNeckBackDetail', 'ต้นคอด้านหลัง (แนวกระดูกคอ)', 'shNeckBack', true, 'ผิดรูป')}
           ${renderShPart('shNeckFront', 'shNeckFrontDetail', 'ลำคอด้านหน้า (หลอดลม)', 'shNeckFront', true, 'ผิดรูป')}
           ${renderShPart('shNeckSide', 'shNeckSideDetail', 'ลำคอด้านข้าง', 'shNeckSide', false, 'ผิดรูป')}
@@ -129,8 +122,8 @@ function buildShAnatomyHtml() {
         <input type="checkbox" id="shParentChest" onchange="toggleShGroup('shChestSubGroup', this.checked)" class="rounded text-medical-600 h-4 w-4">
         <span class="ml-2 text-xs sm:text-sm font-bold text-slate-900">2.2.3 บาดเจ็บที่หน้าอก ซี่โครง ไหปลาร้า หรือหลังส่วนบน/สะบัก</span>
       </label>
-      <div id="shChestSubGroup" class="hidden space-y-3 pl-5 sm:pl-6 pt-2 border-t border-slate-100 text-xs sm:text-sm">
-        <div class="space-y-2.5">
+      <div id="shChestSubGroup" class="hidden space-y-3 pl-6 pt-2 border-t border-slate-100 text-xs sm:text-sm">
+        <div class="space-y-2">
           ${renderShPart('shChestWall', 'shChestWallDetail', 'หน้าอก/ซี่โครง/ราวนม', 'shChestWall', true, 'ผิดรูป/ยุบ')}
           ${renderShPart('shChestClavicle', 'shChestClavicleDetail', 'ไหปลาร้า', 'shChestClavicle', false, 'ผิดรูป/ปูดนูน')}
           ${renderShPart('shChestUpperBack', 'shChestUpperBackDetail', 'หลังส่วนบน/สะบัก', 'shChestUpperBack', true, 'ผิดรูป')}
@@ -149,8 +142,8 @@ function buildShAnatomyHtml() {
         <input type="checkbox" id="shParentAbdomen" onchange="toggleShGroup('shAbdSubGroup', this.checked)" class="rounded text-medical-600 h-4 w-4">
         <span class="ml-2 text-xs sm:text-sm font-bold text-slate-900">2.2.4 บาดเจ็บที่หน้าท้อง บั้นเอว หลังส่วนล่าง หรือสะโพก/เชิงกราน</span>
       </label>
-      <div id="shAbdSubGroup" class="hidden space-y-3 pl-5 sm:pl-6 pt-2 border-t border-slate-100 text-xs sm:text-sm">
-        <div class="space-y-2.5">
+      <div id="shAbdSubGroup" class="hidden space-y-3 pl-6 pt-2 border-t border-slate-100 text-xs sm:text-sm">
+        <div class="space-y-2">
           ${renderShPart('shAbdWall', 'shAbdWallDetail', 'หน้าท้อง/ชายโครง', 'shAbdWall', true, 'ท้องอืดตึง')}
           ${renderShPart('shAbdFlank', 'shAbdFlankDetail', 'สีข้าง/บั้นเอว', 'shAbdFlank', false, 'ผิดรูป')}
           ${renderShPart('shAbdLowerBack', 'shAbdLowerBackDetail', 'หลังส่วนล่าง (แนวกระดูกเอว)', 'shAbdLowerBack', true, 'ผิดรูป')}
@@ -172,8 +165,8 @@ function buildShAnatomyHtml() {
         <input type="checkbox" id="shParentUpperExtremity" onchange="toggleShGroup('shUpperExtSubGroup', this.checked)" class="rounded text-medical-600 h-4 w-4">
         <span class="ml-2 text-xs sm:text-sm font-bold text-slate-900">2.2.5 บาดเจ็บที่ไหล่ แขน ข้อศอก ข้อมือ หรือมือ/นิ้วมือ</span>
       </label>
-      <div id="shUpperExtSubGroup" class="hidden space-y-3 pl-5 sm:pl-6 pt-2 border-t border-slate-100 text-xs sm:text-sm">
-        <div class="space-y-2.5">
+      <div id="shUpperExtSubGroup" class="hidden space-y-3 pl-6 pt-2 border-t border-slate-100 text-xs sm:text-sm">
+        <div class="space-y-2">
           ${renderShPart('shArmShoulder', 'shArmShoulderDetail', 'หัวไหล่/ต้นแขน', 'shArmShoulder', false, 'ผิดรูป')}
           ${renderShPart('shArmElbowForearm', 'shArmElbowForearmDetail', 'ข้อศอก/แขนท่อนล่าง', 'shArmElbowForearm', false, 'ผิดรูป')}
           ${renderShPart('shArmWristHand', 'shArmWristHandDetail', 'ข้อมือ/ฝ่ามือ/หลังมือ', 'shArmWristHand', false, 'ผิดรูป')}
@@ -195,8 +188,8 @@ function buildShAnatomyHtml() {
         <input type="checkbox" id="shParentLowerExtremity" onchange="toggleShGroup('shLowerExtSubGroup', this.checked)" class="rounded text-medical-600 h-4 w-4">
         <span class="ml-2 text-xs sm:text-sm font-bold text-slate-900">2.2.6 บาดเจ็บที่ต้นขา เข่า หน้าแข้ง ข้อเท้า หรือเท้า/นิ้วเท้า</span>
       </label>
-      <div id="shLowerExtSubGroup" class="hidden space-y-3 pl-5 sm:pl-6 pt-2 border-t border-slate-100 text-xs sm:text-sm">
-        <div class="space-y-2.5">
+      <div id="shLowerExtSubGroup" class="hidden space-y-3 pl-6 pt-2 border-t border-slate-100 text-xs sm:text-sm">
+        <div class="space-y-2">
           ${renderShPart('shLegThigh', 'shLegThighDetail', 'ต้นขา', 'shLegThigh', false, 'ผิดรูป')}
           ${renderShPart('shLegKneeShin', 'shLegKneeShinDetail', 'หัวเข่า/หน้าแข้ง/น่อง', 'shLegKneeShin', false, 'ผิดรูป')}
           ${renderShPart('shLegAnkleFoot', 'shLegAnkleFootDetail', 'ข้อเท้า/ส้นเท้า/ฝ่าเท้า/หลังเท้า', 'shLegAnkleFoot', false, 'ผิดรูป')}
@@ -215,14 +208,14 @@ function buildShAnatomyHtml() {
     <div class="border border-slate-200 rounded-xl p-3 sm:p-4 space-y-3">
       <label class="flex items-center cursor-pointer">
         <input type="checkbox" id="shParentOther" onchange="toggleShGroup('shOtherSubGroup', this.checked)" class="rounded text-medical-600 h-4 w-4">
-        <span class="ml-2 text-xs sm:text-sm font-bold text-slate-900">2.2.7 บาดแผลที่ตำแหน่งอื่นๆ (พิมพ์ระบุ)</span>
+        <span class="ml-2 text-xs sm:text-sm font-bold text-slate-900">2.2.7 ตำแหน่งอื่นๆ (ระบุเพิ่ม)</span>
       </label>
-      <div id="shOtherSubGroup" class="hidden space-y-2.5 pl-5 sm:pl-6 pt-2 border-t border-slate-100 text-xs sm:text-sm">
-        <div class="flex flex-wrap items-center gap-2 bg-slate-50 border border-slate-200 p-2.5 rounded-xl text-xs">
-          <span class="font-semibold text-slate-600 min-w-[92px]">ลักษณะบาดเจ็บ:</span>
-          <label class="selectable-card inline-flex items-center px-2.5 py-1 bg-white border border-slate-200 rounded-md cursor-pointer"><input type="checkbox" name="shOtherLocationInjuries" value="wound" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">มีแผล</span></label>
-          <label class="selectable-card inline-flex items-center px-2.5 py-1 bg-white border border-slate-200 rounded-md cursor-pointer"><input type="checkbox" name="shOtherLocationInjuries" value="pain_swelling" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">ปวด/บวม</span></label>
-          <label class="selectable-card inline-flex items-center px-2.5 py-1 bg-white border border-slate-200 rounded-md cursor-pointer"><input type="checkbox" name="shOtherLocationInjuries" value="deformity" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">ผิดรูป</span></label>
+      <div id="shOtherSubGroup" class="hidden space-y-2 pl-6 pt-2 border-t border-slate-100 text-xs sm:text-sm">
+        <div class="flex flex-wrap items-center gap-2">
+          <span class="font-medium text-slate-600">ชนิดบาดเจ็บ:</span>
+          <label class="flex items-center cursor-pointer"><input type="checkbox" name="shOtherLocationInjuries" value="wound" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">มีแผล</span></label>
+          <label class="flex items-center cursor-pointer"><input type="checkbox" name="shOtherLocationInjuries" value="pain_swelling" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ปวด/บวม</span></label>
+          <label class="flex items-center cursor-pointer"><input type="checkbox" name="shOtherLocationInjuries" value="deformity" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ผิดรูป</span></label>
         </div>
         <input type="text" id="shOtherLocationDetail" placeholder="พิมพ์ระบุตำแหน่งบาดแผลหรืออาการบาดเจ็บเพิ่มเติม..." class="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs sm:text-sm">
       </div>
@@ -723,10 +716,10 @@ const selfHarmModule = {
           </div>
         </div>
 
-        <!-- 2.2 ตำแหน่งร่างกาย 7 โซน (Standard Traffic Hierarchy + Separated Side & Injury UI) -->
+        <!-- 2.2 ตำแหน่งร่างกาย 7 โซน (Standard Traffic Anatomy Hierarchy & Inline Side/Injury UI) -->
         <div class="pt-2 border-t border-slate-100 space-y-3">
-          <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider">2.2 ตำแหน่งของร่างกายที่ได้รับบาดเจ็บ รอยแผล หรือรอยรัด และชนิดการบาดเจ็บ (เลือกได้หลายส่วน)</label>
-          <p class="text-xs text-slate-500 -mt-1">ติ๊กเลือกบริเวณที่บาดเจ็บเพื่อเปิดรายละเอียดตำแหน่งย่อย ด้าน/ข้าง และลักษณะบาดเจ็บ</p>
+          <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider">2.2 ตำแหน่งของร่างกายที่ได้รับบาดเจ็บและชนิดการบาดเจ็บ</label>
+          <p class="text-xs text-slate-500 -mt-1">ติ๊กเลือกตำแหน่งที่ได้รับบาดเจ็บ จากนั้นระบุข้างและชนิดการบาดเจ็บ (มีแผล / ปวดบวม / ผิดรูป)</p>
           ${buildShAnatomyHtml()}
         </div>
 
