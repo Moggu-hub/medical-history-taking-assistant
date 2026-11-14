@@ -54,27 +54,35 @@ function handleTrafficOtherVehicleCollisionChange() {
   toggleTrafficGroup('trafficOtherOpponentContainer', cb && cb.checked);
 }
 
-function handleTrafficLmpStatusChange() {
-  const checked = document.querySelector('input[name="trafficLmpStatus"]:checked');
-  const val = checked ? checked.value : '';
-  toggleTrafficGroup('trafficLmpExactDateContainer', val === 'exact_date');
-  toggleTrafficGroup('trafficLmpApproxContainer', val === 'approximate');
-  toggleTrafficGroup('trafficLmpPregnantContainer', val === 'pregnant');
+function isTrafficFemalePatient(p) {
+  if (!p) return false;
+  if (p.gender === 'หญิง' || p.gender === 'female') return true;
+  if (p.gender === 'ชาย' || p.gender === 'male') return false;
+  const label = `${p.patientTitle || ''} ${p.name || p.patientName || ''}`;
+  return /นาง|น\.ส\.|ด\.ญ\.|\(หญิง\)|Mrs|Miss|Ms/i.test(label);
+}
+
+function toggleTrafficFemaleSection(isFemale) {
+  const femSec = document.getElementById('trafficFemaleSection');
+  if (!femSec) return;
+  femSec.classList.toggle('hidden', !isFemale);
+  if (!isFemale) {
+    const lmpEl = document.getElementById('trafficLmpDate');
+    const pregEl = document.getElementById('trafficPregnancyStatus');
+    if (lmpEl) lmpEl.value = '';
+    if (pregEl) pregEl.selectedIndex = 0;
+  }
 }
 
 function checkAndDisplayTrafficLmp(patient) {
-  const lmpSection = document.getElementById('trafficLmpWrapper');
-  if (!lmpSection) return;
-  const name = (patient && patient.name) ? patient.name : (document.getElementById('patientNameInput')?.value || '');
-  const gender = (patient && patient.gender) ? patient.gender : (document.getElementById('triageGenderSelect')?.value || '');
-  const isFemale = gender === 'หญิง' || name.startsWith('นาง') || name.startsWith('นางสาว') || name.startsWith('ด.ญ.') || name.includes('(หญิง)');
-  if (isFemale) {
-    lmpSection.classList.remove('hidden');
-  } else {
-    lmpSection.classList.add('hidden');
-    lmpSection.querySelectorAll('input[type="radio"]').forEach(rb => { rb.checked = false; });
-    lmpSection.querySelectorAll('input[type="text"]').forEach(ti => { ti.value = ''; });
+  if (patient && (patient.gender || patient.name || patient.patientName || patient.patientTitle)) {
+    toggleTrafficFemaleSection(isTrafficFemalePatient(patient));
+    return;
   }
+  const title = document.getElementById('patientTitleSelect')?.value || '';
+  const name = document.getElementById('patientNameInput')?.value || '';
+  const gender = document.getElementById('triageGenderSelect')?.value || '';
+  toggleTrafficFemaleSection(gender === 'หญิง' || /นาง|น\.ส\.|ด\.ญ\.|\(หญิง\)|Mrs|Miss|Ms/i.test(`${title} ${name}`));
 }
 
 function clearTrafficPainScore() {
@@ -318,6 +326,7 @@ function evaluateTrafficRedFlags(patient) {
   const prodromes = Array.isArray(patient.trafficProdromeSigns) ? patient.trafficProdromeSigns : [];
   const anticoag = patient.trafficAnticoagulantHx;
   const lmpStatus = patient.trafficLmpStatus;
+  const pregStatus = patient.trafficPregnancyStatus;
 
   // ESI 1: Active Hemorrhagic Shock / Critical Bleeding
   if (bleeding === 'pulsatile_or_massive' || sysSigns.includes('palpitation_cold_sweat_pallor') || sysSigns.includes('drowsy_confused_weakness')) {
@@ -400,7 +409,7 @@ function evaluateTrafficRedFlags(patient) {
   }
 
   // ESI 2: Medical Syncope Crash or Pregnancy Trauma
-  if (prodromes.includes('prodrome_syncope_medical') || lmpStatus === 'pregnant' || lmpStatus === 'missed_period') {
+  if (prodromes.includes('prodrome_syncope_medical') || pregStatus === 'confirmed_pregnant' || pregStatus === 'suspected_or_missed' || lmpStatus === 'pregnant' || lmpStatus === 'missed_period') {
     addRf(
       'rf_traffic_medical_crash_or_pregnant',
       'ESI 2',
@@ -493,18 +502,28 @@ function renderTrafficRapidHpi(patient) {
 
   const pScore = patient.painScore !== null && patient.painScore !== undefined ? `${patient.painScore}/10` : 'ไม่ได้ระบุ';
 
-  // Female LMP formatting
-  let lmpStr = '';
-  if (patient.trafficLmpStatus) {
-    const lmpMap = {
-      exact_date: `ระบุวันแรกของรอบล่าสุด: ${patient.trafficLmpExactDate || 'ไม่ระบุ'}`,
-      approximate: `ประมาณ ${patient.trafficLmpApproximate || '1-2 สัปดาห์ก่อน'}`,
-      missed_period: 'ขาดประจำเดือน / สงสัยตั้งครรภ์',
-      pregnant: `กำลังตั้งครรภ์ ${patient.trafficLmpGestationalAge ? '(' + patient.trafficLmpGestationalAge + ')' : ''}`,
-      premenarche: 'ยังไม่เคยมีประจำเดือน (ก่อนวัยเจริญพันธุ์)',
-      menopause_hysterectomy: 'วัยหมดประจำเดือน หรือผ่าตัดมดลูกแล้ว'
-    };
-    lmpStr = lmpMap[patient.trafficLmpStatus] || '';
+  // Female LMP & Pregnancy formatting (C-AP13 Male Guard & C-AP14 Thai Dictionary)
+  const pregMap = {
+    not_pregnant: 'ไม่ได้ตั้งครรภ์ / ประจำเดือนมาปกติ',
+    suspected_or_missed: 'ขาดประจำเดือน / สงสัยอาจตั้งครรภ์',
+    confirmed_pregnant: 'ยืนยันกำลังตั้งครรภ์',
+    menopause_or_hysterectomy: 'วัยหมดประจำเดือน / ผ่าตัดมดลูกแล้ว',
+    unknown: 'ไม่ทราบ'
+  };
+  const legacyLmpMap = {
+    exact_date: `ระบุวันแรกของรอบล่าสุด: ${patient.trafficLmpExactDate || 'ไม่ระบุ'}`,
+    approximate: `ประมาณ ${patient.trafficLmpApproximate || '1-2 สัปดาห์ก่อน'}`,
+    missed_period: 'ขาดประจำเดือน / สงสัยตั้งครรภ์',
+    pregnant: `กำลังตั้งครรภ์ ${patient.trafficLmpGestationalAge ? '(' + patient.trafficLmpGestationalAge + ')' : ''}`,
+    premenarche: 'ยังไม่เคยมีประจำเดือน (ก่อนวัยเจริญพันธุ์)',
+    menopause_hysterectomy: 'วัยหมดประจำเดือน หรือผ่าตัดมดลูกแล้ว'
+  };
+  const isFemalePatient = isTrafficFemalePatient(patient);
+  let femStr = '';
+  if (isFemalePatient && (patient.trafficLmpDate || patient.trafficPregnancyStatus)) {
+    femStr = `LMP ${patient.trafficLmpDate || 'ไม่ระบุ'} (${pregMap[patient.trafficPregnancyStatus] || 'ไม่ระบุสถานะ'})`;
+  } else if (isFemalePatient && patient.trafficLmpStatus) {
+    femStr = legacyLmpMap[patient.trafficLmpStatus] || '';
   }
 
   // NPO Time formatting
@@ -521,7 +540,16 @@ function renderTrafficRapidHpi(patient) {
   };
   const anticoagStr = anticoagMap[patient.trafficAnticoagulantHx] || 'ไม่ได้ระบุ';
 
-  const tetanusMap = { within_5_years: '< 5 ปี', '5_to_10_years': '5–10 ปี', over_10_years_or_never: '> 10 ปี หรือไม่เคยฉีด' };
+  const tetanusMap = {
+    within_5_years: 'เคยฉีดเข็มกระตุ้นภายใน 5 ปีที่ผ่านมา',
+    within_5y: 'เคยฉีดเข็มกระตุ้นภายใน 5 ปีที่ผ่านมา',
+    '5_to_10_years': 'เคยฉีดในช่วง 5–10 ปีที่ผ่านมา',
+    '5_to_10y': 'เคยฉีดในช่วง 5–10 ปีที่ผ่านมา',
+    over_10_years: 'เคยฉีดครบ แต่เกิน 10 ปีแล้ว',
+    over_10y: 'เคยฉีดครบ แต่เกิน 10 ปีแล้ว',
+    unknown_or_never: 'ไม่เคยฉีด หรือจำประวัติไม่ได้',
+    over_10_years_or_never: 'เกิน 10 ปีแล้ว หรือไม่เคยฉีด/จำไม่ได้'
+  };
   const tetanusStr = tetanusMap[patient.trafficTetanusHx] || 'ไม่ได้ระบุ';
 
   let hpi = `[Chief Complaint (CC)]
@@ -536,8 +564,8 @@ function renderTrafficRapidHpi(patient) {
 • ประวัติยาละลายลิ่มเลือด/โรคเลือดออกง่าย: ${anticoagStr}
 • วัคซีนป้องกันบาดทะยัก: ${tetanusStr}`;
 
-  if (lmpStr) {
-    hpi += `\n• ประวัติประจำเดือน (LMP): ${lmpStr}`;
+  if (femStr) {
+    hpi += `\n• ประวัติสตรี: ${femStr}`;
   }
 
   if (positives.length > 0) {
@@ -582,6 +610,13 @@ function updateTrafficOutputs(rec) {
   rec.redFlags = redFlags;
 }
 
+
+function renderTrafficDigits(prefix, label) {
+  const d = [['thumb', 'โป้ง'], ['index', 'ชี้'], ['middle', 'กลาง'], ['ring', 'นาง'], ['little', 'ก้อย']];
+  const row = (side, sideLabel) => `<div class="flex flex-wrap items-center gap-2"><span class="font-medium text-slate-600 w-10">${sideLabel}:</span>${d.map(([k, th]) => `<label class="flex items-center"><input type="checkbox" name="${prefix}${side}Digits" value="${k}" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">${th}</span></label>`).join('')}</div>`;
+  const inj = [['wound', 'มีแผล'], ['pain_swelling', 'ปวด/บวม'], ['deformity', 'ผิดรูป']].map(([k, th]) => `<label class="flex items-center"><input type="checkbox" name="${prefix}Injuries" value="${k}" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">${th}</span></label>`).join('');
+  return `<div class="space-y-1"><label class="flex items-center"><input type="checkbox" id="${prefix}" onchange="toggleTrafficGroup('${prefix}Detail', this.checked)" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-1.5 text-slate-800">${label}</span></label><div id="${prefix}Detail" class="hidden ml-5 p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs space-y-2">${row('Left', 'ซ้าย')}${row('Right', 'ขวา')}<div class="flex flex-wrap items-center gap-2 pt-1 border-t border-slate-200"><span class="font-medium text-slate-600">ชนิดบาดเจ็บ:</span>${inj}</div></div></div>`;
+}
 
 // --- QUESTIONNAIRE FORM HTML ---
 const TRAFFIC_ACCIDENT_FORM_HTML = `
@@ -1160,33 +1195,7 @@ const TRAFFIC_ACCIDENT_FORM_HTML = `
               <label class="flex items-center"><input type="checkbox" name="trafficArmWristHandInjuries" value="deformity" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ผิดรูป</span></label>
             </div>
           </div>
-          <div class="space-y-1">
-            <label class="flex items-center"><input type="checkbox" id="trafficArmFingers" onchange="toggleTrafficGroup('trafficArmFingersDetail', this.checked)" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-1.5 text-slate-800">นิ้วมือ</span></label>
-            <div id="trafficArmFingersDetail" class="hidden ml-5 p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs space-y-2">
-              <div class="flex flex-wrap items-center gap-2">
-                <span class="font-medium text-slate-600 w-10">ซ้าย:</span>
-                <label class="flex items-center"><input type="checkbox" name="trafficArmFingersLeftDigits" value="thumb" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">โป้ง</span></label>
-                <label class="flex items-center"><input type="checkbox" name="trafficArmFingersLeftDigits" value="index" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ชี้</span></label>
-                <label class="flex items-center"><input type="checkbox" name="trafficArmFingersLeftDigits" value="middle" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">กลาง</span></label>
-                <label class="flex items-center"><input type="checkbox" name="trafficArmFingersLeftDigits" value="ring" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">นาง</span></label>
-                <label class="flex items-center"><input type="checkbox" name="trafficArmFingersLeftDigits" value="little" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ก้อย</span></label>
-              </div>
-              <div class="flex flex-wrap items-center gap-2">
-                <span class="font-medium text-slate-600 w-10">ขวา:</span>
-                <label class="flex items-center"><input type="checkbox" name="trafficArmFingersRightDigits" value="thumb" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">โป้ง</span></label>
-                <label class="flex items-center"><input type="checkbox" name="trafficArmFingersRightDigits" value="index" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ชี้</span></label>
-                <label class="flex items-center"><input type="checkbox" name="trafficArmFingersRightDigits" value="middle" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">กลาง</span></label>
-                <label class="flex items-center"><input type="checkbox" name="trafficArmFingersRightDigits" value="ring" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">นาง</span></label>
-                <label class="flex items-center"><input type="checkbox" name="trafficArmFingersRightDigits" value="little" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ก้อย</span></label>
-              </div>
-              <div class="flex flex-wrap items-center gap-2 pt-1 border-t border-slate-200">
-                <span class="font-medium text-slate-600">ชนิดบาดเจ็บ:</span>
-                <label class="flex items-center"><input type="checkbox" name="trafficArmFingersInjuries" value="wound" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">มีแผล</span></label>
-                <label class="flex items-center"><input type="checkbox" name="trafficArmFingersInjuries" value="pain_swelling" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ปวด/บวม</span></label>
-                <label class="flex items-center"><input type="checkbox" name="trafficArmFingersInjuries" value="deformity" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ผิดรูป</span></label>
-              </div>
-            </div>
-          </div>
+          ${renderTrafficDigits('trafficArmFingers', 'นิ้วมือ')}
         </div>
         <div class="pt-2 border-t border-slate-100 space-y-1.5">
           <span class="font-semibold text-slate-700 block">อาการสำคัญที่พบร่วมด้วย:</span>
@@ -1246,33 +1255,7 @@ const TRAFFIC_ACCIDENT_FORM_HTML = `
               <label class="flex items-center"><input type="checkbox" name="trafficLegAnkleFootInjuries" value="deformity" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ผิดรูป</span></label>
             </div>
           </div>
-          <div class="space-y-1">
-            <label class="flex items-center"><input type="checkbox" id="trafficLegToes" onchange="toggleTrafficGroup('trafficLegToesDetail', this.checked)" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-1.5 text-slate-800">นิ้วเท้า</span></label>
-            <div id="trafficLegToesDetail" class="hidden ml-5 p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs space-y-2">
-              <div class="flex flex-wrap items-center gap-2">
-                <span class="font-medium text-slate-600 w-10">ซ้าย:</span>
-                <label class="flex items-center"><input type="checkbox" name="trafficLegToesLeftDigits" value="thumb" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">โป้ง</span></label>
-                <label class="flex items-center"><input type="checkbox" name="trafficLegToesLeftDigits" value="index" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ชี้</span></label>
-                <label class="flex items-center"><input type="checkbox" name="trafficLegToesLeftDigits" value="middle" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">กลาง</span></label>
-                <label class="flex items-center"><input type="checkbox" name="trafficLegToesLeftDigits" value="ring" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">นาง</span></label>
-                <label class="flex items-center"><input type="checkbox" name="trafficLegToesLeftDigits" value="little" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ก้อย</span></label>
-              </div>
-              <div class="flex flex-wrap items-center gap-2">
-                <span class="font-medium text-slate-600 w-10">ขวา:</span>
-                <label class="flex items-center"><input type="checkbox" name="trafficLegToesRightDigits" value="thumb" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">โป้ง</span></label>
-                <label class="flex items-center"><input type="checkbox" name="trafficLegToesRightDigits" value="index" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ชี้</span></label>
-                <label class="flex items-center"><input type="checkbox" name="trafficLegToesRightDigits" value="middle" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">กลาง</span></label>
-                <label class="flex items-center"><input type="checkbox" name="trafficLegToesRightDigits" value="ring" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">นาง</span></label>
-                <label class="flex items-center"><input type="checkbox" name="trafficLegToesRightDigits" value="little" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ก้อย</span></label>
-              </div>
-              <div class="flex flex-wrap items-center gap-2 pt-1 border-t border-slate-200">
-                <span class="font-medium text-slate-600">ชนิดบาดเจ็บ:</span>
-                <label class="flex items-center"><input type="checkbox" name="trafficLegToesInjuries" value="wound" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">มีแผล</span></label>
-                <label class="flex items-center"><input type="checkbox" name="trafficLegToesInjuries" value="pain_swelling" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ปวด/บวม</span></label>
-                <label class="flex items-center"><input type="checkbox" name="trafficLegToesInjuries" value="deformity" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ผิดรูป</span></label>
-              </div>
-            </div>
-          </div>
+          ${renderTrafficDigits('trafficLegToes', 'นิ้วเท้า')}
         </div>
         <div class="pt-2 border-t border-slate-100 space-y-1.5">
           <span class="font-semibold text-slate-700 block">อาการสำคัญที่พบร่วมด้วย:</span>
@@ -1337,11 +1320,11 @@ const TRAFFIC_ACCIDENT_FORM_HTML = `
     </div>
   </div>
 
-  <!-- CARD 4: อาการนำก่อนเกิดเหตุ ยาประจำตัว LMP สตรี บาดทะยัก และ NPO Time -->
+  <!-- CARD 4: อาการนำก่อนเกิดเหตุ ยาประจำตัว บาดทะยัก NPO Time และประวัติสตรี (LMP) -->
   <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-6 space-y-5">
     <div class="flex items-center space-x-2 text-medical-700 border-b border-slate-100 pb-3">
       <div class="p-2 bg-medical-50 rounded-lg"><i data-lucide="shield-plus" class="w-5 h-5"></i></div>
-      <h3 class="font-bold text-sm sm:text-base text-slate-800">4. อาการนำก่อนเกิดเหตุ ยาประจำตัว LMP สตรี บาดทะยัก และ NPO Time</h3>
+      <h3 class="font-bold text-sm sm:text-base text-slate-800">4. อาการนำก่อนเกิดเหตุ ยาประจำตัว บาดทะยัก NPO Time และประวัติสตรี (LMP)</h3>
     </div>
     <div class="space-y-2">
       <label class="block text-xs sm:text-sm font-semibold text-slate-800">4.1 ก่อนเกิดอุบัติเหตุ มีอาการผิดปกติของร่างกายนำมาก่อน หรือมีการดื่มแอลกอฮอล์ร่วมด้วยหรือไม่:</label>
@@ -1361,40 +1344,26 @@ const TRAFFIC_ACCIDENT_FORM_HTML = `
       </div>
     </div>
 
-    <!-- 4.2.1 Female LMP (Auto-detected) -->
-    <div id="trafficLmpWrapper" class="hidden pt-3 border-t border-slate-100 space-y-2">
-      <div class="bg-rose-50 border border-rose-200 rounded-xl p-3 sm:p-4 space-y-2">
-        <div class="flex items-center space-x-2 text-rose-800"><i data-lucide="calendar-heart" class="w-4 h-4"></i><span class="font-bold text-xs sm:text-sm">4.2.1 ประวัติประจำเดือนครั้งสุดท้าย (LMP) - สำหรับผู้ป่วยหญิง:</span></div>
-        <p class="text-[11px] text-rose-700">LMP หมายถึง <strong>วันแรกที่เริ่มมีเลือดประจำเดือนรอบล่าสุดออกมา</strong> (ช่วยในการประเมินความปลอดภัยก่อนส่งเอกซเรย์/CT หรือเตรียมความพร้อมกรณีผ่าตัด)</p>
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs sm:text-sm">
-          <label class="selectable-card flex items-center p-2.5 rounded-xl border border-slate-200 bg-white cursor-pointer hover:bg-slate-50"><input type="radio" name="trafficLmpStatus" value="exact_date" onchange="handleTrafficLmpStatusChange()" class="text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">จำวันที่ได้แน่นอน (ระบุวันที่)</span></label>
-          <label class="selectable-card flex items-center p-2.5 rounded-xl border border-slate-200 bg-white cursor-pointer hover:bg-slate-50"><input type="radio" name="trafficLmpStatus" value="approximate" onchange="handleTrafficLmpStatusChange()" class="text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">จำวันที่ไม่ได้แน่ชัด (เลือกช่วงเวลาโดยประมาณ)</span></label>
-          <label class="selectable-card flex items-center p-2.5 rounded-xl border border-slate-200 bg-white cursor-pointer hover:bg-slate-50"><input type="radio" name="trafficLmpStatus" value="missed_period" onchange="handleTrafficLmpStatusChange()" class="text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">ขาดประจำเดือน / สงสัยตั้งครรภ์</span></label>
-          <label class="selectable-card flex items-center p-2.5 rounded-xl border border-slate-200 bg-white cursor-pointer hover:bg-slate-50"><input type="radio" name="trafficLmpStatus" value="pregnant" onchange="handleTrafficLmpStatusChange()" class="text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">กำลังตั้งครรภ์อยู่ในปัจจุบัน</span></label>
-          <label class="selectable-card flex items-center p-2.5 rounded-xl border border-slate-200 bg-white cursor-pointer hover:bg-slate-50"><input type="radio" name="trafficLmpStatus" value="premenarche" onchange="handleTrafficLmpStatusChange()" class="text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">วัยก่อนมีประจำเดือน (ยังไม่เคยมี)</span></label>
-          <label class="selectable-card flex items-center p-2.5 rounded-xl border border-slate-200 bg-white cursor-pointer hover:bg-slate-50"><input type="radio" name="trafficLmpStatus" value="menopause_hysterectomy" onchange="handleTrafficLmpStatusChange()" class="text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">วัยหมดประจำเดือน หรือผ่าตัดมดลูกแล้ว</span></label>
-        </div>
-        <div id="trafficLmpExactDateContainer" class="hidden mt-2"><input type="text" id="trafficLmpExactDate" data-universal-date="true" placeholder="วว/ดด/ปปปป" class="w-full sm:w-60 px-3 py-1.5 border border-slate-300 rounded-lg text-xs bg-white"></div>
-        <div id="trafficLmpApproxContainer" class="hidden mt-2">
-          <select id="trafficLmpApproximate" class="w-full sm:w-60 px-3 py-1.5 border border-slate-300 rounded-lg text-xs bg-white">
-            <option value="1 สัปดาห์ก่อน">1 สัปดาห์ก่อน</option>
-            <option value="2 สัปดาห์ก่อน">2 สัปดาห์ก่อน</option>
-            <option value="3-4 สัปดาห์ก่อน">3-4 สัปดาห์ก่อน</option>
-            <option value="1-2 เดือนก่อน">1-2 เดือนก่อน</option>
-            <option value="มากกว่า 2 เดือน">มากกว่า 2 เดือน</option>
-          </select>
-        </div>
-        <div id="trafficLmpPregnantContainer" class="hidden mt-2"><input type="text" id="trafficLmpGestationalAge" placeholder="พิมพ์ระบุอายุครรภ์ เช่น 24 สัปดาห์..." class="w-full sm:w-60 px-3 py-1.5 border border-slate-300 rounded-lg text-xs bg-white"></div>
-      </div>
-    </div>
-
-    <!-- 4.3 วัคซีนบาดทะยัก -->
-    <div class="pt-3 border-t border-slate-100 space-y-2">
-      <label class="block text-xs sm:text-sm font-semibold text-slate-800">4.3 ประวัติการฉีดวัคซีนป้องกันโรคบาดทะยัก (กรณีมีบาดแผลเปิดหรือแผลถลอก):</label>
-      <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs sm:text-sm">
-        <label class="selectable-card flex items-center p-2.5 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50"><input type="radio" name="trafficTetanusHx" value="within_5_years" class="text-medical-600 h-4 w-4"><span class="ml-2 text-slate-800">เคยฉีดกระตุ้นภายใน 5 ปีที่ผ่านมา</span></label>
-        <label class="selectable-card flex items-center p-2.5 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50"><input type="radio" name="trafficTetanusHx" value="5_to_10_years" class="text-medical-600 h-4 w-4"><span class="ml-2 text-slate-800">เคยฉีดกระตุ้นมาแล้ว 5–10 ปี</span></label>
-        <label class="selectable-card flex items-center p-2.5 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50"><input type="radio" name="trafficTetanusHx" value="over_10_years_or_never" class="text-medical-600 h-4 w-4"><span class="ml-2 text-slate-800">เกิน 10 ปีแล้ว หรือไม่เคยฉีด/จำไม่ได้</span></label>
+    <!-- 4.3 ประวัติการได้รับวัคซีนป้องกันบาดทะยัก -->
+    <div class="pt-3 border-t border-slate-100">
+      <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">4.3 ประวัติการได้รับวัคซีนป้องกันบาดทะยัก (Tetanus Vaccine)</label>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        <label class="selectable-card flex items-start p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
+          <input type="radio" name="trafficTetanusHx" value="within_5_years" class="mt-0.5 text-medical-600 focus:ring-medical-500 h-4 w-4">
+          <div class="ml-3"><span class="block text-xs sm:text-sm font-semibold text-slate-800">เคยฉีดเข็มกระตุ้นภายใน 5 ปีที่ผ่านมา</span><span class="block text-[11px] text-slate-500 font-normal mt-0.5">เคยฉีดครบ (3 เข็ม) มาก่อน และเข็มสุดท้ายหรือเข็มกระตุ้น &lt; 5 ปี</span></div>
+        </label>
+        <label class="selectable-card flex items-start p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
+          <input type="radio" name="trafficTetanusHx" value="5_to_10_years" class="mt-0.5 text-medical-600 focus:ring-medical-500 h-4 w-4">
+          <div class="ml-3"><span class="block text-xs sm:text-sm font-semibold text-slate-800">เคยฉีดในช่วง 5 ถึง 10 ปีที่ผ่านมา</span><span class="block text-[11px] text-slate-500 font-normal mt-0.5">เคยฉีดครบ (3 เข็ม) มาก่อน และเข็มสุดท้ายหรือเข็มกระตุ้นห่างมาแล้ว 5–10 ปี</span></div>
+        </label>
+        <label class="selectable-card flex items-start p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
+          <input type="radio" name="trafficTetanusHx" value="over_10_years" class="mt-0.5 text-medical-600 focus:ring-medical-500 h-4 w-4">
+          <div class="ml-3"><span class="block text-xs sm:text-sm font-semibold text-slate-800">เคยฉีดครบ แต่เกิน 10 ปีแล้ว</span><span class="block text-[11px] text-slate-500 font-normal mt-0.5">เคยฉีดครบ (3 เข็ม) มาก่อน แต่เข็มสุดท้ายมานานเกิน 10 ปีแล้ว</span></div>
+        </label>
+        <label class="selectable-card flex items-start p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
+          <input type="radio" name="trafficTetanusHx" value="unknown_or_never" class="mt-0.5 text-medical-600 focus:ring-medical-500 h-4 w-4">
+          <div class="ml-3"><span class="block text-xs sm:text-sm font-semibold text-slate-800">ไม่เคยฉีด หรือจำประวัติไม่ได้</span><span class="block text-[11px] text-slate-500 font-normal mt-0.5">ไม่เคยฉีด เคยฉีดไม่ครบ 3 เข็ม หรือจำประวัติไม่ได้</span></div>
+        </label>
       </div>
     </div>
 
@@ -1418,6 +1387,30 @@ const TRAFFIC_ACCIDENT_FORM_HTML = `
         <div>
           <span class="text-xs text-slate-600 block mb-1">สิ่งที่รับประทานครั้งสุดท้าย:</span>
           <input type="text" id="trafficNpoLastFoodDetail" placeholder="เช่น ข้าวผัดและน้ำเปล่า..." class="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs">
+        </div>
+      </div>
+    </div>
+
+    <!-- 4.5 ส่วนเฉพาะผู้ป่วยสตรี (Hidden by default - C-AP13) -->
+    <div id="trafficFemaleSection" class="hidden pt-2 border-t border-slate-100 space-y-3">
+      <div class="flex items-center space-x-2">
+        <span class="px-2 py-0.5 text-[10px] font-bold bg-pink-100 text-pink-700 rounded-md">เฉพาะสตรี</span>
+        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider">4.5 ประจำเดือนและการตั้งครรภ์ (LMP & Pregnancy)</label>
+      </div>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-pink-50/50 p-3.5 rounded-xl border border-pink-200">
+        <div class="min-w-0">
+          <span class="block text-xs font-semibold text-slate-700 mb-1">วันแรกของประจำเดือนครั้งสุดท้าย (LMP):</span>
+          <input type="text" id="trafficLmpDate" data-universal-date="true" placeholder="วว/ดด/ปปปป เช่น 28/10/2026" class="w-full min-w-0 text-xs sm:text-sm border-slate-300 rounded-lg p-2 focus:ring-medical-500 focus:border-medical-500 bg-white">
+        </div>
+        <div class="min-w-0">
+          <span class="block text-xs font-semibold text-slate-700 mb-1">สถานะการตั้งครรภ์:</span>
+          <select id="trafficPregnancyStatus" class="w-full min-w-0 text-xs sm:text-sm border-slate-300 rounded-lg p-2 focus:ring-medical-500 focus:border-medical-500 bg-white">
+            <option value="not_pregnant">ไม่ได้ตั้งครรภ์ / ประจำเดือนมาปกติ</option>
+            <option value="suspected_or_missed">ขาดประจำเดือน / สงสัยอาจตั้งครรภ์</option>
+            <option value="confirmed_pregnant">ได้รับการยืนยันว่ากำลังตั้งครรภ์</option>
+            <option value="menopause_or_hysterectomy">วัยหมดประจำเดือน / ผ่าตัดมดลูกแล้ว</option>
+            <option value="unknown">ไม่ทราบ</option>
+          </select>
         </div>
       </div>
     </div>
@@ -1445,9 +1438,20 @@ const trafficAccidentModule = {
     clearTrafficPainScore();
   },
 
-  onActivate(patient) {
-    checkAndDisplayTrafficLmp(patient);
+  onTitleChange(arg) {
+    let isFemale = false;
+    if (typeof arg === 'boolean') isFemale = arg;
+    else if (typeof arg === 'object' && arg !== null) {
+      isFemale = typeof arg.isFemale === 'boolean' ? arg.isFemale : (typeof arg.title === 'string' ? /นาง|น\.ส\.|ด\.ญ\.|หญิง|Mrs|Miss|Ms/i.test(arg.title) : isTrafficFemalePatient(arg));
+    } else if (typeof arg === 'string') {
+      isFemale = /นาง|น\.ส\.|ด\.ญ\.|หญิง|Mrs|Miss|Ms/i.test(arg);
+    }
+    toggleTrafficFemaleSection(isFemale);
   },
+
+  onSelectForm() { checkAndDisplayTrafficLmp(); },
+  onActivate(patient) { checkAndDisplayTrafficLmp(patient); },
+  resetForm() { this.clearForm(); },
 
   // --- Form Data Extraction Hook ---
   collectIntake(ctx = {}) {
@@ -1563,11 +1567,11 @@ const trafficAccidentModule = {
       trafficProdromeSigns: getCheckedValues('trafficProdromeSigns'),
       trafficAnticoagulantHx: getRadioValue('trafficAnticoagulantHx'),
 
-      // Female LMP
-      trafficLmpStatus: getRadioValue('trafficLmpStatus'),
-      trafficLmpExactDate: getText('trafficLmpExactDate'),
-      trafficLmpApproximate: document.getElementById('trafficLmpApproximate')?.value || null,
-      trafficLmpGestationalAge: getText('trafficLmpGestationalAge'),
+      // Female LMP & Pregnancy (C-AP13 Male Guard)
+      ...(isTrafficFemalePatient(ctx) ? {
+        trafficLmpDate: getText('trafficLmpDate'),
+        trafficPregnancyStatus: document.getElementById('trafficPregnancyStatus')?.value || 'not_pregnant'
+      } : {}),
 
       // Tetanus & NPO
       trafficTetanusHx: getRadioValue('trafficTetanusHx'),
@@ -1670,15 +1674,22 @@ const trafficAccidentModule = {
     setCheckedValues('trafficProdromeSigns', patient.trafficProdromeSigns);
     setRadioValue('trafficAnticoagulantHx', patient.trafficAnticoagulantHx);
 
-    setRadioValue('trafficLmpStatus', patient.trafficLmpStatus);
-    setText('trafficLmpExactDate', patient.trafficLmpExactDate);
-    if (patient.trafficLmpApproximate) {
-      const apEl = document.getElementById('trafficLmpApproximate');
-      if (apEl) apEl.value = patient.trafficLmpApproximate;
+    const isFem = isTrafficFemalePatient(patient);
+    const femSec = document.getElementById('trafficFemaleSection');
+    if (femSec) {
+      femSec.classList.toggle('hidden', !isFem);
+      if (isFem) {
+        setText('trafficLmpDate', patient.trafficLmpDate || patient.trafficLmpExactDate || '');
+        const pregEl = document.getElementById('trafficPregnancyStatus');
+        if (pregEl) {
+          const legacyStatusMap = { missed_period: 'suspected_or_missed', pregnant: 'confirmed_pregnant', menopause_hysterectomy: 'menopause_or_hysterectomy' };
+          pregEl.value = patient.trafficPregnancyStatus || legacyStatusMap[patient.trafficLmpStatus] || 'not_pregnant';
+        }
+      }
     }
-    setText('trafficLmpGestationalAge', patient.trafficLmpGestationalAge);
 
-    setRadioValue('trafficTetanusHx', patient.trafficTetanusHx);
+    const legacyTetanusMap = { over_10_years_or_never: 'unknown_or_never', within_5y: 'within_5_years', '5_to_10y': '5_to_10_years', over_10y: 'over_10_years' };
+    setRadioValue('trafficTetanusHx', legacyTetanusMap[patient.trafficTetanusHx] || patient.trafficTetanusHx);
     setText('trafficNpoExactTime', patient.trafficNpoExactTime);
     setRadioValue('trafficNpoDuration', patient.trafficNpoDuration);
     setText('trafficNpoLastFoodDetail', patient.trafficNpoLastFoodDetail);
@@ -1689,7 +1700,6 @@ const trafficAccidentModule = {
     handleTrafficCarCollisionChange();
     handleTrafficPedVehicleChange();
     handleTrafficOtherVehicleCollisionChange();
-    handleTrafficLmpStatusChange();
     checkAndDisplayTrafficLmp(patient);
 
     toggleTrafficGroup('trafficHeadFaceSubGroup', patient.trafficParentHeadFace);
@@ -1722,15 +1732,14 @@ const trafficAccidentModule = {
     sec.querySelectorAll('input[type="text"]').forEach(ti => { ti.value = ''; });
     sec.querySelectorAll('input[type="number"]').forEach(ni => { ni.value = ''; });
 
-    const durUnit = document.getElementById('trafficDurationUnit');
-    if (durUnit) durUnit.value = 'minutes';
+    sec.querySelectorAll('select').forEach(el => { el.selectedIndex = 0; });
 
     const hiddenContainers = [
       'trafficBranchMotorcycle', 'trafficMotoOpponentContainer', 'trafficBranchCarTruck', 'trafficCarOpponentContainer',
       'trafficBranchPedestrian', 'trafficPedOtherContainer', 'trafficBranchBicycleScooter', 'trafficBranchOtherVehicle',
       'trafficOtherOpponentContainer', 'trafficHeadFaceSubGroup', 'trafficNeckSubGroup', 'trafficChestSubGroup',
       'trafficAbdSubGroup', 'trafficUpperExtSubGroup', 'trafficLowerExtSubGroup', 'trafficArmFingersDetail', 'trafficLegToesDetail',
-      'trafficOtherSubGroup', 'trafficLmpWrapper', 'trafficLmpExactDateContainer', 'trafficLmpApproxContainer', 'trafficLmpPregnantContainer',
+      'trafficOtherSubGroup', 'trafficFemaleSection',
       ...['HeadScalp', 'HeadFace', 'HeadEye', 'HeadEar', 'HeadNoseMouth', 'NeckBack', 'NeckFront', 'NeckSide', 'ChestWall', 'ChestClavicle', 'ChestUpperBack', 'AbdWall', 'AbdFlank', 'AbdLowerBack', 'AbdPelvis', 'AbdGenitalia', 'ArmShoulder', 'ArmElbowForearm', 'ArmWristHand', 'LegThigh', 'LegKneeShin', 'LegAnkleFoot'].map(k => 'traffic' + k + 'Detail')
     ];
     hiddenContainers.forEach(id => {
@@ -1751,8 +1760,30 @@ const trafficAccidentModule = {
     return evaluateTrafficRedFlags(patient);
   },
 
-  generateCds(patient) {
-    return evaluateTrafficRedFlags(patient);
+  generateCds(patient, ctx) {
+    const rfs = evaluateTrafficRedFlags(patient);
+    if (!ctx) return rfs;
+    if (!Array.isArray(ctx.ddxList)) ctx.ddxList = [];
+    if (!Array.isArray(ctx.workupList)) ctx.workupList = [];
+    if (!Array.isArray(ctx.managementList)) ctx.managementList = [];
+    const p = patient || {};
+    ctx.ddxList.push('Polytrauma / Blunt or penetrating traffic injury (ATLS Survey)');
+    if (p.trafficParentHeadFace || (p.trafficHeadSigns || []).length) ctx.ddxList.push('Traumatic Brain Injury (TBI) / Maxillofacial fracture');
+    if (p.trafficParentNeck || (p.trafficNeckSigns || []).length) ctx.ddxList.push('Cervical spine / Airway injury');
+    if (p.trafficParentChest || (p.trafficChestSigns || []).length) ctx.ddxList.push('Thoracic trauma (Pneumothorax / Hemothorax / Rib fracture)');
+    if (p.trafficParentAbdomen || (p.trafficAbdSigns || []).length) ctx.ddxList.push('Intra-abdominal viscus injury / Pelvic fracture');
+    if (p.trafficParentUpperExtremity || p.trafficParentLowerExtremity) ctx.ddxList.push('Extremity fracture / Neurovascular injury');
+    ctx.workupList.push('Primary Survey (ABCDE), vital signs & continuous SpO2/EKG monitoring, DTX');
+    ctx.workupList.push('Bedside eFAST, CBC, Electrolyte, BUN/Cr, Coagulogram, Group & Crossmatch');
+    if (p.trafficParentHeadFace || (p.trafficHeadSigns || []).length) ctx.workupList.push('CT Brain non-contrast / C-spine imaging');
+    if (p.trafficParentChest || p.trafficParentAbdomen) ctx.workupList.push('Chest X-ray, Pelvic AP X-ray, UA / CT Abdomen');
+    if (p.trafficParentUpperExtremity || p.trafficParentLowerExtremity) ctx.workupList.push('X-ray injured extremities & neurovascular check');
+    if (isTrafficFemalePatient(p)) ctx.workupList.push('Urine Pregnancy Test (UPT) prior to imaging');
+    ctx.managementList.push('C-Spine immobilization (Hard C-Collar) if indicated until cleared');
+    ctx.managementList.push('IV access & crystalloid resuscitation per hemodynamic status');
+    ctx.managementList.push('Wound hemostasis, sterile dressing, splinting & pain control');
+    ctx.managementList.push('Tetanus prophylaxis (Td/Tdap +/- TIG) per vaccination history');
+    return rfs;
   },
 
   updateOutputs(patient) {
@@ -1796,7 +1827,7 @@ const trafficAccidentModule = {
       trafficSystemicSigns: ['palpitation_cold_sweat_pallor', 'presyncope_dizziness'],
       painScore: 9,
       trafficProdromeSigns: ['prodrome_none'], trafficAnticoagulantHx: 'no_anticoagulant',
-      trafficTetanusHx: 'over_10_years_or_never',
+      trafficTetanusHx: 'unknown_or_never',
       trafficNpoExactTime: '17:00', trafficNpoDuration: 'less_than_2_hours', trafficNpoLastFoodDetail: 'ข้าวราดแกงและน้ำเปล่า'
     },
 
@@ -1829,7 +1860,7 @@ const trafficAccidentModule = {
       trafficSystemicSigns: ['no_systemic_signs'],
       painScore: 7,
       trafficProdromeSigns: ['prodrome_drowsy_sleep'], trafficAnticoagulantHx: 'no_anticoagulant',
-      trafficLmpStatus: 'exact_date', trafficLmpExactDate: '25/10/2026',
+      trafficLmpDate: '25/10/2026', trafficPregnancyStatus: 'not_pregnant',
       trafficTetanusHx: '5_to_10_years',
       trafficNpoExactTime: '13:00', trafficNpoDuration: '2_to_6_hours', trafficNpoLastFoodDetail: 'กาแฟเย็นและขนมปัง'
     },
@@ -1887,7 +1918,7 @@ const trafficAccidentModule = {
       trafficSystemicSigns: ['no_systemic_signs'],
       painScore: 3,
       trafficProdromeSigns: ['prodrome_none'], trafficAnticoagulantHx: 'no_anticoagulant',
-      trafficLmpStatus: 'approximate', trafficLmpApproximate: '2 สัปดาห์ก่อน',
+      trafficLmpDate: '28/10/2026', trafficPregnancyStatus: 'not_pregnant',
       trafficTetanusHx: 'within_5_years',
       trafficNpoExactTime: '12:30', trafficNpoDuration: 'over_6_hours', trafficNpoLastFoodDetail: 'ข้าวผัดกะเพราและน้ำดื่ม'
     }
