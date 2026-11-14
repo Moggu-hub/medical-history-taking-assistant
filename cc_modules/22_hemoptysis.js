@@ -839,20 +839,20 @@ const hemoptysisModule = {
                 1.4 จำนวนครั้งที่ไอเป็นเลือด
               </label>
               <div class="space-y-1.5 text-xs">
-                <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-                  <input type="radio" name="hemoEpisodeCount" value="episodes_single" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4">
+                <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+                  <input type="radio" name="hemoEpisodeCount" value="episodes_single" class="text-medical-600 focus:ring-medical-500 h-4 w-4">
                   <span class="text-xs text-slate-800">เป็นเพียงครั้งเดียวแล้วหยุด</span>
                 </label>
-                <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-                  <input type="radio" name="hemoEpisodeCount" value="episodes_two_four" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4">
+                <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+                  <input type="radio" name="hemoEpisodeCount" value="episodes_two_four" class="text-medical-600 focus:ring-medical-500 h-4 w-4">
                   <span class="text-xs text-slate-800">เป็น 2 - 4 ครั้ง</span>
                 </label>
-                <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-                  <input type="radio" name="hemoEpisodeCount" value="episodes_over_5" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4">
+                <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+                  <input type="radio" name="hemoEpisodeCount" value="episodes_over_5" class="text-medical-600 focus:ring-medical-500 h-4 w-4">
                   <span class="text-xs text-slate-800">เป็นมากกว่า 5 ครั้งขึ้นไป</span>
                 </label>
-                <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-                  <input type="radio" name="hemoEpisodeCount" value="episodes_frequent_continuous" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4">
+                <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+                  <input type="radio" name="hemoEpisodeCount" value="episodes_frequent_continuous" class="text-medical-600 focus:ring-medical-500 h-4 w-4">
                   <span class="text-xs font-semibold text-slate-800">ไอเป็นเลือดแทบทุกครั้ง / ต่อเนื่องตลอด</span>
                 </label>
               </div>
@@ -863,16 +863,16 @@ const hemoptysisModule = {
                 1.5 สถานะการมีเลือดออกในปัจจุบัน
               </label>
               <div class="space-y-1.5 text-xs">
-                <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-                  <input type="radio" name="hemoActiveStatus" value="status_active_bleeding" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4">
+                <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+                  <input type="radio" name="hemoActiveStatus" value="status_active_bleeding" class="text-medical-600 focus:ring-medical-500 h-4 w-4">
                   <span class="text-xs font-semibold text-slate-800">ยังมีอาการไอเป็นเลือดสดอยู่เรื่อยๆ</span>
                 </label>
-                <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-                  <input type="radio" name="hemoActiveStatus" value="status_streaks_only" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4">
+                <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+                  <input type="radio" name="hemoActiveStatus" value="status_streaks_only" class="text-medical-600 focus:ring-medical-500 h-4 w-4">
                   <span class="text-xs text-slate-800">เลือดหยุดแล้ว เหลือเพียงเสมหะปนเลือดจางๆ</span>
                 </label>
-                <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-                  <input type="radio" name="hemoActiveStatus" value="status_stopped_completely" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4">
+                <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+                  <input type="radio" name="hemoActiveStatus" value="status_stopped_completely" class="text-medical-600 focus:ring-medical-500 h-4 w-4">
                   <span class="text-xs text-slate-800">เลือดหยุดไหลสนิทแล้ว</span>
                 </label>
               </div>
@@ -940,20 +940,20 @@ const hemoptysisModule = {
               2.2 ลักษณะเสมหะเดิม (ก่อนมีเลือดปน)
             </label>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-              <label class="selectable-card flex items-center p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer">
-                <input type="radio" name="hemoPriorSputum" value="sputum_none_dry_cough" class="text-medical-600 mr-2">
+              <label class="selectable-card gap-2.5 flex items-center p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer">
+                <input type="radio" name="hemoPriorSputum" value="sputum_none_dry_cough" class="text-medical-600 ">
                 <span>ไอแห้งๆ ไม่มีเสมหะ</span>
               </label>
-              <label class="selectable-card flex items-center p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer">
-                <input type="radio" name="hemoPriorSputum" value="sputum_normal_white_yellow" class="text-medical-600 mr-2">
+              <label class="selectable-card gap-2.5 flex items-center p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer">
+                <input type="radio" name="hemoPriorSputum" value="sputum_normal_white_yellow" class="text-medical-600 ">
                 <span>เสมหะสีขาวใส หรือสีเหลืองปกติ</span>
               </label>
-              <label class="selectable-card flex items-center p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer">
-                <input type="radio" name="hemoPriorSputum" value="sputum_foul_abscess_green" class="text-medical-600 mr-2">
+              <label class="selectable-card gap-2.5 flex items-center p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer">
+                <input type="radio" name="hemoPriorSputum" value="sputum_foul_abscess_green" class="text-medical-600 ">
                 <span>เสมหะสีเขียวข้น หรือมีกลิ่นเหม็นเน่ารุนแรง</span>
               </label>
-              <label class="selectable-card flex items-center p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer">
-                <input type="radio" name="hemoPriorSputum" value="sputum_pink_frothy_edema" class="text-medical-600 mr-2">
+              <label class="selectable-card gap-2.5 flex items-center p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer">
+                <input type="radio" name="hemoPriorSputum" value="sputum_pink_frothy_edema" class="text-medical-600 ">
                 <span>เสมหะเป็นฟองสีชมพูจางๆ</span>
               </label>
             </div>
@@ -1012,22 +1012,22 @@ const hemoptysisModule = {
               <div>
                 <span class="text-xs font-bold text-slate-800 block mb-1.5">ลักษณะอาการเจ็บหน้าอก (เลือกได้หลายข้อ):</span>
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
-                  <label class="selectable-card flex items-start p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer">
-                    <input type="checkbox" name="hemoChestPainType" value="pleuritic_sharp" class="text-medical-600 mt-0.5 mr-2 rounded">
+                  <label class="selectable-card gap-2.5 flex items-start p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer">
+                    <input type="checkbox" name="hemoChestPainType" value="pleuritic_sharp" class="text-medical-600 mt-0.5 rounded">
                     <div>
                       <span class="font-semibold block text-slate-800">เจ็บแปล๊บเวลาหายใจลึก</span>
                       <span class="text-[11px] text-slate-500">หรือเจ็บแปล๊บเวลาไอ</span>
                     </div>
                   </label>
-                  <label class="selectable-card flex items-start p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer">
-                    <input type="checkbox" name="hemoChestPainType" value="ischemic_pressure" class="text-medical-600 mt-0.5 mr-2 rounded">
+                  <label class="selectable-card gap-2.5 flex items-start p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer">
+                    <input type="checkbox" name="hemoChestPainType" value="ischemic_pressure" class="text-medical-600 mt-0.5 rounded">
                     <div>
                       <span class="font-semibold block text-slate-800">เจ็บแน่นอึดอัดกลางอก</span>
                       <span class="text-[11px] text-slate-500">คล้ายมีของหนักทับ</span>
                     </div>
                   </label>
-                  <label class="selectable-card flex items-start p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer">
-                    <input type="checkbox" name="hemoChestPainType" value="tearing_ripping_back" class="text-medical-600 mt-0.5 mr-2 rounded">
+                  <label class="selectable-card gap-2.5 flex items-start p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer">
+                    <input type="checkbox" name="hemoChestPainType" value="tearing_ripping_back" class="text-medical-600 mt-0.5 rounded">
                     <div>
                       <span class="font-semibold block text-slate-800">เจ็บเหมือนฉีกขาด</span>
                       <span class="text-[11px] text-slate-500">ร้าวทะลุหลังรุนแรง</span>
@@ -1208,28 +1208,28 @@ const hemoptysisModule = {
               4.1 ประวัติโรคระบบทางเดินหายใจและหัวใจเดิม (เลือกได้หลายข้อ)
             </label>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-              <label class="selectable-card flex items-center p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer">
-                <input type="checkbox" name="hemoPastPulmonary" value="tb_prior_or_contact" class="text-medical-600 mr-2 rounded">
+              <label class="selectable-card gap-2.5 flex items-center p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer">
+                <input type="checkbox" name="hemoPastPulmonary" value="tb_prior_or_contact" class="text-medical-600 rounded">
                 <span>เคยป่วยเป็นวัณโรคปอด หรือมีคนในบ้านเป็นวัณโรค</span>
               </label>
-              <label class="selectable-card flex items-center p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer">
-                <input type="checkbox" name="hemoPastPulmonary" value="past_bronchiectasis" class="text-medical-600 mr-2 rounded">
+              <label class="selectable-card gap-2.5 flex items-center p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer">
+                <input type="checkbox" name="hemoPastPulmonary" value="past_bronchiectasis" class="text-medical-600 rounded">
                 <span>โรคหลอดลมโป่งพอง (Bronchiectasis)</span>
               </label>
-              <label class="selectable-card flex items-center p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer">
-                <input type="checkbox" name="hemoPastPulmonary" value="past_copd_asthma" class="text-medical-600 mr-2 rounded">
+              <label class="selectable-card gap-2.5 flex items-center p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer">
+                <input type="checkbox" name="hemoPastPulmonary" value="past_copd_asthma" class="text-medical-600 rounded">
                 <span>โรคถุงลมโป่งพอง (COPD) หรือหอบหืด</span>
               </label>
-              <label class="selectable-card flex items-center p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer">
-                <input type="checkbox" name="hemoPastPulmonary" value="past_lung_cancer" class="text-medical-600 mr-2 rounded">
+              <label class="selectable-card gap-2.5 flex items-center p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer">
+                <input type="checkbox" name="hemoPastPulmonary" value="past_lung_cancer" class="text-medical-600 rounded">
                 <span>โรคมะเร็งปอด หรือมะเร็งอวัยวะอื่น</span>
               </label>
-              <label class="selectable-card flex items-center p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer">
-                <input type="checkbox" name="hemoPastPulmonary" value="past_heart_failure_valvular" class="text-medical-600 mr-2 rounded">
+              <label class="selectable-card gap-2.5 flex items-center p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer">
+                <input type="checkbox" name="hemoPastPulmonary" value="past_heart_failure_valvular" class="text-medical-600 rounded">
                 <span>โรคหัวใจ (ลิ้นหัวใจตีบ หรือหัวใจล้มเหลว)</span>
               </label>
-              <label class="selectable-card flex items-center p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer">
-                <input type="checkbox" name="hemoPastPulmonary" value="pulm_none" class="text-medical-600 mr-2 rounded">
+              <label class="selectable-card gap-2.5 flex items-center p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer">
+                <input type="checkbox" name="hemoPastPulmonary" value="pulm_none" class="text-medical-600 rounded">
                 <span>ปฏิเสธโรคประจำตัวทางปอดและหัวใจ</span>
               </label>
             </div>
@@ -1241,19 +1241,19 @@ const hemoptysisModule = {
               4.2 ประวัติการสูบบุหรี่
             </label>
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
-              <label class="selectable-card flex items-center p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer"
+              <label class="selectable-card gap-2.5 flex items-center p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer"
                 onclick="toggleHemoSmokingSub(true)">
-                <input type="radio" name="hemoSmokingStatus" value="smoking_regular" class="text-medical-600 mr-2">
+                <input type="radio" name="hemoSmokingStatus" value="smoking_regular" class="text-medical-600 ">
                 <span>สูบบุหรี่เป็นประจำ</span>
               </label>
-              <label class="selectable-card flex items-center p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer"
+              <label class="selectable-card gap-2.5 flex items-center p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer"
                 onclick="toggleHemoSmokingSub(false)">
-                <input type="radio" name="hemoSmokingStatus" value="smoking_quit" class="text-medical-600 mr-2">
+                <input type="radio" name="hemoSmokingStatus" value="smoking_quit" class="text-medical-600 ">
                 <span>เคยสูบแต่เลิกแล้ว</span>
               </label>
-              <label class="selectable-card flex items-center p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer"
+              <label class="selectable-card gap-2.5 flex items-center p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer"
                 onclick="toggleHemoSmokingSub(false)">
-                <input type="radio" name="hemoSmokingStatus" value="smoking_never" class="text-medical-600 mr-2">
+                <input type="radio" name="hemoSmokingStatus" value="smoking_never" class="text-medical-600 ">
                 <span>ไม่เคยสูบบุหรี่</span>
               </label>
             </div>
@@ -1281,25 +1281,38 @@ const hemoptysisModule = {
               4.3 การรับประทานยาต้านการแข็งตัวของเลือด / ยาละลายลิ่มเลือด (เลือกได้หลายข้อ)
             </label>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-              <label class="selectable-card flex items-center p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer">
-                <input type="checkbox" name="hemoBleedingMeds" value="med_anticoagulant" class="text-medical-600 mr-2 rounded">
+              <label class="selectable-card gap-2.5 flex items-center p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer">
+                <input type="checkbox" name="hemoBleedingMeds" value="med_anticoagulant" class="text-medical-600 rounded">
                 <span>ยาต้านการแข็งตัวของเลือด (Warfarin, Eliquis, Xarelto, Pradaxa)</span>
               </label>
-              <label class="selectable-card flex items-center p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer">
-                <input type="checkbox" name="hemoBleedingMeds" value="med_antiplatelet" class="text-medical-600 mr-2 rounded">
+              <label class="selectable-card gap-2.5 flex items-center p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer">
+                <input type="checkbox" name="hemoBleedingMeds" value="med_antiplatelet" class="text-medical-600 rounded">
                 <span>ยาต้านเกล็ดเลือด (Aspirin, Clopidogrel / Plavix)</span>
               </label>
-              <label class="selectable-card flex items-center p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer">
-                <input type="checkbox" name="hemoBleedingMeds" value="med_unknown_prescribed" class="text-medical-600 mr-2 rounded">
+              <label class="selectable-card gap-2.5 flex items-center p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer">
+                <input type="checkbox" name="hemoBleedingMeds" value="med_unknown_prescribed" class="text-medical-600 rounded">
                 <span>มียาประจำตัว แต่ไม่แน่ใจ / ไม่ทราบชื่อยาที่ใช้</span>
               </label>
-              <label class="selectable-card flex items-center p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer">
-                <input type="checkbox" name="hemoBleedingMeds" value="meds_none" class="text-medical-600 mr-2 rounded">
+              <label class="selectable-card gap-2.5 flex items-center p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer">
+                <input type="checkbox" name="hemoBleedingMeds" value="meds_none" class="text-medical-600 rounded">
                 <span>ไม่ได้รับประทานยากลุ่มนี้</span>
               </label>
             </div>
           </div>
         </div>
+      </div>
+
+      <!-- อาการอื่นๆ เป็นช่องกรอกอิสระ -->
+      <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+        <div class="flex items-center space-x-3 mb-3 pb-2 border-b border-slate-100">
+          <div class="bg-slate-100 text-slate-600 p-2 rounded-xl"><i data-lucide="message-square-plus" class="w-5 h-5"></i></div>
+          <div>
+            <h2 class="text-base font-bold text-slate-800">อาการอื่นๆ ที่ต้องการแจ้งเพิ่มเติม</h2>
+            <p class="text-xs text-slate-500">ระบุอาการอื่นๆ ที่ท่านมีหรือต้องการบอกแพทย์เพิ่มเติม (ถ้ามี)</p>
+          </div>
+        </div>
+        <textarea id="hemoptysis_other_free" rows="2" placeholder="พิมพ์ระบุอาการอื่นๆ ที่ท่านมีหรือต้องการบอกแพทย์เพิ่มเติม (ถ้ามี)..."
+          class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-medical-500 focus:bg-white"></textarea>
       </div>
 
     </div>
@@ -1340,7 +1353,7 @@ const hemoptysisModule = {
     const hemoSmokingYears = parseInt(document.getElementById('hemoSmokingYears')?.value, 10) || null;
     const hemoSmokingPacks = parseFloat(document.getElementById('hemoSmokingPacks')?.value) || null;
     const hemoBleedingMeds = getChecks('hemoBleedingMeds');
-    const otherSymptomsFree = document.getElementById('sx_other_free')?.value?.trim() || ctx.otherSymptomsFree || '';
+    const otherSymptomsFree = document.getElementById('hemoptysis_other_free')?.value?.trim() || ctx.otherSymptomsFree || '';
 
     const rec = {
       id: ctx.recordId || ctx.id,
@@ -1457,10 +1470,12 @@ const hemoptysisModule = {
     setVal('hemoSmokingPacks', patient.hemoSmokingPacks);
 
     setChecks('hemoBleedingMeds', patient.hemoBleedingMeds);
+    const otherFreeEl = document.getElementById('hemoptysis_other_free');
+    if (otherFreeEl) otherFreeEl.value = patient.otherSymptomsFree || '';
   },
 
   clearForm: function() {
-    ['hemoDurationVal', 'hemoPreCoughDurVal', 'hemoSmokingYears', 'hemoSmokingPacks'].forEach(id => {
+    ['hemoDurationVal', 'hemoPreCoughDurVal', 'hemoSmokingYears', 'hemoSmokingPacks', 'hemoptysis_other_free'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.value = '';
     });

@@ -971,6 +971,19 @@ const epistaxisModule = {
         </div>
       </div>
 
+      <!-- อาการอื่นๆ เป็นช่องกรอกอิสระ -->
+      <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+        <div class="flex items-center space-x-3 mb-3 pb-2 border-b border-slate-100">
+          <div class="bg-slate-100 text-slate-600 p-2 rounded-xl"><i data-lucide="message-square-plus" class="w-5 h-5"></i></div>
+          <div>
+            <h2 class="text-base font-bold text-slate-800">อาการอื่นๆ ที่ต้องการแจ้งเพิ่มเติม</h2>
+            <p class="text-xs text-slate-500">ระบุอาการอื่นๆ ที่ท่านมีหรือต้องการบอกแพทย์เพิ่มเติม (ถ้ามี)</p>
+          </div>
+        </div>
+        <textarea id="epistaxis_other_free" rows="2" placeholder="พิมพ์ระบุอาการอื่นๆ ที่ท่านมีหรือต้องการบอกแพทย์เพิ่มเติม (ถ้ามี)..."
+          class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-medical-500 focus:bg-white"></textarea>
+      </div>
+
     </div>
   `,
 
@@ -1007,7 +1020,7 @@ const epistaxisModule = {
     const triggers = getChecks('epistaxisTriggers');
     const meds = getChecks('epistaxisMeds');
     const underlying = getChecks('epistaxisUnderlying');
-    const otherSymptomsFree = document.getElementById('sx_other_free')?.value?.trim() || ctx.otherSymptomsFree || '';
+    const otherSymptomsFree = document.getElementById('epistaxis_other_free')?.value?.trim() || ctx.otherSymptomsFree || '';
 
     const rec = {
       id: ctx.recordId || ctx.id,
@@ -1120,6 +1133,8 @@ const epistaxisModule = {
     setChecks('epistaxisTriggers', data.epistaxisTriggers);
     setChecks('epistaxisMeds', data.epistaxisMeds);
     setChecks('epistaxisUnderlying', data.epistaxisUnderlying);
+    const otherFreeEl = document.getElementById('epistaxis_other_free');
+    if (otherFreeEl) otherFreeEl.value = data.otherSymptomsFree || '';
   },
 
   isRedFlag: function(patient) {

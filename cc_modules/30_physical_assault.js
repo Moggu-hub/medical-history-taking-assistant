@@ -9,6 +9,65 @@
 // --- Module-scoped State & Helpers ---
 let assaultPainScoreTouched = false;
 
+function isAssaultFemalePatient(p) {
+  if (!p) return false;
+  if (p.gender === 'หญิง' || p.gender === 'female') return true;
+  if (p.gender === 'ชาย' || p.gender === 'male') return false;
+  const label = `${p.patientTitle || p.title || ''} ${p.name || p.patientName || ''}`;
+  return /นาง|น\.ส\.|ด\.ญ\.|\(หญิง\)|Mrs|Miss|Ms/i.test(label);
+}
+
+function isAssaultFemaleCtx(ctx = {}) {
+  if (ctx.gender === 'หญิง' || ctx.gender === 'female') return true;
+  if (ctx.gender === 'ชาย' || ctx.gender === 'male') return false;
+  if (ctx.patientTitle || ctx.title || ctx.name || ctx.patientName) return isAssaultFemalePatient(ctx);
+  const femSec = typeof document !== 'undefined' ? document.getElementById('assaultFemaleSection') : null;
+  if (femSec && !femSec.classList.contains('hidden')) return true;
+  if (typeof document === 'undefined') return false;
+  const title = document.getElementById('patientTitleSelect')?.value || '';
+  const name = document.getElementById('patientNameInput')?.value || '';
+  const gender = document.getElementById('triageGenderSelect')?.value || '';
+  return isAssaultFemalePatient({ gender, patientTitle: title, name });
+}
+
+function toggleAssaultFemaleSection(isFemale) {
+  const femSec = document.getElementById('assaultFemaleSection');
+  if (!femSec) return;
+  femSec.classList.toggle('hidden', !isFemale);
+  if (!isFemale) {
+    const lmpEl = document.getElementById('assaultLmpDate');
+    const pregEl = document.getElementById('assaultPregnancyStatus');
+    if (lmpEl) lmpEl.value = '';
+    if (pregEl) pregEl.selectedIndex = 0;
+  }
+}
+
+function checkAndDisplayAssaultLmp(patient) {
+  if (patient && (patient.gender || patient.name || patient.patientName || patient.patientTitle || patient.title)) {
+    toggleAssaultFemaleSection(isAssaultFemalePatient(patient));
+    return;
+  }
+  const title = document.getElementById('patientTitleSelect')?.value || '';
+  const name = document.getElementById('patientNameInput')?.value || '';
+  const gender = document.getElementById('triageGenderSelect')?.value || '';
+  toggleAssaultFemaleSection(isAssaultFemalePatient({ gender, patientTitle: title, name }));
+}
+
+function renderAssaultPart(id, label, hasCenter = false) {
+  const sides = [['left', 'ซ้าย'], ['right', 'ขวา']];
+  if (hasCenter) sides.push(['center', 'ตรงกลาง']);
+  const sHtml = sides.map(([v, th]) => `<label class="flex items-center"><input type="checkbox" name="${id}Sides" value="${v}" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">${th}</span></label>`).join('');
+  const iHtml = [['wound', 'มีแผล'], ['pain_swelling', 'ปวด/บวม'], ['deformity', 'ผิดรูป']].map(([v, th]) => `<label class="flex items-center"><input type="checkbox" name="${id}Injuries" value="${v}" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">${th}</span></label>`).join('');
+  return `<div class="flex flex-col sm:flex-row sm:items-center justify-between text-xs py-1 border-b border-slate-100 gap-2"><label class="flex items-center"><input type="checkbox" id="${id}" name="${id}" onchange="toggleAssaultGroup('${id}SidesContainer', this.checked)" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-1.5 text-slate-800">${label}</span></label><div id="${id}SidesContainer" class="hidden flex flex-wrap items-center gap-2 bg-slate-50 border border-slate-200 px-2 py-1 rounded-lg text-xs"><span class="text-slate-500 font-medium">ด้าน:</span>${sHtml}<span class="text-slate-300 mx-1.5">|</span><span class="text-slate-500 font-medium">การบาดเจ็บ:</span>${iHtml}</div></div>`;
+}
+
+function renderAssaultDigits(id, label) {
+  const d = [['thumb', 'โป้ง'], ['index', 'ชี้'], ['middle', 'กลาง'], ['ring', 'นาง'], ['little', 'ก้อย']];
+  const row = (side, sl) => `<div class="flex flex-wrap items-center gap-2"><span class="font-medium text-slate-600 w-10">${sl}:</span>${d.map(([k, th]) => `<label class="flex items-center"><input type="checkbox" name="${id}${side}Digits" value="${k}" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">${th}</span></label>`).join('')}</div>`;
+  const inj = [['wound', 'มีแผล'], ['pain_swelling', 'ปวด/บวม'], ['deformity', 'ผิดรูป']].map(([v, th]) => `<label class="flex items-center"><input type="checkbox" name="${id}Injuries" value="${v}" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">${th}</span></label>`).join('');
+  return `<div class="space-y-1 py-1"><label class="flex items-center text-xs"><input type="checkbox" id="${id}" name="${id}" onchange="toggleAssaultGroup('${id}SidesContainer', this.checked)" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-1.5 text-slate-800">${label}</span></label><div id="${id}SidesContainer" class="hidden ml-5 p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs space-y-1.5">${row('Left', 'ซ้าย')}${row('Right', 'ขวา')}<div class="flex flex-wrap items-center gap-2 pt-1 border-t border-slate-200"><span class="font-medium text-slate-600">การบาดเจ็บ:</span>${inj}</div></div></div>`;
+}
+
 function toggleAssaultGroup(subId, show) {
   const el = document.getElementById(subId);
   if (!el) return;
@@ -280,75 +339,74 @@ function formatAssaultMechanism(patient) {
 
 function formatAssaultAnatomy(patient) {
   const parts = [];
-  const sideLabel = (arr) => {
-    if (!Array.isArray(arr) || arr.length === 0) return '';
-    const thMap = { left: 'ซ้าย', right: 'ขวา', center: 'ตรงกลาง' };
-    return ` [${arr.map(s => thMap[s] || s).join(', ')}]`;
-  };
+  const thMap = { left: 'ซ้าย', right: 'ขวา', center: 'ตรงกลาง' };
+  const injMap = { wound: 'มีแผล', pain_swelling: 'ปวด/บวม', deformity: 'ผิดรูป' };
+  const sideLabel = (arr) => (!Array.isArray(arr) || arr.length === 0) ? '' : ` [${arr.map(x => thMap[x] || x).join(', ')}]`;
+  const injLabel = (arr) => (!Array.isArray(arr) || arr.length === 0) ? '' : ` (${arr.map(x => injMap[x] || x).join(', ')})`;
+  const partLabel = (sd, inj) => `${sideLabel(sd)}${injLabel(inj)}`;
   const digitMap = { thumb: 'นิ้วโป้ง', index: 'นิ้วชี้', middle: 'นิ้วกลาง', ring: 'นิ้วนาง', little: 'นิ้วก้อย' };
-  const fmtDigitsBySide = (leftD, rightD) => {
+  const fmtDigitsBySide = (leftD, rightD, inj) => {
     const dParts = [];
     if (Array.isArray(leftD) && leftD.length > 0) dParts.push(`ซ้าย: ${leftD.map(x => digitMap[x] || x).join(', ')}`);
     if (Array.isArray(rightD) && rightD.length > 0) dParts.push(`ขวา: ${rightD.map(x => digitMap[x] || x).join(', ')}`);
-    return dParts.length > 0 ? ` [${dParts.join('; ')}]` : '';
+    const base = dParts.length > 0 ? ` [${dParts.join('; ')}]` : '';
+    return `${base}${injLabel(inj)}`;
   };
 
   if (patient.assaultParentHeadFace) {
     const subs = [];
-    if (patient.assaultHeadScalp) subs.push(`หนังศีรษะ/ท้ายทอย${sideLabel(patient.assaultHeadScalpSides)}`);
-    if (patient.assaultHeadFace) subs.push(`ใบหน้า/โหนกแก้ม/คาง${sideLabel(patient.assaultHeadFaceSides)}`);
-    if (patient.assaultHeadEye) subs.push(`ดวงตา/เบ้าตา${sideLabel(patient.assaultHeadEyeSides)}`);
-    if (patient.assaultHeadEar) subs.push(`ใบหู${sideLabel(patient.assaultHeadEarSides)}`);
-    if (patient.assaultHeadNoseMouth) subs.push(`จมูก/ปาก/ฟัน${sideLabel(patient.assaultHeadNoseMouthSides)}`);
+    if (patient.assaultHeadScalp) subs.push(`หนังศีรษะ/ท้ายทอย${partLabel(patient.assaultHeadScalpSides, patient.assaultHeadScalpInjuries)}`);
+    if (patient.assaultHeadFace) subs.push(`ใบหน้า/โหนกแก้ม/คาง${partLabel(patient.assaultHeadFaceSides, patient.assaultHeadFaceInjuries)}`);
+    if (patient.assaultHeadEye) subs.push(`ดวงตา/เบ้าตา${partLabel(patient.assaultHeadEyeSides, patient.assaultHeadEyeInjuries)}`);
+    if (patient.assaultHeadEar) subs.push(`ใบหู${partLabel(patient.assaultHeadEarSides, patient.assaultHeadEarInjuries)}`);
+    if (patient.assaultHeadNoseMouth) subs.push(`จมูก/ปาก/ฟัน${partLabel(patient.assaultHeadNoseMouthSides, patient.assaultHeadNoseMouthInjuries)}`);
     parts.push(`ศีรษะ/ใบหน้า: ${subs.length > 0 ? subs.join(', ') : 'มีบาดเจ็บ'}`);
   }
 
   if (patient.assaultParentNeck) {
     const subs = [];
-    if (patient.assaultNeckFront) subs.push(`คอด้านหน้า${sideLabel(patient.assaultNeckFrontSides)}`);
-    if (patient.assaultNeckSide) subs.push(`คอด้านข้าง${sideLabel(patient.assaultNeckSideSides)}`);
-    if (patient.assaultNeckBack) subs.push(`ต้นคอด้านหลัง${sideLabel(patient.assaultNeckBackSides)}`);
+    if (patient.assaultNeckFront) subs.push(`คอด้านหน้า${partLabel(patient.assaultNeckFrontSides, patient.assaultNeckFrontInjuries)}`);
+    if (patient.assaultNeckSide) subs.push(`คอด้านข้าง${partLabel(patient.assaultNeckSideSides, patient.assaultNeckSideInjuries)}`);
+    if (patient.assaultNeckBack) subs.push(`ต้นคอด้านหลัง${partLabel(patient.assaultNeckBackSides, patient.assaultNeckBackInjuries)}`);
     parts.push(`ลำคอ: ${subs.length > 0 ? subs.join(', ') : 'มีบาดเจ็บ'}`);
   }
 
   if (patient.assaultParentChest) {
     const subs = [];
-    if (patient.assaultChestFront) subs.push(`หน้าอก/ซี่โครง${sideLabel(patient.assaultChestFrontSides)}`);
-    if (patient.assaultChestClavicle) subs.push(`ไหปลาร้า${sideLabel(patient.assaultChestClavicleSides)}`);
-    if (patient.assaultChestBack) subs.push(`หลังส่วนบน/สะบัก${sideLabel(patient.assaultChestBackSides)}`);
+    if (patient.assaultChestFront) subs.push(`หน้าอก/ซี่โครง${partLabel(patient.assaultChestFrontSides, patient.assaultChestFrontInjuries)}`);
+    if (patient.assaultChestClavicle) subs.push(`ไหปลาร้า${partLabel(patient.assaultChestClavicleSides, patient.assaultChestClavicleInjuries)}`);
+    if (patient.assaultChestBack) subs.push(`หลังส่วนบน/สะบัก${partLabel(patient.assaultChestBackSides, patient.assaultChestBackInjuries)}`);
     parts.push(`หน้าอก/หลังบน: ${subs.length > 0 ? subs.join(', ') : 'มีบาดเจ็บ'}`);
   }
 
   if (patient.assaultParentAbdomen) {
     const subs = [];
-    if (patient.assaultAbdFront) subs.push(`หน้าท้อง${sideLabel(patient.assaultAbdFrontSides)}`);
-    if (patient.assaultAbdFlank) subs.push(`สีข้าง/บั้นเอว${sideLabel(patient.assaultAbdFlankSides)}`);
-    if (patient.assaultAbdLowBack) subs.push(`หลังส่วนล่าง${sideLabel(patient.assaultAbdLowBackSides)}`);
-    if (patient.assaultAbdButtock) subs.push(`สะโพก/ก้น${sideLabel(patient.assaultAbdButtockSides)}`);
-    if (patient.assaultAbdGroinGenitalia) subs.push(`ขาหนีบ/อวัยวะเพศ${sideLabel(patient.assaultAbdGroinGenitaliaSides)}`);
+    if (patient.assaultAbdFront) subs.push(`หน้าท้อง${partLabel(patient.assaultAbdFrontSides, patient.assaultAbdFrontInjuries)}`);
+    if (patient.assaultAbdFlank) subs.push(`สีข้าง/บั้นเอว${partLabel(patient.assaultAbdFlankSides, patient.assaultAbdFlankInjuries)}`);
+    if (patient.assaultAbdLowBack) subs.push(`หลังส่วนล่าง${partLabel(patient.assaultAbdLowBackSides, patient.assaultAbdLowBackInjuries)}`);
+    if (patient.assaultAbdButtock) subs.push(`สะโพก/ก้น${partLabel(patient.assaultAbdButtockSides, patient.assaultAbdButtockInjuries)}`);
+    if (patient.assaultAbdGroinGenitalia) subs.push(`ขาหนีบ/อวัยวะเพศ${partLabel(patient.assaultAbdGroinGenitaliaSides, patient.assaultAbdGroinGenitaliaInjuries)}`);
     parts.push(`หน้าท้อง/เอว/ก้น: ${subs.length > 0 ? subs.join(', ') : 'มีบาดเจ็บ'}`);
   }
 
   if (patient.assaultParentUpperExtremity) {
     const subs = [];
-    if (patient.assaultArmShoulder) subs.push(`หัวไหล่/ต้นแขน${sideLabel(patient.assaultArmShoulderSides)}`);
-    if (patient.assaultArmElbowForearm) subs.push(`ข้อศอก/แขนท่อนล่าง${sideLabel(patient.assaultArmElbowForearmSides)}`);
-    if (patient.assaultArmWristHand) subs.push(`ข้อมือ/ฝ่ามือ/หลังมือ${sideLabel(patient.assaultArmWristHandSides)}`);
+    if (patient.assaultArmShoulder) subs.push(`หัวไหล่/ต้นแขน${partLabel(patient.assaultArmShoulderSides, patient.assaultArmShoulderInjuries)}`);
+    if (patient.assaultArmElbowForearm) subs.push(`ข้อศอก/แขนท่อนล่าง${partLabel(patient.assaultArmElbowForearmSides, patient.assaultArmElbowForearmInjuries)}`);
+    if (patient.assaultArmWristHand) subs.push(`ข้อมือ/ฝ่ามือ/หลังมือ${partLabel(patient.assaultArmWristHandSides, patient.assaultArmWristHandInjuries)}`);
     if (patient.assaultArmFingers) {
-      const dStr = fmtDigitsBySide(patient.assaultArmFingersLeftDigits, patient.assaultArmFingersRightDigits);
-      subs.push(`นิ้วมือ${dStr}`);
+      subs.push(`นิ้วมือ${fmtDigitsBySide(patient.assaultArmFingersLeftDigits, patient.assaultArmFingersRightDigits, patient.assaultArmFingersInjuries)}`);
     }
     parts.push(`แขน/มือ (แผลป้องกันตัว): ${subs.length > 0 ? subs.join(', ') : 'มีบาดเจ็บ'}`);
   }
 
   if (patient.assaultParentLowerExtremity) {
     const subs = [];
-    if (patient.assaultLegThigh) subs.push(`ต้นขา${sideLabel(patient.assaultLegThighSides)}`);
-    if (patient.assaultLegKneeShinCalf) subs.push(`เข่า/หน้าแข้ง/น่อง${sideLabel(patient.assaultLegKneeShinCalfSides)}`);
-    if (patient.assaultLegAnkleFoot) subs.push(`ข้อเท้า/เท้า${sideLabel(patient.assaultLegAnkleFootSides)}`);
+    if (patient.assaultLegThigh) subs.push(`ต้นขา${partLabel(patient.assaultLegThighSides, patient.assaultLegThighInjuries)}`);
+    if (patient.assaultLegKneeShinCalf) subs.push(`เข่า/หน้าแข้ง/น่อง${partLabel(patient.assaultLegKneeShinCalfSides, patient.assaultLegKneeShinCalfInjuries)}`);
+    if (patient.assaultLegAnkleFoot) subs.push(`ข้อเท้า/เท้า${partLabel(patient.assaultLegAnkleFootSides, patient.assaultLegAnkleFootInjuries)}`);
     if (patient.assaultLegToes) {
-      const dStr = fmtDigitsBySide(patient.assaultLegToesLeftDigits, patient.assaultLegToesRightDigits);
-      subs.push(`นิ้วเท้า${dStr}`);
+      subs.push(`นิ้วเท้า${fmtDigitsBySide(patient.assaultLegToesLeftDigits, patient.assaultLegToesRightDigits, patient.assaultLegToesInjuries)}`);
     }
     parts.push(`ขา/เท้า: ${subs.length > 0 ? subs.join(', ') : 'มีบาดเจ็บ'}`);
   }
@@ -440,7 +498,30 @@ function renderAssaultRapidHpi(patient) {
   };
   const anticoagStr = anticoagMap[patient.assaultAnticoagulantHx] || 'ไม่ได้ระบุ';
 
-  const tetanusMap = { within_5_years: '< 5 ปี', '5_to_10_years': '5-10 ปี', over_10_years: '> 10 ปี', unknown_or_never: 'ไม่เคย/จำไม่ได้' };
+  if (patient.otherSymptomsFree && String(patient.otherSymptomsFree).trim()) {
+    positives.push(`ข้อมูลเพิ่มเติมจากผู้ป่วย: ${String(patient.otherSymptomsFree).trim()}`);
+  }
+
+  const pregMap = {
+    not_pregnant: 'ไม่ได้ตั้งครรภ์ / ประจำเดือนมาปกติ',
+    suspected_or_missed: 'ขาดประจำเดือน / สงสัยอาจตั้งครรภ์',
+    confirmed_pregnant: 'ยืนยันกำลังตั้งครรภ์',
+    menopause_or_hysterectomy: 'วัยหมดประจำเดือน / ผ่าตัดมดลูกแล้ว',
+    unknown: 'ไม่ทราบ'
+  };
+  let femStr = '';
+  if (isAssaultFemalePatient(patient) && (patient.assaultLmpDate || patient.assaultPregnancyStatus)) {
+    femStr = `LMP ${patient.assaultLmpDate || 'ไม่ระบุ'} (${pregMap[patient.assaultPregnancyStatus] || 'ไม่ระบุสถานะ'})`;
+  }
+
+  const tetanusMap = {
+    within_5_years: 'เคยฉีดเข็มกระตุ้นภายใน 5 ปีที่ผ่านมา',
+    '5_to_10_years': 'เคยฉีดในช่วง 5–10 ปีที่ผ่านมา',
+    over_10_years: 'เคยฉีดครบ แต่เกิน 10 ปีแล้ว',
+    more_than_10_years: 'เคยฉีดครบ แต่เกิน 10 ปีแล้ว',
+    unknown_or_never: 'ไม่เคยฉีด หรือจำประวัติไม่ได้',
+    never_or_unsure: 'ไม่เคยฉีด หรือจำประวัติไม่ได้'
+  };
   const tetanusStr = tetanusMap[patient.assaultTetanusHx] || 'ไม่ได้ระบุ';
 
   return `[Chief Complaint (CC)]
@@ -449,7 +530,7 @@ function renderAssaultRapidHpi(patient) {
 [History of Present Illness (HPI)]
 • กลไกการถูกทำร้ายและอาวุธ: ${mechStr} เป็นมา ${durStr}
 • สถานะเลือดออกภายนอก: ${bleedStr}
-• ตำแหน่งที่ได้รับบาดเจ็บ: ${anatomyStr}
+• ตำแหน่งบาดเจ็บและชนิดการบาดเจ็บ: ${anatomyStr}
 • ระดับความปวด (Pain Score): ${pScore}
 
 • Pertinent Positives:
@@ -462,7 +543,7 @@ ${negatives.length > 0 ? negatives.map(n => `  - ${n}`).join('\n') : '  - ปฏ
 • สถานะประวัติ รพ.ราชบุรี: ${patient.hospRecordStatus === 'complete' ? 'มีประวัติครบถ้วน' : (patient.hospRecordStatus === 'additional' ? 'มีประวัติเดิมและขอเพิ่ม' : 'ให้ข้อมูลใหม่ทั้งหมด')}
 • การคัดกรองศูนย์พึ่งได้ (OSCC) / ความรุนแรง: ${osccStr}
 • ประวัติยาละลายลิ่มเลือด/โรคเลือดออกง่าย: ${anticoagStr}
-• ประวัติวัคซีนบาดทะยัก: ${tetanusStr}
+• ประวัติวัคซีนบาดทะยัก: ${tetanusStr}${femStr ? `\n• ประวัติสตรี: ${femStr}` : ''}
 • โรคประจำตัว (U/D): ${Array.isArray(patient.underlying) && patient.underlying.length > 0 ? patient.underlying.join(', ') : 'ปฏิเสธ'}
 • ยาประจำตัว: ${patient.currentMeds || 'ไม่มี'} | แพ้ยา: ${patient.drugAllergy || 'ปฏิเสธ'}`;
 }
@@ -475,7 +556,7 @@ function renderAssaultNarrativeHpi(patient) {
   const mechStr = formatAssaultMechanism(patient);
   const anatomyStr = formatAssaultAnatomy(patient);
 
-  let text = `ผู้ป่วยมาด้วยอาการถูกทำร้ายร่างกายโดย${mechStr} เป็นมาประมาณ ${durStr} ก่อนมาโรงพยาบาล ได้รับบาดเจ็บบริเวณ ${anatomyStr}`;
+  let text = `ผู้ป่วยมาด้วยอาการถูกทำร้ายร่างกายโดย${mechStr} เป็นมาประมาณ ${durStr} ก่อนมาโรงพยาบาล ตรวจพบตำแหน่งบาดเจ็บและชนิดการบาดเจ็บที่บริเวณ ${anatomyStr}`;
 
   const headSigns = Array.isArray(patient.assaultHeadSigns) ? patient.assaultHeadSigns : [];
   if (headSigns.includes('loc_amnesia')) text += ` มีประวัติสลบหมดสติชั่วขณะหลังเกิดเหตุ`;
@@ -489,11 +570,24 @@ function renderAssaultNarrativeHpi(patient) {
     text += ` ร่วมกับมีอาการแน่นหน้าอกหายใจเหนื่อยหรือปวดท้องรุนแรง`;
   }
 
+  const pregMap = {
+    not_pregnant: 'ไม่ได้ตั้งครรภ์ / ประจำเดือนมาปกติ',
+    suspected_or_missed: 'ขาดประจำเดือน / สงสัยอาจตั้งครรภ์',
+    confirmed_pregnant: 'ยืนยันกำลังตั้งครรภ์',
+    menopause_or_hysterectomy: 'วัยหมดประจำเดือน / ผ่าตัดมดลูกแล้ว',
+    unknown: 'ไม่ทราบ'
+  };
+  if (isAssaultFemalePatient(patient) && (patient.assaultLmpDate || patient.assaultPregnancyStatus)) {
+    text += ` ประวัติสตรี: LMP ${patient.assaultLmpDate || 'ไม่ระบุ'} (${pregMap[patient.assaultPregnancyStatus] || 'ไม่ระบุสถานะ'})`;
+  }
+  if (patient.otherSymptomsFree && String(patient.otherSymptomsFree).trim()) {
+    text += ` ข้อมูลเพิ่มเติม: ${String(patient.otherSymptomsFree).trim()}`;
+  }
   return text;
 }
 
-function generateAssaultCds(patient) {
-  const rfs = evaluateAssaultRedFlags(patient);
+function generateAssaultCds(patient, ctx) {
+  const rfs = (ctx && Array.isArray(ctx.rfs)) ? ctx.rfs : evaluateAssaultRedFlags(patient);
   let highestEsi = 4;
   if (rfs.some(r => r.level.includes('ESI 1'))) highestEsi = 1;
   else if (rfs.some(r => r.level.includes('ESI 2'))) highestEsi = 2;
@@ -543,13 +637,27 @@ function generateAssaultCds(patient) {
     ]);
   }
 
+  const workupItems = plan.filter(p => p.includes('ตรวจ') || p.includes('CT') || p.includes('Film') || p.includes('eFAST'));
+  if (workupItems.length === 0) workupItems.push('ประเมินสัญญาณชีพ ตรวจร่างกายละเอียด และบันทึกภาพ/ขนาดบาดแผลเพื่อนิติเวช');
+  if (isAssaultFemalePatient(patient)) workupItems.push('Urine Pregnancy Test (UPT) หากสงสัยตั้งครรภ์ก่อนส่ง X-ray/CT หรือให้ยา');
+  const mgmtItems = plan.filter(p => !p.includes('ตรวจ') && !p.includes('CT') && !p.includes('Film') && !p.includes('eFAST'));
+  if (mgmtItems.length === 0) mgmtItems.push('ดูแลบาดแผล พิจารณาวัคซีนบาดทะยัก และคัดกรองความปลอดภัย (OSCC)');
+  if (ctx) {
+    if (!Array.isArray(ctx.ddxList)) ctx.ddxList = [];
+    if (!Array.isArray(ctx.workupList)) ctx.workupList = [];
+    if (!Array.isArray(ctx.managementList)) ctx.managementList = [];
+    ctx.ddxList.push(...ddx);
+    ctx.workupList.push(...workupItems);
+    ctx.managementList.push(...mgmtItems);
+    return rfs;
+  }
   return {
     chiefComplaint: 'physical_assault',
     calculatedEsi: highestEsi,
     redFlags: rfs,
     differentialDiagnosis: ddx,
-    suggestedInvestigations: plan.filter(p => p.includes('ตรวจ') || p.includes('CT') || p.includes('Film') || p.includes('eFAST')),
-    suggestedManagement: plan.filter(p => !p.includes('ตรวจ') && !p.includes('CT') && !p.includes('Film') && !p.includes('eFAST'))
+    suggestedInvestigations: workupItems,
+    suggestedManagement: mgmtItems
   };
 }
 
@@ -695,7 +803,7 @@ const PHYSICAL_ASSAULT_FORM_HTML = `
         <i data-lucide="user-check" class="w-5 h-5"></i>
       </div>
       <div>
-        <h3 class="text-sm sm:text-base font-bold text-slate-900">2. ตำแหน่งของร่างกายที่ได้รับบาดเจ็บ และอาการสำคัญร่วมด้วย</h3>
+        <h3 class="text-sm sm:text-base font-bold text-slate-900">2. ตำแหน่งของร่างกายที่ได้รับบาดเจ็บและชนิดการบาดเจ็บ</h3>
         <p class="text-xs text-slate-500">เลือกตำแหน่งร่างกายที่มีบาดแผลหรือปวดบวม และระบุข้างอย่างละเอียด</p>
       </div>
     </div>
@@ -708,49 +816,11 @@ const PHYSICAL_ASSAULT_FORM_HTML = `
       </label>
       <div id="assaultHeadFaceSubGroup" class="hidden space-y-3 pl-6 pt-2 border-t border-slate-100 text-xs sm:text-sm">
         <div class="space-y-2">
-          <div class="flex flex-wrap items-center gap-2">
-            <label class="flex items-center"><input type="checkbox" id="assaultHeadScalp" onchange="toggleAssaultGroup('assaultHeadScalpSidesContainer', this.checked)" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-1.5 text-slate-800">หนังศีรษะ/หน้าผาก/ท้ายทอย</span></label>
-            <div id="assaultHeadScalpSidesContainer" class="hidden flex items-center space-x-1.5 bg-slate-50 border border-slate-200 px-2 py-0.5 rounded-lg text-xs">
-              <span class="text-slate-500 font-medium">ด้าน:</span>
-              <label class="flex items-center"><input type="checkbox" name="assaultHeadScalpSides" value="left" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ซ้าย</span></label>
-              <label class="flex items-center"><input type="checkbox" name="assaultHeadScalpSides" value="right" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ขวา</span></label>
-              <label class="flex items-center"><input type="checkbox" name="assaultHeadScalpSides" value="center" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ตรงกลาง</span></label>
-            </div>
-          </div>
-          <div class="flex flex-wrap items-center gap-2">
-            <label class="flex items-center"><input type="checkbox" id="assaultHeadFace" onchange="toggleAssaultGroup('assaultHeadFaceSidesContainer', this.checked)" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-1.5 text-slate-800">ใบหน้า/คิ้ว/โหนกแก้ม/ขากรรไกร/คาง</span></label>
-            <div id="assaultHeadFaceSidesContainer" class="hidden flex items-center space-x-1.5 bg-slate-50 border border-slate-200 px-2 py-0.5 rounded-lg text-xs">
-              <span class="text-slate-500 font-medium">ด้าน:</span>
-              <label class="flex items-center"><input type="checkbox" name="assaultHeadFaceSides" value="left" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ซ้าย</span></label>
-              <label class="flex items-center"><input type="checkbox" name="assaultHeadFaceSides" value="right" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ขวา</span></label>
-              <label class="flex items-center"><input type="checkbox" name="assaultHeadFaceSides" value="center" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ตรงกลาง</span></label>
-            </div>
-          </div>
-          <div class="flex flex-wrap items-center gap-2">
-            <label class="flex items-center"><input type="checkbox" id="assaultHeadEye" onchange="toggleAssaultGroup('assaultHeadEyeSidesContainer', this.checked)" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-1.5 text-slate-800">ดวงตา/เปลือกตา/เบ้าตา</span></label>
-            <div id="assaultHeadEyeSidesContainer" class="hidden flex items-center space-x-1.5 bg-slate-50 border border-slate-200 px-2 py-0.5 rounded-lg text-xs">
-              <span class="text-slate-500 font-medium">ข้าง:</span>
-              <label class="flex items-center"><input type="checkbox" name="assaultHeadEyeSides" value="left" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ซ้าย</span></label>
-              <label class="flex items-center"><input type="checkbox" name="assaultHeadEyeSides" value="right" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ขวา</span></label>
-            </div>
-          </div>
-          <div class="flex flex-wrap items-center gap-2">
-            <label class="flex items-center"><input type="checkbox" id="assaultHeadEar" onchange="toggleAssaultGroup('assaultHeadEarSidesContainer', this.checked)" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-1.5 text-slate-800">ใบหู/กกหู</span></label>
-            <div id="assaultHeadEarSidesContainer" class="hidden flex items-center space-x-1.5 bg-slate-50 border border-slate-200 px-2 py-0.5 rounded-lg text-xs">
-              <span class="text-slate-500 font-medium">ข้าง:</span>
-              <label class="flex items-center"><input type="checkbox" name="assaultHeadEarSides" value="left" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ซ้าย</span></label>
-              <label class="flex items-center"><input type="checkbox" name="assaultHeadEarSides" value="right" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ขวา</span></label>
-            </div>
-          </div>
-          <div class="flex flex-wrap items-center gap-2">
-            <label class="flex items-center"><input type="checkbox" id="assaultHeadNoseMouth" onchange="toggleAssaultGroup('assaultHeadNoseMouthSidesContainer', this.checked)" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-1.5 text-slate-800">จมูก/ริมฝีปาก/ฟัน/ในช่องปาก</span></label>
-            <div id="assaultHeadNoseMouthSidesContainer" class="hidden flex items-center space-x-1.5 bg-slate-50 border border-slate-200 px-2 py-0.5 rounded-lg text-xs">
-              <span class="text-slate-500 font-medium">ด้าน:</span>
-              <label class="flex items-center"><input type="checkbox" name="assaultHeadNoseMouthSides" value="left" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ซ้าย</span></label>
-              <label class="flex items-center"><input type="checkbox" name="assaultHeadNoseMouthSides" value="right" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ขวา</span></label>
-              <label class="flex items-center"><input type="checkbox" name="assaultHeadNoseMouthSides" value="center" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ตรงกลาง</span></label>
-            </div>
-          </div>
+          ${renderAssaultPart('assaultHeadScalp', 'หนังศีรษะ/หน้าผาก/ท้ายทอย', true)}
+          ${renderAssaultPart('assaultHeadFace', 'ใบหน้า/คิ้ว/โหนกแก้ม/ขากรรไกร/คาง', true)}
+          ${renderAssaultPart('assaultHeadEye', 'ดวงตา/เปลือกตา/เบ้าตา')}
+          ${renderAssaultPart('assaultHeadEar', 'ใบหู/กกหู')}
+          ${renderAssaultPart('assaultHeadNoseMouth', 'จมูก/ริมฝีปาก/ฟัน/ในช่องปาก', true)}
         </div>
         <div class="pt-2 border-t border-slate-100 space-y-1.5">
           <span class="font-semibold text-slate-700 block">อาการสำคัญที่พบร่วมด้วย:</span>
@@ -771,32 +841,9 @@ const PHYSICAL_ASSAULT_FORM_HTML = `
       </label>
       <div id="assaultNeckSubGroup" class="hidden space-y-3 pl-6 pt-2 border-t border-slate-100 text-xs sm:text-sm">
         <div class="space-y-2">
-          <div class="flex flex-wrap items-center gap-2">
-            <label class="flex items-center"><input type="checkbox" id="assaultNeckFront" onchange="toggleAssaultGroup('assaultNeckFrontSidesContainer', this.checked)" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-1.5 text-slate-800">ลำคอด้านหน้า (ลูกกระเดือก / หลอดลม)</span></label>
-            <div id="assaultNeckFrontSidesContainer" class="hidden flex items-center space-x-1.5 bg-slate-50 border border-slate-200 px-2 py-0.5 rounded-lg text-xs">
-              <span class="text-slate-500 font-medium">ด้าน:</span>
-              <label class="flex items-center"><input type="checkbox" name="assaultNeckFrontSides" value="left" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ซ้าย</span></label>
-              <label class="flex items-center"><input type="checkbox" name="assaultNeckFrontSides" value="right" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ขวา</span></label>
-              <label class="flex items-center"><input type="checkbox" name="assaultNeckFrontSides" value="center" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ตรงกลาง</span></label>
-            </div>
-          </div>
-          <div class="flex flex-wrap items-center gap-2">
-            <label class="flex items-center"><input type="checkbox" id="assaultNeckSide" onchange="toggleAssaultGroup('assaultNeckSideSidesContainer', this.checked)" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-1.5 text-slate-800">ลำคอด้านข้าง</span></label>
-            <div id="assaultNeckSideSidesContainer" class="hidden flex items-center space-x-1.5 bg-slate-50 border border-slate-200 px-2 py-0.5 rounded-lg text-xs">
-              <span class="text-slate-500 font-medium">ข้าง:</span>
-              <label class="flex items-center"><input type="checkbox" name="assaultNeckSideSides" value="left" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ซ้าย</span></label>
-              <label class="flex items-center"><input type="checkbox" name="assaultNeckSideSides" value="right" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ขวา</span></label>
-            </div>
-          </div>
-          <div class="flex flex-wrap items-center gap-2">
-            <label class="flex items-center"><input type="checkbox" id="assaultNeckBack" onchange="toggleAssaultGroup('assaultNeckBackSidesContainer', this.checked)" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-1.5 text-slate-800">ต้นคอด้านหลัง (แนวกระดูกต้นคอ)</span></label>
-            <div id="assaultNeckBackSidesContainer" class="hidden flex items-center space-x-1.5 bg-slate-50 border border-slate-200 px-2 py-0.5 rounded-lg text-xs">
-              <span class="text-slate-500 font-medium">ด้าน:</span>
-              <label class="flex items-center"><input type="checkbox" name="assaultNeckBackSides" value="left" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ซ้าย</span></label>
-              <label class="flex items-center"><input type="checkbox" name="assaultNeckBackSides" value="right" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ขวา</span></label>
-              <label class="flex items-center"><input type="checkbox" name="assaultNeckBackSides" value="center" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ตรงกลาง</span></label>
-            </div>
-          </div>
+          ${renderAssaultPart('assaultNeckFront', 'ลำคอด้านหน้า (ลูกกระเดือก / หลอดลม)', true)}
+          ${renderAssaultPart('assaultNeckSide', 'ลำคอด้านข้าง')}
+          ${renderAssaultPart('assaultNeckBack', 'ต้นคอด้านหลัง (แนวกระดูกต้นคอ)', true)}
         </div>
         <div class="pt-2 border-t border-slate-100 space-y-1.5">
           <span class="font-semibold text-slate-700 block">อาการสำคัญที่พบร่วมด้วย:</span>
@@ -815,32 +862,9 @@ const PHYSICAL_ASSAULT_FORM_HTML = `
       </label>
       <div id="assaultChestSubGroup" class="hidden space-y-3 pl-6 pt-2 border-t border-slate-100 text-xs sm:text-sm">
         <div class="space-y-2">
-          <div class="flex flex-wrap items-center gap-2">
-            <label class="flex items-center"><input type="checkbox" id="assaultChestFront" onchange="toggleAssaultGroup('assaultChestFrontSidesContainer', this.checked)" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-1.5 text-slate-800">หน้าอก/ซี่โครง/ราวนม</span></label>
-            <div id="assaultChestFrontSidesContainer" class="hidden flex items-center space-x-1.5 bg-slate-50 border border-slate-200 px-2 py-0.5 rounded-lg text-xs">
-              <span class="text-slate-500 font-medium">ด้าน:</span>
-              <label class="flex items-center"><input type="checkbox" name="assaultChestFrontSides" value="left" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ซ้าย</span></label>
-              <label class="flex items-center"><input type="checkbox" name="assaultChestFrontSides" value="right" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ขวา</span></label>
-              <label class="flex items-center"><input type="checkbox" name="assaultChestFrontSides" value="center" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ตรงกลาง</span></label>
-            </div>
-          </div>
-          <div class="flex flex-wrap items-center gap-2">
-            <label class="flex items-center"><input type="checkbox" id="assaultChestClavicle" onchange="toggleAssaultGroup('assaultChestClavicleSidesContainer', this.checked)" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-1.5 text-slate-800">ไหปลาร้า</span></label>
-            <div id="assaultChestClavicleSidesContainer" class="hidden flex items-center space-x-1.5 bg-slate-50 border border-slate-200 px-2 py-0.5 rounded-lg text-xs">
-              <span class="text-slate-500 font-medium">ข้าง:</span>
-              <label class="flex items-center"><input type="checkbox" name="assaultChestClavicleSides" value="left" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ซ้าย</span></label>
-              <label class="flex items-center"><input type="checkbox" name="assaultChestClavicleSides" value="right" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ขวา</span></label>
-            </div>
-          </div>
-          <div class="flex flex-wrap items-center gap-2">
-            <label class="flex items-center"><input type="checkbox" id="assaultChestBack" onchange="toggleAssaultGroup('assaultChestBackSidesContainer', this.checked)" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-1.5 text-slate-800">แผ่นหลังส่วนบน/สะบัก</span></label>
-            <div id="assaultChestBackSidesContainer" class="hidden flex items-center space-x-1.5 bg-slate-50 border border-slate-200 px-2 py-0.5 rounded-lg text-xs">
-              <span class="text-slate-500 font-medium">ด้าน:</span>
-              <label class="flex items-center"><input type="checkbox" name="assaultChestBackSides" value="left" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ซ้าย</span></label>
-              <label class="flex items-center"><input type="checkbox" name="assaultChestBackSides" value="right" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ขวา</span></label>
-              <label class="flex items-center"><input type="checkbox" name="assaultChestBackSides" value="center" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ตรงกลาง</span></label>
-            </div>
-          </div>
+          ${renderAssaultPart('assaultChestFront', 'หน้าอก/ซี่โครง/ราวนม', true)}
+          ${renderAssaultPart('assaultChestClavicle', 'ไหปลาร้า')}
+          ${renderAssaultPart('assaultChestBack', 'แผ่นหลังส่วนบน/สะบัก', true)}
         </div>
         <div class="pt-2 border-t border-slate-100 space-y-1.5">
           <span class="font-semibold text-slate-700 block">อาการสำคัญที่พบร่วมด้วย:</span>
@@ -859,50 +883,11 @@ const PHYSICAL_ASSAULT_FORM_HTML = `
       </label>
       <div id="assaultAbdomenSubGroup" class="hidden space-y-3 pl-6 pt-2 border-t border-slate-100 text-xs sm:text-sm">
         <div class="space-y-2">
-          <div class="flex flex-wrap items-center gap-2">
-            <label class="flex items-center"><input type="checkbox" id="assaultAbdFront" onchange="toggleAssaultGroup('assaultAbdFrontSidesContainer', this.checked)" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-1.5 text-slate-800">หน้าท้อง/ชายโครง</span></label>
-            <div id="assaultAbdFrontSidesContainer" class="hidden flex items-center space-x-1.5 bg-slate-50 border border-slate-200 px-2 py-0.5 rounded-lg text-xs">
-              <span class="text-slate-500 font-medium">ด้าน:</span>
-              <label class="flex items-center"><input type="checkbox" name="assaultAbdFrontSides" value="left" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ซ้าย</span></label>
-              <label class="flex items-center"><input type="checkbox" name="assaultAbdFrontSides" value="right" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ขวา</span></label>
-              <label class="flex items-center"><input type="checkbox" name="assaultAbdFrontSides" value="center" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ตรงกลาง</span></label>
-            </div>
-          </div>
-          <div class="flex flex-wrap items-center gap-2">
-            <label class="flex items-center"><input type="checkbox" id="assaultAbdFlank" onchange="toggleAssaultGroup('assaultAbdFlankSidesContainer', this.checked)" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-1.5 text-slate-800">สีข้าง/บั้นเอว</span></label>
-            <div id="assaultAbdFlankSidesContainer" class="hidden flex items-center space-x-1.5 bg-slate-50 border border-slate-200 px-2 py-0.5 rounded-lg text-xs">
-              <span class="text-slate-500 font-medium">ข้าง:</span>
-              <label class="flex items-center"><input type="checkbox" name="assaultAbdFlankSides" value="left" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ซ้าย</span></label>
-              <label class="flex items-center"><input type="checkbox" name="assaultAbdFlankSides" value="right" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ขวา</span></label>
-            </div>
-          </div>
-          <div class="flex flex-wrap items-center gap-2">
-            <label class="flex items-center"><input type="checkbox" id="assaultAbdLowBack" onchange="toggleAssaultGroup('assaultAbdLowBackSidesContainer', this.checked)" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-1.5 text-slate-800">หลังส่วนล่าง</span></label>
-            <div id="assaultAbdLowBackSidesContainer" class="hidden flex items-center space-x-1.5 bg-slate-50 border border-slate-200 px-2 py-0.5 rounded-lg text-xs">
-              <span class="text-slate-500 font-medium">ด้าน:</span>
-              <label class="flex items-center"><input type="checkbox" name="assaultAbdLowBackSides" value="left" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ซ้าย</span></label>
-              <label class="flex items-center"><input type="checkbox" name="assaultAbdLowBackSides" value="right" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ขวา</span></label>
-              <label class="flex items-center"><input type="checkbox" name="assaultAbdLowBackSides" value="center" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ตรงกลาง</span></label>
-            </div>
-          </div>
-          <div class="flex flex-wrap items-center gap-2">
-            <label class="flex items-center"><input type="checkbox" id="assaultAbdButtock" onchange="toggleAssaultGroup('assaultAbdButtockSidesContainer', this.checked)" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-1.5 text-slate-800">สะโพก/ก้น</span></label>
-            <div id="assaultAbdButtockSidesContainer" class="hidden flex items-center space-x-1.5 bg-slate-50 border border-slate-200 px-2 py-0.5 rounded-lg text-xs">
-              <span class="text-slate-500 font-medium">ด้าน:</span>
-              <label class="flex items-center"><input type="checkbox" name="assaultAbdButtockSides" value="left" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ซ้าย</span></label>
-              <label class="flex items-center"><input type="checkbox" name="assaultAbdButtockSides" value="right" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ขวา</span></label>
-              <label class="flex items-center"><input type="checkbox" name="assaultAbdButtockSides" value="center" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ตรงกลาง</span></label>
-            </div>
-          </div>
-          <div class="flex flex-wrap items-center gap-2">
-            <label class="flex items-center"><input type="checkbox" id="assaultAbdGroinGenitalia" onchange="toggleAssaultGroup('assaultAbdGroinGenitaliaSidesContainer', this.checked)" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-1.5 text-slate-800">ขาหนีบ/อวัยวะเพศ/ทวารหนัก</span></label>
-            <div id="assaultAbdGroinGenitaliaSidesContainer" class="hidden flex items-center space-x-1.5 bg-slate-50 border border-slate-200 px-2 py-0.5 rounded-lg text-xs">
-              <span class="text-slate-500 font-medium">ด้าน:</span>
-              <label class="flex items-center"><input type="checkbox" name="assaultAbdGroinGenitaliaSides" value="left" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ซ้าย</span></label>
-              <label class="flex items-center"><input type="checkbox" name="assaultAbdGroinGenitaliaSides" value="right" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ขวา</span></label>
-              <label class="flex items-center"><input type="checkbox" name="assaultAbdGroinGenitaliaSides" value="center" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ตรงกลาง</span></label>
-            </div>
-          </div>
+          ${renderAssaultPart('assaultAbdFront', 'หน้าท้อง/ชายโครง', true)}
+          ${renderAssaultPart('assaultAbdFlank', 'สีข้าง/บั้นเอว')}
+          ${renderAssaultPart('assaultAbdLowBack', 'หลังส่วนล่าง', true)}
+          ${renderAssaultPart('assaultAbdButtock', 'สะโพก/ก้น', true)}
+          ${renderAssaultPart('assaultAbdGroinGenitalia', 'ขาหนีบ/อวัยวะเพศ/ทวารหนัก', true)}
         </div>
         <div class="pt-2 border-t border-slate-100 space-y-1.5">
           <span class="font-semibold text-slate-700 block">อาการสำคัญที่พบร่วมด้วย:</span>
@@ -922,57 +907,14 @@ const PHYSICAL_ASSAULT_FORM_HTML = `
       </label>
       <div id="assaultUpperExtSubGroup" class="hidden space-y-3 pl-6 pt-2 border-t border-slate-100 text-xs sm:text-sm">
         <div class="space-y-2">
-          <div class="flex flex-wrap items-center gap-2">
-            <label class="flex items-center"><input type="checkbox" id="assaultArmShoulder" onchange="toggleAssaultGroup('assaultArmShoulderSidesContainer', this.checked)" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-1.5 text-slate-800">หัวไหล่/ต้นแขน</span></label>
-            <div id="assaultArmShoulderSidesContainer" class="hidden flex items-center space-x-1.5 bg-slate-50 border border-slate-200 px-2 py-0.5 rounded-lg text-xs">
-              <span class="text-slate-500 font-medium">ข้าง:</span>
-              <label class="flex items-center"><input type="checkbox" name="assaultArmShoulderSides" value="left" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ซ้าย</span></label>
-              <label class="flex items-center"><input type="checkbox" name="assaultArmShoulderSides" value="right" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ขวา</span></label>
-            </div>
-          </div>
-          <div class="flex flex-wrap items-center gap-2">
-            <label class="flex items-center"><input type="checkbox" id="assaultArmElbowForearm" onchange="toggleAssaultGroup('assaultArmElbowForearmSidesContainer', this.checked)" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-1.5 text-slate-800">ข้อศอก/แขนท่อนล่าง</span></label>
-            <div id="assaultArmElbowForearmSidesContainer" class="hidden flex items-center space-x-1.5 bg-slate-50 border border-slate-200 px-2 py-0.5 rounded-lg text-xs">
-              <span class="text-slate-500 font-medium">ข้าง:</span>
-              <label class="flex items-center"><input type="checkbox" name="assaultArmElbowForearmSides" value="left" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ซ้าย</span></label>
-              <label class="flex items-center"><input type="checkbox" name="assaultArmElbowForearmSides" value="right" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ขวา</span></label>
-            </div>
-          </div>
-          <div class="flex flex-wrap items-center gap-2">
-            <label class="flex items-center"><input type="checkbox" id="assaultArmWristHand" onchange="toggleAssaultGroup('assaultArmWristHandSidesContainer', this.checked)" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-1.5 text-slate-800">ข้อมือ/ฝ่ามือ/หลังมือ</span></label>
-            <div id="assaultArmWristHandSidesContainer" class="hidden flex items-center space-x-1.5 bg-slate-50 border border-slate-200 px-2 py-0.5 rounded-lg text-xs">
-              <span class="text-slate-500 font-medium">ข้าง:</span>
-              <label class="flex items-center"><input type="checkbox" name="assaultArmWristHandSides" value="left" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ซ้าย</span></label>
-              <label class="flex items-center"><input type="checkbox" name="assaultArmWristHandSides" value="right" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ขวา</span></label>
-            </div>
-          </div>
-          <!-- นิ้วมือแยกแถวซ้ายขวา -->
-          <div class="space-y-1">
-            <label class="flex items-center"><input type="checkbox" id="assaultArmFingers" onchange="toggleAssaultGroup('assaultArmFingersSidesContainer', this.checked)" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-1.5 text-slate-800">นิ้วมือ</span></label>
-            <div id="assaultArmFingersSidesContainer" class="hidden ml-5 p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs space-y-1.5">
-              <div class="flex flex-wrap items-center gap-2">
-                <span class="font-medium text-slate-600 w-10">ซ้าย:</span>
-                <label class="flex items-center"><input type="checkbox" name="assaultArmFingersLeftDigits" value="thumb" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">โป้ง</span></label>
-                <label class="flex items-center"><input type="checkbox" name="assaultArmFingersLeftDigits" value="index" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ชี้</span></label>
-                <label class="flex items-center"><input type="checkbox" name="assaultArmFingersLeftDigits" value="middle" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">กลาง</span></label>
-                <label class="flex items-center"><input type="checkbox" name="assaultArmFingersLeftDigits" value="ring" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">นาง</span></label>
-                <label class="flex items-center"><input type="checkbox" name="assaultArmFingersLeftDigits" value="little" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ก้อย</span></label>
-              </div>
-              <div class="flex flex-wrap items-center gap-2">
-                <span class="font-medium text-slate-600 w-10">ขวา:</span>
-                <label class="flex items-center"><input type="checkbox" name="assaultArmFingersRightDigits" value="thumb" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">โป้ง</span></label>
-                <label class="flex items-center"><input type="checkbox" name="assaultArmFingersRightDigits" value="index" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ชี้</span></label>
-                <label class="flex items-center"><input type="checkbox" name="assaultArmFingersRightDigits" value="middle" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">กลาง</span></label>
-                <label class="flex items-center"><input type="checkbox" name="assaultArmFingersRightDigits" value="ring" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">นาง</span></label>
-                <label class="flex items-center"><input type="checkbox" name="assaultArmFingersRightDigits" value="little" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ก้อย</span></label>
-              </div>
-            </div>
-          </div>
-        </div>
+          ${renderAssaultPart('assaultArmShoulder', 'หัวไหล่/ต้นแขน')}
+          ${renderAssaultPart('assaultArmElbowForearm', 'ข้อศอก/แขนท่อนล่าง')}
+          ${renderAssaultPart('assaultArmWristHand', 'ข้อมือ/ฝ่ามือ/หลังมือ')}
+          ${renderAssaultDigits('assaultArmFingers', 'นิ้วมือ')}
         <div class="pt-2 border-t border-slate-100 space-y-1.5">
           <span class="font-semibold text-slate-700 block">อาการสำคัญที่พบร่วมด้วย:</span>
           <label class="flex items-center"><input type="checkbox" name="assaultUpperExtSigns" value="arm_deformity_suspected_fracture" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">ไหล่ แขน ข้อมือ หรือนิ้วมือ บวมโต ผิดรูป บิดเบี้ยว หรือสงสัยกระดูกหัก/ข้อหลุด</span></label>
-          <label class="flex items-center"><input type="checkbox" name="assaultUpperExtSigns" value="tendon_injury_inability_to_move" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">ขยับข้อมือ กำมือ หรือเหยียด/งอนิ้วมือไม่ได้ตามปกติ (สงสัยเอ็นฉีกขาด)</span></label>
+          <label class="flex items-center"><input type="checkbox" name="assaultUpperExtSigns" value="tendon_injury_inability_to_move" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">ขยับข้อมือ กำมือ หรือเหยียด/งอนิ้วมือไม่ได้ตามปกติ</span></label>
           <label class="flex items-center"><input type="checkbox" name="assaultUpperExtSigns" value="numbness_pallor_cold_finger" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">มีอาการชา ไร้ความรู้สึก หรือปลายนิ้วมือซีดขาว/เย็นเฉียบ</span></label>
         </div>
       </div>
@@ -986,53 +928,10 @@ const PHYSICAL_ASSAULT_FORM_HTML = `
       </label>
       <div id="assaultLowerExtSubGroup" class="hidden space-y-3 pl-6 pt-2 border-t border-slate-100 text-xs sm:text-sm">
         <div class="space-y-2">
-          <div class="flex flex-wrap items-center gap-2">
-            <label class="flex items-center"><input type="checkbox" id="assaultLegThigh" onchange="toggleAssaultGroup('assaultLegThighSidesContainer', this.checked)" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-1.5 text-slate-800">ต้นขา</span></label>
-            <div id="assaultLegThighSidesContainer" class="hidden flex items-center space-x-1.5 bg-slate-50 border border-slate-200 px-2 py-0.5 rounded-lg text-xs">
-              <span class="text-slate-500 font-medium">ข้าง:</span>
-              <label class="flex items-center"><input type="checkbox" name="assaultLegThighSides" value="left" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ซ้าย</span></label>
-              <label class="flex items-center"><input type="checkbox" name="assaultLegThighSides" value="right" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ขวา</span></label>
-            </div>
-          </div>
-          <div class="flex flex-wrap items-center gap-2">
-            <label class="flex items-center"><input type="checkbox" id="assaultLegKneeShinCalf" onchange="toggleAssaultGroup('assaultLegKneeShinCalfSidesContainer', this.checked)" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-1.5 text-slate-800">เข่า/หน้าแข้ง/น่อง</span></label>
-            <div id="assaultLegKneeShinCalfSidesContainer" class="hidden flex items-center space-x-1.5 bg-slate-50 border border-slate-200 px-2 py-0.5 rounded-lg text-xs">
-              <span class="text-slate-500 font-medium">ข้าง:</span>
-              <label class="flex items-center"><input type="checkbox" name="assaultLegKneeShinCalfSides" value="left" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ซ้าย</span></label>
-              <label class="flex items-center"><input type="checkbox" name="assaultLegKneeShinCalfSides" value="right" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ขวา</span></label>
-            </div>
-          </div>
-          <div class="flex flex-wrap items-center gap-2">
-            <label class="flex items-center"><input type="checkbox" id="assaultLegAnkleFoot" onchange="toggleAssaultGroup('assaultLegAnkleFootSidesContainer', this.checked)" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-1.5 text-slate-800">ข้อเท้า/ส้นเท้า/ฝ่าเท้า/หลังเท้า</span></label>
-            <div id="assaultLegAnkleFootSidesContainer" class="hidden flex items-center space-x-1.5 bg-slate-50 border border-slate-200 px-2 py-0.5 rounded-lg text-xs">
-              <span class="text-slate-500 font-medium">ข้าง:</span>
-              <label class="flex items-center"><input type="checkbox" name="assaultLegAnkleFootSides" value="left" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ซ้าย</span></label>
-              <label class="flex items-center"><input type="checkbox" name="assaultLegAnkleFootSides" value="right" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ขวา</span></label>
-            </div>
-          </div>
-          <!-- นิ้วเท้าแยกแถวซ้ายขวา -->
-          <div class="space-y-1">
-            <label class="flex items-center"><input type="checkbox" id="assaultLegToes" onchange="toggleAssaultGroup('assaultLegToesSidesContainer', this.checked)" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-1.5 text-slate-800">นิ้วเท้า</span></label>
-            <div id="assaultLegToesSidesContainer" class="hidden ml-5 p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs space-y-1.5">
-              <div class="flex flex-wrap items-center gap-2">
-                <span class="font-medium text-slate-600 w-10">ซ้าย:</span>
-                <label class="flex items-center"><input type="checkbox" name="assaultLegToesLeftDigits" value="thumb" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">โป้ง</span></label>
-                <label class="flex items-center"><input type="checkbox" name="assaultLegToesLeftDigits" value="index" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ชี้</span></label>
-                <label class="flex items-center"><input type="checkbox" name="assaultLegToesLeftDigits" value="middle" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">กลาง</span></label>
-                <label class="flex items-center"><input type="checkbox" name="assaultLegToesLeftDigits" value="ring" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">นาง</span></label>
-                <label class="flex items-center"><input type="checkbox" name="assaultLegToesLeftDigits" value="little" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ก้อย</span></label>
-              </div>
-              <div class="flex flex-wrap items-center gap-2">
-                <span class="font-medium text-slate-600 w-10">ขวา:</span>
-                <label class="flex items-center"><input type="checkbox" name="assaultLegToesRightDigits" value="thumb" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">โป้ง</span></label>
-                <label class="flex items-center"><input type="checkbox" name="assaultLegToesRightDigits" value="index" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ชี้</span></label>
-                <label class="flex items-center"><input type="checkbox" name="assaultLegToesRightDigits" value="middle" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">กลาง</span></label>
-                <label class="flex items-center"><input type="checkbox" name="assaultLegToesRightDigits" value="ring" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">นาง</span></label>
-                <label class="flex items-center"><input type="checkbox" name="assaultLegToesRightDigits" value="little" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ก้อย</span></label>
-              </div>
-            </div>
-          </div>
-        </div>
+          ${renderAssaultPart('assaultLegThigh', 'ต้นขา')}
+          ${renderAssaultPart('assaultLegKneeShinCalf', 'เข่า/หน้าแข้ง/น่อง')}
+          ${renderAssaultPart('assaultLegAnkleFoot', 'ข้อเท้า/ส้นเท้า/ฝ่าเท้า/หลังเท้า')}
+          ${renderAssaultDigits('assaultLegToes', 'นิ้วเท้า')}
         <div class="pt-2 border-t border-slate-100 space-y-1.5">
           <span class="font-semibold text-slate-700 block">อาการสำคัญที่พบร่วมด้วย:</span>
           <label class="flex items-center"><input type="checkbox" name="assaultLowerExtSigns" value="leg_deformity_suspected_fracture" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">ขา เข่า หรือข้อเท้า บวมโต ผิดรูป หรือบิดเบี้ยว</span></label>
@@ -1169,26 +1068,63 @@ const PHYSICAL_ASSAULT_FORM_HTML = `
 
     <!-- 4.3 วัคซีนบาดทะยัก -->
     <div class="pt-3 border-t border-slate-100">
-      <label class="block text-xs sm:text-sm font-semibold text-slate-800 mb-2">4.3 ประวัติการฉีดวัคซีนป้องกันโรคบาดทะยัก:</label>
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs sm:text-sm">
-        <label class="selectable-card flex items-center p-2.5 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50">
-          <input type="radio" name="assaultTetanusHx" value="within_5_years" class="text-medical-600 h-4 w-4">
-          <span class="ml-2 text-slate-800">เข็มล่าสุดไม่เกิน 5 ปีที่ผ่านมา</span>
+      <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">4.3 ประวัติการได้รับวัคซีนป้องกันบาดทะยัก (Tetanus Vaccine)</label>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        <label class="selectable-card flex items-start p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
+          <input type="radio" name="assaultTetanusHx" value="within_5_years" class="mt-0.5 text-medical-600 focus:ring-medical-500 h-4 w-4">
+          <div class="ml-3"><span class="block text-xs sm:text-sm font-semibold text-slate-800">เคยฉีดเข็มกระตุ้นภายใน 5 ปีที่ผ่านมา</span><span class="block text-[11px] text-slate-500 font-normal mt-0.5">เคยฉีดครบ (3 เข็ม) มาก่อน และเข็มสุดท้ายหรือเข็มกระตุ้น &lt; 5 ปี</span></div>
         </label>
-        <label class="selectable-card flex items-center p-2.5 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50">
-          <input type="radio" name="assaultTetanusHx" value="5_to_10_years" class="text-medical-600 h-4 w-4">
-          <span class="ml-2 text-slate-800">เข็มล่าสุดนานเกิน 5 ปี แต่ไม่เกิน 10 ปี</span>
+        <label class="selectable-card flex items-start p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
+          <input type="radio" name="assaultTetanusHx" value="5_to_10_years" class="mt-0.5 text-medical-600 focus:ring-medical-500 h-4 w-4">
+          <div class="ml-3"><span class="block text-xs sm:text-sm font-semibold text-slate-800">เคยฉีดในช่วง 5 ถึง 10 ปีที่ผ่านมา</span><span class="block text-[11px] text-slate-500 font-normal mt-0.5">เคยฉีดครบ (3 เข็ม) มาก่อน และเข็มสุดท้ายหรือเข็มกระตุ้นห่างมาแล้ว 5–10 ปี</span></div>
         </label>
-        <label class="selectable-card flex items-center p-2.5 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50">
-          <input type="radio" name="assaultTetanusHx" value="over_10_years" class="text-medical-600 h-4 w-4">
-          <span class="ml-2 text-slate-800">เข็มล่าสุดนานเกิน 10 ปีแล้ว</span>
+        <label class="selectable-card flex items-start p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
+          <input type="radio" name="assaultTetanusHx" value="over_10_years" class="mt-0.5 text-medical-600 focus:ring-medical-500 h-4 w-4">
+          <div class="ml-3"><span class="block text-xs sm:text-sm font-semibold text-slate-800">เคยฉีดครบ แต่เกิน 10 ปีแล้ว</span><span class="block text-[11px] text-slate-500 font-normal mt-0.5">เคยฉีดครบ (3 เข็ม) มาก่อน แต่เข็มสุดท้ายมานานเกิน 10 ปีแล้ว</span></div>
         </label>
-        <label class="selectable-card flex items-center p-2.5 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50">
-          <input type="radio" name="assaultTetanusHx" value="unknown_or_never" class="text-medical-600 h-4 w-4">
-          <span class="ml-2 text-slate-600">ไม่เคยฉีดมาก่อน หรือจำไม่ได้</span>
+        <label class="selectable-card flex items-start p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
+          <input type="radio" name="assaultTetanusHx" value="unknown_or_never" class="mt-0.5 text-medical-600 focus:ring-medical-500 h-4 w-4">
+          <div class="ml-3"><span class="block text-xs sm:text-sm font-semibold text-slate-800">ไม่เคยฉีด หรือจำประวัติไม่ได้</span><span class="block text-[11px] text-slate-500 font-normal mt-0.5">ไม่เคยฉีด เคยฉีดไม่ครบ 3 เข็ม หรือจำประวัติไม่ได้</span></div>
         </label>
       </div>
     </div>
+
+    <!-- 4.4 ส่วนเฉพาะผู้ป่วยสตรี (Hidden by default - C-AP13) -->
+    <div id="assaultFemaleSection" class="hidden pt-3 border-t border-slate-100 space-y-3">
+      <div class="flex items-center space-x-2">
+        <span class="px-2 py-0.5 text-[10px] font-bold bg-pink-100 text-pink-700 rounded-md">เฉพาะสตรี</span>
+        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider">4.4 ประจำเดือนและการตั้งครรภ์ (LMP &amp; Pregnancy)</label>
+      </div>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-pink-50/50 p-3.5 rounded-xl border border-pink-200">
+        <div class="min-w-0">
+          <span class="block text-xs font-semibold text-slate-700 mb-1">วันแรกของประจำเดือนครั้งสุดท้าย (LMP):</span>
+          <input type="text" id="assaultLmpDate" data-universal-date="true" placeholder="วว/ดด/ปปปป เช่น 28/10/2026" class="w-full min-w-0 text-xs sm:text-sm border-slate-300 rounded-lg p-2 focus:ring-medical-500 focus:border-medical-500 bg-white">
+        </div>
+        <div class="min-w-0">
+          <span class="block text-xs font-semibold text-slate-700 mb-1">สถานะการตั้งครรภ์:</span>
+          <select id="assaultPregnancyStatus" class="w-full min-w-0 text-xs sm:text-sm border-slate-300 rounded-lg p-2 focus:ring-medical-500 focus:border-medical-500 bg-white">
+            <option value="not_pregnant">ไม่ได้ตั้งครรภ์ / ประจำเดือนมาปกติ</option>
+            <option value="suspected_or_missed">ขาดประจำเดือน / สงสัยอาจตั้งครรภ์</option>
+            <option value="confirmed_pregnant">ได้รับการยืนยันว่ากำลังตั้งครรภ์</option>
+            <option value="menopause_or_hysterectomy">วัยหมดประจำเดือน / ผ่าตัดมดลูกแล้ว</option>
+            <option value="unknown">ไม่ทราบ</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- อาการอื่นๆ เป็นช่องกรอกอิสระ -->
+  <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+    <div class="flex items-center space-x-3 mb-3 pb-2 border-b border-slate-100">
+      <div class="bg-slate-100 text-slate-600 p-2 rounded-xl"><i data-lucide="message-square-plus" class="w-5 h-5"></i></div>
+      <div>
+        <h2 class="text-base font-bold text-slate-800">อาการอื่นๆ ที่ต้องการแจ้งเพิ่มเติม</h2>
+        <p class="text-xs text-slate-500">ระบุอาการอื่นๆ ที่ท่านมีหรือต้องการบอกแพทย์เพิ่มเติม (ถ้ามี)</p>
+      </div>
+    </div>
+    <textarea id="physical_assault_other_free" rows="2" placeholder="พิมพ์ระบุอาการอื่นๆ ที่ท่านมีหรือต้องการบอกแพทย์เพิ่มเติม (ถ้ามี)..."
+      class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-medical-500 focus:bg-white"></textarea>
   </div>
 </div>
 `;
@@ -1210,6 +1146,21 @@ const physicalAssaultModule = {
   init() {
     clearAssaultPainScore();
   },
+
+  onTitleChange(arg) {
+    let isFemale = false;
+    if (typeof arg === 'boolean') isFemale = arg;
+    else if (typeof arg === 'object' && arg !== null) {
+      isFemale = typeof arg.isFemale === 'boolean' ? arg.isFemale : (typeof arg.title === 'string' ? /นาง|น\.ส\.|ด\.ญ\.|หญิง|Mrs|Miss|Ms/i.test(arg.title) : isAssaultFemalePatient(arg));
+    } else if (typeof arg === 'string') {
+      isFemale = /นาง|น\.ส\.|ด\.ญ\.|หญิง|Mrs|Miss|Ms/i.test(arg);
+    }
+    toggleAssaultFemaleSection(isFemale);
+  },
+
+  onSelectForm() { checkAndDisplayAssaultLmp(); },
+  onActivate(patient) { checkAndDisplayAssaultLmp(patient); },
+  resetForm() { this.clearForm(); },
 
   // --- Form Data Extraction Hook ---
   collectIntake(ctx = {}) {
@@ -1248,7 +1199,7 @@ const physicalAssaultModule = {
       underlying: ctx.underlying || [],
       drugAllergy: ctx.drugAllergy || 'ไม่ได้ระบุ',
       currentMeds: ctx.currentMeds || 'ไม่ได้ระบุ',
-      otherSymptomsFree: ctx.otherSymptomsFree || '',
+      otherSymptomsFree: getText('physical_assault_other_free') || ctx.otherSymptomsFree || '',
       doctor_notes: ctx.preservedDoctorNotes || { additional_hpi: '', physical_exam: '', preliminary_dx: '', plan: '' },
       vital_signs: { bt: 36.8, sbp: 120, dbp: 80, bp: '120/80', pr: 76, rr: 16, spo2: 99 },
       esi_level: 3,
@@ -1336,7 +1287,25 @@ const physicalAssaultModule = {
       painScore: assaultPainScoreTouched ? parseInt(document.getElementById('assaultPainScore')?.value || '0', 10) : null,
       assaultOsccScreen: getRadioValue('assaultOsccScreen'),
       assaultAnticoagulantHx: getRadioValue('assaultAnticoagulantHx'),
-      assaultTetanusHx: getRadioValue('assaultTetanusHx')
+      assaultTetanusHx: getRadioValue('assaultTetanusHx'),
+      ...(() => {
+        const inj = {};
+        const pMap = {
+          Head: getChecked('assaultParentHeadFace'), Neck: getChecked('assaultParentNeck'),
+          Chest: getChecked('assaultParentChest'), Abd: getChecked('assaultParentAbdomen'),
+          Arm: getChecked('assaultParentUpperExtremity'), Leg: getChecked('assaultParentLowerExtremity')
+        };
+        ["assaultHeadScalp","assaultHeadFace","assaultHeadEye","assaultHeadEar","assaultHeadNoseMouth","assaultNeckFront","assaultNeckSide","assaultNeckBack","assaultChestFront","assaultChestClavicle","assaultChestBack","assaultAbdFront","assaultAbdFlank","assaultAbdLowBack","assaultAbdButtock","assaultAbdGroinGenitalia","assaultArmShoulder","assaultArmElbowForearm","assaultArmWristHand","assaultArmFingers","assaultLegThigh","assaultLegKneeShinCalf","assaultLegAnkleFoot","assaultLegToes"].forEach(id => {
+          const pKey = Object.keys(pMap).find(k => id.startsWith('assault' + k));
+          const pActive = pKey ? pMap[pKey] : true;
+          inj[id + 'Injuries'] = (pActive && getChecked(id)) ? getCheckedValues(id + 'Injuries') : [];
+        });
+        return inj;
+      })(),
+      ...(isAssaultFemaleCtx(ctx) ? {
+        assaultLmpDate: getText('assaultLmpDate'),
+        assaultPregnancyStatus: document.getElementById('assaultPregnancyStatus')?.value || 'not_pregnant'
+      } : {})
     };
 
     updateAssaultOutputs(rec);
@@ -1463,7 +1432,18 @@ const physicalAssaultModule = {
     setCheckedValues('assaultSystemicSigns', patient.assaultSystemicSigns);
     setRadioValue('assaultOsccScreen', patient.assaultOsccScreen);
     setRadioValue('assaultAnticoagulantHx', patient.assaultAnticoagulantHx);
-    setRadioValue('assaultTetanusHx', patient.assaultTetanusHx);
+    const legacyTetanusMap = { more_than_10_years: 'over_10_years', never_or_unsure: 'unknown_or_never' };
+    setRadioValue('assaultTetanusHx', legacyTetanusMap[patient.assaultTetanusHx] || patient.assaultTetanusHx);
+    ["assaultHeadScalp","assaultHeadFace","assaultHeadEye","assaultHeadEar","assaultHeadNoseMouth","assaultNeckFront","assaultNeckSide","assaultNeckBack","assaultChestFront","assaultChestClavicle","assaultChestBack","assaultAbdFront","assaultAbdFlank","assaultAbdLowBack","assaultAbdButtock","assaultAbdGroinGenitalia","assaultArmShoulder","assaultArmElbowForearm","assaultArmWristHand","assaultArmFingers","assaultLegThigh","assaultLegKneeShinCalf","assaultLegAnkleFoot","assaultLegToes"].forEach(id => setCheckedValues(id + 'Injuries', patient[id + 'Injuries']));
+    setText('physical_assault_other_free', patient.otherSymptomsFree);
+    const isFem = isAssaultFemalePatient(patient);
+    toggleAssaultFemaleSection(isFem);
+    if (isFem) {
+      setText('assaultLmpDate', patient.assaultLmpDate || '');
+      const pregEl = document.getElementById('assaultPregnancyStatus');
+      if (pregEl && patient.assaultPregnancyStatus) pregEl.value = patient.assaultPregnancyStatus;
+    }
+    checkAndDisplayAssaultLmp(patient);
 
     // Refresh UI display states
     handleAssaultMechanismChange();
@@ -1523,7 +1503,8 @@ const physicalAssaultModule = {
     if (!sec) return;
     sec.querySelectorAll('input[type="checkbox"]').forEach(cb => { cb.checked = false; });
     sec.querySelectorAll('input[type="radio"]').forEach(rb => { rb.checked = false; });
-    sec.querySelectorAll('input[type="text"]').forEach(ti => { ti.value = ''; });
+    sec.querySelectorAll('input[type="text"], textarea').forEach(ti => { ti.value = ''; });
+    sec.querySelectorAll('select').forEach(sel => { sel.selectedIndex = 0; });
     sec.querySelectorAll('input[type="number"]').forEach(ni => { ni.value = ''; });
 
     ['assaultDurationVal', 'assaultBluntDetail', 'assaultSharpDetail', 'assaultChemicalDetail', 'assaultOtherMechDetail', 'assaultOtherLocationDetail'].forEach(id => {
@@ -1540,7 +1521,7 @@ const physicalAssaultModule = {
       'assaultAbdomenSubGroup', 'assaultAbdFrontSidesContainer', 'assaultAbdFlankSidesContainer', 'assaultAbdLowBackSidesContainer', 'assaultAbdButtockSidesContainer', 'assaultAbdGroinGenitaliaSidesContainer',
       'assaultUpperExtSubGroup', 'assaultArmShoulderSidesContainer', 'assaultArmElbowForearmSidesContainer', 'assaultArmWristHandSidesContainer', 'assaultArmFingersSidesContainer',
       'assaultLowerExtSubGroup', 'assaultLegThighSidesContainer', 'assaultLegKneeShinCalfSidesContainer', 'assaultLegAnkleFootSidesContainer', 'assaultLegToesSidesContainer',
-      'assaultOtherSubGroup'
+      'assaultOtherSubGroup', 'assaultFemaleSection'
     ];
     hiddenContainers.forEach(id => {
       const el = document.getElementById(id);
@@ -1572,8 +1553,8 @@ const physicalAssaultModule = {
     return renderAssaultNarrativeHpi(patient);
   },
 
-  generateCds(patient) {
-    return generateAssaultCds(patient);
+  generateCds(patient, ctx) {
+    return generateAssaultCds(patient, ctx);
   },
 
   // --- Standardized Seed Cases (บริบทประเทศไทย) ---

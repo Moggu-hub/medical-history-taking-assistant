@@ -1177,28 +1177,20 @@ registerCcModule({
           </div>
         </div>
       </div>
+
+      <!-- อาการอื่นๆ เป็นช่องกรอกอิสระ -->
+      <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+        <div class="flex items-center space-x-3 mb-3 pb-2 border-b border-slate-100">
+          <div class="bg-slate-100 text-slate-600 p-2 rounded-xl"><i data-lucide="message-square-plus" class="w-5 h-5"></i></div>
+          <div><h2 class="text-base font-bold text-slate-800">อาการอื่นๆ ที่ต้องการแจ้งเพิ่มเติม</h2><p class="text-xs text-slate-500">ระบุอาการอื่นๆ ที่ท่านมีหรือต้องการบอกแพทย์เพิ่มเติม (ถ้ามี)</p></div>
+        </div>
+        <textarea id="poisoning_other_free" rows="2" placeholder="พิมพ์ระบุอาการอื่นๆ ที่ท่านมีหรือต้องการบอกแพทย์เพิ่มเติม (ถ้ามี)..." class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-medical-500 focus:bg-white"></textarea>
+      </div>
     </div>
   `,
 
-  // -----------------------------------------------------------------------
-  // COLLECT INTAKE (READ FROM DOM TO PATIENT OBJECT)
-  // -----------------------------------------------------------------------
   collectIntake: function(ctx = {}) {
-    const {
-      recordId,
-      queueNumber,
-      randomHn,
-      patientName,
-      patientAge,
-      gender,
-      recordStatus,
-      hospRecordStatus,
-      underlying,
-      drugAllergy,
-      currentMeds,
-      preservedDoctorNotes,
-      otherSymptomsFree
-    } = ctx;
+    const { recordId, queueNumber, randomHn, patientName, patientAge, gender, recordStatus, hospRecordStatus, underlying, drugAllergy, currentMeds, preservedDoctorNotes, otherSymptomsFree } = ctx;
 
     const _rawDur = parseFloat(document.getElementById('poisoningDurationVal')?.value);
     const durationVal = (!isNaN(_rawDur) && _rawDur > 0) ? _rawDur : null;
@@ -1324,7 +1316,7 @@ registerCcModule({
       underlying: underlying || [],
       drugAllergy: drugAllergy || 'ปฏิเสธ',
       currentMeds: currentMeds || 'ไม่มี',
-      otherSymptomsFree: otherSymptomsFree || '',
+      otherSymptomsFree: document.getElementById('poisoning_other_free')?.value?.trim() || otherSymptomsFree || '',
       doctor_notes: preservedDoctorNotes || { additional_hpi: '', physical_exam: '', preliminary_dx: '', plan: '' }
     };
 
@@ -1433,6 +1425,7 @@ registerCcModule({
 
     if (document.getElementById('poisoningNpoTime')) document.getElementById('poisoningNpoTime').value = p.poisoningNpoTime || '';
     if (document.getElementById('poisoningNpoLastMeal')) document.getElementById('poisoningNpoLastMeal').value = p.poisoningNpoLastMeal || '';
+    if (document.getElementById('poisoning_other_free')) document.getElementById('poisoning_other_free').value = p.otherSymptomsFree || '';
   },
 
   clearForm: function() {
@@ -1440,7 +1433,7 @@ registerCcModule({
     if (!sec) return;
     sec.querySelectorAll('input[type="checkbox"]').forEach(cb => { cb.checked = false; });
     sec.querySelectorAll('input[type="radio"]').forEach(rb => { rb.checked = false; });
-    sec.querySelectorAll('input[type="text"]').forEach(ti => { ti.value = ''; });
+    sec.querySelectorAll('input[type="text"], textarea').forEach(ti => { ti.value = ''; });
     sec.querySelectorAll('input[type="number"]').forEach(ni => { ni.value = ''; });
 
     const durUnit = document.getElementById('poisoningDurationUnit');

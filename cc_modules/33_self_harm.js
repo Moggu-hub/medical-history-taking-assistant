@@ -945,6 +945,19 @@ const selfHarmModule = {
         </div>
       </div>
 
+      <!-- อาการอื่นๆ เป็นช่องกรอกอิสระ -->
+      <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+        <div class="flex items-center space-x-3 mb-3 pb-2 border-b border-slate-100">
+          <div class="bg-slate-100 text-slate-600 p-2 rounded-xl"><i data-lucide="message-square-plus" class="w-5 h-5"></i></div>
+          <div>
+            <h2 class="text-base font-bold text-slate-800">อาการอื่นๆ ที่ต้องการแจ้งเพิ่มเติม</h2>
+            <p class="text-xs text-slate-500">ระบุอาการอื่นๆ ที่ท่านมีหรือต้องการบอกแพทย์เพิ่มเติม (ถ้ามี)</p>
+          </div>
+        </div>
+        <textarea id="self_harm_other_free" rows="2" placeholder="พิมพ์ระบุอาการอื่นๆ ที่ท่านมีหรือต้องการบอกแพทย์เพิ่มเติม (ถ้ามี)..."
+          class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-medical-500 focus:bg-white"></textarea>
+      </div>
+
     </div>`,
 
   // -------------------------------------------------------------------------
@@ -971,7 +984,7 @@ const selfHarmModule = {
       underlying: ctx.underlying || [],
       drugAllergy: ctx.drugAllergy || 'ปฏิเสธ',
       currentMeds: ctx.currentMeds || 'ไม่มี',
-      otherSymptomsFree: ctx.otherSymptomsFree || '',
+      otherSymptomsFree: document.getElementById('self_harm_other_free')?.value?.trim() || ctx.otherSymptomsFree || '',
       doctor_notes: ctx.preservedDoctorNotes || { additional_hpi: '', physical_exam: '', preliminary_dx: '', plan: '' }
     };
 
@@ -1229,6 +1242,7 @@ const selfHarmModule = {
         if (document.getElementById('selfHarmPregnancyStatus')) document.getElementById('selfHarmPregnancyStatus').value = patient.selfHarmPregnancyStatus || 'not_pregnant';
       }
     }
+    setVal('self_harm_other_free', patient.otherSymptomsFree || '');
   },
 
   // -------------------------------------------------------------------------
@@ -1530,6 +1544,10 @@ const selfHarmModule = {
     };
     const preList = Array.isArray(patient.selfHarmPreConditions) ? patient.selfHarmPreConditions : [];
     preList.forEach(k => { if (preThMap[k]) positives.push(preThMap[k]); });
+
+    if (patient.otherSymptomsFree && String(patient.otherSymptomsFree).trim()) {
+      positives.push(`ข้อมูลเพิ่มเติมจากผู้ป่วย: ${String(patient.otherSymptomsFree).trim()}`);
+    }
 
     if (positives.length === 0) positives.push(`มีประวัติทำร้ายตนเองโดยวิธี${methodStr}`);
 

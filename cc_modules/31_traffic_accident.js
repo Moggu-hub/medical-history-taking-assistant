@@ -500,6 +500,10 @@ function renderTrafficRapidHpi(patient) {
   if (chestSigns.length === 0 && !patient.trafficParentChest) negatives.push('ไม่เจ็บแน่นหน้าอก และหายใจไม่อิ่ม');
   if (abdSigns.length === 0 && !patient.trafficParentAbdomen) negatives.push('ไม่ปวดท้อง และปัสสาวะไม่มีเลือดปน');
 
+  if (patient.otherSymptomsFree && String(patient.otherSymptomsFree).trim()) {
+    positives.push(`ข้อมูลเพิ่มเติมจากผู้ป่วย: ${String(patient.otherSymptomsFree).trim()}`);
+  }
+
   const pScore = patient.painScore !== null && patient.painScore !== undefined ? `${patient.painScore}/10` : 'ไม่ได้ระบุ';
 
   // Female LMP & Pregnancy formatting (C-AP13 Male Guard & C-AP14 Thai Dictionary)
@@ -1416,6 +1420,19 @@ const TRAFFIC_ACCIDENT_FORM_HTML = `
     </div>
   </div>
 
+  <!-- อาการอื่นๆ เป็นช่องกรอกอิสระ -->
+  <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+    <div class="flex items-center space-x-3 mb-3 pb-2 border-b border-slate-100">
+      <div class="bg-slate-100 text-slate-600 p-2 rounded-xl"><i data-lucide="message-square-plus" class="w-5 h-5"></i></div>
+      <div>
+        <h2 class="text-base font-bold text-slate-800">อาการอื่นๆ ที่ต้องการแจ้งเพิ่มเติม</h2>
+        <p class="text-xs text-slate-500">ระบุอาการอื่นๆ ที่ท่านมีหรือต้องการบอกแพทย์เพิ่มเติม (ถ้ามี)</p>
+      </div>
+    </div>
+    <textarea id="traffic_accident_other_free" rows="2" placeholder="พิมพ์ระบุอาการอื่นๆ ที่ท่านมีหรือต้องการบอกแพทย์เพิ่มเติม (ถ้ามี)..."
+      class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-medical-500 focus:bg-white"></textarea>
+  </div>
+
 </div>
 `;
 
@@ -1492,7 +1509,7 @@ const trafficAccidentModule = {
       underlying: ctx.underlying || [],
       drugAllergy: ctx.drugAllergy || 'ไม่ได้ระบุ',
       currentMeds: ctx.currentMeds || 'ไม่ได้ระบุ',
-      otherSymptomsFree: ctx.otherSymptomsFree || '',
+      otherSymptomsFree: getText('traffic_accident_other_free') || ctx.otherSymptomsFree || '',
       doctor_notes: ctx.preservedDoctorNotes || { additional_hpi: '', physical_exam: '', preliminary_dx: '', plan: '' },
       vital_signs: { bt: 36.8, sbp: 120, dbp: 80, bp: '120/80', pr: 76, rr: 16, spo2: 99 },
       esi_level: 3,
@@ -1693,6 +1710,7 @@ const trafficAccidentModule = {
     setText('trafficNpoExactTime', patient.trafficNpoExactTime);
     setRadioValue('trafficNpoDuration', patient.trafficNpoDuration);
     setText('trafficNpoLastFoodDetail', patient.trafficNpoLastFoodDetail);
+    setText('traffic_accident_other_free', patient.otherSymptomsFree);
 
     // Refresh UI display states
     handleTrafficVehicleChange();
@@ -1729,7 +1747,7 @@ const trafficAccidentModule = {
     if (!sec) return;
     sec.querySelectorAll('input[type="checkbox"]').forEach(cb => { cb.checked = false; });
     sec.querySelectorAll('input[type="radio"]').forEach(rb => { rb.checked = false; });
-    sec.querySelectorAll('input[type="text"]').forEach(ti => { ti.value = ''; });
+    sec.querySelectorAll('input[type="text"], textarea').forEach(ti => { ti.value = ''; });
     sec.querySelectorAll('input[type="number"]').forEach(ni => { ni.value = ''; });
 
     sec.querySelectorAll('select').forEach(el => { el.selectedIndex = 0; });
