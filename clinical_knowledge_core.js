@@ -46,7 +46,6 @@ const CHIEF_COMPLAINTS = [
   { id: 'laceration_bleeding', schemaCode: 'laceration_bleeding', titleTh: 'บาดแผลฉีกขาด / มีเลือดออก', titleEn: 'Laceration / Active bleeding', icon: 'bandage', active: true, phase: 6 },
   { id: 'stroke_deficit', schemaCode: 'stroke_deficit', titleTh: 'ปากเบี้ยว อ่อนแรง ชา ข้างใดข้างหนึ่ง พูดไม่ชัด', titleEn: 'Focal neurological deficit / Hemiparesis / Dysarthria', icon: 'brain', active: true, phase: 5 },
   { id: 'seizure', schemaCode: 'seizure', titleTh: 'ชัก / เกร็งกระตุก', titleEn: 'Seizure / Convulsion', icon: 'zap', active: true, phase: 5 },
-  { id: 'pediatric_seizure', schemaCode: 'pediatric_seizure', titleTh: 'ชักเกร็งในเด็กอายุ < 6 ปี', titleEn: 'Pediatric seizure / Febrile seizure (< 6 years)', icon: 'baby', active: false, phase: 6 },
   { id: 'syncope', schemaCode: 'syncope', titleTh: 'หมดสติ / วูบ / เป็นลม', titleEn: 'Syncope / Loss of consciousness', icon: 'sparkles', active: true, phase: 5 },
   { id: 'altered_mental', schemaCode: 'altered_mental_status', titleTh: 'ซึมลง / สับสนเฉียบพลัน / ระดับความรู้สึกตัวเปลี่ยนแปลง', titleEn: 'Altered mental status / Confusion', icon: 'help-circle', active: true, phase: 5 },
   { id: 'vomiting', schemaCode: 'severe_nausea_vomiting', titleTh: 'คลื่นไส้ / อาเจียนรุนแรง', titleEn: 'Nausea & Severe Vomiting', icon: 'frown', active: true, phase: 6 },
@@ -68,7 +67,17 @@ const CHIEF_COMPLAINTS = [
   { id: 'hypertension', schemaCode: 'hypertension_detected', titleTh: 'ตรวจพบความดันโลหิตสูง', titleEn: 'Asymptomatic severe hypertension / High BP screen', icon: 'activity', active: true, phase: 9 },
   { id: 'animal_bite', schemaCode: 'mammalian_bite', titleTh: 'สุนัข แมว สัตว์เลี้ยงลูกด้วยนมกัด', titleEn: 'Animal / Dog / Cat bites (Rabies risk)', icon: 'paw-print', active: true, phase: 10 },
   { id: 'venomous_bite', schemaCode: 'venomous_bite_sting', titleTh: 'แมลง / งู / สัตว์มีพิษกัดต่อย', titleEn: 'Insect sting / Snake & Venomous creature bites', icon: 'bug', active: true, phase: 10 },
-  { id: 'poisoning', schemaCode: 'poisoning_overdose', titleTh: 'ได้รับสารพิษ / กินยาเกินขนาด', titleEn: 'Poisoning / Drug overdose', icon: 'skull', active: true, phase: 10 }
+  { id: 'poisoning', schemaCode: 'poisoning_overdose', titleTh: 'ได้รับสารพิษ / กินยาเกินขนาด', titleEn: 'Poisoning / Drug overdose', icon: 'skull', active: true, phase: 10 },
+  // Pediatric Chief Complaints Zone (แยกกลุ่มอาการเฉพาะผู้ป่วยเด็กไว้ด้านล่าง)
+  { id: 'pediatric_head_injury', schemaCode: 'pediatric_head_injury', titleTh: 'บาดเจ็บศีรษะ ในเด็กอายุ < 15 ปี', titleEn: 'Pediatric Head Injury (< 15 yrs)', icon: 'baby', active: false, isPediatric: true, maxAgeYears: 15, phase: 11, ageBrackets: [{ id: 'lt_2y', labelTh: 'อายุน้อยกว่า 2 ปี (< 2 ปี)', minMonths: 0, maxMonths: 24 }, { id: '2y_to_15y', labelTh: 'อายุ 2 – 15 ปี', minMonths: 24, maxMonths: 180 }] },
+  { id: 'pediatric_fever', schemaCode: 'pediatric_fever', titleTh: 'ไข้ ในเด็กอายุ < 5 ปี', titleEn: 'Pediatric Fever (< 5 yrs)', icon: 'flame', active: false, isPediatric: true, maxAgeYears: 5, phase: 11, ageBrackets: [{ id: 'lt_3m', labelTh: 'อายุน้อยกว่า 3 เดือน (< 3 เดือน)', minMonths: 0, maxMonths: 3 }, { id: '3m_to_5y', labelTh: 'อายุ 3 เดือน – 5 ปี', minMonths: 3, maxMonths: 60 }] },
+  { id: 'pediatric_dyspnea', schemaCode: 'pediatric_dyspnea', titleTh: 'เหนื่อย / หายใจหอบ ในเด็กอายุ < 15 ปี', titleEn: 'Pediatric Dyspnea (< 15 yrs)', icon: 'wind', active: false, isPediatric: true, maxAgeYears: 15, phase: 11, ageBrackets: [{ id: 'lt_6m', labelTh: 'อายุน้อยกว่า 6 เดือน (< 6 เดือน)', minMonths: 0, maxMonths: 6 }, { id: '6m_to_5y', labelTh: 'อายุ 6 เดือน – 5 ปี', minMonths: 6, maxMonths: 60 }, { id: '5y_to_15y', labelTh: 'อายุ 5 – 15 ปี', minMonths: 60, maxMonths: 180 }] },
+  { id: 'pediatric_abdpain', schemaCode: 'pediatric_abdpain', titleTh: 'ปวดท้อง ในเด็กอายุ < 12 ปี', titleEn: 'Pediatric Abdominal Pain (< 12 yrs)', icon: 'utensils', active: false, isPediatric: true, maxAgeYears: 12, phase: 11, ageBrackets: [{ id: 'lt_3m', labelTh: 'อายุน้อยกว่า 3 เดือน (< 3 เดือน)', minMonths: 0, maxMonths: 3 }, { id: '3m_to_3y', labelTh: 'อายุ 3 เดือน – 3 ปี', minMonths: 3, maxMonths: 36 }, { id: '3y_to_12y', labelTh: 'อายุ 3 – 12 ปี', minMonths: 36, maxMonths: 144 }] },
+  { id: 'pediatric_vomiting', schemaCode: 'pediatric_vomiting', titleTh: 'คลื่นไส้ / อาเจียน ในเด็กอายุ < 12 ปี', titleEn: 'Pediatric Vomiting (< 12 yrs)', icon: 'frown', active: false, isPediatric: true, maxAgeYears: 12, phase: 11, ageBrackets: [{ id: 'lt_3m', labelTh: 'อายุน้อยกว่า 3 เดือน (< 3 เดือน)', minMonths: 0, maxMonths: 3 }, { id: '3m_to_12y', labelTh: 'อายุ 3 เดือน – 12 ปี', minMonths: 3, maxMonths: 144 }] },
+  { id: 'pediatric_seizure', schemaCode: 'pediatric_seizure', titleTh: 'ชัก / เกร็งกระตุก ในเด็กอายุ < 6 ปี', titleEn: 'Pediatric Seizure (< 6 yrs)', icon: 'zap', active: false, isPediatric: true, maxAgeYears: 6, phase: 11, ageBrackets: [{ id: 'lt_1m', labelTh: 'ทารกแรกเกิด (< 1 เดือน)', minMonths: 0, maxMonths: 1 }, { id: '1m_to_6m', labelTh: 'อายุ 1 – 6 เดือน', minMonths: 1, maxMonths: 6 }, { id: '6m_to_6y', labelTh: 'อายุ 6 เดือน – 6 ปี', minMonths: 6, maxMonths: 72 }] },
+  { id: 'pediatric_lethargy', schemaCode: 'pediatric_lethargy', titleTh: 'ซึมลง / ไม่ดูดนม / อ่อนเพลีย ในเด็กอายุ < 1 ปี', titleEn: 'Infant Lethargy / Poor Feeding (< 1 yr)', icon: 'battery-low', active: false, isPediatric: true, maxAgeYears: 1, phase: 11, ageBrackets: [{ id: 'lt_1m', labelTh: 'ทารกแรกเกิด (< 1 เดือน)', minMonths: 0, maxMonths: 1 }, { id: '1m_to_12m', labelTh: 'อายุ 1 – 12 เดือน (< 1 ปี)', minMonths: 1, maxMonths: 12 }] },
+  { id: 'pediatric_gi_bleed', schemaCode: 'pediatric_gi_bleed', titleTh: 'อาเจียนเป็นเลือด / ถ่ายดำ / ถ่ายเป็นเลือดสด ในเด็กอายุ < 10 ปี', titleEn: 'Pediatric GI Bleeding (< 10 yrs)', icon: 'alert-triangle', active: false, isPediatric: true, maxAgeYears: 10, phase: 11, ageBrackets: [{ id: 'lt_1y', labelTh: 'อายุน้อยกว่า 1 ปี (< 1 ปี)', minMonths: 0, maxMonths: 12 }, { id: '1y_to_10y', labelTh: 'อายุ 1 – 10 ปี', minMonths: 12, maxMonths: 120 }] },
+  { id: 'pediatric_chest_syncope', schemaCode: 'pediatric_chest_syncope', titleTh: 'เจ็บแน่นหน้าอก / ใจสั่น / หมดสติวูบ ในเด็กอายุ < 15 ปี', titleEn: 'Pediatric Chest Pain / Palpitations / Syncope (< 15 yrs)', icon: 'heart', active: false, isPediatric: true, maxAgeYears: 15, phase: 11, ageBrackets: [{ id: 'lt_15y', labelTh: 'เด็ก/วัยรุ่น อายุน้อยกว่า 15 ปี (< 15 ปี)', minMonths: 0, maxMonths: 180 }] }
 ];
 
 // 3. STRUCTURED CLINICAL ALGORITHM SPECIFICATION (สำหรับทีมพัฒนา HIS ดึงชุดคำถามและเงื่อนไข)
@@ -903,4 +912,69 @@ function generateIntermediateJsonPayload(patient) {
     clinical_decision_support: { red_flags: patient.redFlags || [], shock_index: (patient.vital_signs?.sbp && patient.vital_signs?.pr) ? (patient.vital_signs.pr / patient.vital_signs.sbp).toFixed(2) : null },
     doctor_notes: patient.doctor_notes || {}
   };
+}
+
+// =========================================================================
+// 9. PEDIATRIC CC ROUTING, AGE CONVERSION & AGE-BRACKET RESOLVER
+// =========================================================================
+const ADULT_TO_PEDIATRIC_CC_MAP = {
+  fever: { targetCc: 'pediatric_fever', maxAgeYears: 5, label: 'ไข้ ในเด็กอายุ < 5 ปี' },
+  dyspnea: { targetCc: 'pediatric_dyspnea', maxAgeYears: 15, label: 'เหนื่อย / หายใจหอบ ในเด็กอายุ < 15 ปี' },
+  abdpain: { targetCc: 'pediatric_abdpain', maxAgeYears: 12, label: 'ปวดท้อง ในเด็กอายุ < 12 ปี' },
+  vomiting: { targetCc: 'pediatric_vomiting', maxAgeYears: 12, label: 'คลื่นไส้ / อาเจียน ในเด็กอายุ < 12 ปี' },
+  seizure: { targetCc: 'pediatric_seizure', maxAgeYears: 6, label: 'ชัก / เกร็งกระตุก ในเด็กอายุ < 6 ปี' },
+  altered_mental: { targetCc: 'pediatric_lethargy', maxAgeYears: 1, label: 'ซึมลง / ไม่ดูดนม / อ่อนเพลีย ในเด็กอายุ < 1 ปี' },
+  weakness: { targetCc: 'pediatric_lethargy', maxAgeYears: 1, label: 'ซึมลง / ไม่ดูดนม / อ่อนเพลีย ในเด็กอายุ < 1 ปี' },
+  gi_bleed: { targetCc: 'pediatric_gi_bleed', maxAgeYears: 10, label: 'อาเจียนเป็นเลือด / ถ่ายดำ / ถ่ายเป็นเลือดสด ในเด็กอายุ < 10 ปี' },
+  chestpain: { targetCc: 'pediatric_chest_syncope', maxAgeYears: 15, label: 'เจ็บแน่นหน้าอก / ใจสั่น / หมดสติวูบ ในเด็กอายุ < 15 ปี' },
+  palpitation: { targetCc: 'pediatric_chest_syncope', maxAgeYears: 15, label: 'เจ็บแน่นหน้าอก / ใจสั่น / หมดสติวูบ ในเด็กอายุ < 15 ปี' },
+  syncope: { targetCc: 'pediatric_chest_syncope', maxAgeYears: 15, label: 'เจ็บแน่นหน้าอก / ใจสั่น / หมดสติวูบ ในเด็กอายุ < 15 ปี' }
+};
+
+const PEDIATRIC_TO_ADULT_CC_MAP = {
+  pediatric_fever: { targetCc: 'fever', label: 'ไข้ / หนาวสั่น (ผู้ใหญ่)' },
+  pediatric_dyspnea: { targetCc: 'dyspnea', label: 'เหนื่อย / หายใจหอบเหนื่อย (ผู้ใหญ่)' },
+  pediatric_abdpain: { targetCc: 'abdpain', label: 'ปวดท้อง (ผู้ใหญ่)' },
+  pediatric_vomiting: { targetCc: 'vomiting', label: 'คลื่นไส้ / อาเจียนรุนแรง (ผู้ใหญ่)' },
+  pediatric_seizure: { targetCc: 'seizure', label: 'ชัก / เกร็งกระตุก (ผู้ใหญ่)' },
+  pediatric_lethargy: { targetCc: 'weakness', label: 'อ่อนเพลีย / ซึมลง (ผู้ใหญ่)' },
+  pediatric_gi_bleed: { targetCc: 'gi_bleed', label: 'อาเจียนเป็นเลือด / ถ่ายดำ / ถ่ายเป็นเลือดสด (ผู้ใหญ่)' },
+  pediatric_chest_syncope: { targetCc: 'chestpain', label: 'เจ็บแน่นหน้าอก (ผู้ใหญ่)' }
+};
+
+function getCcEntry(ccIdOrCode) {
+  return CHIEF_COMPLAINTS.find(c => c.id === ccIdOrCode || c.schemaCode === ccIdOrCode) || null;
+}
+
+function isPediatricCc(ccIdOrCode) {
+  const entry = getCcEntry(ccIdOrCode);
+  return Boolean(entry && entry.isPediatric);
+}
+
+function convertAgeToMonths(ageVal, ageUnit = 'years') {
+  const num = parseFloat(ageVal);
+  if (isNaN(num) || num <= 0) return null;
+  if (ageUnit === 'days') return num / 30;
+  if (ageUnit === 'months') return num;
+  return num * 12;
+}
+
+function formatAgeWithUnit(ageVal, ageUnit = 'years') {
+  if (ageVal === null || ageVal === undefined || ageVal === '' || ageVal === 'ไม่ระบุ') return 'ไม่ระบุ';
+  const unitLabel = ageUnit === 'days' ? 'วัน' : (ageUnit === 'months' ? 'เดือน' : 'ปี');
+  return `${ageVal} ${unitLabel}`;
+}
+
+function resolvePediatricAgeBracket(ccIdOrCode, ageVal, ageUnit = 'years') {
+  const entry = getCcEntry(ccIdOrCode);
+  if (!entry || !entry.isPediatric) return { status: 'not_pediatric', ageMonths: null, bracket: null, entry };
+  const ageMonths = convertAgeToMonths(ageVal, ageUnit);
+  if (ageMonths === null) return { status: 'missing', ageMonths: null, bracket: null, entry };
+  const maxMonths = (entry.maxAgeYears || 15) * 12;
+  if (ageMonths >= maxMonths) return { status: 'over_age', ageMonths, bracket: null, entry };
+  const brackets = Array.isArray(entry.ageBrackets) ? entry.ageBrackets : [];
+  const matched = brackets.find((b, idx) =>
+    ageMonths >= b.minMonths && (idx === brackets.length - 1 ? ageMonths < b.maxMonths : ageMonths < b.maxMonths)
+  ) || brackets[brackets.length - 1] || null;
+  return { status: 'valid', ageMonths, bracket: matched, entry };
 }

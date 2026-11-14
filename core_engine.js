@@ -632,10 +632,13 @@ function renderPatientStatusView() {
   const timeEl = document.getElementById('statusViewTimestamp');
   const summaryEl = document.getElementById('statusViewSummaryList');
 
-  const ageText = (patient.age && patient.age !== 'ไม่ระบุ') ? `${patient.age} ปี` : 'ไม่ระบุ';
+  const ageText = typeof formatAgeWithUnit === 'function'
+    ? formatAgeWithUnit(patient.age, patient.ageUnit || 'years')
+    : ((patient.age && patient.age !== 'ไม่ระบุ') ? `${patient.age} ปี` : 'ไม่ระบุ');
+  const weightText = patient.weightKg ? ` • น้ำหนัก ${patient.weightKg} กก.` : '';
   if (qEl) qEl.textContent = patient.queue_number || '-';
   if (nameEl) nameEl.textContent = patient.name || '-';
-  if (demogEl) demogEl.textContent = `อายุ ${ageText} • เพศ${patient.gender || 'ไม่ระบุ'} • HN: ${patient.hn || '-'}`;
+  if (demogEl) demogEl.textContent = `อายุ ${ageText}${weightText} • เพศ${patient.gender || 'ไม่ระบุ'} • HN: ${patient.hn || '-'}`;
   if (ccEl) ccEl.textContent = patient.chief_complaint_title || patient.chief_complaint;
   if (timeEl) {
     const dtObj = patient.timestamp ? new Date(patient.timestamp) : new Date();
@@ -671,6 +674,10 @@ function resetIntakeFormClean() {
   if (form) form.reset();
   const titleSelect = document.getElementById('patientTitleSelect');
   if (titleSelect) titleSelect.selectedIndex = 0;
+  const ageUnitSel = document.getElementById('patientAgeUnitSelect');
+  if (ageUnitSel) ageUnitSel.value = 'years';
+  const weightInp = document.getElementById('patientWeightKgInput');
+  if (weightInp) weightInp.value = '';
 
   // Hide all conditional branches (matched 1-to-1 with index.html DOM IDs)
   const branchIds = [
@@ -871,10 +878,15 @@ function populateFormFromPatient(patient) {
   const titleSelect = document.getElementById('patientTitleSelect');
   const nameInput = document.getElementById('patientNameInput');
   const ageInput = document.getElementById('patientAgeInput');
+  const ageUnitSel = document.getElementById('patientAgeUnitSelect');
+  const weightInput = document.getElementById('patientWeightKgInput');
   if (titleSelect) titleSelect.value = detectedTitle;
   if (nameInput) nameInput.value = cleanName;
   if (ageInput) ageInput.value = (patient.age && patient.age !== 'ไม่ระบุ') ? patient.age : '';
+  if (ageUnitSel) ageUnitSel.value = patient.ageUnit || 'years';
+  if (weightInput) weightInput.value = patient.weightKg !== undefined && patient.weightKg !== null ? patient.weightKg : '';
   handlePatientTitleChange();
+  handlePatientAgeChange();
 
   // 3. Hydrate Shared PMH, Allergies, and Current Meds
   const hospStatus = patient.hospRecordStatus && patient.hospRecordStatus !== 'unspecified' ? patient.hospRecordStatus : 'self';
@@ -893,13 +905,22 @@ function populateFormFromPatient(patient) {
       else if (u.includes('หลอดเลือดหัวใจ') || u.includes('CAD') || u.includes('หัวใจขาดเลือด')) { const el = document.getElementById('ud_cad'); if (el) el.checked = true; toggleBranch('ud_cad_detail_wrap', true); }
       else if (u.includes('หลอดเลือดสมอง') || u.includes('Stroke') || u.includes('อัมพฤกษ์')) { const el = document.getElementById('ud_stroke'); if (el) el.checked = true; }
       else if (u.includes('ไตเรื้อรัง') || u.includes('CKD')) { const el = document.getElementById('ud_ckd'); if (el) el.checked = true; }
-      else if (u.includes('หอบหืด') || u.includes('Asthma')) { const el = document.getElementById('ud_asthma'); if (el) el.checked = true; }
+      else if (u.includes('หอบหืด') || u.includes('ภูมิแพ้ทางเดินหายใจ') || u.includes('Asthma')) {
+        const el = document.getElementById('ud_asthma'); if (el) el.checked = true;
+        const pedAsthma = document.getElementById('ud_ped_asthma'); if (pedAsthma) pedAsthma.checked = true;
+      }
       else if (u.includes('ถุงลมโป่งพอง') || u.includes('COPD')) { const el = document.getElementById('ud_copd'); if (el) el.checked = true; }
       else if (u.includes('มะเร็ง') || u.includes('Cancer')) {
         const el = document.getElementById('ud_cancer'); if (el) el.checked = true; toggleBranch('cancer_type_wrap', true);
         const match = u.match(/\((.*?)\)/);
         if (match && document.getElementById('ud_cancer_type')) document.getElementById('ud_cancer_type').value = match[1];
-      } else otherUds.push(u);
+      }
+      else if (u.includes('คลอดก่อนกำหนด')) { const el = document.getElementById('ud_ped_preterm'); if (el) el.checked = true; }
+      else if (u.includes('หัวใจแต่กำเนิด') || u.includes('CHD')) { const el = document.getElementById('ud_ped_chd'); if (el) el.checked = true; }
+      else if (u.includes('ลมชัก') || u.includes('ชักจากไข้สูง')) { const el = document.getElementById('ud_ped_epilepsy'); if (el) el.checked = true; }
+      else if (u.includes('G6PD')) { const el = document.getElementById('ud_ped_g6pd'); if (el) el.checked = true; }
+      else if (u.includes('ธาลัสซีเมีย') || u.includes('โรคเลือด')) { const el = document.getElementById('ud_ped_thal'); if (el) el.checked = true; }
+      else otherUds.push(u);
     });
 
     if (otherUds.length > 0 && document.getElementById('ud_other')) {
@@ -1101,7 +1122,9 @@ function renderQueueCards() {
     const safeQueue = escapeHtml(p.queue_number);
     const safeName = escapeHtml(p.name);
     const safeGender = escapeHtml(p.gender || 'ไม่ระบุ');
-    const safeAge = (p.age && p.age !== 'ไม่ระบุ') ? `${escapeHtml(p.age)} ปี` : 'ไม่ระบุ';
+    const safeAge = typeof formatAgeWithUnit === 'function'
+      ? escapeHtml(formatAgeWithUnit(p.age, p.ageUnit || 'years'))
+      : ((p.age && p.age !== 'ไม่ระบุ') ? `${escapeHtml(p.age)} ปี` : 'ไม่ระบุ');
     const safeHn = p.hn ? escapeHtml(p.hn) : '';
     const rawCcTitle = p.chief_complaint_title || resolveCcTitleTh(p.chief_complaint) || 'ไข้ / หนาวสั่น';
     const safeCcTitle = escapeHtml(rawCcTitle);
@@ -1360,22 +1383,27 @@ document.addEventListener('DOMContentLoaded', () => {
   if (typeof lucide !== 'undefined') lucide.createIcons();
 });
 
-// Render Chief Complaints Cards in Landing Page
-function renderChiefComplaints() {
-  const container = document.getElementById('ccGrid');
-  if (!container) return;
-  container.innerHTML = CHIEF_COMPLAINTS.map(cc => `
-    <div onclick="selectChiefComplaint('${escapeHtml(cc.id)}', ${Boolean(cc.active)})" 
-      class="selectable-card p-4 rounded-2xl cursor-pointer relative flex flex-col justify-between ${cc.active ? 'border-medical-500 ring-1 ring-medical-500 bg-sky-50/50' : 'hover:border-slate-300'}">
+function buildChiefComplaintCardHtml(cc) {
+  const activeBorder = cc.isPediatric
+    ? 'border-sky-500 ring-1 ring-sky-400 bg-sky-50/70'
+    : 'border-medical-500 ring-1 ring-medical-500 bg-sky-50/50';
+  const inactiveBorder = cc.isPediatric ? 'border-sky-200/80 bg-sky-50/20 hover:border-sky-300' : 'hover:border-slate-300';
+  const activeIconBg = cc.isPediatric ? 'bg-sky-600 text-white' : 'bg-medical-600 text-white';
+  const inactiveIconBg = cc.isPediatric ? 'bg-sky-100 text-sky-700' : 'bg-slate-100 text-slate-600';
+  const badgeHtml = cc.active
+    ? '<span class="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-full">พร้อมใช้งาน (Active)</span>'
+    : (cc.isPediatric
+      ? '<span class="bg-sky-100 text-sky-700 text-[10px] font-medium px-2 py-0.5 rounded-full">เฉพาะเด็ก • รอพัฒนา</span>'
+      : '<span class="bg-slate-100 text-slate-500 text-[10px] font-medium px-2 py-0.5 rounded-full">ระยะถัดไป</span>');
+  return `
+    <div data-cc-id="${escapeHtml(cc.id)}" data-cc-search="${escapeHtml(`${cc.titleTh} ${cc.titleEn}`.toLowerCase())}" onclick="selectChiefComplaint('${escapeHtml(cc.id)}', ${Boolean(cc.active)})" 
+      class="selectable-card p-4 rounded-2xl cursor-pointer relative flex flex-col justify-between ${cc.active ? activeBorder : inactiveBorder}">
       <div>
         <div class="flex items-center justify-between mb-2">
-          <div class="${cc.active ? 'bg-medical-600 text-white' : 'bg-slate-100 text-slate-600'} p-2 rounded-xl">
+          <div class="${cc.active ? activeIconBg : inactiveIconBg} p-2 rounded-xl">
             <i data-lucide="${escapeHtml(cc.icon)}" class="w-4 h-4"></i>
           </div>
-          ${cc.active 
-            ? '<span class="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-full">พร้อมใช้งาน (Active)</span>'
-            : '<span class="bg-slate-100 text-slate-500 text-[10px] font-medium px-2 py-0.5 rounded-full">ระยะถัดไป</span>'
-          }
+          ${badgeHtml}
         </div>
         <h3 class="text-xs sm:text-sm font-bold text-slate-800 leading-snug">${escapeHtml(cc.titleTh)}</h3>
         <p class="text-[11px] text-slate-400 mt-1 font-sans">${escapeHtml(cc.titleEn)}</p>
@@ -1385,21 +1413,38 @@ function renderChiefComplaints() {
         <i data-lucide="chevron-right" class="w-3.5 h-3.5"></i>
       </div>
     </div>
-  `).join('');
+  `;
+}
+
+// Render Chief Complaints Cards in Landing Page (Adult top grid + Pediatric bottom zone)
+function renderChiefComplaints() {
+  const adultContainer = document.getElementById('ccGrid');
+  const pedContainer = document.getElementById('pediatricCcGrid');
+  if (adultContainer) {
+    adultContainer.innerHTML = CHIEF_COMPLAINTS.filter(cc => !cc.isPediatric).map(buildChiefComplaintCardHtml).join('');
+  }
+  if (pedContainer) {
+    pedContainer.innerHTML = CHIEF_COMPLAINTS.filter(cc => cc.isPediatric).map(buildChiefComplaintCardHtml).join('');
+  }
   if (typeof lucide !== 'undefined') lucide.createIcons();
 }
 
 function filterChiefComplaints() {
-  const query = document.getElementById('ccSearchInput').value.toLowerCase().trim();
-  const cards = document.querySelectorAll('#ccGrid > div');
-  CHIEF_COMPLAINTS.forEach((cc, index) => {
-    const text = `${cc.titleTh} ${cc.titleEn}`.toLowerCase();
-    if (text.includes(query)) {
-      cards[index].classList.remove('hidden');
-    } else {
-      cards[index].classList.add('hidden');
-    }
-  });
+  const query = (document.getElementById('ccSearchInput')?.value || '').toLowerCase().trim();
+  const filterCards = (selector) => {
+    let visibleCount = 0;
+    document.querySelectorAll(selector).forEach(card => {
+      const searchText = card.getAttribute('data-cc-search') || (card.textContent || '').toLowerCase();
+      const matched = !query || searchText.includes(query);
+      card.classList.toggle('hidden', !matched);
+      if (matched) visibleCount++;
+    });
+    return visibleCount;
+  };
+  filterCards('#ccGrid > div');
+  const pedVisible = filterCards('#pediatricCcGrid > div');
+  const pedSec = document.getElementById('pediatricCcSection');
+  if (pedSec) pedSec.classList.toggle('hidden', Boolean(query) && pedVisible === 0);
 }
 
 function selectChiefComplaint(id, isActive) {
@@ -1407,14 +1452,15 @@ function selectChiefComplaint(id, isActive) {
     setPatientFormChiefComplaint(id);
     navigateTo('patient');
     const found = CHIEF_COMPLAINTS.find(c => c.id === id);
-    if (id === 'seizure') {
-      showToast('เปิดแบบประเมินอาการ: ชัก / เกร็งกระตุก (หากอายุ < 6 ปี กรุณาใช้ CC: ชักเกร็งในเด็กอายุ < 6 ปี)');
+    const pedMap = typeof ADULT_TO_PEDIATRIC_CC_MAP !== 'undefined' ? ADULT_TO_PEDIATRIC_CC_MAP[id] : null;
+    if (pedMap) {
+      showToast(`เปิดแบบประเมินอาการ: ${found ? found.titleTh : id} (เด็กอายุ < ${pedMap.maxAgeYears} ปี กรุณาใช้ CC: ${pedMap.label})`);
     } else {
       showToast(`เปิดแบบประเมินอาการ: ${found ? found.titleTh : id}`);
     }
   } else {
     const found = CHIEF_COMPLAINTS.find(c => c.id === id);
-    showToast(`กำลังพัฒนาแบบประเมิน: ${found ? found.titleTh : id} (เวอร์ชันนี้โปรดเลือก 'ปวดท้อง', 'ไข้ / หนาวสั่น', 'เจ็บแน่นหน้าอก', 'เหนื่อย' หรือ 'เวียนศีรษะ / บ้านหมุน')`);
+    showToast(`กำลังพัฒนาแบบประเมิน: ${found ? found.titleTh : id} (${found?.isPediatric ? 'กลุ่ม CC ผู้ป่วยเด็กอยู่ระหว่างพัฒนาในเฟสถัดไป' : 'โปรดเลือกอาการหลักที่เปิดใช้งาน'})`);
   }
 }
 
@@ -1478,6 +1524,7 @@ function setPatientFormChiefComplaint(ccId) {
   }
 
   updateSectionNumbering();
+  updatePediatricFormModeUi();
   if (ccId === 'chestpain' && !editingPatientId) {
     clearChestpainPainScore();
     checkChestpainHighRiskMedTrigger();
@@ -1558,6 +1605,142 @@ function handlePatientTitleChange() {
     dynMod.onTitleChange({ title, isFemale });
   }
   if (typeof lucide !== 'undefined') lucide.createIcons();
+}
+
+function focusPatientAgeInput() {
+  const ageInput = document.getElementById('patientAgeInput');
+  if (ageInput) {
+    ageInput.focus();
+    if (typeof ageInput.scrollIntoView === 'function') {
+      ageInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }
+}
+
+function handlePatientAgeChange() {
+  if (typeof checkSeizurePediatricAgeGuidance === 'function') {
+    checkSeizurePediatricAgeGuidance();
+  }
+  updatePediatricFormModeUi();
+}
+
+function updatePediatricFormModeUi() {
+  const ccId = currentPatientFormCC;
+  const isPed = typeof isPediatricCc === 'function' && isPediatricCc(ccId);
+
+  const unitSel = document.getElementById('patientAgeUnitSelect');
+  const weightWrap = document.getElementById('pediatricWeightWrap');
+  const ageLabel = document.getElementById('patientAgeLabel');
+  const ageInput = document.getElementById('patientAgeInput');
+  const adultUdGrp = document.getElementById('adultUnderlyingGroup');
+  const pedUdGrp = document.getElementById('pediatricUnderlyingGroup');
+
+  if (unitSel) {
+    unitSel.classList.toggle('hidden', !isPed);
+    if (!isPed || !unitSel.value) unitSel.value = 'years';
+  }
+  if (weightWrap) weightWrap.classList.toggle('hidden', !isPed);
+  if (ageLabel) ageLabel.innerHTML = isPed ? 'อายุผู้ป่วย <span class="text-rose-500">*</span>' : 'อายุ (ปี) <span class="text-rose-500">*</span>';
+  if (ageInput) ageInput.placeholder = isPed ? 'ระบุอายุ เช่น 4' : 'เช่น 45';
+  if (adultUdGrp) adultUdGrp.classList.toggle('hidden', isPed);
+  if (pedUdGrp) pedUdGrp.classList.toggle('hidden', !isPed);
+
+  const qContainer = document.getElementById('ccQuestionnairesContainer');
+  const redirectBanner = document.getElementById('adultToPediatricRedirectBanner');
+  const redirectText = document.getElementById('adultToPediatricRedirectText');
+  const gateBanner = document.getElementById('pediatricAgeGateBanner');
+  const gateTitle = document.getElementById('pediatricAgeGateTitle');
+  const gateDesc = document.getElementById('pediatricAgeGateDesc');
+  const focusBtn = document.getElementById('pediatricAgeFocusBtn');
+  const switchAdultBtn = document.getElementById('pediatricSwitchToAdultBtn');
+
+  const rawAge = ageInput?.value?.trim() || '';
+  const ageVal = rawAge ? parseFloat(rawAge) : NaN;
+  const ageUnit = unitSel?.value || 'years';
+
+  if (!isPed) {
+    if (qContainer) qContainer.classList.remove('hidden');
+    if (gateBanner) gateBanner.classList.add('hidden');
+    const pedMap = typeof ADULT_TO_PEDIATRIC_CC_MAP !== 'undefined' ? ADULT_TO_PEDIATRIC_CC_MAP[ccId] : null;
+    if (redirectBanner) {
+      if (pedMap) {
+        redirectBanner.classList.remove('hidden');
+        if (redirectText) {
+          redirectText.innerHTML = `<strong>สำหรับผู้ป่วยเด็ก:</strong> หากอายุ <strong>&lt; ${pedMap.maxAgeYears} ปี</strong> กรุณาใช้ CC <strong>"${escapeHtml(pedMap.label)}"</strong>`;
+        }
+        const isChildAge = !isNaN(ageVal) && ageVal >= 0 && ageVal < pedMap.maxAgeYears;
+        redirectBanner.classList.toggle('ring-2', isChildAge);
+        redirectBanner.classList.toggle('ring-amber-500', isChildAge);
+        redirectBanner.classList.toggle('bg-amber-100', isChildAge);
+        const legacySeizureBanner = document.getElementById('seizurePediatricAgeBanner');
+        if (ccId === 'seizure' && legacySeizureBanner) legacySeizureBanner.classList.add('hidden');
+      } else {
+        redirectBanner.classList.add('hidden');
+        redirectBanner.classList.remove('ring-2', 'ring-amber-500', 'bg-amber-100');
+      }
+    }
+    return;
+  }
+
+  if (redirectBanner) redirectBanner.classList.add('hidden');
+  if (gateBanner) gateBanner.classList.remove('hidden');
+
+  const ageRes = typeof resolvePediatricAgeBracket === 'function'
+    ? resolvePediatricAgeBracket(ccId, rawAge, ageUnit)
+    : { status: 'missing', bracket: null, entry: null };
+
+  if (ageRes.status === 'missing') {
+    if (qContainer) qContainer.classList.add('hidden');
+    if (gateBanner) gateBanner.className = 'p-4 bg-sky-50 border-2 border-sky-300 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-sky-900';
+    if (gateTitle) gateTitle.textContent = 'กรุณาระบุอายุผู้ป่วยเด็กด้านบนก่อนเริ่มซักประวัติ';
+    if (gateDesc) gateDesc.textContent = 'ระบบจะเปิดแบบฟอร์มและปรับชุดคำถามให้ตรงกับโรคที่พบบ่อยในแต่ละช่วงอายุโดยอัตโนมัติ (เลือกหน่วย ปี / เดือน / วัน)';
+    if (focusBtn) focusBtn.classList.remove('hidden');
+    if (switchAdultBtn) switchAdultBtn.classList.add('hidden');
+  } else if (ageRes.status === 'over_age') {
+    if (qContainer) qContainer.classList.add('hidden');
+    const maxY = ageRes.entry?.maxAgeYears || 15;
+    const adultMap = typeof PEDIATRIC_TO_ADULT_CC_MAP !== 'undefined' ? PEDIATRIC_TO_ADULT_CC_MAP[ccId] : null;
+    if (gateBanner) gateBanner.className = 'p-4 bg-rose-50 border-2 border-rose-300 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-rose-900';
+    if (gateTitle) gateTitle.textContent = `อายุเกินเกณฑ์สำหรับแบบประเมินเด็ก (รองรับอายุ < ${maxY} ปี)`;
+    if (gateDesc) {
+      gateDesc.textContent = adultMap
+        ? `กรณีอายุตั้งแต่ ${maxY} ปีขึ้นไป กรุณาสลับไปใช้แบบประเมิน "${adultMap.label}" เพื่อความแม่นยำในการคัดกรอง`
+        : `แบบประเมินนี้ใช้เฉพาะผู้ป่วยเด็กอายุ < ${maxY} ปี กรุณากลับไปเลือกอาการนำที่เหมาะสมจากหน้าแรก`;
+    }
+    if (focusBtn) focusBtn.classList.remove('hidden');
+    if (switchAdultBtn) switchAdultBtn.classList.toggle('hidden', !adultMap);
+  } else {
+    if (qContainer) qContainer.classList.remove('hidden');
+    if (gateBanner) gateBanner.className = 'p-4 bg-emerald-50 border border-emerald-300 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-emerald-900';
+    if (gateTitle) gateTitle.textContent = `ช่วงอายุที่ตรวจจับได้: ${ageRes.bracket ? ageRes.bracket.labelTh : ''}`;
+    if (gateDesc) gateDesc.textContent = 'ระบบได้ปรับชุดคำถามให้เหมาะกับช่วงอายุของเด็กเรียบร้อยแล้ว';
+    if (focusBtn) focusBtn.classList.add('hidden');
+    if (switchAdultBtn) switchAdultBtn.classList.add('hidden');
+    const dynMod = typeof getCcModule === 'function' ? getCcModule(ccId) : null;
+    if (dynMod && typeof dynMod.onPediatricAgeChange === 'function') {
+      dynMod.onPediatricAgeChange(ageRes);
+    }
+  }
+}
+
+function switchBetweenAdultAndPediatricCc() {
+  const ccId = currentPatientFormCC;
+  const isPed = typeof isPediatricCc === 'function' && isPediatricCc(ccId);
+  const mapObj = isPed
+    ? (typeof PEDIATRIC_TO_ADULT_CC_MAP !== 'undefined' ? PEDIATRIC_TO_ADULT_CC_MAP[ccId] : null)
+    : (typeof ADULT_TO_PEDIATRIC_CC_MAP !== 'undefined' ? ADULT_TO_PEDIATRIC_CC_MAP[ccId] : null);
+  if (!mapObj) return;
+  const targetEntry = typeof getCcEntry === 'function' ? getCcEntry(mapObj.targetCc) : null;
+  if (!targetEntry || !targetEntry.active || !resolveCcFormId(mapObj.targetCc)) {
+    if (typeof showToast === 'function') {
+      showToast(`⏳ แบบประเมิน "${mapObj.label || mapObj.targetCc}" อยู่ระหว่างการพัฒนาในระยะถัดไป`);
+    }
+    return;
+  }
+  setPatientFormChiefComplaint(mapObj.targetCc);
+  if (typeof showToast === 'function') {
+    showToast(`🔄 สลับไปยังแบบประเมิน: ${targetEntry.titleTh}`);
+  }
 }
 
 // Navigation Router with RBAC View Guard
@@ -1744,20 +1927,63 @@ function handlePatientSubmit(e) {
     const nameInput = document.getElementById('patientNameInput');
     const ageInput = document.getElementById('patientAgeInput');
 
+    const isPed = typeof isPediatricCc === 'function' && isPediatricCc(currentPatientFormCC);
+    const unitSel = document.getElementById('patientAgeUnitSelect');
+    const weightInput = document.getElementById('patientWeightKgInput');
+    const patientAgeUnit = isPed ? (unitSel?.value || 'years') : 'years';
     const patientTitle = titleSelect?.value || '';
     const rawName = nameInput?.value?.trim() || '';
     const rawAgeStr = ageInput?.value?.trim() || '';
-    const patientAge = rawAgeStr ? parseInt(rawAgeStr, 10) : 0;
+    const patientAge = rawAgeStr
+      ? (isPed ? parseFloat(rawAgeStr) : parseInt(rawAgeStr, 10))
+      : 0;
+    const rawWeightStr = weightInput?.value?.trim() || '';
+    const parsedWeight = rawWeightStr ? parseFloat(rawWeightStr) : NaN;
+    const patientWeightKg = (isPed && !isNaN(parsedWeight) && parsedWeight > 0) ? parsedWeight : null;
 
     const hasVerifiedQrTicket = Boolean(activeQrQueuePass && activeQrQueuePass.hn);
 
-    if (rawAgeStr && (isNaN(patientAge) || patientAge <= 0 || patientAge > 130)) {
-      showToast('⚠️ กรุณาระบุอายุผู้ป่วยให้ถูกต้อง (1-120 ปี)');
-      if (ageInput) {
-        ageInput.focus();
-        ageInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    if (!isPed) {
+      if (rawAgeStr && (isNaN(patientAge) || patientAge <= 0 || patientAge > 130)) {
+        showToast('⚠️ กรุณาระบุอายุผู้ป่วยให้ถูกต้อง (1-120 ปี)');
+        if (ageInput) {
+          ageInput.focus();
+          ageInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+        return;
       }
-      return;
+    } else {
+      const qrAgeFallback = (!rawAgeStr && activeQrQueuePass?.age) ? parseFloat(activeQrQueuePass.age) : NaN;
+      const candidatePedAge = rawAgeStr ? patientAge : qrAgeFallback;
+      const candidatePedUnit = rawAgeStr ? patientAgeUnit : 'years';
+      if (isNaN(candidatePedAge) || candidatePedAge <= 0) {
+        showToast('⚠️ กรุณาระบุอายุผู้ป่วยเด็กก่อนส่งข้อมูล เพื่อให้ระบบปรับชุดคำถามตามช่วงอายุ');
+        if (typeof focusPatientAgeInput === 'function') focusPatientAgeInput();
+        return;
+      }
+      const maxForUnit = candidatePedUnit === 'days' ? 5500 : (candidatePedUnit === 'months' ? 240 : 130);
+      if (candidatePedAge > maxForUnit) {
+        showToast('⚠️ กรุณาระบุอายุผู้ป่วยเด็กให้ถูกต้อง');
+        if (typeof focusPatientAgeInput === 'function') focusPatientAgeInput();
+        return;
+      }
+      if (typeof resolvePediatricAgeBracket === 'function') {
+        const pedRes = resolvePediatricAgeBracket(currentPatientFormCC, candidatePedAge, candidatePedUnit);
+        if (pedRes.status === 'over_age') {
+          const maxY = pedRes.entry?.maxAgeYears || 15;
+          showToast(`⚠️ อายุเกินเกณฑ์สำหรับแบบประเมินเด็กนี้ (รองรับอายุ < ${maxY} ปี)`);
+          if (typeof focusPatientAgeInput === 'function') focusPatientAgeInput();
+          return;
+        }
+      }
+      if (rawWeightStr && (isNaN(parsedWeight) || parsedWeight <= 0 || parsedWeight > 200)) {
+        showToast('⚠️ กรุณาระบุน้ำหนักตัวเด็กให้ถูกต้อง (กิโลกรัม)');
+        if (weightInput) {
+          weightInput.focus();
+          weightInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+        return;
+      }
     }
 
     // Check if we are updating an existing patient record (Patient self-edit or Doctor Guided Edit)
@@ -1782,10 +2008,15 @@ function handlePatientSubmit(e) {
     } else {
       patientName = 'ผู้รับบริการ (ไม่ระบุชื่อ)';
     }
-    const qrAge = parseInt(activeQrQueuePass.age, 10);
-    const effectiveAge = (patientAge > 0 && patientAge <= 130)
+    const qrAge = isPed ? parseFloat(activeQrQueuePass.age) : parseInt(activeQrQueuePass.age, 10);
+    const effectiveAgeUnit = (isPed && rawAgeStr) ? patientAgeUnit : 'years';
+    const maxAgeForEffective = effectiveAgeUnit === 'days' ? 5500 : (effectiveAgeUnit === 'months' ? 240 : 130);
+    const effectiveAge = (patientAge > 0 && patientAge <= maxAgeForEffective)
       ? patientAge
       : ((qrAge > 0 && qrAge <= 130) ? qrAge : 'ไม่ระบุ');
+    const patientAgeDisplay = (typeof formatAgeWithUnit === 'function')
+      ? formatAgeWithUnit(effectiveAge, effectiveAgeUnit)
+      : (effectiveAge === 'ไม่ระบุ' ? 'ไม่ระบุ' : `${effectiveAge} ปี`);
 
     // Infer gender from prefix (check female first to prevent 'Mrs.' matching 'Mr')
     let gender = 'ไม่ระบุ';
@@ -1806,17 +2037,26 @@ function handlePatientSubmit(e) {
       drugAllergy = 'ตามฐานข้อมูล รพ.ราชบุรี';
       currentMeds = 'ตามฐานข้อมูล รพ.ราชบุรี';
     } else {
-      if (document.getElementById('ud_dm')?.checked) underlying.push('เบาหวาน (DM)');
-      if (document.getElementById('ud_ht')?.checked) underlying.push('ความดันสูง (HT)');
-      if (document.getElementById('ud_dlp')?.checked) underlying.push('ไขมันในเลือดสูง (Dyslipidemia)');
-      if (document.getElementById('ud_cad')?.checked) underlying.push('หลอดเลือดหัวใจ (CAD)');
-      if (document.getElementById('ud_stroke')?.checked) underlying.push('หลอดเลือดสมอง (Stroke)');
-      if (document.getElementById('ud_ckd')?.checked) underlying.push('ไตเรื้อรัง (CKD)');
-      if (document.getElementById('ud_asthma')?.checked) underlying.push('หอบหืด (Asthma)');
-      if (document.getElementById('ud_copd')?.checked) underlying.push('ถุงลมโป่งพอง (COPD)');
-      if (document.getElementById('ud_cancer')?.checked) {
-        const cancerType = document.getElementById('ud_cancer_type')?.value.trim();
-        underlying.push(`มะเร็ง${cancerType ? ` (${cancerType})` : ''}`);
+      if (isPed) {
+        if (document.getElementById('ud_ped_preterm')?.checked) underlying.push('คลอดก่อนกำหนด / น้ำหนักแรกเกิดน้อย');
+        if (document.getElementById('ud_ped_chd')?.checked) underlying.push('โรคหัวใจแต่กำเนิด (CHD)');
+        if (document.getElementById('ud_ped_asthma')?.checked) underlying.push('หอบหืด / ภูมิแพ้ทางเดินหายใจ');
+        if (document.getElementById('ud_ped_epilepsy')?.checked) underlying.push('โรคลมชัก / เคยชักจากไข้สูง');
+        if (document.getElementById('ud_ped_g6pd')?.checked) underlying.push('พร่องเอนไซม์ G6PD (แพ้ถั่ว/ยา)');
+        if (document.getElementById('ud_ped_thal')?.checked) underlying.push('โรคเลือด / ธาลัสซีเมีย');
+      } else {
+        if (document.getElementById('ud_dm')?.checked) underlying.push('เบาหวาน (DM)');
+        if (document.getElementById('ud_ht')?.checked) underlying.push('ความดันสูง (HT)');
+        if (document.getElementById('ud_dlp')?.checked) underlying.push('ไขมันในเลือดสูง (Dyslipidemia)');
+        if (document.getElementById('ud_cad')?.checked) underlying.push('หลอดเลือดหัวใจ (CAD)');
+        if (document.getElementById('ud_stroke')?.checked) underlying.push('หลอดเลือดสมอง (Stroke)');
+        if (document.getElementById('ud_ckd')?.checked) underlying.push('ไตเรื้อรัง (CKD)');
+        if (document.getElementById('ud_asthma')?.checked) underlying.push('หอบหืด (Asthma)');
+        if (document.getElementById('ud_copd')?.checked) underlying.push('ถุงลมโป่งพอง (COPD)');
+        if (document.getElementById('ud_cancer')?.checked) {
+          const cancerType = document.getElementById('ud_cancer_type')?.value.trim();
+          underlying.push(`มะเร็ง${cancerType ? ` (${cancerType})` : ''}`);
+        }
       }
       const udOther = document.getElementById('ud_other')?.value.trim();
       if (udOther) underlying.push(udOther);
@@ -1862,6 +2102,9 @@ function handlePatientSubmit(e) {
         randomHn,
         patientName,
         patientAge: effectiveAge,
+        patientAgeUnit: effectiveAgeUnit,
+        patientAgeDisplay,
+        weightKg: patientWeightKg,
         gender,
         recordStatus,
         hospRecordStatus,
@@ -1873,6 +2116,19 @@ function handlePatientSubmit(e) {
       });
     }
 
+    if (newPatient && typeof newPatient === 'object') {
+      if (isPed) {
+        newPatient.ageUnit = effectiveAgeUnit;
+        newPatient.ageDisplay = patientAgeDisplay;
+        if (patientWeightKg !== null) {
+          newPatient.weightKg = patientWeightKg;
+        }
+      } else {
+        delete newPatient.ageUnit;
+        delete newPatient.ageDisplay;
+        delete newPatient.weightKg;
+      }
+    }
 
     sanitizePatientRecord(newPatient);
     newPatient.vital_signs = existingPatient?.vital_signs || (currentUserRole === 'patient' && activeQrQueuePass.vital_signs ? activeQrQueuePass.vital_signs : newPatient.vital_signs);
@@ -1943,10 +2199,15 @@ function renderDoctorDashboard() {
   renderTriageVitalSignsCard(patient);
 
   // 1. Patient Header Info (textContent is inherently XSS-safe)
-  const ageLabel = (patient.age && patient.age !== 'ไม่ระบุ') ? `${patient.age} ปี` : 'ไม่ระบุ';
+  const ageLabel = (typeof formatAgeWithUnit === 'function')
+    ? formatAgeWithUnit(patient.age, patient.ageUnit || 'years')
+    : ((patient.age && patient.age !== 'ไม่ระบุ') ? `${patient.age} ปี` : 'ไม่ระบุ');
+  const weightSuffix = (patient.weightKg !== undefined && patient.weightKg !== null && patient.weightKg !== '')
+    ? ` | นน. ${patient.weightKg} กก.`
+    : '';
   document.getElementById('activeQueueDisplay').textContent = patient.queue_number;
   document.getElementById('activeNameDisplay').textContent = patient.name;
-  document.getElementById('activeDemogDisplay').textContent = `อายุ ${ageLabel} | ${patient.gender || 'ไม่ระบุ'}`;
+  document.getElementById('activeDemogDisplay').textContent = `อายุ ${ageLabel}${weightSuffix} | ${patient.gender || 'ไม่ระบุ'}`;
   document.getElementById('activeHnDisplay').textContent = patient.hn;
   
   const dtObj = patient.timestamp ? new Date(patient.timestamp) : new Date();
@@ -2187,7 +2448,10 @@ function buildFallbackMedicalJson(patient) {
       id: patient.id || '-',
       hn: patient.hn || '-',
       name: patient.name || '-',
-      age: patient.age || 'ไม่ระบุ',
+      age: (typeof formatAgeWithUnit === 'function')
+        ? formatAgeWithUnit(patient.age, patient.ageUnit || 'years')
+        : (patient.age || 'ไม่ระบุ'),
+      weight_kg: (patient.weightKg !== undefined && patient.weightKg !== null && patient.weightKg !== '') ? patient.weightKg : undefined,
       gender: patient.gender || 'ไม่ระบุ'
     },
     red_flags_detected: (patient.redFlags || []).map(rf => ({ key: rf.key, description: rf.textTh, risk: rf.risk })),
