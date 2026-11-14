@@ -1140,7 +1140,7 @@
         </div><!-- End #doctorCdsSection -->
 
         <!-- ข้อ 1 & 2: ช่องทางแก้ไขและเพิ่มเติมข้อมูลอิสระสำหรับแพทย์ (DOCTOR'S CLINICAL ADDENDUM & EXAM) -->
-        <!-- คงหัวข้อไว้ ซ่อนช่องกรอกไว้ก่อนจนกว่าแพทย์จะกดเลือกเปิด และเปลี่ยนเป็น textarea หลายบรรทัด -->
+        <!-- เปิดช่องกรอกข้อมูลแพทย์เป็นค่าเริ่มต้น (พับเก็บได้) พร้อม textarea หลายบรรทัด -->
         <div id="doctorAddendumCard" class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm mb-6 transition-all">
           <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
             <div class="flex items-center space-x-2">
@@ -1159,14 +1159,14 @@
               </span>
               <button type="button" id="toggleDoctorAddendumBtn" onclick="toggleDoctorAddendumSection()" 
                 class="inline-flex items-center space-x-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-medical-50 text-medical-700 hover:bg-medical-100 border border-medical-200 transition shadow-2xs">
-                <i data-lucide="chevron-down" id="toggleDoctorAddendumIcon" class="w-3.5 h-3.5"></i>
-                <span id="toggleDoctorAddendumText">เปิดบันทึกเพิ่มเติม</span>
+                <i data-lucide="chevron-up" id="toggleDoctorAddendumIcon" class="w-3.5 h-3.5"></i>
+                <span id="toggleDoctorAddendumText">ซ่อนช่องบันทึก</span>
               </button>
             </div>
           </div>
 
-          <!-- ช่องกรอกข้อมูลแพทย์: ซ่อนเป็นค่าเริ่มต้น (hidden) จนกว่าแพทย์จะกดเปิด -->
-          <div id="doctorAddendumFields" class="hidden pt-4">
+          <!-- ช่องกรอกข้อมูลแพทย์: เปิดแสดงเป็นค่าเริ่มต้น (กดปุ่มเพื่อพับเก็บได้) -->
+          <div id="doctorAddendumFields" class="pt-4">
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
               <!-- ช่อง 1: ประวัติเพิ่มเติม / แก้ไขประวัติตามจริง -->
               <div>

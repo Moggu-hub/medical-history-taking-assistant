@@ -1192,7 +1192,7 @@ function executeReopenActiveCase() {
 // =========================================================================
 // DOCTOR CLINICAL ADDENDUM & DIRECT NOTE EDITING
 // =========================================================================
-let isDoctorAddendumOpen = false;
+let isDoctorAddendumOpen = true;
 
 function toggleDoctorAddendumSection(forceState) {
   const fields = document.getElementById('doctorAddendumFields');

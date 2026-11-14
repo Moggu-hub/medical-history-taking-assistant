@@ -1387,6 +1387,27 @@ assert(
   }
   assert(caughtErrorE && calls.length === 1, 'Gemini Consult halts immediately on HTTP 401 without retrying or falling back');
 
+  // Test F: Doctor's Notes & Clinical Addendum open by default + toggleable
+  const addendumFieldsEl = mockDoc.getElementById('doctorAddendumFields');
+  const toggleBtnTextEl = mockDoc.getElementById('toggleDoctorAddendumText');
+  assert(
+    addendumFieldsEl && !addendumFieldsEl.classList.contains('hidden') &&
+    indexHtml.includes('id="doctorAddendumFields" class="pt-4"') &&
+    indexHtml.includes('<span id="toggleDoctorAddendumText">ซ่อนช่องบันทึก</span>'),
+    "Doctor's Notes & Clinical Addendum (#doctorAddendumFields) is open by default"
+  );
+  sandbox.toggleDoctorAddendumSection(false);
+  assert(addendumFieldsEl.classList.contains('hidden'), 'toggleDoctorAddendumSection(false) collapses Doctor Addendum box cleanly');
+  sandbox.toggleDoctorAddendumSection(true);
+  assert(!addendumFieldsEl.classList.contains('hidden') && toggleBtnTextEl.textContent === 'ซ่อนช่องบันทึก', 'toggleDoctorAddendumSection(true) expands Doctor Addendum box cleanly');
+
+  // Test G: Headache CC typo fix verification
+  const headacheSrc = fs.readFileSync(path.join(ROOT, 'cc_modules/06_headache.js'), 'utf8');
+  assert(
+    !headacheSrc.includes('คลื่นไสอ') && headacheSrc.includes('มีอาการอาเจียนพุ่งรุนแรงทันทีโดยไม่คลื่นไส้นำมาก่อน'),
+    'CC 06_headache uses correct Thai spelling "ไม่คลื่นไส้นำมาก่อน" with zero typos'
+  );
+
   console.log('\n====================================================================');
   if (failures === 0) {
     console.log('🎉 ALL 4 MANDATORY CORE GUARD TDD DIMENSIONS PASSED (0 FAILURES)!');
