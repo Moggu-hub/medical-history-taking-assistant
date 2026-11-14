@@ -16,8 +16,10 @@
    - เก็บเฉพาะโครงสร้างหลักของแอป: Top Bar, Role Switcher, Landing Grid (`#ccLandingView`), โครงฟอร์มผู้ป่วยส่วนกลาง (`#patientView` + `<div id="ccQuestionnairesContainer"></div>` + หมวดประวัติสุขภาพเดิม PMH), หน้าสถานะคิว (`#patientStatusView`), หน้าจอแพทย์ (`#doctorView`) และ Modals
    - โหลดสคริปต์เรียงตามลำดับ: `clinical_knowledge_core.js` ➔ `cc_modules/01_abdpain.js` ... `cc_modules/XX_<cc>.js` ➔ `core_engine.js`
 2. **`clinical_knowledge_core.js` (Core Registry & Plugin Loader):**
-   - เก็บค่าคงที่กลาง (`UNIVERSAL_DURATION_UNITS`, `PATIENT_TITLES`, `CHIEF_COMPLAINTS` ทั้ง 28 อาการ, `AI_CONSULTANT_CONFIG`) และฟังก์ชัน `registerCcModule(mod)`, `getCcModule(id)`, `getSeedPatients()`
-3. **`cc_modules/XX_<cc_id>.js` (Self-Contained Symptom Modules — 1 อาการต่อ 1 ไฟล์):**
+   - เก็บค่าคงที่กลาง (`UNIVERSAL_DURATION_UNITS`, `PATIENT_TITLES`, `CHIEF_COMPLAINTS` ทั้งหมด) และฟังก์ชัน `registerCcModule(mod)`, `getCcModule(id)`, `getSeedPatients()`
+3. **`ai_consultant_core.js` (1-Click Medical AI Consultant & Admin Workbench — 🔒 Core Frozen):**
+   - จัดการระบบ `1-Click AI Consultant` แยกตามสิทธิ์ผู้ใช้ (`doctor`: ยิง API ตรงโดยไม่ผ่าน Built-in CDS/หน้าขั้นกลาง vs `admin`: Workbench 3 โซนสำหรับตรวจข้อมูล PDPA, ปรับแต่ง System/Prompt Header/Footer, และตั้งค่า Model/API Key) พร้อมบังคับหัวข้อ `[Provisional & Differential Diagnosis]`, รหัส `ICD-10` / External Cause และคำสั่ง `2.1 / 2.2 / 2.3`
+4. **`cc_modules/XX_<cc_id>.js` (Self-Contained Symptom Modules — 1 อาการต่อ 1 ไฟล์):**
    - แต่ละไฟล์เก็บครบจบในตัวเองสำหรับ 1 อาการสำคัญ และลงทะเบียนผ่าน `registerCcModule({ ... })` ประกอบด้วย:
      - `id`, `recordCc`, `titleTh`, `headerTh`, `headerEn`, `doctorCcBadgeHtml`
      - `algorithm` (พจนานุกรมคำถาม ภาษาชาวบ้าน ศัพท์แพทย์ เกณฑ์ Red Flag สำหรับทีม IT โรงพยาบาลดึงไปเชื่อมต่อ HIS)
@@ -25,10 +27,10 @@
      - `sectionDomId` และ `formHtml` (HTML ของแบบฟอร์มเฉพาะอาการนั้น ซึ่งถูกฉีดเข้า `#ccQuestionnairesContainer` อัตโนมัติ)
      - `collectIntake(ctx)` (อ่านค่าจากฟอร์มเมื่อกดบันทึก)
      - `hydrateForm(patient)` (คืนค่าเข้าฟอร์มเมื่อผู้ป่วยหรือแพทย์กดแก้ไขประวัติ)
-     - `isRedFlag(p)` และ `evaluateRedFlags(patient)` (ประเมินสัญญาณเตือนวิกฤต)
+     - `isRedFlag(p)` และ `evaluateRedFlags(patient)` (ประเมินสัญญาณเตือนวิกฤต — เน้นความแม่นยำ No Under, No Over)
      - `updateOutputs(patient)` (สร้างรายงานแพทย์ `Rapid Bullet Note`, `Narrative Paragraph` และ `JSON Schema`)
-     - `generateCds(patient, ctx)` (สร้างคำแนะนำทางคลินิก Built-in ER Clinical Decision Support: DDx, Workup, Management)
-4. **`core_engine.js` (🔒 FROZEN CORE SYSTEM — ~2,700 บรรทัด):**
+     - *(ยกเลิกการบังคับพัฒนา `generateCds` / Built-in CDS แล้ว — ให้ AI ภายนอกผ่าน API ทำ DDx & ER Orders เท่านั้น)*
+5. **`core_engine.js` (🔒 FROZEN CORE SYSTEM):**
    - เก็บระบบแกนกลางทั้งหมด: ระบบคิวผู้ป่วย, การบันทึก `localStorage`, ระบบจำกัดสิทธิ์ (RBAC), ตัวจัดการวันที่มาตรฐาน `dd/mm/yyyy` และเวลา 24 ชั่วโมง `HH:mm`, ระบบสลับผู้ป่วย และการแสดงผลหน้าจอแพทย์ (`#doctorView`)
 5. **`CLINICAL_ALGORITHMS.md` (Clinical Algorithm Reference):**
    - เอกสารสรุปอัลกอริทึมการซักประวัติทุกอาการนำในรูปแบบตารางและแผนผังที่อ่านเข้าใจง่ายสำหรับแพทย์และทีมพัฒนา HIS
@@ -165,7 +167,7 @@
      - **มิติที่ (ก) Architecture, DOM Integrity, Clinical UX Hygiene & Universal Date/Time:** ตรวจสอบการโหลดโมดูลครบทุกไฟล์, ไม่มี Static DOM ID ขาดหาย, ไม่มี `🚩` บน UI คนไข้, Zero Default Bias (`checked = 0`), และบังคับใช้วันที่ `dd/mm/yyyy` + เวลา 24 ชั่วโมง `HH:mm`
      - **มิติที่ (ข) Save Persistence Check:** จำลองการกรอกข้อมูลคนไข้ใหม่และกดบันทึก (`handlePatientSubmit`) ครบทุกอาการนำ ตรวจยืนยันว่าข้อมูลถูกบันทึกลงตัวแปรสถานะและ `localStorage` (`medhistory_patients_v16`) จริง และแสดงผลบน `#patientStatusView` ได้โดยไม่พัง
      - **มิติที่ (ค) Patient Isolation & Context Switching Check:** จำลองการสลับดูข้อมูลระหว่าง `คนไข้ A` ➔ `คนไข้ B` ➔ `กลับมาคนไข้ A` รวมถึงการกดแก้ไขประวัติในฟอร์ม (`Guided Edit`) ยืนยันว่าชื่อ อายุ อาการนำ และบันทึกแพทย์ (`doctor_notes`) ไม่ปะปนกันและไม่สูญหาย 100%
-     - **มิติที่ (ง) Doctor UI Render, JSON Schema & Built-in CDS Check:** จำลองการเปิดหน้าจอแพทย์ (`renderDoctorDashboard`) และสร้างรายงาน `Rapid Note`, `Narrative Note`, `JSON Schema` และ `Built-in CDS` ครบทุกเคสในฐานข้อมูลตัวอย่าง ยืนยันว่าไม่มี Runtime Error หรือค่า `undefined`
+     - **มิติที่ (ง) Doctor UI Render, JSON Schema, Red Flags & AI Consultant Check:** จำลองการเปิดหน้าจอแพทย์ (`renderDoctorDashboard`), สร้างรายงาน `Rapid Note`, `Narrative Note`, `JSON Schema`, ตรวจจับ Red Flags และทดสอบระบบ `1-Click AI Consultant` (Role Separation, PDPA, Prompt Templates, Zero Built-in CDS fallback) ครบทุกเคสในฐานข้อมูลตัวอย่าง ยืนยันว่าไม่มี Runtime Error หรือค่า `undefined`
 3. **🛑 กฎเบรกเกอร์หยุดอัตโนมัติเมื่อแก้บั๊กวนลูป (Circuit Breaker Rule):**
    - หากรันเทสต์ไม่ผ่านและพยายามแก้บั๊กเรื่องเดิมซ้ำครบ **3 ครั้ง** แล้วยังไม่ผ่าน **ให้หยุดแก้ไขโค้ดทันที!**
    - ให้เขียนสรุปปัญหาและสาเหตุลงในไฟล์ `ERROR_REPORT.md` แล้วแจ้งให้ผู้ใช้งานตัดสินใจ (หรือสั่งย้อนกลับด้วย `node scripts/checkpoint.js restore <tag>`) ห้ามแก้โค้ดสุ่มสี่สุ่มห้าต่อเด็ดขาด
@@ -184,7 +186,7 @@
 
 ด้วยสถาปัตยกรรมใหม่ การเพิ่มอาการนำใหม่ไม่ต้องแตะต้อง `core_engine.js` อีกต่อไป โดยมีขั้นตอนเพียง 5 ขั้นตอน:
 1. **[ ] ขั้นที่ 1 (Save Pre-CC Checkpoint):** รัน `node scripts/checkpoint.js save pre-cc-XX "Before adding CC XX"`
-2. **[ ] ขั้นที่ 2 (Create Isolated Module `cc_modules/XX_<cc_id>.js`):** สร้างไฟล์โมดูลของอาการใหม่ที่เรียก `registerCcModule({ ... })` ครบทั้ง `algorithm`, `seedPatients` (อย่างน้อย 3 เคส), `formHtml`, `collectIntake`, `hydrateForm`, `isRedFlag`, `evaluateRedFlags`, `updateOutputs`, `generateCds` และกำหนด `pmhSectionNumber` (หรือ `getPmhSectionNumber()`)
+2. **[ ] ขั้นที่ 2 (Create Isolated Module `cc_modules/XX_<cc_id>.js`):** สร้างไฟล์โมดูลของอาการใหม่ที่เรียก `registerCcModule({ ... })` ครบทั้ง `algorithm`, `seedPatients` (อย่างน้อย 3 เคส), `formHtml`, `collectIntake`, `hydrateForm`, `isRedFlag`, `evaluateRedFlags`, `updateOutputs` และกำหนด `pmhSectionNumber` (หรือ `getPmhSectionNumber()`) — **ไม่ต้องพัฒนา Built-in CDS (`generateCds`)** ให้ทุ่มทรัพยากรที่ชุดคำถามและการตรวจจับ Red Flag ที่แม่นยำ (No Under, No Over)
 3. **[ ] ขั้นที่ 3 (Register Script Tag in `index.html`):** เพิ่ม `<script src="cc_modules/XX_<cc_id>.js"></script>` ใน `index.html` ก่อนบรรทัด `<script src="core_engine.js"></script>` (โดยไม่แก้ไขส่วนอื่นของ `index.html`)
 4. **[ ] ขั้นที่ 4 (Update Documentation & Catalog Sync):** บันทึกรายละเอียดอาการ เกณฑ์ Red Flag และเคสจำลองลงใน `docs/CC_MODULES_CATALOG.md` ทันที (และหากมีการแก้ไข Core/Payload/Hardware ให้อัปเดต `docs/DEV_HANDOVER_ARCHITECTURE.md` ด้วย)
 5. **[ ] ขั้นที่ 5 (Run 4-Dimension Core Guard TDD + AI Auditor + Save Checkpoint):**

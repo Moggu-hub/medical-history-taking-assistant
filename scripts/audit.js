@@ -66,6 +66,7 @@ async function runAudit() {
   const coreFiles = [
     { rel: 'index.html', maxLines: 2000 },
     { rel: 'clinical_knowledge_core.js', maxLines: 1000 },
+    { rel: 'ai_consultant_core.js', maxLines: 1000 },
     { rel: 'core_engine.js', maxLines: 3200 }
   ];
 
@@ -98,6 +99,15 @@ async function runAudit() {
         addPass(`Core System Freeze: core_engine.js ไม่ถูกแก้ไขนับจากจุดเซฟ '${latestSnap}' (SHA-256 ตรงกัน 100%)`);
       } else {
         addWarn(`Core System Freeze Notice: ตรวจพบการแก้ไขใน core_engine.js เมื่อเทียบกับจุดเซฟ '${latestSnap}' (โปรดตรวจสอบว่าได้รับอนุมัติจากคุณ moggu แล้ว)`);
+      }
+      const aiSnapFile = path.join(SNAPSHOTS_DIR, latestSnap, 'ai_consultant_core.js');
+      const aiCurrFile = path.join(ROOT_DIR, 'ai_consultant_core.js');
+      if (fs.existsSync(aiSnapFile) && fs.existsSync(aiCurrFile)) {
+        if (sha256File(aiSnapFile) === sha256File(aiCurrFile)) {
+          addPass(`Core System Freeze: ai_consultant_core.js ไม่ถูกแก้ไขนับจากจุดเซฟ '${latestSnap}' (SHA-256 ตรงกัน 100%)`);
+        } else {
+          addWarn(`Core System Freeze Notice: ตรวจพบการแก้ไขใน ai_consultant_core.js เมื่อเทียบกับจุดเซฟ '${latestSnap}'`);
+        }
       }
     }
   }
@@ -137,8 +147,7 @@ async function runAudit() {
     { name: 'hydrateForm', regex: /\bhydrateForm\s*(?::|\()/ },
     { name: 'isRedFlag', regex: /\bisRedFlag\s*(?::|\()/ },
     { name: 'evaluateRedFlags', regex: /\bevaluateRedFlags\s*(?::|\()/ },
-    { name: 'updateOutputs', regex: /\bupdateOutputs\s*(?::|\()/ },
-    { name: 'generateCds', regex: /\bgenerateCds\s*(?::|\()/ }
+    { name: 'updateOutputs', regex: /\bupdateOutputs\s*(?::|\()/ }
   ];
 
   for (const mf of moduleFiles) {

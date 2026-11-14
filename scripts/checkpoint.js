@@ -22,6 +22,7 @@ const TRACKED_PATHS = [
   'index.html',
   'app.js',
   'core_engine.js',
+  'ai_consultant_core.js',
   'clinical_knowledge.js',
   'clinical_knowledge_core.js',
   'PROJECT_RULES.md',

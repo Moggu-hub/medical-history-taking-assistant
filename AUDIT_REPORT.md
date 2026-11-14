@@ -1,9 +1,9 @@
 # 🕵️‍♂️ รายงานการตรวจสอบคุณภาพโค้ดและสถาปัตยกรรม (AUTOMATED & AI AUDIT REPORT)
 
-- **วันที่ตรวจสอบ:** `14/11/2026` เวลา `16:52` น. (24-Hour Format)
+- **วันที่ตรวจสอบ:** `14/11/2026` เวลา `18:35` น. (24-Hour Format)
 - **สถานะภาพรวม (Overall Verdict):** **✅ PASS (ผ่านการตรวจสอบครบทุกมิติ)**
 - **จำนวนหัวข้อที่ผ่าน (Passed Checks):** 7 รายการ
-- **จำนวนคำเตือน (Warnings):** 0 รายการ
+- **จำนวนคำเตือน (Warnings):** 1 รายการ
 - **จำนวนข้อผิดพลาดวิกฤต (Critical Failures):** 0 รายการ
 
 ---
@@ -12,9 +12,10 @@
 
 | ไฟล์ (File Path) | จำนวนบรรทัด (Lines) | เพดานสูงสุด (Max Limit) | สถานะ (Status) |
 | :--- | :---: | :---: | :---: |
-| `index.html` | 1,995 | 2,000 | ✅ ปกติ (Safe) |
-| `clinical_knowledge_core.js` | 997 | 1,000 | ✅ ปกติ (Safe) |
-| `core_engine.js` | 2,947 | 3,200 | ✅ ปกติ (Safe) |
+| `index.html` | 1,948 | 2,000 | ✅ ปกติ (Safe) |
+| `clinical_knowledge_core.js` | 907 | 1,000 | ✅ ปกติ (Safe) |
+| `ai_consultant_core.js` | 886 | 1,000 | ✅ ปกติ (Safe) |
+| `core_engine.js` | 2,297 | 3,200 | ✅ ปกติ (Safe) |
 | `cc_modules/01_abdpain.js` | 1,251 | 2,000 | ✅ ปกติ (Safe) |
 | `cc_modules/02_chestpain.js` | 1,346 | 2,000 | ✅ ปกติ (Safe) |
 | `cc_modules/03_dyspnea.js` | 1,062 | 2,000 | ✅ ปกติ (Safe) |
@@ -53,14 +54,20 @@
 
 ## 2. สรุปรายการที่ตรวจผ่าน (Passed Verification Checks)
 
-- ✅ index.html: 1995 บรรทัด (อยู่ในเกณฑ์ปลอดภัย <= 2000 บรรทัด)
-- ✅ clinical_knowledge_core.js: 997 บรรทัด (อยู่ในเกณฑ์ปลอดภัย <= 1000 บรรทัด)
-- ✅ core_engine.js: 2947 บรรทัด (อยู่ในเกณฑ์ปลอดภัย <= 3200 บรรทัด)
-- ✅ Core System Freeze: core_engine.js ไม่ถูกแก้ไขนับจากจุดเซฟ 'v2.76-traffic-tetanus-female' (SHA-256 ตรงกัน 100%)
+- ✅ index.html: 1948 บรรทัด (อยู่ในเกณฑ์ปลอดภัย <= 2000 บรรทัด)
+- ✅ clinical_knowledge_core.js: 907 บรรทัด (อยู่ในเกณฑ์ปลอดภัย <= 1000 บรรทัด)
+- ✅ ai_consultant_core.js: 886 บรรทัด (อยู่ในเกณฑ์ปลอดภัย <= 1000 บรรทัด)
+- ✅ core_engine.js: 2297 บรรทัด (อยู่ในเกณฑ์ปลอดภัย <= 3200 บรรทัด)
 - ✅ พบไฟล์โมดูลรายอาการใน cc_modules/ จำนวน 33 โมดูล
 - ✅ ทุกโมดูลใน cc_modules/ ผ่านเกณฑ์โครงสร้าง Lifecycle Hooks, ความปลอดภัย UI คนไข้ และมาตรฐานวันที่ dd/mm/yyyy + เวลา 24 ชั่วโมง HH:mm
 - ✅ ชุดทดสอบ Mandatory 4-Dimension Core Guard TDD (tests/core_guard_test.js) ผ่านครบ 100% ทั้ง 4 มิติ!
 
+
+---
+
+## 3. รายการคำเตือนเพื่อทราบ (Auditor Warnings)
+
+- ⚠️ Core System Freeze Notice: ตรวจพบการแก้ไขใน core_engine.js เมื่อเทียบกับจุดเซฟ 'v2.76-traffic-tetanus-female' (โปรดตรวจสอบว่าได้รับอนุมัติจากคุณ moggu แล้ว)
 
 
 
@@ -85,10 +92,10 @@
 ✅ PASS: Universal Date descriptor converts ISO '2026-10-26' -> '26/10/2026' (dd/mm/yyyy)
 ✅ PASS: Universal Time descriptor converts '3:30 PM' -> '15:30' (24-hour HH:mm)
 
-=== มิติที่ (ง): DOCTOR UI RENDER, JSON SCHEMA & BUILT-IN CDS (ALL 125 SEED CASES) ===
+=== มิติที่ (ง): DOCTOR UI RENDER, JSON SCHEMA & RED FLAGS (ALL 125 SEED CASES) ===
 ✅ PASS: Seed database has all 125 clinical cases across 33 Chief Complaints (found 125)
-✅ PASS: All 125 seed cases render Rapid Note, Narrative Note & JSON Schema on Doctor Dashboard with 0 errors
-✅ PASS: All 125 seed cases generate Built-in CDS Analysis with 0 errors
+✅ PASS: All 125 seed cases render Rapid Note (including Addendum), Narrative Note & JSON Schema on Doctor Dashboard with 0 errors
+✅ PASS: All 125 seed cases evaluate Red Flags cleanly with 0 errors (Zero Built-in CDS dependency)
 ✅ PASS: Zero Date/Time format violations across all 125 seed cases
 ✅ PASS: Zero De-duplication, Clean Negative Syntax & Score Offloading violations across all 125 seed cases
 
@@ -107,11 +114,17 @@
 ✅ PASS: Zero seed patients stuck on legacy dummy vital signs (found: 0)
 ✅ PASS: Empty patient submission records age='ไม่ระบุ' and durationVal=null instead of fake defaults (got age=ไม่ระบุ, durationVal=null)
 ✅ PASS: Empty patient submission displays "ไม่ระบุ" in Doctor Rapid Note without fabricated age or duration
-✅ PASS: PDPA Shield 100% compliant: Zero leaks of Name, HN, Queue, or Hospital name across all 125 patients (leaks: 0)
-✅ PASS: parseAiConsultantResponse isolates Provisional & Differential Diagnosis cleanly
-✅ PASS: parseAiConsultantResponse isolates ER Orders checklist with "- [ ]" cleanly
-✅ PASS: 1-Click Apply populates both Dx and Plan fields directly when empty
-✅ PASS: 1-Click Apply accurately appends to pre-existing doctor notes without overwriting
+✅ PASS: Built-in CDS execution helper (generateBuiltInCdsAnalysis) is cleanly deprecated from runtime
+✅ PASS: PDPA Shield & Audit 100% compliant: Zero leaks across all 125 patients (leaks: 0)
+✅ PASS: Default System Instruction enforces [Provisional & Differential Diagnosis], ICD-10, External Cause & 2.1/2.2/2.3 ER Order structure
+✅ PASS: parseAiConsultantResponse enforces [Provisional & Differential Diagnosis] header cleanly and isolates DDx
+✅ PASS: normalizeDxOutputHeader avoids duplicating [Provisional & Differential Diagnosis] when already present
+✅ PASS: parseAiConsultantResponse preserves 2.1 History/PE, 2.2 Investigations, and 2.3 Management sections cleanly
+✅ PASS: Single-click Apply populates Dx (with [Provisional & Differential Diagnosis] header + ICD-10) and Plan cleanly
+✅ PASS: Trauma CC (31_traffic_accident) Clinical Text Summary includes Doctor Addendum, [Provisional & Differential Diagnosis], ICD-10, and ER Orders for Copy
+✅ PASS: Append mode updates doctor notes cleanly with [Provisional & Differential Diagnosis] & [Treatment Plan & ER Orders] without AI/CDS label
+✅ PASS: Separate Copy Dx includes [Provisional & Differential Diagnosis] header
+✅ PASS: Separate Copy Orders copies ER Orders cleanly
 ✅ PASS: Back Pain Case 1 triggers Cauda Equina Syndrome (CES) Red Flag
 ✅ PASS: Back Pain Case 2 triggers Ruptured/Leaking AAA Red Flag
 ✅ PASS: Back Pain Case 3 triggers Spinal Epidural Abscess/Infection Red Flag
@@ -295,33 +308,18 @@
 ✅ PASS: Patient case-venom-01 updates activeCcDisplay to venomous bite badge
 ✅ PASS: Patient case-assault-01 updates activeCcDisplay to physical assault badge
 ✅ PASS: Patient case-traffic-01 updates activeCcDisplay to traffic accident badge
-✅ PASS: openAiConsultantModal preserves and restores saved AI consult diagnosis instead of overwriting with CDS
-✅ PASS: openAiConsultantModal preserves and restores saved AI consult orders checklist
-✅ PASS: openAiConsultantModal displays saved AI status banner indicating persisted consultation
-✅ PASS: AI consult result persists intact across multiple modal close/open cycles
-[Gemini Consult] Succeeded on attempt 1 using gemini-3.8-flash {
-  modelUsed: 'gemini-3.8-flash',
-  attemptCount: 1,
-  usageMetadata: { promptTokenCount: 120, candidatesTokenCount: 80 }
-}
+✅ PASS: Admin Role displays 3-Zone Workbench pre-send screen without auto-firing API fetch
+✅ PASS: Admin Zone 1 displays extracted clinical data and PDPA Verified audit badge
+✅ PASS: Admin Workbench restores persisted AI consult without overwriting with Built-in CDS
+✅ PASS: Admin Zone 2 saves custom System / Header / Footer prompt templates to localStorage and updates live preview
+✅ PASS: Admin confirm Send invokes API with customized System / Header / Footer and formats Dx cleanly
+✅ PASS: Admin Reset Prompt Templates restores factory System / Header / Footer defaults cleanly
+✅ PASS: Doctor Role hides Admin Workbench and immediately fires external API on 1-Click without Built-in CDS
+✅ PASS: Doctor Role with missing API key skips Built-in CDS completely, leaves outputs blank, and shows clear Admin error
+✅ PASS: Doctor Role on API failure displays explicit error without falling back to Built-in CDS
 ✅ PASS: Gemini Consult Attempt 1 succeeds cleanly on primary model (gemini-3.8-flash)
-[Gemini Consult] Succeeded on attempt 2 using gemini-3.8-flash {
-  modelUsed: 'gemini-3.8-flash',
-  attemptCount: 2,
-  usageMetadata: { promptTokenCount: 120, candidatesTokenCount: 80 }
-}
 ✅ PASS: Gemini Consult Attempt 2 fast-retries on primary model after 503 high demand
-[Gemini Consult] Succeeded on attempt 3 using gemini-3-flash-preview {
-  modelUsed: 'gemini-3-flash-preview',
-  attemptCount: 3,
-  usageMetadata: { promptTokenCount: 120, candidatesTokenCount: 80 }
-}
 ✅ PASS: Gemini Consult switches to Fallback 1 (gemini-3-flash-preview) after 2 failed attempts
-[Gemini Consult] Succeeded on attempt 4 using gemini-3.1-pro-preview {
-  modelUsed: 'gemini-3.1-pro-preview',
-  attemptCount: 4,
-  usageMetadata: { promptTokenCount: 120, candidatesTokenCount: 80 }
-}
 ✅ PASS: Gemini Consult switches to Fallback 2 (gemini-3.1-pro-preview) after Fallback 1 fails
 ✅ PASS: Gemini Consult halts immediately on HTTP 401 without retrying or falling back
 

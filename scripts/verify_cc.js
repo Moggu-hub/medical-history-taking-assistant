@@ -65,10 +65,12 @@ console.log('=== ด่านที่ 1: โครงสร้างโมด�
 
 const indexHtmlPath = path.join(ROOT, 'index.html');
 const coreKnowledgePath = path.join(ROOT, 'clinical_knowledge_core.js');
+const aiCorePath = path.join(ROOT, 'ai_consultant_core.js');
 const coreEnginePath = path.join(ROOT, 'core_engine.js');
 
 const indexLines = countLines(indexHtmlPath);
 const knowledgeLines = countLines(coreKnowledgePath);
+const aiCoreLines = countLines(aiCorePath);
 const engineLines = countLines(coreEnginePath);
 
 if (indexLines <= 2000) pass(`index.html: ${indexLines}/2000 บรรทัด`);
@@ -76,6 +78,11 @@ else fail(`index.html มี ${indexLines} บรรทัด (เกินเ�
 
 if (knowledgeLines <= 1000) pass(`clinical_knowledge_core.js: ${knowledgeLines}/1000 บรรทัด`);
 else fail(`clinical_knowledge_core.js มี ${knowledgeLines} บรรทัด (เกินเพดาน 1000 บรรทัด — C-AP2)`);
+
+if (fs.existsSync(aiCorePath)) {
+  if (aiCoreLines <= 1000) pass(`ai_consultant_core.js: ${aiCoreLines}/1000 บรรทัด`);
+  else fail(`ai_consultant_core.js มี ${aiCoreLines} บรรทัด (เกินเพดาน 1000 บรรทัด)`);
+}
 
 if (engineLines <= 3200) pass(`core_engine.js: ${engineLines}/3200 บรรทัด`);
 else fail(`core_engine.js มี ${engineLines} บรรทัด (เกินเพดาน 3200 บรรทัด)`);
@@ -92,6 +99,14 @@ if (fs.existsSync(SNAPSHOTS_DIR)) {
       pass(`Core System Freeze: core_engine.js ไม่ถูกแตะต้อง 100% (ตรงกับจุดเซฟ ${latestSnap})`);
     } else {
       fail(`Core System Freeze Violation: ตรวจพบการแก้ไขใน core_engine.js เมื่อเทียบกับ ${latestSnap}`);
+    }
+    const aiSnapFile = path.join(SNAPSHOTS_DIR, latestSnap, 'ai_consultant_core.js');
+    if (fs.existsSync(aiSnapFile) && fs.existsSync(aiCorePath)) {
+      if (sha256File(aiSnapFile) === sha256File(aiCorePath)) {
+        pass(`Core System Freeze: ai_consultant_core.js ไม่ถูกแตะต้อง 100% (ตรงกับจุดเซฟ ${latestSnap})`);
+      } else {
+        fail(`Core System Freeze Violation: ตรวจพบการแก้ไขใน ai_consultant_core.js เมื่อเทียบกับ ${latestSnap}`);
+      }
     }
   }
 }
@@ -143,7 +158,7 @@ for (const mod of modsToInspect) {
     pass(`โมดูล '${mod.id}' (${mod.titleTh}) เปิดใช้งาน active: true ใน clinical_knowledge_core.js เรียบร้อย`);
   }
 
-  const requiredFnProps = ['collectIntake', 'hydrateForm', 'isRedFlag', 'evaluateRedFlags', 'updateOutputs', 'generateCds'];
+  const requiredFnProps = ['collectIntake', 'hydrateForm', 'isRedFlag', 'evaluateRedFlags', 'updateOutputs'];
   const missingFns = requiredFnProps.filter(fn => typeof mod[fn] !== 'function');
   if (missingFns.length > 0) {
     fail(`โมดูล '${mod.id}' ขาดฟังก์ชันบังคับ: ${missingFns.join(', ')}`);
@@ -182,11 +197,8 @@ for (const mod of modsToInspect) {
     if (targetCcId && mod.id === targetCcId) {
       if (!mod.doctorCcBadgeHtml.includes('CC:')) {
         fail(`โมดูล '${mod.id}': doctorCcBadgeHtml ขาดข้อความ 'CC:' ตามมาตรฐานแบนเนอร์แพทย์ (C-AP12)`);
-      }
-      if (!modScriptItem.code.includes('ddxList') || !modScriptItem.code.includes('workupList') || !modScriptItem.code.includes('managementList')) {
-        fail(`โมดูล '${mod.id}': generateCds(patient, ctx) ไม่ได้เติมข้อมูลลง ctx.ddxList / workupList / managementList (C-AP12)`);
       } else {
-        pass(`โมดูล '${mod.id}': generateCds(patient, ctx) รองรับการส่ง DDX/Workup/Management เข้า Core CDS (C-AP12)`);
+        pass(`โมดูล '${mod.id}': doctorCcBadgeHtml รองรับมาตรฐานแบนเนอร์แพทย์ (C-AP12)`);
       }
     }
 
@@ -441,12 +453,11 @@ for (const mod of modsToInspect) {
         }
       }
 
-      const ddxList = [], workupList = [], managementList = [];
-      mod.generateCds(seeds[0], { rfs: mod.evaluateRedFlags(seeds[0]) || [], ddxList, workupList, managementList });
-      if (ddxList.length === 0 || workupList.length === 0 || managementList.length === 0) {
-        fail(`โมดูล '${mod.id}': generateCds(patient, ctx) คืนค่า ddxList/workupList/managementList ว่างเปล่า (C-AP12)`);
+      const evalRfs = mod.evaluateRedFlags(seeds[0]);
+      if (!Array.isArray(evalRfs)) {
+        fail(`โมดูล '${mod.id}': evaluateRedFlags(patient) ไม่ได้คืนค่าเป็น Array`);
       } else {
-        pass(`โมดูล '${mod.id}': generateCds(patient, ctx) สร้าง DDX (${ddxList.length}), Workup (${workupList.length}), Management (${managementList.length}) ครบถ้วน (C-AP12)`);
+        pass(`โมดูล '${mod.id}': evaluateRedFlags(seeds[0]) ประเมินสัญญาณเตือนวิกฤตได้ถูกต้อง (${evalRfs.length} รายการ)`);
       }
 
       if (typeof mod.onTitleChange === 'function' && /FemaleSection|LmpWrapper/i.test(mod.formHtml || '')) {

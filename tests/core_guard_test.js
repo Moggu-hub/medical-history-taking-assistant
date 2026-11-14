@@ -8,7 +8,7 @@
  *   (ก) CC Logic, DOM Integrity, Clinical UX Hygiene & Universal Date/Time (dd/mm/yyyy & 24h HH:mm)
  *   (ข) Save Persistence Check (กรอกฟอร์ม -> กดบันทึก -> ตรวจ state & localStorage -> หน้าสถานะคิว)
  *   (ค) Patient Isolation & Context Switching Check (สลับผู้ป่วย A -> B -> A ข้อมูลและ doctor_notes ไม่ปะปนกัน)
- *   (ง) Doctor UI Render, JSON Schema & Built-in CDS Check (ครบทั้ง 37 Seed Cases ใน 11 Active CCs)
+ *   (ง) Doctor UI Render, JSON Schema, Red Flags & 1-Click AI Consultant Check (ครบทั้ง 33 Active CCs)
  */
 
 const fs = require('fs');
@@ -281,8 +281,17 @@ const sandbox = {
   console,
   URLSearchParams,
   AbortController,
-  setTimeout: (fn) => fn(),
+  btoa: (str) => Buffer.from(String(str), 'utf8').toString('base64'),
+  atob: (b64) => Buffer.from(String(b64), 'base64').toString('utf8'),
+  setTimeout: (fn, ms) => (ms >= 5000 ? 0 : fn()),
   clearTimeout: () => {},
+  navigator: {
+    clipboard: {
+      writeText: async (text) => {
+        sandbox._lastCopiedText = String(text || '');
+      }
+    }
+  },
   Event: class { constructor(type, opts = {}) { this.type = type; this.bubbles = opts.bubbles; } },
   HTMLInputElement: MockElement,
   localStorage: {
@@ -330,13 +339,13 @@ assert(dateInput.value === '26/10/2026', `Universal Date descriptor converts ISO
 timeInput.value = '3:30 PM';
 assert(timeInput.value === '15:30', `Universal Time descriptor converts '3:30 PM' -> '${timeInput.value}' (24-hour HH:mm)`);
 
-console.log(`\n=== มิติที่ (ง): DOCTOR UI RENDER, JSON SCHEMA & BUILT-IN CDS (ALL ${sandbox.getSeedPatients().length} SEED CASES) ===`);
+console.log(`\n=== มิติที่ (ง): DOCTOR UI RENDER, JSON SCHEMA & RED FLAGS (ALL ${sandbox.getSeedPatients().length} SEED CASES) ===`);
 const patients = sandbox.getSeedPatients();
 const expectedSeedTotal = registeredModList.reduce((acc, m) => acc + (Array.isArray(m.seedPatients) ? m.seedPatients.length : 0), 0);
 assert(patients.length === expectedSeedTotal && patients.length >= 117, `Seed database has all ${expectedSeedTotal} clinical cases across ${registeredModList.length} Chief Complaints (found ${patients.length})`);
 
 let renderErrors = 0;
-let cdsErrors = 0;
+let redFlagErrors = 0;
 let formatViolations = 0;
 let rapidDeDuplicationErrors = 0;
 
@@ -352,6 +361,10 @@ for (const p of patients) {
       console.error(`❌ Empty Doctor output for ${p.id} (${p.chief_complaint})`);
       renderErrors++;
     }
+    if (!rapid.includes("[Doctor's Clinical Addendum & Exam]")) {
+      console.error(`❌ Missing [Doctor's Clinical Addendum & Exam] in Rapid Note for ${p.id} (${p.chief_complaint})`);
+      renderErrors++;
+    }
     const parsedJson = JSON.parse(jsonStr);
     if (!parsedJson.encounter && !parsedJson.patient_identification) {
       console.error(`❌ Missing encounter metadata in JSON for ${p.id}`);
@@ -361,10 +374,10 @@ for (const p of patients) {
       console.error(`❌ AM/PM found in Doctor timestamp header for ${p.id}: ${tsHeader}`);
       formatViolations++;
     }
-    const cdsText = sandbox.generateBuiltInCdsAnalysis(p);
-    if (!cdsText || !cdsText.includes('[PROVISIONAL_DDX]') || !cdsText.includes('[ER_ORDERS]')) {
-      console.error(`❌ CDS generation failed for ${p.id}`);
-      cdsErrors++;
+    const activeDbPt = sandbox.getFilteredQueuePatients().find(x => x.id === p.id);
+    if (!activeDbPt || !Array.isArray(activeDbPt.redFlags)) {
+      console.error(`❌ Red flag evaluation failed (non-array) for ${p.id}`);
+      redFlagErrors++;
     }
 
     const rfListHtml = elementsById.get('redFlagList')?.innerHTML || '';
@@ -479,8 +492,8 @@ for (const p of patients) {
   }
 }
 
-assert(renderErrors === 0, `All ${patients.length} seed cases render Rapid Note, Narrative Note & JSON Schema on Doctor Dashboard with 0 errors`);
-assert(cdsErrors === 0, `All ${patients.length} seed cases generate Built-in CDS Analysis with 0 errors`);
+assert(renderErrors === 0, `All ${patients.length} seed cases render Rapid Note (including Addendum), Narrative Note & JSON Schema on Doctor Dashboard with 0 errors`);
+assert(redFlagErrors === 0, `All ${patients.length} seed cases evaluate Red Flags cleanly with 0 errors (Zero Built-in CDS dependency)`);
 assert(formatViolations === 0, `Zero Date/Time format violations across all ${patients.length} seed cases`);
 assert(rapidDeDuplicationErrors === 0, `Zero De-duplication, Clean Negative Syntax & Score Offloading violations across all ${patients.length} seed cases`);
 
@@ -604,88 +617,118 @@ assert(
   'Empty patient submission displays "ไม่ระบุ" in Doctor Rapid Note without fabricated age or duration'
 );
 
-// === AI CONSULTANT & PDPA SHIELD GUARD TESTS ===
-// Test 1: PDPA Shield strictly strips Patient Name, HN, Queue Number, and Hospital Name across all seed cases
+// === AI CONSULTANT, PDPA SHIELD & PROMPT ARCHITECTURE GUARD TESTS ===
+// Test 0: Verify legacy Built-in CDS execution function is removed from runtime
+assert(
+  typeof sandbox.generateBuiltInCdsAnalysis === 'undefined',
+  'Built-in CDS execution helper (generateBuiltInCdsAnalysis) is cleanly deprecated from runtime'
+);
+
+// Test 1: PDPA Shield & Audit strictly strips Patient Name, HN, Queue Number, and Hospital Name across all seed cases
 let pdpaLeaks = 0;
 patients.forEach(pt => {
   const dummyRapid = `[Encounter Header]\nQueue: ${pt.queue_number}\nHN: ${pt.hn}\nName: ${pt.name}\nHospital: Ratchaburi Hospital\n[History of Present Illness (HPI)]\nPatient presents with ${pt.chief_complaint}`;
+  const extracted = sandbox.extractPatientClinicalPayload(pt, dummyRapid);
+  const auditRes = sandbox.auditPdpaStripping(extracted, pt);
   const prompt = sandbox.AI_CONSULTANT_CONFIG.buildConsultationPrompt(pt, dummyRapid);
-  if (pt.name && pt.name.length > 2 && prompt.includes(pt.name)) {
-    console.error(`❌ PDPA Leak: Patient name '${pt.name}' found in AI prompt for ${pt.id}`);
+  if (!auditRes.clean || (pt.name && pt.name.length > 2 && prompt.includes(pt.name)) || (pt.hn && prompt.includes(pt.hn)) || (pt.queue_number && prompt.includes(pt.queue_number)) || /Ratchaburi Hospital|โรงพยาบาลราชบุรี/i.test(prompt)) {
+    console.error(`❌ PDPA Leak detected for ${pt.id}`);
     pdpaLeaks++;
   }
-  if (pt.hn && prompt.includes(pt.hn)) {
-    console.error(`❌ PDPA Leak: HN '${pt.hn}' found in AI prompt for ${pt.id}`);
-    pdpaLeaks++;
-  }
-  if (pt.queue_number && prompt.includes(pt.queue_number)) {
-    console.error(`❌ PDPA Leak: Queue '${pt.queue_number}' found in AI prompt for ${pt.id}`);
-    pdpaLeaks++;
-  }
-  if (/Ratchaburi Hospital|โรงพยาบาลราชบุรี/i.test(prompt)) {
-    console.error(`❌ PDPA Leak: Hospital name found in AI prompt for ${pt.id}`);
-    pdpaLeaks++;
-  }
-  // Ensure essential clinical data remains present
   if (!prompt.includes(pt.gender) || !prompt.includes(String(pt.age))) {
     console.error(`❌ Missing essential clinical demographic in AI prompt for ${pt.id}`);
     pdpaLeaks++;
   }
 });
-assert(pdpaLeaks === 0, `PDPA Shield 100% compliant: Zero leaks of Name, HN, Queue, or Hospital name across all ${patients.length} patients (leaks: ${pdpaLeaks})`);
+assert(pdpaLeaks === 0, `PDPA Shield & Audit 100% compliant: Zero leaks across all ${patients.length} patients (leaks: ${pdpaLeaks})`);
 
-// Test 2: AI Response Parser correctly separates [PROVISIONAL_DDX] and [ER_ORDERS]
+// Test 1.5: Verify System Instruction & Prompt Footer include ICD-10 / External Cause & 2.1/2.2/2.3 sections
+const defTpl = sandbox.getStoredAiPromptTemplates();
+assert(
+  defTpl.systemInstruction.includes('[Provisional & Differential Diagnosis]') &&
+  defTpl.systemInstruction.includes('ICD-10') &&
+  defTpl.systemInstruction.includes('External Cause') &&
+  defTpl.systemInstruction.includes('2.1 ประวัติ และการตรวจร่างกายเพิ่มเติม ที่ควรทำทันที') &&
+  defTpl.systemInstruction.includes('2.2 การส่งตรวจเพิ่มเติมทันที') &&
+  defTpl.systemInstruction.includes('2.3 แผนการรักษาเบื้องต้น'),
+  'Default System Instruction enforces [Provisional & Differential Diagnosis], ICD-10, External Cause & 2.1/2.2/2.3 ER Order structure'
+);
+
+// Test 2: AI Response Parser & normalizeDxOutputHeader enforce [Provisional & Differential Diagnosis] header
 const mockAiResponse = `[PROVISIONAL_DDX]
-• 1. Acute Appendicitis (ความน่าจะเป็นสูง: 70%)
-• 2. Acute Mesenteric Adenitis (ความน่าจะเป็น: 20%)
-• 3. Ruptured Ovarian Cyst (ความน่าจะเป็น: 10%)
+• 1. Acute Appendicitis (ICD-10: K35.80) (ความน่าจะเป็นสูง: 70%)
+• 2. Acute Mesenteric Adenitis (ICD-10: I88.0)
 
 **ภาวะวิกฤตที่ต้องเฝ้าระวังหรือ Rule out:**
-- 🚩 Peritonitis from perforation
+- 🚩 Peritonitis from perforation (ICD-10: K65.0)
 
 [ER_ORDERS]
-2.1 การส่งตรวจเพิ่มเติมทันที (Immediate Investigations):
+2.1 ประวัติ และการตรวจร่างกายเพิ่มเติม ที่ควรทำทันที (Immediate Focused History & Physical Exam):
+- [ ] Re-check rebound tenderness, Rovsing sign, Psoas sign
+
+2.2 การส่งตรวจเพิ่มเติมทันที (Immediate Investigations):
 - [ ] Bedside FAST scan / POCUS abdomen
 - [ ] CBC, Coagulogram, BUN, Cr, Electrolytes
-- [ ] Urine pregnancy test (UPT)
 
-2.2 แผนการรักษาเบื้องต้น & ข้อควรระวังด้านยา (Initial Management & Drug Safety):
+2.3 แผนการรักษาเบื้องต้น & ข้อควรระวังด้านยา (Initial Management & Drug Safety):
 - [ ] NPO, IV fluid loading NSS 1,000 mL rate 120 mL/hr
-- [ ] Consult General Surgeon on duty
-- [ ] Pain control: Paracetamol IV (หลีกเลี่ยง NSAIDs จนกว่าจะ rule out acute surgical abdomen)`;
+- [ ] ⚠️ หลีกเลี่ยง NSAIDs จนกว่าจะ rule out acute surgical abdomen`;
 
 const parsed = sandbox.parseAiConsultantResponse(mockAiResponse);
 assert(
-  parsed.dxText.includes('Acute Appendicitis') && !parsed.dxText.includes('[ER_ORDERS]') && !parsed.dxText.includes('Bedside FAST scan'),
-  'parseAiConsultantResponse isolates Provisional & Differential Diagnosis cleanly'
+  parsed.dxText.startsWith('[Provisional & Differential Diagnosis]\n') &&
+  parsed.dxText.includes('Acute Appendicitis (ICD-10: K35.80)') &&
+  !parsed.dxText.includes('[ER_ORDERS]'),
+  'parseAiConsultantResponse enforces [Provisional & Differential Diagnosis] header cleanly and isolates DDx'
 );
 assert(
-  parsed.ordersText.includes('- [ ] Bedside FAST scan') && parsed.ordersText.includes('- [ ] NPO, IV fluid') && !parsed.ordersText.includes('Acute Appendicitis'),
-  'parseAiConsultantResponse isolates ER Orders checklist with "- [ ]" cleanly'
+  sandbox.normalizeDxOutputHeader('[Provisional & Differential Diagnosis]\n• Item 1').match(/\[Provisional & Differential Diagnosis\]/g).length === 1,
+  'normalizeDxOutputHeader avoids duplicating [Provisional & Differential Diagnosis] when already present'
+);
+assert(
+  parsed.ordersText.includes('2.1 ประวัติ และการตรวจร่างกายเพิ่มเติม ที่ควรทำทันที') &&
+  parsed.ordersText.includes('2.2 การส่งตรวจเพิ่มเติมทันที') &&
+  parsed.ordersText.includes('2.3 แผนการรักษาเบื้องต้น'),
+  'parseAiConsultantResponse preserves 2.1 History/PE, 2.2 Investigations, and 2.3 Management sections cleanly'
 );
 
-// Test 3: 1-Click Apply executes smoothly with Append and Replace safety guards
-sandbox.selectPatient('case-040');
-elementsById.get('aiResultDxBox').value = '• Test Provisional Dx: Acute Cholangitis';
-elementsById.get('aiResultOrdersBox').value = '- [ ] ER Order: IV Ceftriaxone 2g';
+// Test 3: Single Apply ('both'), Separate Copy ('dx'/'orders'), and Trauma 31 Addendum Inclusion on Copy
+sandbox.selectPatient('case-traffic-01');
+elementsById.get('aiResultDxBox').value = '• 1. Concussion (ICD-10: S06.0, External Cause: V29.9)';
+elementsById.get('aiResultOrdersBox').value = '2.1 ประวัติ และการตรวจร่างกายเพิ่มเติม ที่ควรทำทันที:\n- [ ] GCS, Pupils, C-spine tenderness\n\n2.2 การส่งตรวจเพิ่มเติมทันที:\n- [ ] CT Brain non-contrast\n\n2.3 แผนการรักษาเบื้องต้น:\n- [ ] On hard collar';
 
-// Empty target fields -> direct write
+// Empty target fields -> direct write with [Provisional & Differential Diagnosis] header guaranteed
 elementsById.get('doctorPrelimDx').value = '';
 elementsById.get('doctorPlan').value = '';
 sandbox.executeAiApplyToFields('both', 'replace');
 assert(
-  elementsById.get('doctorPrelimDx').value === '• Test Provisional Dx: Acute Cholangitis' &&
-  elementsById.get('doctorPlan').value === '- [ ] ER Order: IV Ceftriaxone 2g',
-  '1-Click Apply populates both Dx and Plan fields directly when empty'
+  elementsById.get('doctorPrelimDx').value.startsWith('[Provisional & Differential Diagnosis]\n• 1. Concussion (ICD-10: S06.0, External Cause: V29.9)') &&
+  elementsById.get('doctorPlan').value.includes('2.1 ประวัติ และการตรวจร่างกายเพิ่มเติม'),
+  'Single-click Apply populates Dx (with [Provisional & Differential Diagnosis] header + ICD-10) and Plan cleanly'
+);
+const copiedTrafficReport = elementsById.get('rapidTextView').value;
+assert(
+  copiedTrafficReport.includes("[Doctor's Clinical Addendum & Exam]") &&
+  copiedTrafficReport.includes('[Provisional & Differential Diagnosis]') &&
+  copiedTrafficReport.includes('V29.9') &&
+  copiedTrafficReport.includes('2.1 ประวัติ และการตรวจร่างกายเพิ่มเติม'),
+  'Trauma CC (31_traffic_accident) Clinical Text Summary includes Doctor Addendum, [Provisional & Differential Diagnosis], ICD-10, and ER Orders for Copy'
 );
 
-// Pre-existing notes -> append mode test
+// Pre-existing notes -> append mode without AI/CDS label
 sandbox.executeAiApplyToFields('both', 'append');
 assert(
-  elementsById.get('doctorPrelimDx').value.includes('Acute Cholangitis\n\n[Provisional Dx จาก AI/CDS]\n• Test Provisional Dx') &&
-  elementsById.get('doctorPlan').value.includes('IV Ceftriaxone 2g\n\n[ER Orders จาก AI/CDS]\n- [ ] ER Order'),
-  '1-Click Apply accurately appends to pre-existing doctor notes without overwriting'
+  !elementsById.get('doctorPrelimDx').value.includes('AI/CDS') &&
+  !elementsById.get('doctorPlan').value.includes('AI/CDS') &&
+  elementsById.get('doctorPlan').value.includes('[Treatment Plan & ER Orders]'),
+  'Append mode updates doctor notes cleanly with [Provisional & Differential Diagnosis] & [Treatment Plan & ER Orders] without AI/CDS label'
 );
+
+// Separate Copy buttons
+sandbox.copyAiResultSection('dx');
+assert(sandbox._lastCopiedText.startsWith('[Provisional & Differential Diagnosis]'), 'Separate Copy Dx includes [Provisional & Differential Diagnosis] header');
+sandbox.copyAiResultSection('orders');
+assert(sandbox._lastCopiedText.includes('2.1 ประวัติ และการตรวจร่างกายเพิ่มเติม'), 'Separate Copy Orders copies ER Orders cleanly');
 
 // === CC #20 BACK PAIN CLINICAL RED FLAG & TRIAGE VALIDATION ===
 const bpCase1 = patients.find(p => p.id === 'case-backpain-01');
@@ -1135,40 +1178,132 @@ assert(
   'Patient case-traffic-01 updates activeCcDisplay to traffic accident badge'
 );
 
-// === AI CONSULTANT PERSISTENCE & RESILIENT RETRY/FALLBACK TESTS ===
-// Test 4: AI Consult Result Persistence across modal close & reopen
-sandbox.selectPatient('case-040');
-const runtimePt = sandbox.getFilteredQueuePatients().find(p => p.id === 'case-040');
-runtimePt.aiConsultResult = {
-  rawText: '[PROVISIONAL_DDX]\n• AI Diagnosis: Acute Cholecystitis (85%)\n\n[ER_ORDERS]\n- [ ] Bedside POCUS Gallbladder',
-  dxText: '• AI Diagnosis: Acute Cholecystitis (85%)',
-  ordersText: '- [ ] Bedside POCUS Gallbladder',
-  model: 'gemini-3.8-flash',
-  timestamp: new Date().toISOString()
-};
-
-sandbox.openAiConsultantModal();
-assert(
-  elementsById.get('aiResultDxBox').value.includes('AI Diagnosis: Acute Cholecystitis'),
-  'openAiConsultantModal preserves and restores saved AI consult diagnosis instead of overwriting with CDS'
-);
-assert(
-  elementsById.get('aiResultOrdersBox').value.includes('Bedside POCUS Gallbladder'),
-  'openAiConsultantModal preserves and restores saved AI consult orders checklist'
-);
-assert(
-  elementsById.get('aiApiStatusMsg').textContent.includes('แสดงผลการวิเคราะห์จาก AI ล่าสุดที่บันทึกไว้'),
-  'openAiConsultantModal displays saved AI status banner indicating persisted consultation'
-);
-
-sandbox.closeAiConsultantModal();
-sandbox.openAiConsultantModal();
-assert(
-  elementsById.get('aiResultDxBox').value.includes('AI Diagnosis: Acute Cholecystitis'),
-  'AI consult result persists intact across multiple modal close/open cycles'
-);
-
+// === ROLE-BASED 1-CLICK AI CONSULTANT (DOCTOR DIRECT vs ADMIN 3-ZONE WORKBENCH) ===
 (async () => {
+  const runtimePt = sandbox.getFilteredQueuePatients().find(p => p.id === 'case-040');
+  sandbox.selectPatient('case-040');
+
+  // Test 4A: Admin Role opens 3-Zone Workbench BEFORE calling API, preserves saved consult & persists edited templates
+  sandbox.quickStaffLogin('admin');
+  runtimePt.aiConsultResult = {
+    rawText: '[PROVISIONAL_DDX]\n• AI Diagnosis: Acute Cholecystitis (ICD-10: K81.0)\n\n[ER_ORDERS]\n2.1 ประวัติ และการตรวจร่างกายเพิ่มเติม ที่ควรทำทันที:\n- [ ] Check Murphy sign\n2.2 การส่งตรวจเพิ่มเติมทันที:\n- [ ] Bedside POCUS Gallbladder',
+    dxText: '[Provisional & Differential Diagnosis]\n• AI Diagnosis: Acute Cholecystitis (ICD-10: K81.0)',
+    ordersText: '2.1 ประวัติ และการตรวจร่างกายเพิ่มเติม ที่ควรทำทันที:\n- [ ] Check Murphy sign\n2.2 การส่งตรวจเพิ่มเติมทันที:\n- [ ] Bedside POCUS Gallbladder',
+    model: 'gemini-3.8-flash',
+    timestamp: new Date().toISOString()
+  };
+
+  let adminFetchCalled = 0;
+  sandbox.fetch = async () => {
+    adminFetchCalled++;
+    return { ok: true, status: 200, json: async () => ({ candidates: [{ content: { parts: [{ text: '' }] } }] }) };
+  };
+
+  await sandbox.openAiConsultantModal();
+  assert(
+    !elementsById.get('aiAdminWorkbenchSection').classList.contains('hidden') &&
+    adminFetchCalled === 0,
+    'Admin Role displays 3-Zone Workbench pre-send screen without auto-firing API fetch'
+  );
+  assert(
+    elementsById.get('aiExtractedDataBox').value.includes('K81') === false &&
+    elementsById.get('aiExtractedDataBox').value.includes('1. ข้อมูลทางคลินิกเบื้องต้น:') &&
+    elementsById.get('aiPdpaAuditBadge').textContent.includes('PDPA Verified'),
+    'Admin Zone 1 displays extracted clinical data and PDPA Verified audit badge'
+  );
+  assert(
+    elementsById.get('aiResultDxBox').value.includes('Acute Cholecystitis (ICD-10: K81.0)') &&
+    elementsById.get('aiResultOrdersBox').value.includes('Bedside POCUS Gallbladder'),
+    'Admin Workbench restores persisted AI consult without overwriting with Built-in CDS'
+  );
+
+  // Admin edits System / Header / Footer prompts & persists in localStorage
+  elementsById.get('aiPromptSystemInput').value = 'CUSTOM SYSTEM PROMPT FOR ER TEST';
+  elementsById.get('aiPromptHeaderInput').value = 'CUSTOM HEADER';
+  elementsById.get('aiPromptFooterInput').value = 'CUSTOM FOOTER';
+  sandbox.saveAiPromptTemplates();
+  assert(
+    sandbox.getStoredAiPromptTemplates().systemInstruction === 'CUSTOM SYSTEM PROMPT FOR ER TEST' &&
+    elementsById.get('aiConsultantPromptText').value.startsWith('CUSTOM HEADER') &&
+    elementsById.get('aiConsultantPromptText').value.endsWith('CUSTOM FOOTER'),
+    'Admin Zone 2 saves custom System / Header / Footer prompt templates to localStorage and updates live preview'
+  );
+
+  // Save key as Admin & confirm Admin manual Send fires API with custom templates
+  elementsById.get('aiApiKeyInput').value = 'secret-test-key';
+  sandbox.saveAiAdminSettings();
+  let capturedBody = null;
+  sandbox.fetch = async (url, opts) => {
+    adminFetchCalled++;
+    capturedBody = JSON.parse(opts.body);
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({
+        candidates: [{ content: { parts: [{ text: '[PROVISIONAL_DDX]\n• Acute Cholangitis (ICD-10: K83.0)\n\n[ER_ORDERS]\n2.1 ประวัติ และการตรวจร่างกายเพิ่มเติม ที่ควรทำทันที:\n- [ ] Check Charcot triad' }] } }]
+      })
+    };
+  };
+  await sandbox.runDirectAiConsultation();
+  assert(
+    adminFetchCalled === 1 &&
+    capturedBody.system_instruction.parts[0].text === 'CUSTOM SYSTEM PROMPT FOR ER TEST' &&
+    capturedBody.contents[0].parts[0].text.includes('CUSTOM HEADER') &&
+    elementsById.get('aiResultDxBox').value.startsWith('[Provisional & Differential Diagnosis]'),
+    'Admin confirm Send invokes API with customized System / Header / Footer and formats Dx cleanly'
+  );
+  sandbox.resetAiPromptTemplates();
+  assert(
+    sandbox.getStoredAiPromptTemplates().systemInstruction.includes('Evidence-Based Emergency Physician'),
+    'Admin Reset Prompt Templates restores factory System / Header / Footer defaults cleanly'
+  );
+
+  // Test 4B: Doctor Role WITH API Key skips intermediate Workbench & Built-in CDS, fires API immediately!
+  sandbox.quickStaffLogin('doctor');
+  let doctorFetchCalled = 0;
+  sandbox.fetch = async () => {
+    doctorFetchCalled++;
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({
+        candidates: [{ content: { parts: [{ text: '[PROVISIONAL_DDX]\n• 1. Ruptured AAA (ICD-10: I71.3)\n\n[ER_ORDERS]\n2.1 ประวัติ และการตรวจร่างกายเพิ่มเติม ที่ควรทำทันที:\n- [ ] Palpate pulsatile abdominal mass' }] } }]
+      })
+    };
+  };
+  await sandbox.openAiConsultantModal();
+  assert(
+    elementsById.get('aiAdminWorkbenchSection').classList.contains('hidden') &&
+    doctorFetchCalled === 1 &&
+    elementsById.get('aiResultDxBox').value.includes('[Provisional & Differential Diagnosis]') &&
+    elementsById.get('aiResultDxBox').value.includes('I71.3'),
+    'Doctor Role hides Admin Workbench and immediately fires external API on 1-Click without Built-in CDS'
+  );
+
+  // Test 4C: Doctor Role WITHOUT API Key does NOT fall back to Built-in CDS (shows clear Admin key error & empty boxes)
+  sandbox.clearAiAdminApiKey();
+  let noKeyFetchCalled = 0;
+  sandbox.fetch = async () => { noKeyFetchCalled++; };
+  await sandbox.openAiConsultantModal();
+  assert(
+    noKeyFetchCalled === 0 &&
+    elementsById.get('aiResultDxBox').value === '' &&
+    elementsById.get('aiResultOrdersBox').value === '' &&
+    elementsById.get('aiApiStatusMsg').textContent.includes('ยังไม่ได้ตั้งค่า API Key'),
+    'Doctor Role with missing API key skips Built-in CDS completely, leaves outputs blank, and shows clear Admin error'
+  );
+
+  // Test 4D: Doctor Role API Network Failure does NOT fall back to Built-in CDS
+  elementsById.get('aiApiKeyInput').value = 'secret-test-key';
+  sandbox.saveAiAdminSettings();
+  sandbox.fetch = async () => { throw new Error('Network unreachable'); };
+  await sandbox.openAiConsultantModal();
+  assert(
+    elementsById.get('aiResultDxBox').value === '' &&
+    elementsById.get('aiApiStatusMsg').textContent.includes('เชื่อมต่อ AI API ไม่สำเร็จ'),
+    'Doctor Role on API failure displays explicit error without falling back to Built-in CDS'
+  );
+  sandbox.clearAiAdminApiKey();
   // Unit tests for executeGeminiConsultWithRetry:
   const fastAttempts = [
     { model: 'gemini-3.8-flash', delay: 0, label: 'Primary Attempt' },
