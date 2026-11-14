@@ -1074,6 +1074,7 @@ const FALL_TRAUMA_FORM_HTML = `
               ${renderFallPart('fallArmWrist', 'ข้อมือ / ฝ่ามือ / หลังมือ', false)}
 
               ${renderFallDigits('fallArmFingers', 'นิ้วมือ')}
+            </div>
           </div>
 
           <div>
@@ -1126,6 +1127,7 @@ const FALL_TRAUMA_FORM_HTML = `
               ${renderFallPart('fallLegAnkleFoot', 'ข้อเท้า / ส้นเท้า / ฝ่าเท้า / หลังเท้า', false)}
 
               ${renderFallDigits('fallLegToes', 'นิ้วเท้า')}
+            </div>
           </div>
 
           <div>

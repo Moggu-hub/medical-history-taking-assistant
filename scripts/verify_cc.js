@@ -241,6 +241,25 @@ for (const mod of modsToInspect) {
   if (/\(สงสัย[^)]+\)/.test(fHtml)) fail(`โมดูล '${mod.id}': พบ '(สงสัย...)' ใน formHtml ฝั่งคนไข้ (P-AP2)`);
   if (/type\s*=\s*["'](?:date|time)["']/i.test(fHtml)) fail(`โมดูล '${mod.id}': พบ <input type="date|time"> ใน formHtml`);
 
+  // C-AP16: Check balanced <div> nesting inside formHtml so sibling boxes/cards never trap subsequent sections
+  const cleanedDivHtml = fHtml
+    .replace(/<!--[\s\S]*?-->/g, '')
+    .replace(/="[^"]*"/g, '=""')
+    .replace(/='[^']*'/g, "=''");
+  const divTokens = cleanedDivHtml.match(/<\/?div\b[^>]*>/gi) || [];
+  let divDepth = 0;
+  let minDivDepth = 0;
+  for (const dt of divTokens) {
+    if (dt.startsWith('</')) divDepth--;
+    else divDepth++;
+    if (divDepth < minDivDepth) minDivDepth = divDepth;
+  }
+  if (divDepth !== 0 || minDivDepth < 0) {
+    fail(`โมดูล '${mod.id}': พบแท็ก <div> / </div> ใน formHtml ไม่สมดุล (endDepth=${divDepth}, minDepth=${minDivDepth}) เสี่ยงกล่องคำถามซ้อนกันผิดชั้น (C-AP16)`);
+  } else {
+    pass(`โมดูล '${mod.id}': โครงสร้าง <div> / </div> ใน formHtml สมดุลครบถ้วน 100% (C-AP16)`);
+  }
+
   // Strict UI Uniformity Check on selectable-card labels (C-AP1) when verifying specific target CC
   if (targetCcId && mod.id === targetCcId) {
     const labelBlocks = fHtml.match(/<label\b[^>]*selectable-card[\s\S]*?<\/label>/gi) || [];

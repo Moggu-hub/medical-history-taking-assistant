@@ -972,6 +972,7 @@ const VENOMOUS_BITE_FORM_HTML = `
           ${renderVenomPart('venomArmElbowForearm', 'ข้อศอก/แขนท่อนล่าง')}
           ${renderVenomPart('venomArmWristHand', 'ข้อมือ/ฝ่ามือ/หลังมือ')}
           ${renderVenomDigits('venomArmFingers', 'นิ้วมือ')}
+        </div>
         <div class="pt-2 border-t border-slate-100 space-y-1.5">
           <span class="font-semibold text-slate-700 block">อาการสำคัญที่พบร่วมด้วย:</span>
           <label class="flex items-center"><input type="checkbox" name="venomUpperExtSigns" value="arm_tense_compartment_ischemia" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">แขน มือ หรือนิ้วมือบวมตึงมาก ขยับนิ้วแล้วปวดรุนแรง หรือมีอาการชา/ปลายนิ้วซีดเย็น</span></label>
@@ -991,6 +992,7 @@ const VENOMOUS_BITE_FORM_HTML = `
           ${renderVenomPart('venomLegKneeShinCalf', 'เข่า/หน้าแข้ง/น่อง')}
           ${renderVenomPart('venomLegAnkleFoot', 'ข้อเท้า/ฝ่าเท้า/หลังเท้า/ส้นเท้า')}
           ${renderVenomDigits('venomLegToes', 'นิ้วเท้า')}
+        </div>
         <div class="pt-2 border-t border-slate-100 space-y-1.5">
           <span class="font-semibold text-slate-700 block">อาการสำคัญที่พบร่วมด้วย:</span>
           <label class="flex items-center"><input type="checkbox" name="venomLowerExtSigns" value="leg_tense_compartment_ischemia" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">ขา ข้อเท้า หรือเท้าบวมตึงมาก เดินลงน้ำหนักไม่ได้ หรือมีอาการชา/ปลายเท้าซีดเย็น</span></label>
@@ -1048,11 +1050,7 @@ const VENOMOUS_BITE_FORM_HTML = `
         </label>
         <label class="selectable-card flex items-center p-2.5 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50">
           <input type="checkbox" name="venomLocalSigns" value="mild_local_pain_only" class="rounded text-medical-600 h-4 w-4">
-          <span class="ml-2 text-slate-600">มีอาการปวด บวม แดง หรือคันเฉพาะจุดเพียงเล็กน้อย</span>
-        </label>
-        <label class="selectable-card flex items-center p-2.5 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50">
-          <input type="checkbox" name="venomLocalSigns" value="mild_local_pain_only" class="rounded text-medical-600 h-4 w-4">
-          <span class="ml-2 text-slate-600">มีอาการปวด บวม แดง หรือคันเฉพาะจุดเพียงเล็กน้อย</span>
+          <span class="ml-2 text-slate-800">มีอาการปวด บวม แดง หรือคันเฉพาะจุดเพียงเล็กน้อย</span>
         </label>
       </div>
     </div>

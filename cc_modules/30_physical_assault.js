@@ -911,6 +911,7 @@ const PHYSICAL_ASSAULT_FORM_HTML = `
           ${renderAssaultPart('assaultArmElbowForearm', 'ข้อศอก/แขนท่อนล่าง')}
           ${renderAssaultPart('assaultArmWristHand', 'ข้อมือ/ฝ่ามือ/หลังมือ')}
           ${renderAssaultDigits('assaultArmFingers', 'นิ้วมือ')}
+        </div>
         <div class="pt-2 border-t border-slate-100 space-y-1.5">
           <span class="font-semibold text-slate-700 block">อาการสำคัญที่พบร่วมด้วย:</span>
           <label class="flex items-center"><input type="checkbox" name="assaultUpperExtSigns" value="arm_deformity_suspected_fracture" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">ไหล่ แขน ข้อมือ หรือนิ้วมือ บวมโต ผิดรูป บิดเบี้ยว หรือสงสัยกระดูกหัก/ข้อหลุด</span></label>
@@ -932,6 +933,7 @@ const PHYSICAL_ASSAULT_FORM_HTML = `
           ${renderAssaultPart('assaultLegKneeShinCalf', 'เข่า/หน้าแข้ง/น่อง')}
           ${renderAssaultPart('assaultLegAnkleFoot', 'ข้อเท้า/ส้นเท้า/ฝ่าเท้า/หลังเท้า')}
           ${renderAssaultDigits('assaultLegToes', 'นิ้วเท้า')}
+        </div>
         <div class="pt-2 border-t border-slate-100 space-y-1.5">
           <span class="font-semibold text-slate-700 block">อาการสำคัญที่พบร่วมด้วย:</span>
           <label class="flex items-center"><input type="checkbox" name="assaultLowerExtSigns" value="leg_deformity_suspected_fracture" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">ขา เข่า หรือข้อเท้า บวมโต ผิดรูป หรือบิดเบี้ยว</span></label>

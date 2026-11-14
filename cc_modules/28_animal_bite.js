@@ -1062,6 +1062,7 @@ const ANIMAL_BITE_FORM_HTML = `
             ${renderBitePart('biteArmElbow', 'ข้อศอก / แขนท่อนล่าง')}
             ${renderBitePart('biteArmWrist', 'ข้อมือ / ฝ่ามือ / หลังมือ')}
             ${renderBiteDigits('biteArmFingers', 'นิ้วมือ')}
+          </div>
 
           <div class="pt-2 border-t border-slate-200">
             <span class="text-xs font-semibold text-slate-700 block mb-1.5">อาการสำคัญที่พบร่วมด้วย:</span>
@@ -1103,6 +1104,7 @@ const ANIMAL_BITE_FORM_HTML = `
             ${renderBitePart('biteLegKneeShin', 'เข่า / หน้าแข้ง / น่อง')}
             ${renderBitePart('biteLegAnkleFoot', 'ข้อเท้า / ฝ่าเท้า / หลังเท้า / ส้นเท้า')}
             ${renderBiteDigits('biteLegToes', 'นิ้วเท้า')}
+          </div>
 
           <div class="pt-2 border-t border-slate-200">
             <span class="text-xs font-semibold text-slate-700 block mb-1.5">อาการสำคัญที่พบร่วมด้วย:</span>

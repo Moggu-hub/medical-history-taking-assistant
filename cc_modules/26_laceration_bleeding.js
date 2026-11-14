@@ -1103,6 +1103,7 @@ const LACERATION_FORM_HTML = `
               ${renderLacPart('lacArmWrist', 'ข้อมือ / ฝ่ามือ / หลังมือ', false)}
 
               ${renderLacDigits('lacArmFingers', 'นิ้วมือ')}
+            </div>
           </div>
 
           <div>
@@ -1155,6 +1156,7 @@ const LACERATION_FORM_HTML = `
               ${renderLacPart('lacLegAnkleFoot', 'ข้อเท้า / ส้นเท้า / ฝ่าเท้า / หลังเท้า', false)}
 
               ${renderLacDigits('lacLegToes', 'นิ้วเท้า')}
+            </div>
           </div>
 
           <div>
