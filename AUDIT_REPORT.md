@@ -1,6 +1,6 @@
 # 🕵️‍♂️ รายงานการตรวจสอบคุณภาพโค้ดและสถาปัตยกรรม (AUTOMATED & AI AUDIT REPORT)
 
-- **วันที่ตรวจสอบ:** `14/11/2026` เวลา `18:36` น. (24-Hour Format)
+- **วันที่ตรวจสอบ:** `14/11/2026` เวลา `19:20` น. (24-Hour Format)
 - **สถานะภาพรวม (Overall Verdict):** **✅ PASS (ผ่านการตรวจสอบครบทุกมิติ)**
 - **จำนวนหัวข้อที่ผ่าน (Passed Checks):** 9 รายการ
 - **จำนวนคำเตือน (Warnings):** 0 รายการ
@@ -58,8 +58,8 @@
 - ✅ clinical_knowledge_core.js: 907 บรรทัด (อยู่ในเกณฑ์ปลอดภัย <= 1000 บรรทัด)
 - ✅ ai_consultant_core.js: 886 บรรทัด (อยู่ในเกณฑ์ปลอดภัย <= 1000 บรรทัด)
 - ✅ core_engine.js: 2297 บรรทัด (อยู่ในเกณฑ์ปลอดภัย <= 3200 บรรทัด)
-- ✅ Core System Freeze: core_engine.js ไม่ถูกแก้ไขนับจากจุดเซฟ 'v2.79-ai-consultant-redesign' (SHA-256 ตรงกัน 100%)
-- ✅ Core System Freeze: ai_consultant_core.js ไม่ถูกแก้ไขนับจากจุดเซฟ 'v2.79-ai-consultant-redesign' (SHA-256 ตรงกัน 100%)
+- ✅ Core System Freeze: core_engine.js ไม่ถูกแก้ไขนับจากจุดเซฟ 'v2.80-doctor-addendum-open' (SHA-256 ตรงกัน 100%)
+- ✅ Core System Freeze: ai_consultant_core.js ไม่ถูกแก้ไขนับจากจุดเซฟ 'v2.80-doctor-addendum-open' (SHA-256 ตรงกัน 100%)
 - ✅ พบไฟล์โมดูลรายอาการใน cc_modules/ จำนวน 33 โมดูล
 - ✅ ทุกโมดูลใน cc_modules/ ผ่านเกณฑ์โครงสร้าง Lifecycle Hooks, ความปลอดภัย UI คนไข้ และมาตรฐานวันที่ dd/mm/yyyy + เวลา 24 ชั่วโมง HH:mm
 - ✅ ชุดทดสอบ Mandatory 4-Dimension Core Guard TDD (tests/core_guard_test.js) ผ่านครบ 100% ทั้ง 4 มิติ!
@@ -318,6 +318,10 @@
 ✅ PASS: Gemini Consult switches to Fallback 1 (gemini-3-flash-preview) after 2 failed attempts
 ✅ PASS: Gemini Consult switches to Fallback 2 (gemini-3.1-pro-preview) after Fallback 1 fails
 ✅ PASS: Gemini Consult halts immediately on HTTP 401 without retrying or falling back
+✅ PASS: Doctor's Notes & Clinical Addendum (#doctorAddendumFields) is open by default
+✅ PASS: toggleDoctorAddendumSection(false) collapses Doctor Addendum box cleanly
+✅ PASS: toggleDoctorAddendumSection(true) expands Doctor Addendum box cleanly
+✅ PASS: CC 06_headache uses correct Thai spelling "ไม่คลื่นไส้นำมาก่อน" with zero typos
 
 ====================================================================
 🎉 ALL 4 MANDATORY CORE GUARD TDD DIMENSIONS PASSED (0 FAILURES)!

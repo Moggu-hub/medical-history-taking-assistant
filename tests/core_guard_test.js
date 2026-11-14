@@ -1388,8 +1388,8 @@ assert(
   assert(caughtErrorE && calls.length === 1, 'Gemini Consult halts immediately on HTTP 401 without retrying or falling back');
 
   // Test F: Doctor's Notes & Clinical Addendum open by default + toggleable
-  const addendumFieldsEl = mockDoc.getElementById('doctorAddendumFields');
-  const toggleBtnTextEl = mockDoc.getElementById('toggleDoctorAddendumText');
+  const addendumFieldsEl = elementsById.get('doctorAddendumFields');
+  const toggleBtnTextEl = elementsById.get('toggleDoctorAddendumText');
   assert(
     addendumFieldsEl && !addendumFieldsEl.classList.contains('hidden') &&
     indexHtml.includes('id="doctorAddendumFields" class="pt-4"') &&
