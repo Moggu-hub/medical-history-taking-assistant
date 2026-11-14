@@ -1,6 +1,6 @@
 # 🕵️‍♂️ รายงานการตรวจสอบคุณภาพโค้ดและสถาปัตยกรรม (AUTOMATED & AI AUDIT REPORT)
 
-- **วันที่ตรวจสอบ:** `14/11/2026` เวลา `19:20` น. (24-Hour Format)
+- **วันที่ตรวจสอบ:** `14/11/2026` เวลา `20:22` น. (24-Hour Format)
 - **สถานะภาพรวม (Overall Verdict):** **✅ PASS (ผ่านการตรวจสอบครบทุกมิติ)**
 - **จำนวนหัวข้อที่ผ่าน (Passed Checks):** 9 รายการ
 - **จำนวนคำเตือน (Warnings):** 0 รายการ
@@ -12,10 +12,10 @@
 
 | ไฟล์ (File Path) | จำนวนบรรทัด (Lines) | เพดานสูงสุด (Max Limit) | สถานะ (Status) |
 | :--- | :---: | :---: | :---: |
-| `index.html` | 1,948 | 2,000 | ✅ ปกติ (Safe) |
-| `clinical_knowledge_core.js` | 907 | 1,000 | ✅ ปกติ (Safe) |
+| `index.html` | 1,973 | 2,000 | ✅ ปกติ (Safe) |
+| `clinical_knowledge_core.js` | 981 | 1,000 | ✅ ปกติ (Safe) |
 | `ai_consultant_core.js` | 886 | 1,000 | ✅ ปกติ (Safe) |
-| `core_engine.js` | 2,297 | 3,200 | ✅ ปกติ (Safe) |
+| `core_engine.js` | 2,561 | 3,200 | ✅ ปกติ (Safe) |
 | `cc_modules/01_abdpain.js` | 1,251 | 2,000 | ✅ ปกติ (Safe) |
 | `cc_modules/02_chestpain.js` | 1,346 | 2,000 | ✅ ปกติ (Safe) |
 | `cc_modules/03_dyspnea.js` | 1,062 | 2,000 | ✅ ปกติ (Safe) |
@@ -54,12 +54,12 @@
 
 ## 2. สรุปรายการที่ตรวจผ่าน (Passed Verification Checks)
 
-- ✅ index.html: 1948 บรรทัด (อยู่ในเกณฑ์ปลอดภัย <= 2000 บรรทัด)
-- ✅ clinical_knowledge_core.js: 907 บรรทัด (อยู่ในเกณฑ์ปลอดภัย <= 1000 บรรทัด)
+- ✅ index.html: 1973 บรรทัด (อยู่ในเกณฑ์ปลอดภัย <= 2000 บรรทัด)
+- ✅ clinical_knowledge_core.js: 981 บรรทัด (อยู่ในเกณฑ์ปลอดภัย <= 1000 บรรทัด)
 - ✅ ai_consultant_core.js: 886 บรรทัด (อยู่ในเกณฑ์ปลอดภัย <= 1000 บรรทัด)
-- ✅ core_engine.js: 2297 บรรทัด (อยู่ในเกณฑ์ปลอดภัย <= 3200 บรรทัด)
-- ✅ Core System Freeze: core_engine.js ไม่ถูกแก้ไขนับจากจุดเซฟ 'v2.80-doctor-addendum-open' (SHA-256 ตรงกัน 100%)
-- ✅ Core System Freeze: ai_consultant_core.js ไม่ถูกแก้ไขนับจากจุดเซฟ 'v2.80-doctor-addendum-open' (SHA-256 ตรงกัน 100%)
+- ✅ core_engine.js: 2561 บรรทัด (อยู่ในเกณฑ์ปลอดภัย <= 3200 บรรทัด)
+- ✅ Core System Freeze: core_engine.js ไม่ถูกแก้ไขนับจากจุดเซฟ 'v2.81-pediatric-core-infra' (SHA-256 ตรงกัน 100%)
+- ✅ Core System Freeze: ai_consultant_core.js ไม่ถูกแก้ไขนับจากจุดเซฟ 'v2.81-pediatric-core-infra' (SHA-256 ตรงกัน 100%)
 - ✅ พบไฟล์โมดูลรายอาการใน cc_modules/ จำนวน 33 โมดูล
 - ✅ ทุกโมดูลใน cc_modules/ ผ่านเกณฑ์โครงสร้าง Lifecycle Hooks, ความปลอดภัย UI คนไข้ และมาตรฐานวันที่ dd/mm/yyyy + เวลา 24 ชั่วโมง HH:mm
 - ✅ ชุดทดสอบ Mandatory 4-Dimension Core Guard TDD (tests/core_guard_test.js) ผ่านครบ 100% ทั้ง 4 มิติ!
@@ -322,6 +322,17 @@
 ✅ PASS: toggleDoctorAddendumSection(false) collapses Doctor Addendum box cleanly
 ✅ PASS: toggleDoctorAddendumSection(true) expands Doctor Addendum box cleanly
 ✅ PASS: CC 06_headache uses correct Thai spelling "ไม่คลื่นไส้นำมาก่อน" with zero typos
+✅ PASS: Landing zone isolates all 9 Pediatric CCs exclusively into #pediatricCcGrid (#pediatricCcSection)
+✅ PASS: ADULT_TO_PEDIATRIC_CC_MAP binds 11 Adult medical CCs without binding pediatric_head_injury
+✅ PASS: Adult mapped CC (fever) displays redirect banner and keeps Card 0/Card 3 in Adult mode
+✅ PASS: Adult mapped CC highlights redirect banner when age < maxAgeYears
+✅ PASS: Unmapped Adult CC (headache) hides #adultToPediatricRedirectBanner
+✅ PASS: Trauma CC (fall_trauma) keeps #adultToPediatricRedirectBanner hidden
+✅ PASS: Pediatric CC reveals age unit & weight, swaps PMH to pediatric, and locks questions until age is entered
+✅ PASS: Pediatric Fever at 2 months unlocks questions and detects "< 3 เดือน" bracket
+✅ PASS: Pediatric Fever at 3 years unlocks questions and detects "3 เดือน – 5 ปี" bracket
+✅ PASS: Pediatric Fever at 6 years (>= maxAgeYears) re-locks questions and reveals Adult switch button
+✅ PASS: resolvePediatricAgeBracket converts days/months/years accurately across Pediatric brackets
 
 ====================================================================
 🎉 ALL 4 MANDATORY CORE GUARD TDD DIMENSIONS PASSED (0 FAILURES)!
