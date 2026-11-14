@@ -52,6 +52,7 @@ async function testServer() {
     const health = await request('GET', '/api/health');
     assert.strictEqual(health.status, 200);
     assert.strictEqual(health.data.status, 'ok');
+    assert.strictEqual(health.data.version, 'v2.80-pilot');
     console.log('✅ Health check PASS');
 
     // 2. PIN verification
@@ -260,6 +261,15 @@ async function testServer() {
         p.completed_at = new Date().toISOString();
         sandbox.saveDatabase();
       },
+      runDirectAiConsultation: async () => {
+        const p = sandbox.patientDatabase.find(x => x.id === sandbox.activePatientId);
+        if (!p) return;
+        p.aiConsultResult = {
+          dxText: '[Provisional & Differential Diagnosis]\n1. Lumbar Strain (ICD-10: S39.012)',
+          ordersText: '2.1 ประวัติ และการตรวจร่างกายเพิ่มเติม ที่ควรทำทันที:\n- [ ] Check SLR',
+          model: 'gemini-3.8-flash'
+        };
+      },
       switchUserRole: () => {},
       showToast: () => {}
     };
@@ -293,6 +303,7 @@ async function testServer() {
     sandbox.handleDoctorAddendumChange();
     domValues.rapidTextView = '[Chief Complaint (CC)]\nแก้ไขข้อความสรุปเพิ่มเติมโดยแพทย์';
     sandbox.handleDirectNoteEdit('rapid');
+    await sandbox.runDirectAiConsultation();
 
     // Trigger immediate poll tick while edits are pending debounce! Must NOT clobber DOM or DB
     await pollCallback();
@@ -314,6 +325,7 @@ async function testServer() {
     assert.strictEqual(casesAfterSync.data.cases[0].doctor_notes.preliminary_dx, '1. Severe Lumbar Strain (จาก AI)');
     assert.strictEqual(casesAfterSync.data.cases[0].doctor_notes.plan, '• Analgesic IV + Bed rest (จาก AI)');
     assert.strictEqual(casesAfterSync.data.cases[0].custom_rapid_note, '[Chief Complaint (CC)]\nแก้ไขข้อความสรุปเพิ่มเติมโดยแพทย์');
+    assert.ok(casesAfterSync.data.cases[0].aiConsultResult && casesAfterSync.data.cases[0].aiConsultResult.dxText.includes('S39.012'));
 
     // Close case and verify status syncs immediately
     sandbox.executeCloseActiveCase();

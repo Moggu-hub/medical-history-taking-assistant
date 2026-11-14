@@ -659,23 +659,23 @@ const PSYCHIATRIC_FORM_HTML = `
         1.1 ผู้ให้ข้อมูลอาการในวันนี้ <span class="text-rose-500">*</span>
       </label>
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-        <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-          <input type="radio" name="psychInformant" value="family_relative" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4"
+        <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+          <input type="radio" name="psychInformant" value="family_relative" class="text-medical-600 focus:ring-medical-500 h-4 w-4"
             onchange="handlePsychInformantChange(this.value)">
           <span class="text-xs sm:text-sm text-slate-800">ญาติสายตรง หรือบุคคลในครอบครัว</span>
         </label>
-        <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-          <input type="radio" name="psychInformant" value="police_ems" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4"
+        <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+          <input type="radio" name="psychInformant" value="police_ems" class="text-medical-600 focus:ring-medical-500 h-4 w-4"
             onchange="handlePsychInformantChange(this.value)">
           <span class="text-xs sm:text-sm text-slate-800">เจ้าหน้าที่ตำรวจ หรือ เจ้าหน้าที่กู้ภัย / EMS</span>
         </label>
-        <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-          <input type="radio" name="psychInformant" value="caregiver_neighbor" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4"
+        <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+          <input type="radio" name="psychInformant" value="caregiver_neighbor" class="text-medical-600 focus:ring-medical-500 h-4 w-4"
             onchange="handlePsychInformantChange(this.value)">
           <span class="text-xs sm:text-sm text-slate-800">ผู้ดูแล หรือเพื่อนบ้าน / ผู้พบเห็นเหตุการณ์</span>
         </label>
-        <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-          <input type="radio" name="psychInformant" value="patient_self" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4"
+        <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+          <input type="radio" name="psychInformant" value="patient_self" class="text-medical-600 focus:ring-medical-500 h-4 w-4"
             onchange="handlePsychInformantChange(this.value)">
           <span class="text-xs sm:text-sm text-slate-800">ผู้ป่วยสามารถสื่อสารและให้ข้อมูลได้ด้วยตนเอง</span>
         </label>
@@ -721,18 +721,18 @@ const PSYCHIATRIC_FORM_HTML = `
         1.3 เคยมีอาการทางจิตเวชอยู่เดิมหรือไม่ และระดับอาการเดิมก่อนกำเริบ:
       </label>
       <div class="grid grid-cols-1 gap-2.5 mb-3">
-        <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-          <input type="radio" name="psychPriorBaseline" value="known_psych_history" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4"
+        <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+          <input type="radio" name="psychPriorBaseline" value="known_psych_history" class="text-medical-600 focus:ring-medical-500 h-4 w-4"
             onchange="handlePsychPriorBaselineChange(this.value)">
           <span class="text-xs sm:text-sm font-medium text-slate-800">มีประวัติโรคจิตเวช หรือเคยมีอาการผิดปกติทางจิตนำมาก่อน</span>
         </label>
-        <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-          <input type="radio" name="psychPriorBaseline" value="first_time_never" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4"
+        <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+          <input type="radio" name="psychPriorBaseline" value="first_time_never" class="text-medical-600 focus:ring-medical-500 h-4 w-4"
             onchange="handlePsychPriorBaselineChange(this.value)">
           <span class="text-xs sm:text-sm font-medium text-slate-800">ไม่เคยมีประวัติความผิดปกติทางจิตเวชมาก่อนเลย (เดิมปกติทุกอย่าง เพิ่งมีอาการครั้งแรกในชีวิต)</span>
         </label>
-        <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-          <input type="radio" name="psychPriorBaseline" value="unsure" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4"
+        <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+          <input type="radio" name="psychPriorBaseline" value="unsure" class="text-medical-600 focus:ring-medical-500 h-4 w-4"
             onchange="handlePsychPriorBaselineChange(this.value)">
           <span class="text-xs sm:text-sm font-medium text-slate-800">ไม่ทราบหรือไม่แน่ใจประวัติเดิม</span>
         </label>
@@ -742,20 +742,20 @@ const PSYCHIATRIC_FORM_HTML = `
       <div id="psychPriorBaselineSubContainer" class="hidden pl-4 sm:pl-6 space-y-3 border-l-2 border-medical-200 pt-2 pb-2">
         <p class="text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">ระดับอาการและการใช้ชีวิตเดิมของผู้ป่วยก่อนกำเริบ (Baseline Status):</p>
         <div class="space-y-2">
-          <label class="selectable-card flex items-start p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-            <input type="radio" name="psychBaselineStatus" value="baseline_normal_asymptomatic" class="text-medical-600 focus:ring-medical-500 mr-2.5 mt-0.5 h-4 w-4 flex-shrink-0">
+          <label class="selectable-card gap-2.5 flex items-start p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+            <input type="radio" name="psychBaselineStatus" value="baseline_normal_asymptomatic" class="text-medical-600 focus:ring-medical-500 mt-0.5 h-4 w-4 flex-shrink-0">
             <span class="text-xs sm:text-sm text-slate-800">เดิมอาการสงบดี ใช้ชีวิตประจำวันและทำงานได้เหมือนคนปกติ</span>
           </label>
-          <label class="selectable-card flex items-start p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-            <input type="radio" name="psychBaselineStatus" value="baseline_mild_independent" class="text-medical-600 focus:ring-medical-500 mr-2.5 mt-0.5 h-4 w-4 flex-shrink-0">
+          <label class="selectable-card gap-2.5 flex items-start p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+            <input type="radio" name="psychBaselineStatus" value="baseline_mild_independent" class="text-medical-600 focus:ring-medical-500 mt-0.5 h-4 w-4 flex-shrink-0">
             <span class="text-xs sm:text-sm text-slate-800">เดิมมีอาการผิดปกติอยู่บ้าง แต่ยังดูแลช่วยเหลือตัวเองและใช้ชีวิตประจำวันได้ปกติ (เช่น มีเก็บตัว พูดคนเดียวบ้าง แต่ยังทานข้าว อาบน้ำ สื่อสารรู้เรื่อง)</span>
           </label>
-          <label class="selectable-card flex items-start p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-            <input type="radio" name="psychBaselineStatus" value="baseline_chronic_confusion" class="text-medical-600 focus:ring-medical-500 mr-2.5 mt-0.5 h-4 w-4 flex-shrink-0">
+          <label class="selectable-card gap-2.5 flex items-start p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+            <input type="radio" name="psychBaselineStatus" value="baseline_chronic_confusion" class="text-medical-600 focus:ring-medical-500 mt-0.5 h-4 w-4 flex-shrink-0">
             <span class="text-xs sm:text-sm text-slate-800">เดิมมีอาการสับสน หลงลืม หรือวุ่นวายอยู่เป็นประจำ แต่ไม่เคยรุนแรงขนาดนี้ (เช่น ผู้สูงอายุสมองเสื่อม หรือผู้ป่วยจิตเวชเรื้อรังที่ญาติต้องช่วยดูแล)</span>
           </label>
-          <label class="selectable-card flex items-start p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-            <input type="radio" name="psychBaselineStatus" value="baseline_intermittent_agitation" class="text-medical-600 focus:ring-medical-500 mr-2.5 mt-0.5 h-4 w-4 flex-shrink-0">
+          <label class="selectable-card gap-2.5 flex items-start p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+            <input type="radio" name="psychBaselineStatus" value="baseline_intermittent_agitation" class="text-medical-600 focus:ring-medical-500 mt-0.5 h-4 w-4 flex-shrink-0">
             <span class="text-xs sm:text-sm text-slate-800">เดิมมีพฤติกรรมก้าวร้าว หงุดหงิด หรือควบคุมอารมณ์ได้ยากเป็นระยะๆ อยู่แล้ว</span>
           </label>
         </div>
@@ -768,32 +768,32 @@ const PSYCHIATRIC_FORM_HTML = `
         1.4 พฤติกรรมและความรุนแรงที่ตรวจพบในขณะนี้ (เลือกได้หลายข้อ):
       </label>
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-        <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-          <input type="checkbox" name="psychBehaviors" value="verbal_aggression" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4 rounded flex-shrink-0">
+        <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+          <input type="checkbox" name="psychBehaviors" value="verbal_aggression" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
           <span class="text-xs sm:text-sm text-slate-800">ส่งเสียงดัง เอะอะโวยวาย หรือก้าวร้าวทางวาจา</span>
         </label>
-        <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-          <input type="checkbox" name="psychBehaviors" value="property_destruction" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4 rounded flex-shrink-0">
+        <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+          <input type="checkbox" name="psychBehaviors" value="property_destruction" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
           <span class="text-xs sm:text-sm text-slate-800">ขว้างปา หรือทำลายข้าวของ</span>
         </label>
-        <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-          <input type="checkbox" name="psychBehaviors" value="restless_pacing" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4 rounded flex-shrink-0">
+        <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+          <input type="checkbox" name="psychBehaviors" value="restless_pacing" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
           <span class="text-xs sm:text-sm text-slate-800">กระสับกระส่าย เดินวนไปมา หงุดหงิดฉุนเฉียว</span>
         </label>
-        <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-          <input type="checkbox" name="psychBehaviors" value="talking_alone" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4 rounded flex-shrink-0">
+        <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+          <input type="checkbox" name="psychBehaviors" value="talking_alone" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
           <span class="text-xs sm:text-sm text-slate-800">พูดคนเดียว</span>
         </label>
-        <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-          <input type="checkbox" name="psychBehaviors" value="paranoia_behavior" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4 rounded flex-shrink-0">
+        <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+          <input type="checkbox" name="psychBehaviors" value="paranoia_behavior" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
           <span class="text-xs sm:text-sm text-slate-800">หวาดระแวง</span>
         </label>
-        <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-          <input type="checkbox" name="psychBehaviors" value="spaced_out_withdrawn" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4 rounded flex-shrink-0">
+        <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+          <input type="checkbox" name="psychBehaviors" value="spaced_out_withdrawn" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
           <span class="text-xs sm:text-sm text-slate-800">เหม่อลอย</span>
         </label>
-        <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer sm:col-span-2">
-          <input type="checkbox" name="psychBehaviors" value="other_behavior" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4 rounded flex-shrink-0"
+        <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer sm:col-span-2">
+          <input type="checkbox" name="psychBehaviors" value="other_behavior" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0"
             onchange="handlePsychBehaviorOtherChange(this)">
           <span class="text-xs sm:text-sm text-slate-800">มีพฤติกรรมผิดปกติอื่นๆ</span>
         </label>
@@ -815,28 +815,28 @@ const PSYCHIATRIC_FORM_HTML = `
         1.5 ความเสี่ยงต่อการทำร้ายตนเองหรือผู้อื่น (เลือกได้หลายข้อหากตรวจพบ):
       </label>
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-        <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-          <input type="checkbox" name="psychHarmRisks" value="physical_assault_others" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4 rounded flex-shrink-0">
+        <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+          <input type="checkbox" name="psychHarmRisks" value="physical_assault_others" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
           <span class="text-xs sm:text-sm text-slate-800">ทุบตี ทำร้ายร่างกายผู้อื่น</span>
         </label>
-        <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-          <input type="checkbox" name="psychHarmRisks" value="weapon_possession" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4 rounded flex-shrink-0">
+        <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+          <input type="checkbox" name="psychHarmRisks" value="weapon_possession" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
           <span class="text-xs sm:text-sm text-slate-800">มีอาวุธในครอบครอง หรือพยายามหยิบจับสิ่งของรอบตัวมาเป็นอาวุธ</span>
         </label>
-        <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-          <input type="checkbox" name="psychHarmRisks" value="threat_harm_others" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4 rounded flex-shrink-0">
+        <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+          <input type="checkbox" name="psychHarmRisks" value="threat_harm_others" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
           <span class="text-xs sm:text-sm text-slate-800">มีพฤติกรรมหรือคำพูดข่มขู่ว่าจะทำร้ายผู้อื่น หรือจะเอาชีวิตผู้อื่น</span>
         </label>
-        <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-          <input type="checkbox" name="psychHarmRisks" value="threat_self_harm" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4 rounded flex-shrink-0">
+        <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+          <input type="checkbox" name="psychHarmRisks" value="threat_self_harm" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
           <span class="text-xs sm:text-sm text-slate-800">มีพฤติกรรมหรือคำพูดว่าจะทำร้ายตนเอง หรือพยายามฆ่าตัวตาย</span>
         </label>
-        <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-          <input type="checkbox" name="psychHarmRisks" value="elopement_high_risk" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4 rounded flex-shrink-0">
+        <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+          <input type="checkbox" name="psychHarmRisks" value="elopement_high_risk" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
           <span class="text-xs sm:text-sm text-slate-800">พยายามวิ่งหนี เตลิด หรือปีนป่ายที่สูง/กระโดดออกนอกอาคาร</span>
         </label>
-        <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-          <input type="checkbox" name="psychHarmRisks" value="no_harm_threat" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4 rounded flex-shrink-0">
+        <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+          <input type="checkbox" name="psychHarmRisks" value="no_harm_threat" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
           <span class="text-xs sm:text-sm text-slate-800">ปฏิเสธความคิดทำร้ายตนเองหรือผู้อื่น</span>
         </label>
       </div>
@@ -869,16 +869,16 @@ const PSYCHIATRIC_FORM_HTML = `
         <div id="psychHallucinationSubGroup" class="hidden pl-4 sm:pl-6 space-y-2 border-l-2 border-medical-200">
           <p class="text-xs text-slate-600 font-medium mb-1">เลือกอาการประสาทหลอนที่ตรวจพบ (เลือกได้หลายข้อ):</p>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-              <input type="checkbox" name="psychHallucinations" value="auditory_command" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4 rounded flex-shrink-0">
+            <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+              <input type="checkbox" name="psychHallucinations" value="auditory_command" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
               <span class="text-xs sm:text-sm text-slate-800">ได้ยินเสียงแว่ว (เช่น เสียงคนพูดคุย เสียงด่า หรือเสียงสั่งให้ทำสิ่งต่างๆ)</span>
             </label>
-            <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-              <input type="checkbox" name="psychHallucinations" value="visual_hallucination" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4 rounded flex-shrink-0">
+            <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+              <input type="checkbox" name="psychHallucinations" value="visual_hallucination" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
               <span class="text-xs sm:text-sm text-slate-800">มองเห็นภาพหลอน (เช่น มองเห็นเงาดำ คน สัตว์ หรือสิ่งไม่มีจริง)</span>
             </label>
-            <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer sm:col-span-2">
-              <input type="checkbox" name="psychHallucinations" value="tactile_hallucination" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4 rounded flex-shrink-0">
+            <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer sm:col-span-2">
+              <input type="checkbox" name="psychHallucinations" value="tactile_hallucination" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
               <span class="text-xs sm:text-sm text-slate-800">มีความรู้สึกสัมผัสผิดปกติ (เช่น รู้สึกเหมือนมีแมลงไต่ตามผิวหนัง หรือมีกระแสไฟ)</span>
             </label>
           </div>
@@ -898,16 +898,16 @@ const PSYCHIATRIC_FORM_HTML = `
         <div id="psychDelusionSubGroup" class="hidden pl-4 sm:pl-6 space-y-2 border-l-2 border-medical-200">
           <p class="text-xs text-slate-600 font-medium mb-1">เลือกความคิดหลงผิดที่ตรวจพบ (เลือกได้หลายข้อ):</p>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-              <input type="checkbox" name="psychDelusions" value="persecutory_paranoia" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4 rounded flex-shrink-0">
+            <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+              <input type="checkbox" name="psychDelusions" value="persecutory_paranoia" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
               <span class="text-xs sm:text-sm text-slate-800">หวาดระแวงอย่างรุนแรงว่าจะมีคนมาทำร้าย ปองร้าย ลอบวางยา หรือสะกดรอยตาม</span>
             </label>
-            <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-              <input type="checkbox" name="psychDelusions" value="grandiosity_delusion" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4 rounded flex-shrink-0">
+            <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+              <input type="checkbox" name="psychDelusions" value="grandiosity_delusion" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
               <span class="text-xs sm:text-sm text-slate-800">มีความคิดหลงผิดว่าตนเองเป็นบุคคลพิเศษ มีอำนาจวิเศษ ร่ำรวย หรือมีภารกิจลับ</span>
             </label>
-            <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer sm:col-span-2">
-              <input type="checkbox" name="psychDelusions" value="mind_control_thought" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4 rounded flex-shrink-0">
+            <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer sm:col-span-2">
+              <input type="checkbox" name="psychDelusions" value="mind_control_thought" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
               <span class="text-xs sm:text-sm text-slate-800">มีความคิดว่ามีคนกำลังควบคุมสมอง ดักฟัง หรือส่งสัญญาณความคิดเข้ามา</span>
             </label>
           </div>
@@ -927,20 +927,20 @@ const PSYCHIATRIC_FORM_HTML = `
         <div id="psychMoodSubGroup" class="hidden pl-4 sm:pl-6 space-y-2 border-l-2 border-medical-200">
           <p class="text-xs text-slate-600 font-medium mb-1">เลือกอาการทางอารมณ์ที่ตรวจพบ (เลือกได้หลายข้อ):</p>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-              <input type="checkbox" name="psychMoodSigns" value="mania_hyperactive" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4 rounded flex-shrink-0">
+            <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+              <input type="checkbox" name="psychMoodSigns" value="mania_hyperactive" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
               <span class="text-xs sm:text-sm text-slate-800">อารมณ์ครื้นเครงผิดปกติ พูดเร็ว พูดไม่หยุด มีพลังงานล้นเหลือ ไม่ยอมอยู่นิ่ง</span>
             </label>
-            <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-              <input type="checkbox" name="psychMoodSigns" value="irritability_aggression" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4 rounded flex-shrink-0">
+            <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+              <input type="checkbox" name="psychMoodSigns" value="irritability_aggression" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
               <span class="text-xs sm:text-sm text-slate-800">หงุดหงิด อารมณ์ฉุนเฉียว ก้าวร้าว ระเบิดอารมณ์ง่ายผิดปกติ</span>
             </label>
-            <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-              <input type="checkbox" name="psychMoodSigns" value="severe_depression_crying" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4 rounded flex-shrink-0">
+            <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+              <input type="checkbox" name="psychMoodSigns" value="severe_depression_crying" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
               <span class="text-xs sm:text-sm text-slate-800">ซึมเศร้า ร้องไห้ เก็บตัว ไม่ยอมทานอาหารและน้ำ ไม่อยากมีชีวิตอยู่</span>
             </label>
-            <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-              <input type="checkbox" name="psychMoodSigns" value="flat_blunted_affect" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4 rounded flex-shrink-0">
+            <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+              <input type="checkbox" name="psychMoodSigns" value="flat_blunted_affect" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
               <span class="text-xs sm:text-sm text-slate-800">อารมณ์ทื่อเฉย ไม่แสดงอารมณ์ หรืออารมณ์ไม่เข้ากับสถานการณ์</span>
             </label>
           </div>
@@ -960,20 +960,20 @@ const PSYCHIATRIC_FORM_HTML = `
         <div id="psychSleepSubGroup" class="hidden pl-4 sm:pl-6 space-y-2 border-l-2 border-medical-200">
           <p class="text-xs text-slate-600 font-medium mb-1">เลือกอาการผิดปกติในการนอน (เลือกได้หลายข้อ):</p>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-              <input type="checkbox" name="psychSleepSigns" value="insomnia_decreased_need" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4 rounded flex-shrink-0">
+            <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+              <input type="checkbox" name="psychSleepSigns" value="insomnia_decreased_need" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
               <span class="text-xs sm:text-sm text-slate-800">นอนไม่หลับติดต่อกันหลายคืน โดยที่ไม่มีอาการง่วงและยังดูกระปรี้กระเปร่า</span>
             </label>
-            <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-              <input type="checkbox" name="psychSleepSigns" value="insomnia_anxiety_paranoia" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4 rounded flex-shrink-0">
+            <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+              <input type="checkbox" name="psychSleepSigns" value="insomnia_anxiety_paranoia" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
               <span class="text-xs sm:text-sm text-slate-800">นอนไม่หลับจากความเครียด วิตกกังวล หรือหวาดระแวงตลอดคืน</span>
             </label>
-            <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-              <input type="checkbox" name="psychSleepSigns" value="insomnia_fatigue_day_drowsy" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4 rounded flex-shrink-0">
+            <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+              <input type="checkbox" name="psychSleepSigns" value="insomnia_fatigue_day_drowsy" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
               <span class="text-xs sm:text-sm text-slate-800">นอนไม่หลับ ง่วงกลางวัน อ่อนเพลีย เหม่อลอย</span>
             </label>
-            <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-              <input type="checkbox" name="psychSleepSigns" value="sundowning_day_night_reversal" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4 rounded flex-shrink-0">
+            <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+              <input type="checkbox" name="psychSleepSigns" value="sundowning_day_night_reversal" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
               <span class="text-xs sm:text-sm text-slate-800">นอนสลับกลางวันกลางคืน หรือตื่นขึ้นมาเอะอะสับสนช่วงหัวค่ำ/กลางดึก</span>
             </label>
           </div>
@@ -1007,20 +1007,20 @@ const PSYCHIATRIC_FORM_HTML = `
       <div id="psychSubstanceSubGroup" class="hidden pl-4 sm:pl-6 space-y-3 border-l-2 border-medical-200">
         <p class="text-xs text-slate-600 font-medium mb-1">เลือกสารที่ตรวจพบประวัติการใช้ (เลือกได้หลายข้อ):</p>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-          <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-            <input type="checkbox" name="psychSubstances" value="meth_stimulants" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4 rounded flex-shrink-0">
+          <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+            <input type="checkbox" name="psychSubstances" value="meth_stimulants" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
             <span class="text-xs sm:text-sm text-slate-800">มีประวัติใช้ยาบ้า, ยาไอซ์, โคเคน หรือสารกระตุ้นประสาท</span>
           </label>
-          <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-            <input type="checkbox" name="psychSubstances" value="alcohol_withdrawal" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4 rounded flex-shrink-0">
+          <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+            <input type="checkbox" name="psychSubstances" value="alcohol_withdrawal" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
             <span class="text-xs sm:text-sm text-slate-800">มีประวัติดื่มสุราหนักเป็นประจำ หรือเพิ่งหยุด/อดดื่มสุรามา 1-3 วัน</span>
           </label>
-          <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-            <input type="checkbox" name="psychSubstances" value="cannabis_kratom_cough" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4 rounded flex-shrink-0">
+          <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+            <input type="checkbox" name="psychSubstances" value="cannabis_kratom_cough" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
             <span class="text-xs sm:text-sm text-slate-800">มีประวัติใช้กัญชา, น้ำกระท่อม, ยาแก้ไอผสม หรือสารระเหย/ดมกาว</span>
           </label>
-          <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-            <input type="checkbox" name="psychSubstances" value="sedative_overdose" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4 rounded flex-shrink-0">
+          <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+            <input type="checkbox" name="psychSubstances" value="sedative_overdose" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
             <span class="text-xs sm:text-sm text-slate-800">มีประวัติรับประทานยานอนหลับ หรือยากดประสาทเกินขนาด</span>
           </label>
         </div>
@@ -1042,28 +1042,28 @@ const PSYCHIATRIC_FORM_HTML = `
         3.2 สัญญาณเตือนภาวะทางกายเฉียบพลัน (เลือกได้หลายข้อหากตรวจพบ):
       </label>
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-        <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-          <input type="checkbox" name="psychOrganicSigns" value="high_fever_hyperthermia" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4 rounded flex-shrink-0">
+        <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+          <input type="checkbox" name="psychOrganicSigns" value="high_fever_hyperthermia" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
           <span class="text-xs sm:text-sm text-slate-800">มีไข้สูง ตัวร้อนจัด เหงื่อแตกพลั่ก หรือตัวสั่นรุนแรง</span>
         </label>
-        <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-          <input type="checkbox" name="psychOrganicSigns" value="head_trauma_fall" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4 rounded flex-shrink-0">
+        <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+          <input type="checkbox" name="psychOrganicSigns" value="head_trauma_fall" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
           <span class="text-xs sm:text-sm text-slate-800">มีประวัติได้รับอุบัติเหตุศีรษะกระแทก หรือหกล้มก่อนมีอาการ</span>
         </label>
-        <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-          <input type="checkbox" name="psychOrganicSigns" value="seizure_tongue_bite" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4 rounded flex-shrink-0">
+        <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+          <input type="checkbox" name="psychOrganicSigns" value="seizure_tongue_bite" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
           <span class="text-xs sm:text-sm text-slate-800">มีอาการชักเกร็ง ตาค้าง กัดลิ้น หรือปัสสาวะราดก่อนจะเริ่มเอะอะโวยวาย</span>
         </label>
-        <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-          <input type="checkbox" name="psychOrganicSigns" value="diabetes_hypoglycemia_risk" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4 rounded flex-shrink-0">
+        <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+          <input type="checkbox" name="psychOrganicSigns" value="diabetes_hypoglycemia_risk" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
           <span class="text-xs sm:text-sm text-slate-800">มีโรคประจำตัวเป็นเบาหวาน และรับประทานอาหารได้น้อยหรือฉีดยาเบาหวาน</span>
         </label>
-        <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-          <input type="checkbox" name="psychOrganicSigns" value="severe_headache_stiff_neck" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4 rounded flex-shrink-0">
+        <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+          <input type="checkbox" name="psychOrganicSigns" value="severe_headache_stiff_neck" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
           <span class="text-xs sm:text-sm text-slate-800">มีอาการปวดศีรษะรุนแรงเฉียบพลัน คอแข็งเกร็ง หรือแขนขาอ่อนแรง</span>
         </label>
-        <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-          <input type="checkbox" name="psychOrganicSigns" value="muscle_rigidity_lead_pipe" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4 rounded flex-shrink-0">
+        <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+          <input type="checkbox" name="psychOrganicSigns" value="muscle_rigidity_lead_pipe" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
           <span class="text-xs sm:text-sm text-slate-800">มีอาการกล้ามเนื้อเกร็งแข็งทั่วตัว หรือขากรรไกรเกร็งค้าง</span>
         </label>
       </div>
@@ -1088,28 +1088,28 @@ const PSYCHIATRIC_FORM_HTML = `
         4.1 การรับประทานยาจิตเวชของผู้ป่วย:
       </label>
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-sm text-slate-700">
-        <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-          <input type="radio" name="psychCompliance" value="regular" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4"
+        <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+          <input type="radio" name="psychCompliance" value="regular" class="text-medical-600 focus:ring-medical-500 h-4 w-4"
             onchange="handlePsychComplianceChange(this.value)">
           <span class="text-xs sm:text-sm text-slate-800">รับประทานยาจิตเวชสม่ำเสมอครบถ้วนตามแพทย์สั่ง</span>
         </label>
-        <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-          <input type="radio" name="psychCompliance" value="missed_days" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4"
+        <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+          <input type="radio" name="psychCompliance" value="missed_days" class="text-medical-600 focus:ring-medical-500 h-4 w-4"
             onchange="handlePsychComplianceChange(this.value)">
           <span class="text-xs sm:text-sm text-slate-800">ลืมรับประทานยา หรือขาดยามาหลายวัน/สัปดาห์</span>
         </label>
-        <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-          <input type="radio" name="psychCompliance" value="self_adjusted" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4"
+        <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+          <input type="radio" name="psychCompliance" value="self_adjusted" class="text-medical-600 focus:ring-medical-500 h-4 w-4"
             onchange="handlePsychComplianceChange(this.value)">
           <span class="text-xs sm:text-sm text-slate-800">ปรับขนาดยาเอง หรือหยุดรับประทานยาเอง</span>
         </label>
-        <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-          <input type="radio" name="psychCompliance" value="no_prior_rx" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4"
+        <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+          <input type="radio" name="psychCompliance" value="no_prior_rx" class="text-medical-600 focus:ring-medical-500 h-4 w-4"
             onchange="handlePsychComplianceChange(this.value)">
           <span class="text-xs sm:text-sm text-slate-800">ไม่เคยมียาจิตเวชมารับประทาน</span>
         </label>
-        <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer sm:col-span-2">
-          <input type="radio" name="psychCompliance" value="unsure_self_prepared" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4"
+        <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer sm:col-span-2">
+          <input type="radio" name="psychCompliance" value="unsure_self_prepared" class="text-medical-600 focus:ring-medical-500 h-4 w-4"
             onchange="handlePsychComplianceChange(this.value)">
           <span class="text-xs sm:text-sm text-slate-800">ไม่แน่ใจ หรือ คนไข้จัดยาทานเอง</span>
         </label>
@@ -1132,20 +1132,33 @@ const PSYCHIATRIC_FORM_HTML = `
         4.2 ประวัติพฤติกรรมก้าวร้าวหรือความรุนแรงในอดีต (เลือกได้หลายข้อหากมีประวัติ):
       </label>
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-        <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-          <input type="checkbox" name="psychPastViolence" value="history_violence_assault" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4 rounded flex-shrink-0">
+        <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+          <input type="checkbox" name="psychPastViolence" value="history_violence_assault" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
           <span class="text-xs sm:text-sm text-slate-800">เคยมีประวัติทำร้ายร่างกายผู้อื่น หรือมีคดีความเกี่ยวกับความรุนแรง</span>
         </label>
-        <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-          <input type="checkbox" name="psychPastViolence" value="past_suicide_attempt" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4 rounded flex-shrink-0">
+        <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+          <input type="checkbox" name="psychPastViolence" value="past_suicide_attempt" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
           <span class="text-xs sm:text-sm text-slate-800">เคยลงมือ พยายามฆ่าตัวตายมาก่อนในอดีต</span>
         </label>
-        <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer sm:col-span-2">
-          <input type="checkbox" name="psychPastViolence" value="no_past_violence" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4 rounded flex-shrink-0">
+        <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer sm:col-span-2">
+          <input type="checkbox" name="psychPastViolence" value="no_past_violence" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
           <span class="text-xs sm:text-sm text-slate-800">ไม่มีประวัติความรุนแรงในอดีต</span>
         </label>
       </div>
     </div>
+  </div>
+
+  <!-- อาการอื่นๆ เป็นช่องกรอกอิสระ -->
+  <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+    <div class="flex items-center space-x-3 mb-3 pb-2 border-b border-slate-100">
+      <div class="bg-slate-100 text-slate-600 p-2 rounded-xl"><i data-lucide="message-square-plus" class="w-5 h-5"></i></div>
+      <div>
+        <h2 class="text-base font-bold text-slate-800">อาการอื่นๆ ที่ต้องการแจ้งเพิ่มเติม</h2>
+        <p class="text-xs text-slate-500">ระบุอาการอื่นๆ ที่ท่านมีหรือต้องการบอกแพทย์เพิ่มเติม (ถ้ามี)</p>
+      </div>
+    </div>
+    <textarea id="psychiatric_emergency_other_free" rows="2" placeholder="พิมพ์ระบุอาการอื่นๆ ที่ท่านมีหรือต้องการบอกแพทย์เพิ่มเติม (ถ้ามี)..."
+      class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-medical-500 focus:bg-white"></textarea>
   </div>
 </div>
 `;
@@ -1211,7 +1224,7 @@ const psychiatricEmergencyModule = {
     const missedDaysVal = parseInt(document.getElementById('psychMissedDays')?.value, 10);
     const pastViolence = getChecks('psychPastViolence');
 
-    const otherSymptomsFree = document.getElementById('sx_other_free')?.value?.trim() || ctx.otherSymptomsFree || '';
+    const otherSymptomsFree = document.getElementById('psychiatric_emergency_other_free')?.value?.trim() || ctx.otherSymptomsFree || '';
 
     const rec = {
       id: ctx.recordId || ctx.id,
@@ -1359,10 +1372,12 @@ const psychiatricEmergencyModule = {
     }
 
     setChecks('psychPastViolence', data.psychPastViolence);
+    const otherFreeEl = document.getElementById('psychiatric_emergency_other_free');
+    if (otherFreeEl) otherFreeEl.value = data.otherSymptomsFree || '';
   },
 
   clearForm: function() {
-    ['psychDurationVal', 'psychInformantRel', 'psychBehaviorOtherDetail', 'psychSubstanceDetail', 'psychMissedDays'].forEach(id => {
+    ['psychDurationVal', 'psychInformantRel', 'psychBehaviorOtherDetail', 'psychSubstanceDetail', 'psychMissedDays', 'psychiatric_emergency_other_free'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.value = '';
     });

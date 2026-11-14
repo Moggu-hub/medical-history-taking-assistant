@@ -456,21 +456,23 @@
       };
     }
 
-    const origRunAi = window.runAiConsultantAnalysis;
-    if (typeof origRunAi === 'function') {
-      window.runAiConsultantAnalysis = async function () {
-        const targetId = typeof activePatientId !== 'undefined' ? activePatientId : null;
-        const res = await origRunAi.apply(this, arguments);
-        if (targetId && typeof patientDatabase !== 'undefined') {
-          const p = patientDatabase.find(x => x.id === targetId);
-          if (p && p.aiConsultResult) {
-            if (typeof saveDatabase === 'function') saveDatabase();
-            markCaseDirty(targetId, false);
+    ['runDirectAiConsultation', 'runAiConsultantAnalysis'].forEach((fnName) => {
+      const origAiFn = window[fnName];
+      if (typeof origAiFn === 'function') {
+        window[fnName] = async function () {
+          const targetId = typeof activePatientId !== 'undefined' ? activePatientId : null;
+          const res = await origAiFn.apply(this, arguments);
+          if (targetId && typeof patientDatabase !== 'undefined') {
+            const p = patientDatabase.find(x => x.id === targetId);
+            if (p && p.aiConsultResult) {
+              if (typeof saveDatabase === 'function') saveDatabase();
+              markCaseDirty(targetId, false);
+            }
           }
-        }
-        return res;
-      };
-    }
+          return res;
+        };
+      }
+    });
 
     const origSelectPatient = window.selectPatient;
     if (typeof origSelectPatient === 'function') {

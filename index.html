@@ -392,7 +392,7 @@
         </div>
 
         <div class="mt-8 text-center bg-slate-50 border border-slate-200 rounded-2xl p-4 text-xs text-slate-500">
-          <p>💡 ในเวอร์ชันปัจจุบัน ระบบเปิดใช้งานอัลกอริทึมซักประวัติเชิงลึกครบ 18 อาการสำคัญของห้องฉุกเฉิน พร้อมระบบ Built-in CDS และคัดกรองสัญญาณเตือนวิกฤต (Red Flags)</p>
+          <p>💡 ระบบซักประวัติเชิงลึกห้องฉุกเฉิน พร้อมระบบคัดกรองสัญญาณเตือนวิกฤต (Red Flags) และ 1-Click AI Consultant</p>
         </div>
       </div>
     </section>
@@ -956,7 +956,7 @@
           <button type="button" id="docTabBtnCds" onclick="switchDoctorMobileTab('cds')"
             class="flex-1 py-2.5 px-3 rounded-xl font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200 transition flex items-center justify-center space-x-1.5">
             <i data-lucide="activity" class="w-4 h-4 text-rose-500"></i>
-            <span>การวิเคราะห์ CDS & สัญญาณวิกฤต</span>
+            <span>สัญญาณวิกฤต & Safety Alerts</span>
           </button>
         </div>
 
@@ -1140,7 +1140,7 @@
         </div><!-- End #doctorCdsSection -->
 
         <!-- ข้อ 1 & 2: ช่องทางแก้ไขและเพิ่มเติมข้อมูลอิสระสำหรับแพทย์ (DOCTOR'S CLINICAL ADDENDUM & EXAM) -->
-        <!-- คงหัวข้อไว้ ซ่อนช่องกรอกไว้ก่อนจนกว่าแพทย์จะกดเลือกเปิด และเปลี่ยนเป็น textarea หลายบรรทัด -->
+        <!-- เปิดช่องกรอกข้อมูลแพทย์เป็นค่าเริ่มต้น (พับเก็บได้) พร้อม textarea หลายบรรทัด -->
         <div id="doctorAddendumCard" class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm mb-6 transition-all">
           <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
             <div class="flex items-center space-x-2">
@@ -1159,14 +1159,14 @@
               </span>
               <button type="button" id="toggleDoctorAddendumBtn" onclick="toggleDoctorAddendumSection()" 
                 class="inline-flex items-center space-x-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-medical-50 text-medical-700 hover:bg-medical-100 border border-medical-200 transition shadow-2xs">
-                <i data-lucide="chevron-down" id="toggleDoctorAddendumIcon" class="w-3.5 h-3.5"></i>
-                <span id="toggleDoctorAddendumText">เปิดบันทึกเพิ่มเติม</span>
+                <i data-lucide="chevron-up" id="toggleDoctorAddendumIcon" class="w-3.5 h-3.5"></i>
+                <span id="toggleDoctorAddendumText">ซ่อนช่องบันทึก</span>
               </button>
             </div>
           </div>
 
-          <!-- ช่องกรอกข้อมูลแพทย์: ซ่อนเป็นค่าเริ่มต้น (hidden) จนกว่าแพทย์จะกดเปิด -->
-          <div id="doctorAddendumFields" class="hidden pt-4">
+          <!-- ช่องกรอกข้อมูลแพทย์: เปิดแสดงเป็นค่าเริ่มต้น (กดปุ่มเพื่อพับเก็บได้) -->
+          <div id="doctorAddendumFields" class="pt-4">
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
               <!-- ช่อง 1: ประวัติเพิ่มเติม / แก้ไขประวัติตามจริง -->
               <div>
@@ -1459,176 +1459,138 @@
   </div>
 
   <!-- 1-CLICK MEDICAL AI CONSULTANT MODAL (ปรึกษา AI แพทย์ฉุกเฉิน) -->
-  <!-- ========================================================================= -->
-  <!-- MODAL: 1-CLICK ER MEDICAL AI CONSULTANT (PDPA-COMPLIANT & GLM / CDS)     -->
-  <!-- ========================================================================= -->
-  <div id="aiConsultantModal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
+  <!-- MODAL: 1-CLICK ER MEDICAL AI CONSULTANT (DOCTOR DIRECT vs ADMIN 3-ZONE WORKBENCH) -->
+  <div id="aiConsultantModal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-3 sm:p-5 overflow-y-auto">
     <div class="bg-white rounded-3xl max-w-5xl w-full shadow-2xl border border-slate-200 overflow-hidden my-auto max-h-[94vh] flex flex-col">
-      <!-- Modal Header -->
-      <div class="bg-gradient-to-r from-indigo-700 via-indigo-600 to-violet-700 p-4 sm:p-5 text-white flex items-center justify-between">
+      <div class="bg-gradient-to-r from-indigo-700 via-indigo-600 to-violet-700 p-4 text-white flex items-center justify-between">
         <div class="flex items-center space-x-3">
-          <div class="bg-white/20 p-2.5 rounded-2xl backdrop-blur-xs">
-            <i data-lucide="sparkles" class="w-6 h-6 text-amber-300"></i>
-          </div>
+          <div class="bg-white/20 p-2 rounded-2xl"><i data-lucide="sparkles" class="w-5 h-5 text-amber-300"></i></div>
           <div>
-            <div class="flex items-center space-x-2">
-              <h3 class="text-base sm:text-lg font-bold">1-Click ER Medical AI Consultant</h3>
-              <span class="bg-emerald-400/20 text-emerald-200 border border-emerald-300/30 text-[10px] font-mono font-bold px-2 py-0.5 rounded-full">PDPA PROTECTED</span>
+            <div class="flex flex-wrap items-center gap-2">
+              <h3 class="text-base font-bold">1-Click ER Medical AI Consultant</h3>
+              <span class="bg-emerald-400/20 text-emerald-100 border border-emerald-300/30 text-[10px] font-mono font-bold px-2 py-0.5 rounded-full">PDPA PROTECTED</span>
+              <span id="aiModalRoleBadge" class="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-indigo-400/25 text-white border border-indigo-300/40">Doctor Direct 1-Click</span>
               <span id="aiKeyStatusBadge"></span>
             </div>
             <p id="aiModalPatientBadge" class="text-xs text-indigo-100 mt-0.5">[ผู้ป่วย] ห้องฉุกเฉิน</p>
           </div>
         </div>
-        <button type="button" onclick="closeAiConsultantModal()" class="bg-white/10 hover:bg-white/20 text-white p-2 rounded-xl transition">
-          <i data-lucide="x" class="w-5 h-5"></i>
-        </button>
+        <button type="button" onclick="closeAiConsultantModal()" class="bg-white/10 hover:bg-white/20 text-white p-2 rounded-xl transition cursor-pointer"><i data-lucide="x" class="w-5 h-5"></i></button>
       </div>
 
-      <!-- Modal Body -->
-      <div class="p-4 sm:p-6 overflow-y-auto space-y-4 flex-1 text-xs">
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
-          <!-- Left Column: Structured Prompt (PDPA De-identified) -->
-          <div class="lg:col-span-5 space-y-2 flex flex-col">
-            <div class="flex items-center justify-between">
-              <label class="font-bold text-slate-800 text-xs flex items-center">
-                <i data-lucide="terminal" class="w-4 h-4 mr-1.5 text-indigo-600"></i>
-                <span>1. Prompt ปรึกษา AI (PDPA Shield)</span>
-              </label>
-              <button type="button" onclick="copyAiConsultantPrompt()" class="px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 font-semibold rounded-lg transition flex items-center space-x-1 shadow-2xs text-[11px]">
-                <i data-lucide="copy" class="w-3 h-3"></i>
-                <span>คัดลอก Prompt</span>
-              </button>
-            </div>
-            <p class="text-[11px] text-slate-500">ตัดชื่อ-นามสกุล, HN, คิว และชื่อ รพ. ออก 100% ปลอดภัยต่อข้อมูลส่วนบุคคล</p>
-            <textarea id="aiConsultantPromptText" rows="18" readonly
-              class="w-full flex-1 font-mono text-[11px] leading-relaxed bg-slate-50 border border-slate-300 rounded-xl p-3 text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500 resize-y"></textarea>
-          </div>
-
-          <!-- Right Column: 2 Distinct Output Sections (Dx & ER Orders) -->
-          <div class="lg:col-span-7 space-y-3 flex flex-col">
-            <div class="flex items-center justify-between pb-1 border-b border-slate-100">
-              <label class="font-bold text-slate-800 text-xs sm:text-sm flex items-center">
-                <i data-lucide="cpu" class="w-4 h-4 mr-1.5 text-violet-600"></i>
-                <span>2. ผลการวิเคราะห์ & แผนคำสั่งห้องฉุกเฉิน (AI / CDS Output)</span>
-              </label>
-              <button type="button" id="runAiAnalysisBtn" onclick="runDirectAiConsultation()" class="px-3.5 py-1.5 bg-violet-600 hover:bg-violet-700 text-white font-semibold rounded-xl shadow-xs transition flex items-center space-x-1.5 cursor-pointer">
-                <i data-lucide="zap" class="w-3.5 h-3.5"></i>
-                <span>วิเคราะห์ด้วย AI</span>
-              </button>
-            </div>
-            <p id="aiApiStatusMsg" class="text-[11px] text-slate-500">💡 ระบบสร้างคำแนะนำเบื้องต้นจาก Built-in CDS ให้ทันที หรือกดปุ่มด้านบนเพื่อเรียก AI</p>
-
-            <!-- Section 1: Provisional & Differential Diagnosis -->
-            <div class="bg-indigo-50/50 border border-indigo-200 rounded-xl p-3 space-y-1.5">
-              <div class="flex items-center justify-between">
-                <span class="font-bold text-indigo-950 text-xs flex items-center">
-                  <i data-lucide="target" class="w-3.5 h-3.5 mr-1 text-indigo-600"></i>
-                  การวินิจฉัยเบื้องต้น & แยกโรค (Provisional & Differential Diagnosis)
-                </span>
-                <div class="flex items-center space-x-1.5">
-                  <button type="button" onclick="copyAiResultSection('dx')" class="px-2 py-0.5 bg-white text-indigo-700 border border-indigo-200 hover:bg-indigo-50 rounded text-[10px] font-semibold flex items-center space-x-1 cursor-pointer">
-                    <i data-lucide="copy" class="w-3 h-3"></i>
-                    <span>คัดลอก Dx</span>
-                  </button>
-                </div>
-              </div>
-              <textarea id="aiResultDxBox" rows="5"
-                placeholder="การวินิจฉัยเบื้องต้นและวินิจฉัยแยกโรคเรียงตามลำดับ..."
-                class="w-full font-sans text-xs leading-relaxed bg-white border border-indigo-200 rounded-lg p-2.5 text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500 resize-y"></textarea>
-            </div>
-
-            <!-- Section 2: Treatment Plan & ER Orders (Nurse-Ready [ ] format) -->
-            <div class="bg-emerald-50/40 border border-emerald-200 rounded-xl p-3 space-y-1.5">
-              <div class="flex items-center justify-between">
-                <span class="font-bold text-emerald-950 text-xs flex items-center">
-                  <i data-lucide="clipboard-list" class="w-3.5 h-3.5 mr-1 text-emerald-600"></i>
-                  แผนการรักษา & คำสั่งห้องฉุกเฉิน (Treatment Plan & ER Orders)
-                </span>
-                <div class="flex items-center space-x-1.5">
-                  <button type="button" onclick="copyAiResultSection('orders')" class="px-2 py-0.5 bg-white text-emerald-700 border border-emerald-200 hover:bg-emerald-50 rounded text-[10px] font-semibold flex items-center space-x-1 cursor-pointer">
-                    <i data-lucide="copy" class="w-3 h-3"></i>
-                    <span>คัดลอก Orders</span>
-                  </button>
-                </div>
-              </div>
-              <textarea id="aiResultOrdersBox" rows="8"
-                placeholder="แผนการตรวจแล็บ เอ็กซเรย์ POCUS และคำสั่งการรักษาพยาบาล (- [ ])..."
-                class="w-full font-sans text-xs leading-relaxed bg-white border border-emerald-200 rounded-lg p-2.5 text-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-500 resize-y"></textarea>
-            </div>
-          </div>
+      <div class="p-4 sm:p-5 overflow-y-auto space-y-4 flex-1 text-xs">
+        <!-- Status & Action Header -->
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+          <p id="aiApiStatusMsg" class="flex-1 text-xs text-slate-600 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2">⏳ พร้อมเชื่อมต่อโมเดล AI ผ่าน API</p>
+          <button type="button" id="runAiAnalysisBtn" onclick="runDirectAiConsultation()" class="px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white font-semibold rounded-xl shadow-xs transition flex items-center justify-center space-x-1.5 cursor-pointer flex-shrink-0"><i data-lucide="zap" class="w-3.5 h-3.5"></i><span>วิเคราะห์ด้วย AI</span></button>
         </div>
 
-        <!-- Admin Settings Accordion (Collapsible at bottom) -->
-        <div class="border border-slate-200 rounded-2xl overflow-hidden bg-slate-50/60 mt-3">
-          <button type="button" onclick="toggleAiAdminSettings()" class="w-full px-4 py-2.5 flex items-center justify-between hover:bg-slate-100 transition text-left cursor-pointer">
-            <div class="flex items-center space-x-2">
-              <i data-lucide="settings" class="w-4 h-4 text-slate-600"></i>
-              <span class="font-bold text-slate-700 text-xs">การตั้งค่า AI Gateway & API Key (สำหรับ Admin)</span>
+        <!-- ADMIN-ONLY 3-ZONE PRE-SEND WORKBENCH (Hidden in Doctor Mode) -->
+        <div id="aiAdminWorkbenchSection" class="hidden space-y-3 border-b border-slate-200 pb-4">
+          <!-- Zone 1: Extracted Patient Data & PDPA Check -->
+          <div class="bg-sky-50/50 border border-sky-200 rounded-2xl p-3 space-y-2">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <div class="flex flex-wrap items-center gap-2">
+                <span class="font-bold text-sky-950 flex items-center"><i data-lucide="database" class="w-3.5 h-3.5 mr-1 text-sky-600"></i>โซน 1: ข้อมูลคนไข้ที่ดึงจากระบบ & ตรวจ PDPA (Read-Only)</span>
+                <span id="aiPdpaAuditBadge" class="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">✓ PDPA Verified</span>
+              </div>
+              <button type="button" onclick="copyAiExtractedData()" class="px-2.5 py-1 bg-white text-sky-700 border border-sky-200 hover:bg-sky-50 rounded-lg text-[11px] font-semibold flex items-center space-x-1 cursor-pointer"><i data-lucide="copy" class="w-3 h-3"></i><span>คัดลอก Data</span></button>
             </div>
-            <i id="aiAdminToggleIcon" data-lucide="chevron-down" class="w-4 h-4 text-slate-500"></i>
-          </button>
+            <textarea id="aiExtractedDataBox" rows="5" readonly class="w-full font-mono text-[11px] leading-relaxed bg-white border border-sky-200 rounded-xl p-2.5 text-slate-800 resize-y focus:outline-none"></textarea>
+          </div>
 
-          <div id="aiAdminSettingsPanel" class="hidden p-4 border-t border-slate-200 bg-white space-y-3 text-xs">
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <!-- Zone 2: System Instruction + Prompt Header & Footer Editor -->
+          <div class="bg-indigo-50/40 border border-indigo-200 rounded-2xl p-3 space-y-2.5">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <span class="font-bold text-indigo-950 flex items-center"><i data-lucide="terminal" class="w-3.5 h-3.5 mr-1 text-indigo-600"></i>โซน 2: แก้ไข Prompt ส่วนหัว ส่วนท้าย & System Instruction</span>
+              <div class="flex items-center space-x-1.5">
+                <button type="button" onclick="saveAiPromptTemplates()" class="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-[11px] font-semibold flex items-center space-x-1 cursor-pointer"><i data-lucide="save" class="w-3 h-3"></i><span>บันทึก Prompt</span></button>
+                <button type="button" onclick="resetAiPromptTemplates()" class="px-2.5 py-1 bg-white text-slate-700 border border-slate-300 hover:bg-slate-100 rounded-lg text-[11px] font-semibold cursor-pointer">↺ รีเซ็ตเริ่มต้น</button>
+              </div>
+            </div>
+            <div>
+              <label class="block font-semibold text-slate-700 mb-1 text-[11px]">System Instruction (บทบาท AI, กฎ ICD-10 / External Cause และรูปแบบคำสั่ง 2.1–2.3):</label>
+              <textarea id="aiPromptSystemInput" rows="4" oninput="updateCombinedPromptPreview()" class="w-full font-mono text-[11px] bg-white border border-indigo-200 rounded-xl p-2 text-slate-800 resize-y focus:ring-1 focus:ring-indigo-500"></textarea>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-2.5">
               <div>
-                <label class="block font-semibold text-slate-700 mb-1">ผู้ให้บริการ (Provider Preset):</label>
-                <select id="aiProviderSelect" onchange="handleAiProviderPresetChange()"
-                  class="w-full bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 focus:ring-1 focus:ring-medical-500">
-                  <option value="gemini" selected>Google Gemini 3.8 Flash (แนะนำ: ประหยัด แม่นยำ ล่าสุด)</option>
-                  <option value="gemini_3_1_pro">Google Gemini 3.1 Pro Preview (เคสซับซ้อน/วิกฤตสูง)</option>
-                  <option value="gemini_2_5_flash">Google Gemini 2.5 Flash (เสถียร LTS)</option>
+                <label class="block font-semibold text-slate-700 mb-1 text-[11px]">Prompt Header (ส่วนหัวก่อนข้อมูลคนไข้):</label>
+                <textarea id="aiPromptHeaderInput" rows="3" oninput="updateCombinedPromptPreview()" class="w-full font-mono text-[11px] bg-white border border-indigo-200 rounded-xl p-2 text-slate-800 resize-y focus:ring-1 focus:ring-indigo-500"></textarea>
+              </div>
+              <div>
+                <label class="block font-semibold text-slate-700 mb-1 text-[11px]">Prompt Footer (ส่วนท้ายหลังข้อมูลคนไข้):</label>
+                <textarea id="aiPromptFooterInput" rows="3" oninput="updateCombinedPromptPreview()" class="w-full font-mono text-[11px] bg-white border border-indigo-200 rounded-xl p-2 text-slate-800 resize-y focus:ring-1 focus:ring-indigo-500"></textarea>
+              </div>
+            </div>
+            <details class="bg-white/80 border border-indigo-200 rounded-xl p-2">
+              <summary class="cursor-pointer font-semibold text-indigo-800 text-[11px] flex items-center justify-between">
+                <span>🔍 ดูตัวอย่าง Final User Prompt ฉบับเต็มที่จะส่ง API (Header + Data + Footer)</span>
+                <button type="button" onclick="event.preventDefault(); event.stopPropagation(); copyAiConsultantPrompt();" class="px-2 py-0.5 bg-indigo-50 text-indigo-700 border border-indigo-200 rounded text-[10px] font-semibold cursor-pointer">คัดลอก Prompt</button>
+              </summary>
+              <textarea id="aiConsultantPromptText" rows="6" readonly class="mt-2 w-full font-mono text-[11px] bg-slate-50 border border-slate-200 rounded-lg p-2 text-slate-700 resize-y"></textarea>
+            </details>
+          </div>
+
+          <!-- Zone 3: AI Gateway Settings (Model, Endpoint, API Key) -->
+          <div class="bg-slate-50 border border-slate-200 rounded-2xl p-3 space-y-2.5">
+            <div class="font-bold text-slate-800 flex items-center"><i data-lucide="settings" class="w-3.5 h-3.5 mr-1 text-slate-600"></i>โซน 3: ตั้งค่า AI Model, Endpoint & API Key</div>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+              <div>
+                <label class="block font-semibold text-slate-700 mb-1 text-[11px]">Provider Preset:</label>
+                <select id="aiProviderSelect" onchange="handleAiProviderPresetChange()" class="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs text-slate-800">
+                  <option value="gemini" selected>Google Gemini 3.8 Flash (แนะนำ)</option>
+                  <option value="gemini_3_1_pro">Google Gemini 3.1 Pro Preview</option>
+                  <option value="gemini_2_5_flash">Google Gemini 2.5 Flash</option>
                   <option value="custom_openai">Custom OpenAI-Compatible API</option>
                   <option value="z_ai">z.ai (GLM OpenAI API / bigmodel.cn)</option>
                 </select>
               </div>
               <div>
-                <label class="block font-semibold text-slate-700 mb-1">Endpoint URL (Gemini API):</label>
-                <input type="text" id="aiApiEndpointInput" placeholder="https://generativelanguage.googleapis.com"
-                  class="w-full bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 focus:ring-1 focus:ring-medical-500 font-mono">
+                <label class="block font-semibold text-slate-700 mb-1 text-[11px]">Endpoint URL:</label>
+                <input type="text" id="aiApiEndpointInput" placeholder="https://generativelanguage.googleapis.com" class="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 font-mono">
               </div>
               <div>
-                <label class="block font-semibold text-slate-700 mb-1">Model Name:</label>
-                <input type="text" id="aiApiModelInput" placeholder="gemini-3.8-flash"
-                  class="w-full bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 focus:ring-1 focus:ring-medical-500 font-mono">
+                <label class="block font-semibold text-slate-700 mb-1 text-[11px]">Model Name:</label>
+                <input type="text" id="aiApiModelInput" placeholder="gemini-3.8-flash" class="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 font-mono">
               </div>
             </div>
-
-            <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 pt-1">
+            <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
               <div class="flex-1">
-                <label class="block font-semibold text-slate-700 mb-1">API Key (ซ่อนความปลอดภัย ไม่แสดงผลค้าง):</label>
-                <input type="password" id="aiApiKeyInput" placeholder="กรอก Gemini API Key (ขึ้นต้นด้วย AQ.Ab... หรือ AIzaSy...)"
-                  class="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-1.5 text-xs text-slate-800 focus:ring-1 focus:ring-medical-500 font-mono">
+                <input type="password" id="aiApiKeyInput" placeholder="กรอก API Key สำหรับเชื่อมต่อโมเดล AI ภายนอก" class="w-full bg-white border border-slate-300 rounded-lg px-3 py-1.5 text-xs text-slate-800 font-mono">
               </div>
-              <div class="flex items-center space-x-2 sm:self-end">
-                <button type="button" onclick="saveAiAdminSettings()" class="px-3.5 py-1.5 bg-medical-600 hover:bg-medical-700 text-white font-semibold rounded-lg shadow-2xs transition text-xs flex items-center space-x-1 cursor-pointer">
-                  <i data-lucide="save" class="w-3.5 h-3.5"></i>
-                  <span>บันทึกการตั้งค่า</span>
-                </button>
-                <button type="button" onclick="clearAiAdminApiKey()" class="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-semibold rounded-lg transition text-xs flex items-center space-x-1 cursor-pointer">
-                  <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
-                  <span>ล้างคีย์ความปลอดภัย</span>
-                </button>
+              <div class="flex items-center space-x-2">
+                <button type="button" onclick="saveAiAdminSettings()" class="px-3 py-1.5 bg-medical-600 hover:bg-medical-700 text-white font-semibold rounded-lg text-xs flex items-center space-x-1 cursor-pointer"><i data-lucide="save" class="w-3.5 h-3.5"></i><span>บันทึก Gateway</span></button>
+                <button type="button" onclick="clearAiAdminApiKey()" class="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-semibold rounded-lg text-xs flex items-center space-x-1 cursor-pointer"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i><span>ล้างคีย์</span></button>
               </div>
             </div>
-            <p class="text-[11px] text-slate-400">🔒 API Key จะถูกเข้ารหัสในเบราว์เซอร์ ไม่แสดงข้อความตัวจริงเพื่อป้องกันบุคคลอื่นมาเปิดดูย้อนหลัง</p>
+          </div>
+        </div>
+
+        <!-- AI RESPONSE OUTPUTS (2 Sections with Separate Copy Buttons) -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div class="bg-indigo-50/50 border border-indigo-200 rounded-xl p-3 space-y-1.5">
+            <div class="flex items-center justify-between gap-2">
+              <span class="font-bold text-indigo-950 text-xs flex items-center"><i data-lucide="target" class="w-3.5 h-3.5 mr-1 text-indigo-600"></i>การวินิจฉัยเบื้องต้น & แยกโรค (Provisional & Differential Diagnosis)</span>
+              <button type="button" onclick="copyAiResultSection('dx')" class="px-2.5 py-1 bg-white text-indigo-700 border border-indigo-200 hover:bg-indigo-50 rounded text-[10px] font-semibold flex items-center space-x-1 cursor-pointer flex-shrink-0"><i data-lucide="copy" class="w-3 h-3"></i><span>คัดลอก Dx</span></button>
+            </div>
+            <textarea id="aiResultDxBox" rows="8" placeholder="ผล [Provisional & Differential Diagnosis] พร้อมรหัส ICD-10 จาก AI API จะปรากฏที่นี่..." class="w-full font-sans text-xs leading-relaxed bg-white border border-indigo-200 rounded-lg p-2.5 text-slate-800 focus:ring-1 focus:ring-indigo-500 resize-y"></textarea>
+          </div>
+          <div class="bg-emerald-50/40 border border-emerald-200 rounded-xl p-3 space-y-1.5">
+            <div class="flex items-center justify-between gap-2">
+              <span class="font-bold text-emerald-950 text-xs flex items-center"><i data-lucide="clipboard-list" class="w-3.5 h-3.5 mr-1 text-emerald-600"></i>แผนการรักษา & คำสั่งห้องฉุกเฉิน (Treatment Plan & ER Orders)</span>
+              <button type="button" onclick="copyAiResultSection('orders')" class="px-2.5 py-1 bg-white text-emerald-700 border border-emerald-200 hover:bg-emerald-50 rounded text-[10px] font-semibold flex items-center space-x-1 cursor-pointer flex-shrink-0"><i data-lucide="copy" class="w-3 h-3"></i><span>คัดลอก Orders</span></button>
+            </div>
+            <textarea id="aiResultOrdersBox" rows="8" placeholder="ผล 2.1 ประวัติ/PE ที่ควรทำทันที, 2.2 การส่งตรวจ, 2.3 การรักษา & ยา จาก AI API จะปรากฏที่นี่..." class="w-full font-sans text-xs leading-relaxed bg-white border border-emerald-200 rounded-lg p-2.5 text-slate-800 focus:ring-1 focus:ring-emerald-500 resize-y"></textarea>
           </div>
         </div>
       </div>
 
-      <!-- Modal Footer -->
-      <div class="p-4 bg-slate-50 border-t border-slate-200 flex flex-wrap items-center justify-between gap-3">
-        <span class="text-[11px] text-slate-500 flex items-center">
-          <i data-lucide="shield-check" class="w-3.5 h-3.5 mr-1 text-emerald-600"></i>
-          <span>ข้อมูลถูกถอดรหัสระบุตัวตน (PDPA Protected) และผลลัพธ์เป็นเครื่องมือสนับสนุนการตัดสินใจทางคลินิก</span>
-        </span>
+      <!-- Modal Footer: Single 1-Click Apply Button + Close -->
+      <div class="p-3.5 sm:p-4 bg-slate-50 border-t border-slate-200 flex flex-wrap items-center justify-between gap-3">
+        <span class="text-[11px] text-slate-500 flex items-center"><i data-lucide="shield-check" class="w-3.5 h-3.5 mr-1 text-emerald-600"></i><span>ข้อมูลถูกถอดรหัสระบุตัวตน (PDPA Protected) • ประมวลผลโดย AI API ภายนอกเท่านั้น</span></span>
         <div class="flex items-center space-x-2">
-          <button type="button" onclick="applyAiResultToDoctorAddendum('both')" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold transition flex items-center space-x-1.5 shadow-2xs cursor-pointer">
-            <i data-lucide="check-check" class="w-4 h-4"></i>
-            <span>⚡ 1-Click นำเข้าทั้งการวินิจฉัยและคำสั่งการรักษา</span>
-          </button>
-          <button type="button" onclick="closeAiConsultantModal()" class="px-3.5 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl text-xs font-semibold transition cursor-pointer">
-            ปิดหน้าต่าง
-          </button>
+          <button type="button" id="aiApplyBothBtn" onclick="applyAiResultToDoctorAddendum('both')" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold transition flex items-center space-x-1.5 shadow-2xs cursor-pointer"><i data-lucide="check-check" class="w-4 h-4"></i><span>⚡ นำ Dx & Orders เข้าช่องแพทย์</span></button>
+          <button type="button" onclick="closeAiConsultantModal()" class="px-3.5 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl text-xs font-semibold transition cursor-pointer">ปิดหน้าต่าง</button>
         </div>
       </div>
     </div>
@@ -1637,25 +1599,15 @@
   <!-- CONFIRM APPLY AI RESULT OVERWRITE/APPEND MODAL -->
   <div id="aiApplyConfirmModal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
     <div class="bg-white rounded-2xl p-5 max-w-sm w-full shadow-2xl border border-slate-200 space-y-3">
-      <div class="w-10 h-10 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center">
-        <i data-lucide="alert-triangle" class="w-5 h-5"></i>
-      </div>
+      <div class="w-10 h-10 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center"><i data-lucide="alert-triangle" class="w-5 h-5"></i></div>
       <div>
         <h3 class="text-sm font-bold text-slate-900">ตรวจพบข้อความเดิมของแพทย์</h3>
         <p class="text-xs text-slate-500 mt-1">ในช่องการวินิจฉัยหรือแผนการรักษามีข้อความที่ท่านพิมพ์ไว้แล้ว ต้องการดำเนินการอย่างไร?</p>
       </div>
       <div class="flex flex-col gap-2 pt-2">
-        <button type="button" onclick="confirmApplyAiResult('append')" class="w-full py-2 px-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold transition flex items-center justify-center space-x-1.5 shadow-2xs cursor-pointer">
-          <i data-lucide="file-plus" class="w-3.5 h-3.5"></i>
-          <span>เขียนต่อท้ายข้อความเดิม (Append)</span>
-        </button>
-        <button type="button" onclick="confirmApplyAiResult('replace')" class="w-full py-2 px-3 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-semibold transition flex items-center justify-center space-x-1.5 shadow-2xs cursor-pointer">
-          <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
-          <span>แทนที่ข้อความเดิมทั้งหมด (Replace)</span>
-        </button>
-        <button type="button" onclick="closeAiApplyConfirmModal()" class="w-full py-2 px-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-medium transition text-center cursor-pointer">
-          ยกเลิก
-        </button>
+        <button type="button" onclick="confirmApplyAiResult('append')" class="w-full py-2 px-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold transition cursor-pointer">เขียนต่อท้ายข้อความเดิม (Append)</button>
+        <button type="button" onclick="confirmApplyAiResult('replace')" class="w-full py-2 px-3 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-semibold transition cursor-pointer">แทนที่ข้อความเดิมทั้งหมด (Replace)</button>
+        <button type="button" onclick="closeAiApplyConfirmModal()" class="w-full py-2 px-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-medium transition cursor-pointer">ยกเลิก</button>
       </div>
     </div>
   </div>
@@ -1956,6 +1908,7 @@
 
   <!-- MODULAR APPLICATION SCRIPTS (Double-click file:/// ready without server) -->
   <script src="clinical_knowledge_core.js"></script>
+  <script src="ai_consultant_core.js"></script>
   <script src="cc_modules/01_abdpain.js"></script>
   <script src="cc_modules/02_chestpain.js"></script>
   <script src="cc_modules/03_dyspnea.js"></script>
@@ -1987,6 +1940,8 @@
   <script src="cc_modules/29_venomous_bite.js"></script>
   <script src="cc_modules/30_physical_assault.js"></script>
   <script src="cc_modules/31_traffic_accident.js"></script>
+  <script src="cc_modules/32_poisoning.js"></script>
+  <script src="cc_modules/33_self_harm.js"></script>
   <script src="core_engine.js"></script>
   <script src="sync_manager.js"></script>
 </body>

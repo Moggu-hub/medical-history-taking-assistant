@@ -21,7 +21,7 @@ services:
       - "3001"
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.er-assistant.rule=Host(`er.rbsleeptest.online`)"
+      - "traefik.http.routers.er-assistant.rule=Host(`er.rbsleeptest.com`)"
       - "traefik.http.routers.er-assistant.entrypoints=websecure,web"
       - "traefik.http.routers.er-assistant.tls=true"
       - "traefik.http.routers.er-assistant.tls.certresolver=mytlschallenge"

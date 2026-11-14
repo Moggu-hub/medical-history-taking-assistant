@@ -22,7 +22,7 @@
  * 6. Bidirectional Form Hydration Engine (populateFormFromPatient for all 4 CCs)
  * 7. Dynamic Progressive Disclosure & Form Submission Engine
  * 8. Doctor Clinical Dashboard, Red Flag Engine & Contraindication Screening
- * 9. 1-Click Medical AI Consultant (Prompt Builder + Built-in CDS + Gemini API)
+ * 9. Modular Doctor Text & JSON Dispatcher (AI Consultant logic moved to ai_consultant_core.js)
  * ============================================================================
  */
 
@@ -33,8 +33,8 @@
 const DB_STORAGE_KEY = 'medhistory_patients_v16';
 const AI_KEY_STORAGE = 'medhistory_ai_api_key_v1';
 
-// Canonical Registry of Active Chief Complaints
-const CC_REGISTRY = {
+// Canonical Registry of Active Chief Complaints (shared with clinical_knowledge_core.js; dynamically populated for unlimited CCs)
+Object.assign(CC_REGISTRY, {
   fever: {
     formId: 'fever',
     recordKey: 'fever_and_chills',
@@ -134,7 +134,51 @@ const CC_REGISTRY = {
     headerEn: '(Nausea & Severe Vomiting / Intractable Vomiting)',
     badgeHtml: '<i data-lucide="frown" class="w-5 h-5 sm:w-6 sm:h-6 flex-shrink-0"></i><span class="whitespace-nowrap">คลื่นไส้ / อาเจียนรุนแรง</span>'
   }
-};
+});
+
+function ensureCcRegistryEntry(ccIdOrCode) {
+  if (!ccIdOrCode) return null;
+  if (Object.prototype.hasOwnProperty.call(CC_REGISTRY, ccIdOrCode)) return CC_REGISTRY[ccIdOrCode];
+  const dynMod = typeof getCcModule === 'function' ? getCcModule(ccIdOrCode) : null;
+  const ccEntry = typeof CHIEF_COMPLAINTS !== 'undefined'
+    ? CHIEF_COMPLAINTS.find(c => c.id === (dynMod ? dynMod.id : ccIdOrCode) || c.schemaCode === ccIdOrCode)
+    : null;
+  const targetMod = dynMod || (ccEntry && typeof getCcModule === 'function' ? getCcModule(ccEntry.id) : null);
+  if (!targetMod) return null;
+  if (!Object.prototype.hasOwnProperty.call(CC_REGISTRY, targetMod.id)) {
+    CC_REGISTRY[targetMod.id] = {
+      formId: targetMod.id,
+      recordKey: targetMod.recordCc || (ccEntry ? ccEntry.schemaCode : targetMod.id),
+      sectionId: targetMod.sectionDomId || `${targetMod.id}QuestionnaireSection`,
+      titleTh: targetMod.titleTh || (ccEntry ? ccEntry.titleTh : targetMod.id),
+      headerTh: targetMod.headerTh || `แบบฟอร์มซักประวัติ: ${targetMod.titleTh || (ccEntry ? ccEntry.titleTh : targetMod.id)}`,
+      headerEn: targetMod.headerEn || (ccEntry ? `(${ccEntry.titleEn})` : ''),
+      badgeHtml: targetMod.patientBadgeHtml || `<i data-lucide="${ccEntry ? ccEntry.icon : 'activity'}" class="w-5 h-5 sm:w-6 sm:h-6 flex-shrink-0"></i><span class="whitespace-nowrap">${targetMod.titleTh || (ccEntry ? ccEntry.titleTh : targetMod.id)}</span>`
+    };
+  }
+  return CC_REGISTRY[targetMod.id];
+}
+
+function resolveCcFormId(ccIdOrCode) {
+  const reg = ensureCcRegistryEntry(ccIdOrCode);
+  if (reg) return reg.formId;
+  const legacyAlias = { altered_mental_status: 'altered_mental', severe_nausea_vomiting: 'vomiting' };
+  return legacyAlias[ccIdOrCode] || null;
+}
+
+function resolveCcTitleTh(ccIdOrCode) {
+  if (!ccIdOrCode) return '';
+  const reg = ensureCcRegistryEntry(ccIdOrCode);
+  if (reg && reg.titleTh) return reg.titleTh;
+  const ccEntry = typeof CHIEF_COMPLAINTS !== 'undefined'
+    ? CHIEF_COMPLAINTS.find(c => c.id === ccIdOrCode || c.schemaCode === ccIdOrCode)
+    : null;
+  return ccEntry ? ccEntry.titleTh : '';
+}
+
+if (typeof CC_MODULES !== 'undefined') {
+  Object.values(CC_MODULES).forEach(mod => { if (mod && mod.id) ensureCcRegistryEntry(mod.id); });
+}
 
 function sanitizePatientRecord(p) {
   if (!p || typeof p !== 'object') return p;
@@ -491,8 +535,8 @@ function initQrQueueFromUrl() {
 
     if (roleParam === 'patient' || queueParam) {
       applyQrDemographicsToForm();
-      if (ccParam && Object.prototype.hasOwnProperty.call(CC_REGISTRY, ccParam)) {
-        setPatientFormChiefComplaint(ccParam);
+      const resolvedUrlCc = ccParam ? resolveCcFormId(ccParam.trim()) : null;
+      if (resolvedUrlCc && setPatientFormChiefComplaint(resolvedUrlCc)) {
         switchUserRole('patient', { targetView: 'patient', silent: true });
       } else {
         switchUserRole('patient', { targetView: 'landing', silent: true });
@@ -796,14 +840,7 @@ function populateFormFromPatient(patient) {
   };
 
   // 1. Map chief_complaint schema code to form CC id
-  const ccMap = {
-    abdominal_pain: 'abdpain', chest_pain: 'chestpain', dyspnea: 'dyspnea', fever_and_chills: 'fever',
-    dizziness: 'dizziness', headache: 'headache', stroke_deficit: 'stroke_deficit', seizure: 'seizure',
-    syncope: 'syncope', altered_mental: 'altered_mental', altered_mental_status: 'altered_mental',
-    vomiting: 'vomiting', severe_nausea_vomiting: 'vomiting'
-  };
-  const resolvedMod = typeof getCcModule === 'function' ? getCcModule(patient.chief_complaint) : null;
-  const formCc = ccMap[patient.chief_complaint] || (resolvedMod ? resolvedMod.id : 'fever');
+  const formCc = resolveCcFormId(patient.chief_complaint) || 'fever';
   setPatientFormChiefComplaint(formCc);
 
   // 2. Demographics (Title, Name, Age)
@@ -945,19 +982,11 @@ function clearQueueSearch() {
 }
 
 function getFilteredQueuePatients() {
-  const ccFallbackMap = {
-    abdominal_pain: 'ปวดท้อง', chest_pain: 'เจ็บแน่นหน้าอก', dyspnea: 'หายใจหอบเหนื่อย',
-    dizziness: 'เวียนศีรษะ / บ้านหมุน', headache: 'ปวดศีรษะ', stroke_deficit: 'ปากเบี้ยว อ่อนแรง ชา ข้างใดข้างหนึ่ง พูดไม่ชัด',
-    seizure: 'ชัก / เกร็งกระตุก', syncope: 'หมดสติ / วูบ / เป็นลม', altered_mental: 'ซึมลง / สับสนเฉียบพลัน / ระดับความรู้สึกตัวเปลี่ยนแปลง',
-    vomiting: 'คลื่นไส้ / อาเจียนรุนแรง', diarrhea: 'ถ่ายเหลว / ถ่ายเป็นน้ำ', gi_bleed: 'อาเจียนเป็นเลือด / ถ่ายดำ / ถ่ายเป็นเลือด',
-    palpitation: 'ใจสั่น / หัวใจเต้นผิดจังหวะ', weakness: 'อ่อนเพลีย / กินไม่ได้ / ไม่มีแรง', allergy: 'ผื่นแพ้เฉียบพลัน / แน่นคอ ตาบวม ปากบวม',
-    urinary_retention: 'ปัสสาวะไม่ออก / เล็ดราด / กะปริดกะปรอย', dysuria: 'ปัสสาวะแสบขัด', fever_and_chills: 'ไข้ / หนาวสั่น'
-  };
   const q = (currentQueueSearchQuery || '').trim().toLowerCase();
   return patientDatabase.filter(p => {
     if (p.status !== currentQueueFilter) return false;
     if (!q) return true;
-    const ccTitle = p.chief_complaint_title || ccFallbackMap[p.chief_complaint] || '';
+    const ccTitle = p.chief_complaint_title || resolveCcTitleTh(p.chief_complaint) || '';
     const searchable = [
       p.name || '',
       p.queue_number || '',
@@ -1074,27 +1103,7 @@ function renderQueueCards() {
     const safeGender = escapeHtml(p.gender || 'ไม่ระบุ');
     const safeAge = (p.age && p.age !== 'ไม่ระบุ') ? `${escapeHtml(p.age)} ปี` : 'ไม่ระบุ';
     const safeHn = p.hn ? escapeHtml(p.hn) : '';
-    const ccFallbackMap = {
-      abdominal_pain: 'ปวดท้อง',
-      chest_pain: 'เจ็บแน่นหน้าอก',
-      dyspnea: 'หายใจหอบเหนื่อย',
-      dizziness: 'เวียนศีรษะ / บ้านหมุน',
-      headache: 'ปวดศีรษะ',
-      stroke_deficit: 'ปากเบี้ยว อ่อนแรง ชา ข้างใดข้างหนึ่ง พูดไม่ชัด',
-      seizure: 'ชัก / เกร็งกระตุก',
-      syncope: 'หมดสติ / วูบ / เป็นลม',
-      altered_mental: 'ซึมลง / สับสนเฉียบพลัน / ระดับความรู้สึกตัวเปลี่ยนแปลง',
-      vomiting: 'คลื่นไส้ / อาเจียนรุนแรง',
-      diarrhea: 'ถ่ายเหลว / ถ่ายเป็นน้ำ',
-      gi_bleed: 'อาเจียนเป็นเลือด / ถ่ายดำ / ถ่ายเป็นเลือด',
-      palpitation: 'ใจสั่น / หัวใจเต้นผิดจังหวะ',
-      weakness: 'อ่อนเพลีย / กินไม่ได้ / ไม่มีแรง',
-      allergy: 'ผื่นแพ้เฉียบพลัน / แน่นคอ ตาบวม ปากบวม',
-      urinary_retention: 'ปัสสาวะไม่ออก / เล็ดราด / กะปริดกะปรอย',
-      dysuria: 'ปัสสาวะแสบขัด',
-      fever_and_chills: 'ไข้ / หนาวสั่น'
-    };
-    const rawCcTitle = p.chief_complaint_title || ccFallbackMap[p.chief_complaint] || 'ไข้ / หนาวสั่น';
+    const rawCcTitle = p.chief_complaint_title || resolveCcTitleTh(p.chief_complaint) || 'ไข้ / หนาวสั่น';
     const safeCcTitle = escapeHtml(rawCcTitle);
 
     return `
@@ -1183,7 +1192,7 @@ function executeReopenActiveCase() {
 // =========================================================================
 // DOCTOR CLINICAL ADDENDUM & DIRECT NOTE EDITING
 // =========================================================================
-let isDoctorAddendumOpen = false;
+let isDoctorAddendumOpen = true;
 
 function toggleDoctorAddendumSection(forceState) {
   const fields = document.getElementById('doctorAddendumFields');
@@ -1410,29 +1419,18 @@ function selectChiefComplaint(id, isActive) {
 }
 
 function setPatientFormChiefComplaint(ccId) {
-  const dynMod = typeof getCcModule === 'function' ? getCcModule(ccId) : null;
-  if (!Object.prototype.hasOwnProperty.call(CC_REGISTRY, ccId) && dynMod) {
-    const ccEntry = typeof CHIEF_COMPLAINTS !== 'undefined' ? CHIEF_COMPLAINTS.find(c => c.id === dynMod.id) : null;
-    CC_REGISTRY[dynMod.id] = {
-      formId: dynMod.id,
-      recordKey: dynMod.recordCc || dynMod.id,
-      sectionId: dynMod.sectionDomId || `${dynMod.id}QuestionnaireSection`,
-      titleTh: dynMod.titleTh || (ccEntry ? ccEntry.titleTh : dynMod.id),
-      headerTh: dynMod.headerTh || `แบบฟอร์มซักประวัติ: ${dynMod.titleTh || (ccEntry ? ccEntry.titleTh : dynMod.id)}`,
-      headerEn: dynMod.headerEn || (ccEntry ? `(${ccEntry.titleEn})` : ''),
-      badgeHtml: dynMod.patientBadgeHtml || `<i data-lucide="${ccEntry ? ccEntry.icon : 'activity'}" class="w-5 h-5 sm:w-6 sm:h-6 flex-shrink-0"></i><span class="whitespace-nowrap">${dynMod.titleTh || (ccEntry ? ccEntry.titleTh : dynMod.id)}</span>`
-    };
-  }
-  if (!Object.prototype.hasOwnProperty.call(CC_REGISTRY, ccId)) {
-    const found = typeof CHIEF_COMPLAINTS !== 'undefined' ? CHIEF_COMPLAINTS.find(c => c.id === ccId) : null;
+  const reg = ensureCcRegistryEntry(ccId);
+  if (!reg) {
+    const found = typeof CHIEF_COMPLAINTS !== 'undefined' ? CHIEF_COMPLAINTS.find(c => c.id === ccId || c.schemaCode === ccId) : null;
     showToast(`กำลังพัฒนาแบบประเมิน: ${found ? found.titleTh : ccId} (โปรดแจ้งเจ้าหน้าที่พยาบาลจุดคัดกรอง)`);
     return false;
   }
+  ccId = reg.formId;
+  const dynMod = typeof getCcModule === 'function' ? getCcModule(ccId) : null;
 
   mountAllCcQuestionnaires();
   initUniversalDateTimeInputs();
   currentPatientFormCC = ccId;
-  const reg = CC_REGISTRY[ccId];
 
   Object.values(CC_REGISTRY).forEach(entry => {
     const sec = document.getElementById(entry.sectionId);
@@ -2159,747 +2157,97 @@ function renderDoctorDashboard() {
 // =========================================================================
 // 9. MODULAR DOCTOR TEXT & JSON SCHEMA DISPATCHER
 // =========================================================================
+function formatAddendumSectionForClinicalNote(patient) {
+  const docNotes = patient?.doctor_notes || {};
+  const dx = (docNotes.preliminary_dx || '').trim();
+  const plan = (docNotes.plan || '').trim();
+  const dxDisplay = dx ? (/^\[Provisional/i.test(dx) ? `\n${dx}` : dx) : '-';
+  const planDisplay = plan ? (plan.includes('\n') ? `\n${plan}` : plan) : '-';
+  return `\n\n[Doctor's Clinical Addendum & Exam]\n• ประวัติเพิ่มเติม/แก้ไขโดยแพทย์: ${docNotes.additional_hpi || '-'}\n• สัญญาณชีพและการตรวจร่างกาย: ${docNotes.physical_exam || '-'}\n• การวินิจฉัยเบื้องต้น (Impression): ${dxDisplay}\n• แผนการรักษา (Plan/Orders): ${planDisplay}`;
+}
+
+function formatClinicalAddendumDisplay(text) {
+  return (text || '')
+    .replace(/(• การวินิจฉัยเบื้องต้น(?:\s*\(Impression\))?:)\s*(\[Provisional\s*&\s*Differential\s*Diagnosis\])/gi, '$1\n$2')
+    .replace(/(• แผนการรักษา(?:\s*\(Plan\/Orders\))?:)\s*(\[Treatment Plan|2\.1\s)/gi, '$1\n$2');
+}
+
+function buildFallbackMedicalJson(patient) {
+  return {
+    encounter: {
+      hospital: 'Ratchaburi Hospital',
+      department: 'Emergency Department',
+      queue_number: patient.queue_number || '-',
+      chief_complaint: patient.chief_complaint || '-',
+      chief_complaint_title_th: patient.chief_complaint_title || patient.chief_complaint || '-',
+      timestamp: patient.timestamp || new Date().toISOString(),
+      esi_level: patient.esi_level || 3
+    },
+    patient_identification: {
+      id: patient.id || '-',
+      hn: patient.hn || '-',
+      name: patient.name || '-',
+      age: patient.age || 'ไม่ระบุ',
+      gender: patient.gender || 'ไม่ระบุ'
+    },
+    red_flags_detected: (patient.redFlags || []).map(rf => ({ key: rf.key, description: rf.textTh, risk: rf.risk })),
+    pertinent_positives: Array.isArray(patient.pertinentPositives) ? patient.pertinentPositives : [],
+    pertinent_negatives: Array.isArray(patient.pertinentNegatives) ? patient.pertinentNegatives : [],
+    doctor_clinical_addendum: patient.doctor_notes || { additional_hpi: '', physical_exam: '', preliminary_dx: '', plan: '' }
+  };
+}
+
 function updateDoctorTextAndJsonOutputs(patient) {
   if (!patient) return;
+  const jsonEl = document.getElementById('jsonViewer');
+  const jsonSentinel = '__JSON_PENDING__';
+  if (jsonEl) jsonEl.textContent = jsonSentinel;
+
   const ccMod = getCcModule(patient.chief_complaint) || getCcModule('fever');
   if (ccMod && typeof ccMod.updateOutputs === 'function') {
     ccMod.updateOutputs(patient);
   }
-  if (!patient.age || patient.age === 'ไม่ระบุ') {
-    const rapidEl = document.getElementById('rapidTextView');
-    if (rapidEl && rapidEl.value) {
+
+  const rapidEl = document.getElementById('rapidTextView');
+  const narrativeEl = document.getElementById('narrativeTextView');
+  const docNotes = patient.doctor_notes || {};
+  const hasAnyAddendum = Boolean(
+    (docNotes.additional_hpi || '').trim() ||
+    (docNotes.physical_exam || '').trim() ||
+    (docNotes.preliminary_dx || '').trim() ||
+    (docNotes.plan || '').trim()
+  );
+
+  if (rapidEl && rapidEl.value) {
+    if (!patient.age || patient.age === 'ไม่ระบุ') {
       rapidEl.value = rapidEl.value.replace(/อายุ\s*(ไม่ระบุ|null|undefined|-)\s*ปี/g, 'อายุ ไม่ระบุ');
     }
-    const narrativeEl = document.getElementById('narrativeTextView');
-    if (narrativeEl && narrativeEl.value) {
+    if (!rapidEl.value.includes("[Doctor's Clinical Addendum & Exam]") && !patient.custom_rapid_note) {
+      rapidEl.value += formatAddendumSectionForClinicalNote(patient);
+    }
+    rapidEl.value = formatClinicalAddendumDisplay(rapidEl.value);
+    patient.rapidHpi = rapidEl.value;
+  }
+
+  if (narrativeEl && narrativeEl.value) {
+    if (!patient.age || patient.age === 'ไม่ระบุ') {
       narrativeEl.value = narrativeEl.value.replace(/อายุ\s*(ไม่ระบุ|null|undefined|-)\s*ปี/g, 'อายุ ไม่ระบุ');
     }
-  }
-}
-
-// =========================================================================
-// 10. 1-CLICK MEDICAL AI CONSULTANT (PROMPT BUILDER + BUILT-IN CDS + API)
-// =========================================================================
-const AI_GATEWAY_CONFIG_KEY = 'er_ai_gateway_config_v2';
-let inMemoryApiKey = '';
-let pendingAiApplyMode = null; // 'both' | 'dx' | 'plan'
-let currentAiParsedDx = '';
-let currentAiParsedOrders = '';
-
-function getStoredAiConfig() {
-  const defaults = {
-    provider: 'gemini', // 'gemini' | 'gemini_3_1_pro' | 'gemini_2_5_flash' | 'custom_openai' | 'z_ai'
-    endpoint: 'https://generativelanguage.googleapis.com',
-    model: 'gemini-3.8-flash'
-  };
-  try {
-    const raw = localStorage.getItem(AI_GATEWAY_CONFIG_KEY);
-    if (!raw) return defaults;
-    const parsed = JSON.parse(raw);
-    const cfg = { ...defaults, ...parsed };
-    // Auto-migrate legacy models (glm, gemini 1.5, gemini 2.0) to gemini-3.8-flash
-    if (parsed.provider === 'z_ai' && (!parsed.model || parsed.model === 'glm-4-plus')) {
-      cfg.provider = 'gemini';
-      cfg.endpoint = 'https://generativelanguage.googleapis.com';
-      cfg.model = 'gemini-3.8-flash';
-    } else if (!cfg.model || cfg.model.includes('1.5') || cfg.model.includes('2.0')) {
-      cfg.model = 'gemini-3.8-flash';
+    if (hasAnyAddendum && !narrativeEl.value.includes("[Doctor's Clinical Addendum & Exam]") && !patient.custom_narrative_note) {
+      narrativeEl.value += formatAddendumSectionForClinicalNote(patient);
     }
-    return cfg;
-  } catch (e) {
-    return defaults;
+    narrativeEl.value = formatClinicalAddendumDisplay(narrativeEl.value);
+    patient.narrativeHpi = narrativeEl.value;
+  }
+
+  if (jsonEl && jsonEl.textContent === jsonSentinel) {
+    const fallbackJson = buildFallbackMedicalJson(patient);
+    jsonEl.textContent = JSON.stringify(fallbackJson, null, 2);
+    patient.medicalJson = fallbackJson;
   }
 }
 
-function getStoredAiApiKey() {
-  if (inMemoryApiKey) return inMemoryApiKey;
-  try {
-    const rawObf = localStorage.getItem('er_ai_k_obf_v2') || localStorage.getItem(AI_KEY_STORAGE) || '';
-    if (!rawObf) return '';
-    if (rawObf.startsWith('obf:')) {
-      const decoded = atob(rawObf.slice(4));
-      inMemoryApiKey = decoded;
-      return decoded;
-    }
-    inMemoryApiKey = rawObf;
-    return rawObf;
-  } catch (e) {
-    return '';
-  }
-}
-
-function saveAiAdminSettings() {
-  const provider = document.getElementById('aiProviderSelect')?.value || 'z_ai';
-  const endpoint = (document.getElementById('aiApiEndpointInput')?.value || '').trim();
-  const model = (document.getElementById('aiApiModelInput')?.value || '').trim();
-  const rawKey = (document.getElementById('aiApiKeyInput')?.value || '').trim();
-
-  const cfg = { provider, endpoint, model };
-  localStorage.setItem(AI_GATEWAY_CONFIG_KEY, JSON.stringify(cfg));
-
-  if (rawKey && !rawKey.includes('••••')) {
-    inMemoryApiKey = rawKey;
-    try {
-      localStorage.setItem('er_ai_k_obf_v2', 'obf:' + btoa(rawKey));
-    } catch (e) {
-      localStorage.setItem('er_ai_k_obf_v2', rawKey);
-    }
-  }
-
-  updateAiAdminUiState();
-  showToast('✓ บันทึกการตั้งค่า AI Gateway และจัดเก็บคีย์เรียบร้อย');
-}
-
-function clearAiAdminApiKey() {
-  inMemoryApiKey = '';
-  localStorage.removeItem('er_ai_k_obf_v2');
-  localStorage.removeItem(AI_KEY_STORAGE);
-  const keyInput = document.getElementById('aiApiKeyInput');
-  if (keyInput) keyInput.value = '';
-  updateAiAdminUiState();
-  showToast('🔒 ล้าง API Key ออกจากอุปกรณ์เรียบร้อยแล้ว');
-}
-
-function updateAiAdminUiState() {
-  const cfg = getStoredAiConfig();
-  const hasKey = Boolean(getStoredAiApiKey());
-
-  const providerSelect = document.getElementById('aiProviderSelect');
-  const endpointInput = document.getElementById('aiApiEndpointInput');
-  const modelInput = document.getElementById('aiApiModelInput');
-  const keyInput = document.getElementById('aiApiKeyInput');
-  const keyBadge = document.getElementById('aiKeyStatusBadge');
-
-  if (providerSelect) providerSelect.value = cfg.provider;
-  if (endpointInput) endpointInput.value = cfg.endpoint;
-  if (modelInput) modelInput.value = cfg.model;
-
-  if (keyInput) {
-    if (hasKey) {
-      keyInput.value = '••••••••••••••••';
-      keyInput.placeholder = 'มีคีย์บันทึกอยู่แล้ว (กรอกใหม่เพื่อเปลี่ยน)';
-    } else {
-      keyInput.value = '';
-      keyInput.placeholder = 'กรอก API Key สำหรับ AI ภายนอก (หรือเว้นว่างเพื่อใช้ CDS)';
-    }
-  }
-
-  if (keyBadge) {
-    if (hasKey) {
-      keyBadge.innerHTML = '<span class="inline-flex items-center text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full font-semibold text-[10px]"><i data-lucide="shield-check" class="w-3 h-3 mr-1"></i> มีคีย์พร้อมใช้ (ซ่อนปลอดภัย)</span>';
-    } else {
-      keyBadge.innerHTML = '<span class="inline-flex items-center text-slate-500 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-full font-medium text-[10px]"><i data-lucide="info" class="w-3 h-3 mr-1"></i> ยังไม่มีคีย์ (ใช้ Built-in CDS)</span>';
-    }
-  }
-  if (typeof lucide !== 'undefined') lucide.createIcons();
-}
-
-function handleAiProviderPresetChange() {
-  const provider = document.getElementById('aiProviderSelect')?.value || 'gemini';
-  const endpointInput = document.getElementById('aiApiEndpointInput');
-  const modelInput = document.getElementById('aiApiModelInput');
-  if (!endpointInput || !modelInput) return;
-
-  if (provider === 'gemini') {
-    endpointInput.value = 'https://generativelanguage.googleapis.com';
-    modelInput.value = 'gemini-3.8-flash';
-  } else if (provider === 'gemini_3_1_pro') {
-    endpointInput.value = 'https://generativelanguage.googleapis.com';
-    modelInput.value = 'gemini-3.1-pro-preview';
-  } else if (provider === 'gemini_2_5_flash') {
-    endpointInput.value = 'https://generativelanguage.googleapis.com';
-    modelInput.value = 'gemini-2.5-flash';
-  } else if (provider === 'custom_openai') {
-    endpointInput.value = 'https://api.openai.com/v1/chat/completions';
-    modelInput.value = 'gpt-4o-mini';
-  } else if (provider === 'z_ai') {
-    endpointInput.value = 'https://api.z.ai/api/coding/paas/v4/chat/completions';
-    modelInput.value = 'glm-4-plus';
-  }
-}
-
-let isAiAdminSettingsOpen = false;
-function toggleAiAdminSettings(force) {
-  isAiAdminSettingsOpen = typeof force === 'boolean' ? force : !isAiAdminSettingsOpen;
-  const panel = document.getElementById('aiAdminSettingsPanel');
-  const icon = document.getElementById('aiAdminToggleIcon');
-  if (panel) panel.classList.toggle('hidden', !isAiAdminSettingsOpen);
-  if (icon) icon.setAttribute('data-lucide', isAiAdminSettingsOpen ? 'chevron-up' : 'chevron-down');
-  if (typeof lucide !== 'undefined') lucide.createIcons();
-}
-
-function parseAiConsultantResponse(rawText) {
-  let dxText = '';
-  let ordersText = '';
-
-  if (rawText.includes('[PROVISIONAL_DDX]') && rawText.includes('[ER_ORDERS]')) {
-    const parts = rawText.split('[ER_ORDERS]');
-    dxText = parts[0].replace('[PROVISIONAL_DDX]', '').trim();
-    ordersText = parts[1].trim();
-  } else if (rawText.includes('### 1.') && rawText.includes('### 2.')) {
-    const parts = rawText.split(/###\s*2\./);
-    dxText = parts[0].replace(/###\s*1\./, '').trim();
-    ordersText = parts[1].trim();
-  } else if (rawText.includes('1.') && (rawText.includes('2.1') || rawText.includes('2.'))) {
-    const splitIdx = rawText.search(/\n\s*2\./);
-    if (splitIdx !== -1) {
-      dxText = rawText.substring(0, splitIdx).trim();
-      ordersText = rawText.substring(splitIdx).trim();
-    } else {
-      dxText = rawText;
-      ordersText = rawText;
-    }
-  } else {
-    dxText = rawText;
-    ordersText = rawText;
-  }
-
-  return { dxText, ordersText };
-}
-
-function renderAiConsultantOutput(rawText) {
-  const { dxText, ordersText } = parseAiConsultantResponse(rawText);
-  currentAiParsedDx = dxText;
-  currentAiParsedOrders = ordersText;
-
-  const dxBox = document.getElementById('aiResultDxBox');
-  const ordersBox = document.getElementById('aiResultOrdersBox');
-
-  if (dxBox) dxBox.value = dxText;
-  if (ordersBox) ordersBox.value = ordersText;
-}
-
-function generateBuiltInCdsAnalysis(patient) {
-  if (!patient) return '';
-  const rfs = patient.redFlags || [];
-  const ddxList = [];
-  const workupList = [];
-  const managementList = [];
-
-  const ccMod = getCcModule(patient.chief_complaint) || getCcModule('fever');
-  if (ccMod && typeof ccMod.generateCds === 'function') {
-    ccMod.generateCds(patient, { rfs, ddxList, workupList, managementList });
-  }
-
-  // Part 1: Provisional & Differential Diagnosis (bullet points)
-  let ddxSection = '[PROVISIONAL_DDX]\n';
-  if (ddxList.length > 0) {
-    ddxSection += ddxList.map(item => item.startsWith('•') ? item : `• ${item}`).join('\n');
-  } else {
-    ddxSection += `• ${patient.chief_complaint_title || patient.chief_complaint}: ติดตามประเมินตามอาการแรกรับ`;
-  }
-
-  // Conditional expansion for critical/rule-out conditions (ONLY when Red Flags present, <= 5 lines)
-  if (rfs.length > 0) {
-    const rfLines = rfs.slice(0, 3).map(r => `  - 🚩 ${r.textTh} (${r.risk})`).join('\n');
-    ddxSection += `\n\n**ภาวะวิกฤตที่ต้องเฝ้าระวังหรือ Rule out:**\n${rfLines}`;
-  }
-
-  // Part 2: ER Orders (Checkbox bullet points: - [ ] ...)
-  let ordersSection = '\n\n[ER_ORDERS]\n2.1 การส่งตรวจเพิ่มเติมทันที (Immediate Investigations):\n';
-  if (workupList.length > 0) {
-    ordersSection += workupList.map(item => {
-      const clean = item.replace(/^[-*•\s]+/, '').replace(/^\[\s*\]\s*/, '');
-      return `- [ ] ${clean}`;
-    }).join('\n');
-  } else {
-    ordersSection += '- [ ] ประเมินสัญญาณชีพซ้ำและตรวจทางห้องปฏิบัติการพื้นฐานตามดุลยพินิจแพทย์';
-  }
-
-  ordersSection += '\n\n2.2 แผนการรักษาเบื้องต้น & ข้อควรระวังด้านยา (Initial Management & Drug Safety):\n';
-  if (managementList.length > 0) {
-    ordersSection += managementList.map(item => {
-      const clean = item.replace(/^[-*•\s]+/, '').replace(/^\[\s*\]\s*/, '');
-      return `- [ ] ${clean}`;
-    }).join('\n');
-  } else {
-    ordersSection += '- [ ] ให้สารน้ำและการดูแลประคับประคองตามสัญญาณชีพ';
-  }
-  if (patient.drugAllergy && patient.drugAllergy !== 'ไม่ได้ระบุ' && !patient.drugAllergy.includes('ปฏิเสธ')) {
-    ordersSection += `\n- [ ] ⚠️ ระวังประวัติแพ้ยา/อาหาร: ${patient.drugAllergy}`;
-  }
-
-  return `${ddxSection}${ordersSection}`;
-}
-
-function openAiConsultantModal() {
-  const patient = patientDatabase.find(p => p.id === activePatientId);
-  if (!patient) {
-    showToast('⚠️ กรุณาเลือกผู้ป่วยในคิวก่อนเปิดระบบปรึกษา AI');
-    return;
-  }
-
-  updateDoctorTextAndJsonOutputs(patient);
-  const rapidText = document.getElementById('rapidTextView')?.value || '';
-
-  const prompt = AI_CONSULTANT_CONFIG.buildConsultationPrompt(patient, rapidText);
-  const promptEl = document.getElementById('aiConsultantPromptText');
-  if (promptEl) promptEl.value = prompt;
-
-  const badgeEl = document.getElementById('aiModalPatientBadge');
-  if (badgeEl) {
-    badgeEl.textContent = `[ผู้ป่วย] อายุ ${patient.age || 'ไม่ระบุ'} ปี, เพศ${patient.gender || 'ไม่ระบุ'} • CC: ${patient.chief_complaint_title || patient.chief_complaint}`;
-  }
-
-  updateAiAdminUiState();
-
-  // Check if patient already has a saved AI consult (persists across modal closes)
-  let savedAi = patient.aiConsultResult;
-  if (!savedAi) {
-    try {
-      const cached = sessionStorage.getItem('er_ai_consult_' + patient.id);
-      if (cached) {
-        savedAi = JSON.parse(cached);
-        patient.aiConsultResult = savedAi;
-      }
-    } catch (_) {}
-  }
-
-  const statusEl = document.getElementById('aiApiStatusMsg');
-  if (savedAi && savedAi.rawText) {
-    renderAiConsultantOutput(savedAi.rawText);
-    if (statusEl) {
-      const modelInfo = savedAi.model || 'Gemini';
-      statusEl.textContent = `✓ แสดงผลการวิเคราะห์จาก AI ล่าสุดที่บันทึกไว้ (${modelInfo}) • กด 'วิเคราะห์ด้วย AI' หากต้องการขอผลใหม่`;
-      statusEl.className = 'text-[11px] text-emerald-700 font-semibold mt-1.5';
-    }
-  } else {
-    // Populate instant built-in CDS analysis immediately into 2 cards
-    const cdsOutput = generateBuiltInCdsAnalysis(patient);
-    renderAiConsultantOutput(cdsOutput);
-    if (statusEl) {
-      statusEl.textContent = '💡 ระบบสร้างคำแนะนำเบื้องต้นจาก Built-in CDS ให้ทันที หรือกดปุ่มด้านบนเพื่อเรียก AI';
-      statusEl.className = 'text-[11px] text-slate-500 mt-1.5';
-    }
-  }
-
-  const modal = document.getElementById('aiConsultantModal');
-  if (modal) modal.classList.remove('hidden');
-  if (typeof lucide !== 'undefined') lucide.createIcons();
-}
-
-function closeAiConsultantModal() {
-  const modal = document.getElementById('aiConsultantModal');
-  if (modal) modal.classList.add('hidden');
-}
-
-function copyAiConsultantPrompt() {
-  const promptEl = document.getElementById('aiConsultantPromptText');
-  if (!promptEl) return;
-  const text = promptEl.value;
-  if (navigator.clipboard && navigator.clipboard.writeText) {
-    navigator.clipboard.writeText(text).then(() => {
-      showToast('📋 คัดลอก AI Consultation Prompt เรียบร้อย! (PDPA Protected)');
-    });
-  } else {
-    promptEl.select();
-    document.execCommand('copy');
-    showToast('📋 คัดลอก AI Consultation Prompt เรียบร้อย!');
-  }
-}
-
-async function executeGeminiConsultWithRetry(apiKey, baseUrl, promptText, onProgress, customAttempts = null) {
-  // Model Fallback Chain: Primary 3.8 Flash -> Fast Retry -> Fallback 1 (3-flash-preview) -> Fallback 2 (3.1-pro-preview)
-  const attempts = customAttempts || [
-    { model: 'gemini-3.8-flash', delay: 0, label: 'Primary Attempt' },
-    { model: 'gemini-3.8-flash', delay: () => 1200 + Math.floor(Math.random() * 400), label: 'Fast Retry on Primary' },
-    { model: 'gemini-3-flash-preview', delay: 500, label: 'Fallback 1' },
-    { model: 'gemini-3.1-pro-preview', delay: 0, label: 'Fallback 2' }
-  ];
-
-  let lastError = null;
-
-  for (let i = 0; i < attempts.length; i++) {
-    const step = attempts[i];
-    const currentModel = step.model;
-    const attemptNum = i + 1;
-
-    const waitMs = typeof step.delay === 'function' ? step.delay() : step.delay;
-    if (waitMs > 0) {
-      await new Promise(r => setTimeout(r, waitMs));
-    }
-
-    if (typeof onProgress === 'function') {
-      onProgress({ attempt: attemptNum, total: attempts.length, model: currentModel, label: step.label });
-    }
-
-    const abortCtrl = new AbortController();
-    const timeoutId = setTimeout(() => abortCtrl.abort(), 25000);
-
-    try {
-      const url = `${baseUrl}/v1beta/models/${encodeURIComponent(currentModel)}:generateContent?key=${encodeURIComponent(apiKey)}`;
-      const payload = {
-        system_instruction: { parts: [{ text: AI_CONSULTANT_CONFIG.systemInstruction }] },
-        contents: [{ role: 'user', parts: [{ text: promptText }] }],
-        generationConfig: {
-          temperature: 0.1,
-          topP: 0.85,
-          maxOutputTokens: 1536,
-          responseMimeType: 'text/plain',
-          thinkingConfig: {
-            thinkingBudget: 1024,
-            includeThoughts: false
-          }
-        }
-      };
-
-      let response = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-goog-api-key': apiKey
-        },
-        body: JSON.stringify(payload),
-        signal: abortCtrl.signal
-      });
-
-      clearTimeout(timeoutId);
-
-      // Auto-fallback if thinkingConfig is unsupported on this specific model/endpoint
-      if (!response.ok && response.status === 400) {
-        let errJson = null;
-        try { errJson = await response.clone().json(); } catch (_) {}
-        const msg = errJson?.error?.message || '';
-        if (msg.includes('thinkingConfig') || msg.includes('thinkingBudget')) {
-          const payloadNoThinking = {
-            ...payload,
-            generationConfig: {
-              temperature: 0.1,
-              topP: 0.85,
-              maxOutputTokens: 1536,
-              responseMimeType: 'text/plain'
-            }
-          };
-          response = await fetch(url, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'x-goog-api-key': apiKey
-            },
-            body: JSON.stringify(payloadNoThinking)
-          });
-        }
-      }
-
-      if (!response.ok) {
-        let errDetail = '';
-        try {
-          const errData = await response.json();
-          errDetail = errData?.error?.message || errData?.message || '';
-        } catch (_) {}
-
-        const status = response.status;
-        // Non-retryable client errors (400 Bad Request, 401/403 Invalid API Key)
-        const isClientNonRetryable = (status === 400 && !errDetail.includes('thinking')) || status === 401 || status === 403;
-        if (isClientNonRetryable) {
-          throw new Error(`HTTP ${status}: ${errDetail || 'API Key หรือสิทธิ์การใช้งานไม่ถูกต้อง'}`);
-        }
-
-        const isRetryable = status === 503 || status === 429 || status === 500 || status === 502 || status === 504 ||
-          /high demand|overloaded|UNAVAILABLE|RESOURCE_EXHAUSTED/i.test(errDetail);
-
-        if (!isRetryable && status !== 404) {
-          throw new Error(`HTTP ${status}: ${errDetail || 'เกิดข้อผิดพลาดในการเชื่อมต่อ'}`);
-        }
-
-        const nextStep = attempts[i + 1];
-        if (nextStep) {
-          console.warn(`[Gemini Consult] ${status} on ${currentModel} -> falling back to ${nextStep.model} (Attempt ${attemptNum}/${attempts.length})`);
-        }
-        lastError = new Error(`HTTP ${status}: ${errDetail || 'โมเดลไม่พร้อมให้บริการชั่วคราว'}`);
-        continue;
-      }
-
-      const data = await response.json();
-      const candidate = data?.candidates?.[0];
-      const textParts = (candidate?.content?.parts || []).filter(p => !p.thought && p.text);
-      const aiReply = textParts.map(p => p.text).join('\n') || candidate?.content?.parts?.[0]?.text || '';
-      
-      if (!aiReply && candidate?.finishReason) {
-        throw new Error(`โมเดลสิ้นสุดด้วยสถานะ: ${candidate.finishReason}`);
-      }
-
-      const usageMetadata = data?.usageMetadata || null;
-      console.log(`[Gemini Consult] Succeeded on attempt ${attemptNum} using ${currentModel}`, {
-        modelUsed: currentModel,
-        attemptCount: attemptNum,
-        usageMetadata: usageMetadata
-      });
-
-      return {
-        reply: aiReply,
-        modelUsed: currentModel,
-        attemptCount: attemptNum,
-        usageMetadata: usageMetadata
-      };
-
-    } catch (err) {
-      clearTimeout(timeoutId);
-      const isAbort = err.name === 'AbortError' || err.message?.includes('Timeout');
-      if (/HTTP 401|HTTP 403|HTTP 400/i.test(err.message)) {
-        throw err;
-      }
-
-      const nextStep = attempts[i + 1];
-      if (nextStep) {
-        console.warn(`[Gemini Consult] ${isAbort ? '25s Timeout' : err.message} on ${currentModel} -> falling back to ${nextStep.model} (Attempt ${attemptNum}/${attempts.length})`);
-      }
-      lastError = isAbort ? new Error(`HTTP 504 Timeout (25s timeout on ${currentModel})`) : err;
-    }
-  }
-
-  throw lastError || new Error('การเชื่อมต่อ Gemini API ล้มเหลวครบทุกรอบสำรอง');
-}
-
-async function runDirectAiConsultation() {
-  const patient = patientDatabase.find(p => p.id === activePatientId);
-  if (!patient) return;
-
-  const cfg = getStoredAiConfig();
-  let apiKey = getStoredAiApiKey();
-
-  const inputKey = (document.getElementById('aiApiKeyInput')?.value || '').trim();
-  if (inputKey && !inputKey.includes('••••')) {
-    apiKey = inputKey;
-  }
-
-  // Safety clean API key
-  apiKey = (apiKey || '').trim();
-  if (apiKey.startsWith('Bearer ')) {
-    apiKey = apiKey.slice(7).trim();
-  }
-
-  const promptText = (document.getElementById('aiConsultantPromptText')?.value || '').trim();
-  const statusEl = document.getElementById('aiApiStatusMsg');
-  const runBtn = document.getElementById('runAiAnalysisBtn');
-
-  if (!apiKey) {
-    const cdsOutput = generateBuiltInCdsAnalysis(patient);
-    renderAiConsultantOutput(cdsOutput);
-    if (statusEl) {
-      statusEl.textContent = '💡 แสดงผลจาก Built-in Clinical Decision Support (ออฟไลน์) — ตั้งค่า API Key ด้านล่างหากต้องการเรียก AI ภายนอก';
-      statusEl.className = 'text-[11px] text-emerald-700 font-medium mt-1.5';
-    }
-    showToast('⚡ สร้างรายงานวิเคราะห์ (Built-in CDS) เรียบร้อยแล้ว');
-    return;
-  }
-
-  try {
-    if (runBtn) runBtn.disabled = true;
-    if (statusEl) {
-      const isGemini = cfg.provider === 'gemini' || cfg.provider?.startsWith('gemini');
-      const provName = isGemini
-        ? `Google Gemini (3.8 Flash พร้อมระบบสำรอง)`
-        : (cfg.provider === 'z_ai' ? 'z.ai GLM' : cfg.provider);
-      statusEl.textContent = `⏳ กำลังส่งข้อมูลปรึกษา AI (${provName})...`;
-      statusEl.className = 'text-[11px] text-indigo-700 font-medium mt-1.5 animate-pulse';
-    }
-
-    let aiReply = '';
-    let finalModelUsed = cfg.model || 'gemini-3.8-flash';
-    let finalAttemptCount = 1;
-
-    if (cfg.provider === 'gemini' || cfg.provider?.startsWith('gemini')) {
-      const baseUrl = (cfg.endpoint && cfg.endpoint.includes('googleapis.com'))
-        ? cfg.endpoint.replace(/\/+$/, '')
-        : 'https://generativelanguage.googleapis.com';
-
-      const consultResult = await executeGeminiConsultWithRetry(apiKey, baseUrl, promptText, ({ attempt, total, model, label }) => {
-        if (statusEl && attempt > 1) {
-          statusEl.textContent = `⏳ กำลังลองใหม่ (${model} - ${label}) รอบที่ ${attempt}/${total}...`;
-        }
-      });
-
-      aiReply = consultResult.reply;
-      finalModelUsed = consultResult.modelUsed;
-      finalAttemptCount = consultResult.attemptCount;
-    } else {
-      // z_ai GLM Coding Plan, z_ai_china, or Custom OpenAI-Compatible API
-      let endpoint = (cfg.endpoint || 'https://api.z.ai/api/coding/paas/v4/chat/completions').trim();
-      if (endpoint.includes('api.z.ai/v1') || endpoint === 'https://api.z.ai') {
-        endpoint = 'https://api.z.ai/api/coding/paas/v4/chat/completions';
-      } else if (endpoint.includes('open.bigmodel.cn/v1') || endpoint === 'https://open.bigmodel.cn') {
-        endpoint = 'https://open.bigmodel.cn/api/coding/paas/v4/chat/completions';
-      }
-      if (!endpoint.endsWith('/chat/completions')) {
-        endpoint = endpoint.replace(/\/+$/, '') + '/chat/completions';
-      }
-      const model = (cfg.model || 'glm-4-plus').trim();
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`
-        },
-        body: JSON.stringify({
-          model: model,
-          messages: [
-            { role: 'system', content: AI_CONSULTANT_CONFIG.systemInstruction },
-            { role: 'user', content: promptText }
-          ],
-          temperature: 0.2
-        })
-      });
-      if (!response.ok) {
-        let errDetail = '';
-        try {
-          const errData = await response.json();
-          errDetail = errData?.error?.message || errData?.message || '';
-        } catch (_) {
-          try {
-            const errRaw = await response.text();
-            errDetail = errRaw.slice(0, 150);
-          } catch (_) {}
-        }
-        throw new Error(`HTTP ${response.status}: ${errDetail || 'ตรวจสอบ API Key หรือ Endpoint'}`);
-      }
-      const data = await response.json();
-      aiReply = data?.choices?.[0]?.message?.content || '';
-    }
-
-    if (aiReply) {
-      renderAiConsultantOutput(aiReply);
-      // Persist to patient record & sessionStorage
-      patient.aiConsultResult = {
-        rawText: aiReply,
-        dxText: currentAiParsedDx,
-        ordersText: currentAiParsedOrders,
-        model: finalModelUsed,
-        attemptCount: finalAttemptCount,
-        timestamp: new Date().toISOString()
-      };
-      try {
-        sessionStorage.setItem('er_ai_consult_' + patient.id, JSON.stringify(patient.aiConsultResult));
-      } catch (_) {}
-
-      if (statusEl) {
-        const retryNote = finalAttemptCount > 1 ? ` (สลับใช้โมเดลสำรองรอบที่ ${finalAttemptCount})` : '';
-        statusEl.textContent = `✓ ได้รับผลการวิเคราะห์จาก AI (${finalModelUsed}${retryNote}) สำเร็จแล้ว`;
-        statusEl.className = 'text-[11px] text-emerald-700 font-semibold mt-1.5';
-      }
-      showToast('🤖 ได้รับคำแนะนำจาก AI เรียบร้อยแล้ว!');
-    } else {
-      throw new Error('ไม่ได้รับข้อความตอบกลับจากโมเดล AI');
-    }
-  } catch (err) {
-    console.warn('AI API Call error:', err);
-    if (!patient.aiConsultResult?.rawText) {
-      const cdsOutput = generateBuiltInCdsAnalysis(patient);
-      renderAiConsultantOutput(cdsOutput);
-    }
-    if (statusEl) {
-      const isNetworkErr = err.message?.includes('Failed to fetch') || err.name === 'TypeError';
-      const reason = isNetworkErr
-        ? 'ไม่สามารถเชื่อมต่อไปยัง Endpoint ได้ (ตรวจ Endpoint URL หรือการเชื่อมต่อเครือข่าย)'
-        : err.message;
-      statusEl.textContent = `⚠️ เชื่อมต่อ API ไม่สำเร็จ (${reason}) — แสดงผลจาก ${patient.aiConsultResult?.rawText ? 'AI ที่บันทึกไว้เดิม' : 'Built-in CDS แทน'}`;
-      statusEl.className = 'text-[11px] text-amber-700 font-medium mt-1.5';
-    }
-    showToast(`⚠️ การเชื่อมต่อ AI ไม่สำเร็จ (${err.message})`);
-  } finally {
-    if (runBtn) runBtn.disabled = false;
-  }
-}
-
-function applyAiResultToDoctorAddendum(mode = 'both') {
-  const patient = patientDatabase.find(p => p.id === activePatientId);
-  if (!patient) return showToast('⚠️ กรุณาเลือกผู้ป่วยก่อน');
-
-  const dxBox = document.getElementById('aiResultDxBox');
-  const ordersBox = document.getElementById('aiResultOrdersBox');
-  const newDx = (dxBox?.value || currentAiParsedDx || '').trim();
-  const newPlan = (ordersBox?.value || currentAiParsedOrders || '').trim();
-
-  if (!newDx && !newPlan) {
-    return showToast('⚠️ ยังไม่มีผลวิเคราะห์สำหรับนำเข้า');
-  }
-
-  const dxEl = document.getElementById('doctorPrelimDx');
-  const planEl = document.getElementById('doctorPlan');
-  const existingDx = dxEl?.value.trim() || '';
-  const existingPlan = planEl?.value.trim() || '';
-
-  const hasConflict = (mode === 'both' && (existingDx || existingPlan))
-    || (mode === 'dx' && existingDx)
-    || (mode === 'plan' && existingPlan);
-
-  if (hasConflict) {
-    pendingAiApplyMode = mode;
-    openAiApplyConfirmModal();
-    return;
-  }
-
-  executeAiApplyToFields(mode, 'replace');
-}
-
-function openAiApplyConfirmModal() {
-  const modal = document.getElementById('aiApplyConfirmModal');
-  if (modal) modal.classList.remove('hidden');
-  if (typeof lucide !== 'undefined') lucide.createIcons();
-}
-
-function closeAiApplyConfirmModal() {
-  const modal = document.getElementById('aiApplyConfirmModal');
-  if (modal) modal.classList.add('hidden');
-  pendingAiApplyMode = null;
-}
-
-function confirmApplyAiResult(action) {
-  const mode = pendingAiApplyMode || 'both';
-  executeAiApplyToFields(mode, action);
-}
-
-function executeAiApplyToFields(mode, action) {
-  const dxBox = document.getElementById('aiResultDxBox');
-  const ordersBox = document.getElementById('aiResultOrdersBox');
-  const newDx = (dxBox?.value || currentAiParsedDx || '').trim();
-  const newPlan = (ordersBox?.value || currentAiParsedOrders || '').trim();
-
-  const dxEl = document.getElementById('doctorPrelimDx');
-  const planEl = document.getElementById('doctorPlan');
-
-  if (mode === 'both' || mode === 'dx') {
-    if (dxEl && newDx) {
-      if (action === 'append' && dxEl.value.trim()) {
-        dxEl.value = `${dxEl.value.trim()}\n\n[Provisional Dx จาก AI/CDS]\n${newDx}`;
-      } else {
-        dxEl.value = newDx;
-      }
-    }
-  }
-
-  if (mode === 'both' || mode === 'plan') {
-    if (planEl && newPlan) {
-      if (action === 'append' && planEl.value.trim()) {
-        planEl.value = `${planEl.value.trim()}\n\n[ER Orders จาก AI/CDS]\n${newPlan}`;
-      } else {
-        planEl.value = newPlan;
-      }
-    }
-  }
-
-  toggleDoctorAddendumSection(true);
-  handleDoctorAddendumChange();
-  closeAiApplyConfirmModal();
-  closeAiConsultantModal();
-  showToast(action === 'append'
-    ? '📥 นำข้อมูล AI ไปเขียนต่อท้ายในช่องตรวจของแพทย์เรียบร้อยแล้ว'
-    : '✓ นำผลวิเคราะห์ AI เข้าช่องตรวจของแพทย์เรียบร้อยแล้ว'
-  );
-}
-
-function copyAiResultSection(section) {
-  const el = section === 'dx' ? document.getElementById('aiResultDxBox') : document.getElementById('aiResultOrdersBox');
-  if (!el) return;
-  const text = el.value || '';
-  if (navigator.clipboard?.writeText) {
-    navigator.clipboard.writeText(text).then(() => showToast(`📋 คัดลอกข้อมูล ${section === 'dx' ? 'การวินิจฉัย (Dx)' : 'คำสั่งการรักษา (Orders)'} เรียบร้อย!`));
-  } else {
-    el.select();
-    document.execCommand('copy');
-    showToast('📋 คัดลอกเรียบร้อย!');
-  }
-}
+// Section 10 (1-Click Medical AI Consultant & Admin Workbench) lives in ai_consultant_core.js
 
 // =========================================================================
 // 11. CLIPBOARD, DOWNLOAD & TOAST HELPERS

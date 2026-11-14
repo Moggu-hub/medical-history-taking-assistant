@@ -690,23 +690,23 @@ const HYPERTENSION_FORM_HTML = `
         1.2 สาเหตุที่มารับการตรวจที่โรงพยาบาลในวันนี้
       </label>
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-        <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-          <input type="radio" name="htnVisitReason" value="high_bp_detected" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4"
+        <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+          <input type="radio" name="htnVisitReason" value="high_bp_detected" class="text-medical-600 focus:ring-medical-500 h-4 w-4"
             onchange="handleHtnVisitReasonChange(this.value)">
           <span class="text-xs sm:text-sm text-slate-800">ตรวจพบความดันโลหิตสูง</span>
         </label>
-        <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-          <input type="radio" name="htnVisitReason" value="other_appointment" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4"
+        <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+          <input type="radio" name="htnVisitReason" value="other_appointment" class="text-medical-600 focus:ring-medical-500 h-4 w-4"
             onchange="handleHtnVisitReasonChange(this.value)">
           <span class="text-xs sm:text-sm text-slate-800">มาตามนัดแพทย์ตรวจโรคอื่น</span>
         </label>
-        <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-          <input type="radio" name="htnVisitReason" value="suspected_symptoms" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4"
+        <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+          <input type="radio" name="htnVisitReason" value="suspected_symptoms" class="text-medical-600 focus:ring-medical-500 h-4 w-4"
             onchange="handleHtnVisitReasonChange(this.value)">
           <span class="text-xs sm:text-sm text-slate-800">มาด้วยอาการที่สงสัยว่าเกิดจากความดันสูง</span>
         </label>
-        <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-          <input type="radio" name="htnVisitReason" value="other_reasons" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4"
+        <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+          <input type="radio" name="htnVisitReason" value="other_reasons" class="text-medical-600 focus:ring-medical-500 h-4 w-4"
             onchange="handleHtnVisitReasonChange(this.value)">
           <span class="text-xs sm:text-sm text-slate-800">มาด้วยอาการอื่นๆ ที่ไม่เกี่ยวกับโรคความดันสูง</span>
         </label>
@@ -744,8 +744,8 @@ const HYPERTENSION_FORM_HTML = `
             class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-medical-500 transition">
         </div>
       </div>
-      <label class="selectable-card flex items-center p-2.5 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-        <input type="checkbox" id="htnBpUnknownExact" value="unknown_exact" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4 rounded"
+      <label class="selectable-card gap-2.5 flex items-center p-2.5 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+        <input type="checkbox" id="htnBpUnknownExact" value="unknown_exact" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded"
           onchange="handleHtnUnknownBpChange(this)">
         <span class="text-xs font-medium text-slate-700">จำตัวเลขแน่ชัดไม่ได้ แต่ทราบว่าสูงมากผิดปกติ</span>
       </label>
@@ -757,24 +757,24 @@ const HYPERTENSION_FORM_HTML = `
         1.4 สถานที่หรือแหล่งที่ตรวจพบค่าความดันดังกล่าว
       </label>
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-        <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-          <input type="radio" name="htnSource" value="home_digital" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4">
+        <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+          <input type="radio" name="htnSource" value="home_digital" class="text-medical-600 focus:ring-medical-500 h-4 w-4">
           <span class="text-xs sm:text-sm text-slate-800">วัดเองที่บ้าน (เครื่องวัดดิจิทัล หรือ มีเจ้าหน้าที่มาวัด)</span>
         </label>
-        <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-          <input type="radio" name="htnSource" value="health_center" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4">
+        <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+          <input type="radio" name="htnSource" value="health_center" class="text-medical-600 focus:ring-medical-500 h-4 w-4">
           <span class="text-xs sm:text-sm text-slate-800">สถานีอนามัย / รพ.สต. / คลินิกชุมชนอบอุ่น</span>
         </label>
-        <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-          <input type="radio" name="htnSource" value="private_clinic" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4">
+        <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+          <input type="radio" name="htnSource" value="private_clinic" class="text-medical-600 focus:ring-medical-500 h-4 w-4">
           <span class="text-xs sm:text-sm text-slate-800">คลินิกเอกชน หรือ โรงพยาบาลเอกชน</span>
         </label>
-        <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-          <input type="radio" name="htnSource" value="triage_hospital" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4">
+        <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+          <input type="radio" name="htnSource" value="triage_hospital" class="text-medical-600 focus:ring-medical-500 h-4 w-4">
           <span class="text-xs sm:text-sm text-slate-800">จุดคัดกรองที่รพ. (หน้าห้องตรวจ / งานคัดกรอง)</span>
         </label>
-        <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer sm:col-span-2">
-          <input type="radio" name="htnSource" value="other" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4">
+        <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer sm:col-span-2">
+          <input type="radio" name="htnSource" value="other" class="text-medical-600 focus:ring-medical-500 h-4 w-4">
           <span class="text-xs sm:text-sm text-slate-800">สถานที่อื่น หรือ ไม่แน่ชัด</span>
         </label>
       </div>
@@ -786,16 +786,16 @@ const HYPERTENSION_FORM_HTML = `
         1.5 ประวัติโรคความดันโลหิตสูงเดิมของผู้ป่วย
       </label>
       <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-        <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-          <input type="radio" name="htnKnownHx" value="known_htn" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4">
+        <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+          <input type="radio" name="htnKnownHx" value="known_htn" class="text-medical-600 focus:ring-medical-500 h-4 w-4">
           <span class="text-xs sm:text-sm text-slate-800">มีโรคประจำตัวความดันสูงเดิม</span>
         </label>
-        <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-          <input type="radio" name="htnKnownHx" value="first_time" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4">
+        <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+          <input type="radio" name="htnKnownHx" value="first_time" class="text-medical-600 focus:ring-medical-500 h-4 w-4">
           <span class="text-xs sm:text-sm text-slate-800">เพิ่งตรวจพบครั้งแรกในชีวิต</span>
         </label>
-        <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-          <input type="radio" name="htnKnownHx" value="unsure" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4">
+        <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+          <input type="radio" name="htnKnownHx" value="unsure" class="text-medical-600 focus:ring-medical-500 h-4 w-4">
           <span class="text-xs sm:text-sm text-slate-800">ไม่แน่ใจประวัติเดิม</span>
         </label>
       </div>
@@ -828,28 +828,28 @@ const HYPERTENSION_FORM_HTML = `
         <div id="htnNeuroSubGroup" class="hidden pl-4 sm:pl-6 space-y-2 border-l-2 border-medical-200">
           <p class="text-xs text-slate-600 font-medium mb-1">เลือกอาการทางระบบประสาทที่ตรวจพบ (เลือกได้หลายข้อหากมี):</p>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-              <input type="checkbox" name="htnNeuroSigns" value="severe_headache_occipital" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4 rounded">
+            <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+              <input type="checkbox" name="htnNeuroSigns" value="severe_headache_occipital" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded">
               <span class="text-xs sm:text-sm text-slate-800">ปวดศีรษะรุนแรงเฉียบพลัน หรือปวดตื้อท้ายทอยอย่างมาก</span>
             </label>
-            <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-              <input type="checkbox" name="htnNeuroSigns" value="blurred_vision_scotoma" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4 rounded">
+            <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+              <input type="checkbox" name="htnNeuroSigns" value="blurred_vision_scotoma" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded">
               <span class="text-xs sm:text-sm text-slate-800">ตามัวลงเฉียบพลัน หรือเห็นภาพซ้อน / มองเห็นแสงวับวาบ</span>
             </label>
-            <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-              <input type="checkbox" name="htnNeuroSigns" value="facial_droop_dysarthria" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4 rounded">
+            <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+              <input type="checkbox" name="htnNeuroSigns" value="facial_droop_dysarthria" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded">
               <span class="text-xs sm:text-sm text-slate-800">ปากเบี้ยว หน้าเบี้ยว หรือพูดไม่ชัด ลิ้นแข็ง กลืนลำบาก</span>
             </label>
-            <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-              <input type="checkbox" name="htnNeuroSigns" value="hemiparesis_numbness" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4 rounded">
+            <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+              <input type="checkbox" name="htnNeuroSigns" value="hemiparesis_numbness" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded">
               <span class="text-xs sm:text-sm text-slate-800">แขนขาข้างใดข้างหนึ่งอ่อนแรง ชาครึ่งซีก ยกไม่ขึ้น</span>
             </label>
-            <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-              <input type="checkbox" name="htnNeuroSigns" value="confusion_lethargy" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4 rounded">
+            <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+              <input type="checkbox" name="htnNeuroSigns" value="confusion_lethargy" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded">
               <span class="text-xs sm:text-sm text-slate-800">ซึมลง สับสน พฤติกรรมเปลี่ยนแปลง หรือมีอาการชักเกร็งกระตุก</span>
             </label>
-            <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-              <input type="checkbox" name="htnNeuroSigns" value="sudden_monocular_vision_loss" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4 rounded">
+            <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+              <input type="checkbox" name="htnNeuroSigns" value="sudden_monocular_vision_loss" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded">
               <span class="text-xs sm:text-sm text-slate-800">ตาบอดข้างเดียวฉับพลันชั่วคราวหรือถาวร</span>
             </label>
           </div>
@@ -869,24 +869,24 @@ const HYPERTENSION_FORM_HTML = `
         <div id="htnCardioSubGroup" class="hidden pl-4 sm:pl-6 space-y-2 border-l-2 border-medical-200">
           <p class="text-xs text-slate-600 font-medium mb-1">เลือกอาการทางทรวงอกและการหายใจที่ตรวจพบ (เลือกได้หลายข้อหากมี):</p>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-              <input type="checkbox" name="htnCardioSigns" value="crushing_chest_pressure" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4 rounded">
+            <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+              <input type="checkbox" name="htnCardioSigns" value="crushing_chest_pressure" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded">
               <span class="text-xs sm:text-sm text-slate-800">เจ็บแน่นอึดอัดกลางหน้าอกคล้ายของหนักทับ หรือร้าวไปกราม/แขนซ้าย</span>
             </label>
-            <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-              <input type="checkbox" name="htnCardioSigns" value="tearing_chest_back_pain" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4 rounded">
+            <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+              <input type="checkbox" name="htnCardioSigns" value="tearing_chest_back_pain" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded">
               <span class="text-xs sm:text-sm text-slate-800">เจ็บแปล๊บรุนแรงคล้ายมีอะไรฉีกขาดในอก หรือเจ็บทะลุร้าวไปหลังสะบัก</span>
             </label>
-            <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-              <input type="checkbox" name="htnCardioSigns" value="orthopnea_pulmonary_edema" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4 rounded">
+            <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+              <input type="checkbox" name="htnCardioSigns" value="orthopnea_pulmonary_edema" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded">
               <span class="text-xs sm:text-sm text-slate-800">หายใจหอบเหนื่อยรุนแรง แน่นหน้าอกเมื่อนอนราบ ต้องลุกขึ้นมานั่งหายใจ</span>
             </label>
-            <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-              <input type="checkbox" name="htnCardioSigns" value="pink_frothy_sputum" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4 rounded">
+            <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+              <input type="checkbox" name="htnCardioSigns" value="pink_frothy_sputum" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded">
               <span class="text-xs sm:text-sm text-slate-800">ไอมีฟองเสมหะสีชมพูปน หรือไอมีเลือดปน</span>
             </label>
-            <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer sm:col-span-2">
-              <input type="checkbox" name="htnCardioSigns" value="palpitations_racing_heart" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4 rounded">
+            <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer sm:col-span-2">
+              <input type="checkbox" name="htnCardioSigns" value="palpitations_racing_heart" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded">
               <span class="text-xs sm:text-sm text-slate-800">ใจสั่นผิดปกติ รู้สึกหัวใจเต้นเร็วรัวหรือเต้นสะดุดแรง</span>
             </label>
           </div>
@@ -906,16 +906,16 @@ const HYPERTENSION_FORM_HTML = `
         <div id="htnRenalSubGroup" class="hidden pl-4 sm:pl-6 space-y-2 border-l-2 border-medical-200">
           <p class="text-xs text-slate-600 font-medium mb-1">เลือกอาการทางไตและภาวะบวมที่ตรวจพบ (เลือกได้หลายข้อหากมี):</p>
           <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
-            <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-              <input type="checkbox" name="htnRenalSigns" value="anuria_oliguria" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4 rounded">
+            <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+              <input type="checkbox" name="htnRenalSigns" value="anuria_oliguria" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded">
               <span class="text-xs sm:text-sm text-slate-800">ปัสสาวะไม่ออก หรือออกน้อยลงมากผิดปกติ</span>
             </label>
-            <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-              <input type="checkbox" name="htnRenalSigns" value="gross_hematuria_coca_cola" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4 rounded">
+            <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+              <input type="checkbox" name="htnRenalSigns" value="gross_hematuria_coca_cola" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded">
               <span class="text-xs sm:text-sm text-slate-800">ปัสสาวะสีแดงสด มีลิ่มเลือด หรือสีน้ำล้างเนื้อ/โค้ก</span>
             </label>
-            <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-              <input type="checkbox" name="htnRenalSigns" value="leg_edema_bilateral" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4 rounded">
+            <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+              <input type="checkbox" name="htnRenalSigns" value="leg_edema_bilateral" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded">
               <span class="text-xs sm:text-sm text-slate-800">มีอาการบวมขึ้นที่ขาทั้งสองข้าง หลังเท้า หรือใบหน้า</span>
             </label>
           </div>
@@ -928,18 +928,18 @@ const HYPERTENSION_FORM_HTML = `
           2.4 สำหรับผู้ป่วยสตรี: สถานะการตั้งครรภ์และหลังคลอด
         </label>
         <div class="grid grid-cols-1 gap-2.5 text-sm text-slate-700">
-          <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-            <input type="radio" name="htnPregnancyStatus" value="none" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4"
+          <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+            <input type="radio" name="htnPregnancyStatus" value="none" class="text-medical-600 focus:ring-medical-500 h-4 w-4"
               onchange="handleHtnPregnancyChange(this.value)">
             <span class="text-xs sm:text-sm text-slate-800">ไม่ได้ตั้งครรภ์ / ไม่อยู่ในเกณฑ์</span>
           </label>
-          <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-            <input type="radio" name="htnPregnancyStatus" value="pregnancy_lt_20wks" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4"
+          <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+            <input type="radio" name="htnPregnancyStatus" value="pregnancy_lt_20wks" class="text-medical-600 focus:ring-medical-500 h-4 w-4"
               onchange="handleHtnPregnancyChange(this.value)">
             <span class="text-xs sm:text-sm text-slate-800">กำลังตั้งครรภ์ (อายุครรภ์น้อยกว่า 20 สัปดาห์)</span>
           </label>
-          <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-            <input type="radio" name="htnPregnancyStatus" value="pregnancy_gt_20wks" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4"
+          <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+            <input type="radio" name="htnPregnancyStatus" value="pregnancy_gt_20wks" class="text-medical-600 focus:ring-medical-500 h-4 w-4"
               onchange="handleHtnPregnancyChange(this.value)">
             <span class="text-xs sm:text-sm text-slate-800">กำลังตั้งครรภ์ (อายุครรภ์เกิน 20 สัปดาห์) หรือเพิ่งคลอดบุตรไม่เกิน 6 สัปดาห์</span>
           </label>
@@ -951,16 +951,16 @@ const HYPERTENSION_FORM_HTML = `
             อาการร่วมสำคัญในสตรีตั้งครรภ์หรือหลังคลอด (เลือกได้หลายข้อหากมี):
           </p>
           <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
-            <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-              <input type="checkbox" name="htnPregnancySigns" value="ruq_epigastric_pain" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4 rounded">
+            <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+              <input type="checkbox" name="htnPregnancySigns" value="ruq_epigastric_pain" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded">
               <span class="text-xs sm:text-sm text-slate-800">มีอาการจุกแน่นใต้ลิ้นปี่ หรือปวดแน่นชายโครงขวาอย่างมาก</span>
             </label>
-            <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-              <input type="checkbox" name="htnPregnancySigns" value="flashing_lights_vision" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4 rounded">
+            <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+              <input type="checkbox" name="htnPregnancySigns" value="flashing_lights_vision" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded">
               <span class="text-xs sm:text-sm text-slate-800">ตาพร่ามัว มองเห็นแสงวับวาบระยิบระยับ</span>
             </label>
-            <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-              <input type="checkbox" name="htnPregnancySigns" value="severe_throbbing_headache" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4 rounded">
+            <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+              <input type="checkbox" name="htnPregnancySigns" value="severe_throbbing_headache" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded">
               <span class="text-xs sm:text-sm text-slate-800">ปวดศีรษะรุนแรงต่อเนื่อง ทานยาแก้ปวดแล้วไม่ทุเลา</span>
             </label>
           </div>
@@ -981,16 +981,16 @@ const HYPERTENSION_FORM_HTML = `
       </div>
     </div>
     <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-sm text-slate-700">
-      <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-        <input type="checkbox" name="htnGeneralSigns" value="dizziness_cold_sweat" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4 rounded">
+      <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+        <input type="checkbox" name="htnGeneralSigns" value="dizziness_cold_sweat" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded">
         <span class="text-xs sm:text-sm text-slate-800">หน้ามืด วูบคล้ายจะเป็นลม เวียนศีรษะ หรือเหงื่อแตกตัวเย็น</span>
       </label>
-      <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-        <input type="checkbox" name="htnGeneralSigns" value="severe_epistaxis" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4 rounded">
+      <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+        <input type="checkbox" name="htnGeneralSigns" value="severe_epistaxis" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded">
         <span class="text-xs sm:text-sm text-slate-800">มีเลือดกำเดาไหลออกทางจมูกปริมาณมากผิดปกติ</span>
       </label>
-      <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-        <input type="checkbox" name="htnGeneralSigns" value="projectile_vomiting" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4 rounded">
+      <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+        <input type="checkbox" name="htnGeneralSigns" value="projectile_vomiting" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded">
         <span class="text-xs sm:text-sm text-slate-800">คลื่นไส้ อาเจียนพุ่งหลายครั้งติดต่อกัน</span>
       </label>
     </div>
@@ -1014,23 +1014,23 @@ const HYPERTENSION_FORM_HTML = `
         4.1 ประวัติการรับประทานยาลดความดันโลหิตของผู้ป่วย
       </label>
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-sm text-slate-700">
-        <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-          <input type="radio" name="htnCompliance" value="regular" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4"
+        <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+          <input type="radio" name="htnCompliance" value="regular" class="text-medical-600 focus:ring-medical-500 h-4 w-4"
             onchange="handleHtnComplianceChange(this.value)">
           <span class="text-xs sm:text-sm text-slate-800">รับประทานยาความดันสม่ำเสมอตามแพทย์สั่ง ครบถ้วน</span>
         </label>
-        <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-          <input type="radio" name="htnCompliance" value="missed_days" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4"
+        <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+          <input type="radio" name="htnCompliance" value="missed_days" class="text-medical-600 focus:ring-medical-500 h-4 w-4"
             onchange="handleHtnComplianceChange(this.value)">
           <span class="text-xs sm:text-sm text-slate-800">ลืมรับประทานยา หรือขาดยามาหลายวัน</span>
         </label>
-        <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-          <input type="radio" name="htnCompliance" value="self_adjusted" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4"
+        <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+          <input type="radio" name="htnCompliance" value="self_adjusted" class="text-medical-600 focus:ring-medical-500 h-4 w-4"
             onchange="handleHtnComplianceChange(this.value)">
           <span class="text-xs sm:text-sm text-slate-800">ปรับขนาดยาเอง หรือหยุดรับประทานยาเอง</span>
         </label>
-        <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-          <input type="radio" name="htnCompliance" value="no_prior_rx" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4"
+        <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+          <input type="radio" name="htnCompliance" value="no_prior_rx" class="text-medical-600 focus:ring-medical-500 h-4 w-4"
             onchange="handleHtnComplianceChange(this.value)">
           <span class="text-xs sm:text-sm text-slate-800">ไม่เคยมียาลดความดันมาก่อน (ไม่เคยรับการรักษา)</span>
         </label>
@@ -1053,28 +1053,41 @@ const HYPERTENSION_FORM_HTML = `
         4.2 ปัจจัยกระตุ้นเฉียบพลันและสารที่มีผลต่อความดันโลหิต (เลือกได้หลายข้อหากมี)
       </label>
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-sm text-slate-700">
-        <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-          <input type="checkbox" name="htnTriggers" value="stress_insomnia" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4 rounded">
+        <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+          <input type="checkbox" name="htnTriggers" value="stress_insomnia" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded">
           <span class="text-xs sm:text-sm text-slate-800">มีความเครียด วิตกกังวล หรือนอนไม่หลับอย่างหนักติดต่อกัน</span>
         </label>
-        <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-          <input type="checkbox" name="htnTriggers" value="severe_pain_other" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4 rounded">
+        <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+          <input type="checkbox" name="htnTriggers" value="severe_pain_other" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded">
           <span class="text-xs sm:text-sm text-slate-800">มีอาการปวดรุนแรงที่ตำแหน่งอื่นของร่างกาย</span>
         </label>
-        <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-          <input type="checkbox" name="htnTriggers" value="energy_drink_coffee_alc" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4 rounded">
+        <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+          <input type="checkbox" name="htnTriggers" value="energy_drink_coffee_alc" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded">
           <span class="text-xs sm:text-sm text-slate-800">ดื่มเครื่องดื่มชูกำลัง กาแฟเข้มข้น หรือแอลกอฮอล์</span>
         </label>
-        <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-          <input type="checkbox" name="htnTriggers" value="nsaids_cold_steroid" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4 rounded">
+        <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+          <input type="checkbox" name="htnTriggers" value="nsaids_cold_steroid" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded">
           <span class="text-xs sm:text-sm text-slate-800">เพิ่งรับประทานยาแก้หวัดคัดจมูก ยาแก้ปวดข้อแก้เส้น (NSAIDs) หรือสเตียรอยด์</span>
         </label>
-        <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer sm:col-span-2">
-          <input type="checkbox" name="htnTriggers" value="substance_stimulants" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4 rounded">
+        <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer sm:col-span-2">
+          <input type="checkbox" name="htnTriggers" value="substance_stimulants" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded">
           <span class="text-xs sm:text-sm text-slate-800">มีประวัติใช้สารเสพติด หรือสารกระตุ้นประสาท (เช่น ยาบ้า, ยาไอซ์, โคเคน, กัญชา, กระท่อม)</span>
         </label>
       </div>
     </div>
+  </div>
+
+  <!-- อาการอื่นๆ เป็นช่องกรอกอิสระ -->
+  <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+    <div class="flex items-center space-x-3 mb-3 pb-2 border-b border-slate-100">
+      <div class="bg-slate-100 text-slate-600 p-2 rounded-xl"><i data-lucide="message-square-plus" class="w-5 h-5"></i></div>
+      <div>
+        <h2 class="text-base font-bold text-slate-800">อาการอื่นๆ ที่ต้องการแจ้งเพิ่มเติม</h2>
+        <p class="text-xs text-slate-500">ระบุอาการอื่นๆ ที่ท่านมีหรือต้องการบอกแพทย์เพิ่มเติม (ถ้ามี)</p>
+      </div>
+    </div>
+    <textarea id="hypertension_other_free" rows="2" placeholder="พิมพ์ระบุอาการอื่นๆ ที่ท่านมีหรือต้องการบอกแพทย์เพิ่มเติม (ถ้ามี)..."
+      class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-medical-500 focus:bg-white"></textarea>
   </div>
 </div>
 `;
@@ -1153,7 +1166,7 @@ const hypertensionModule = {
     const missedDaysVal = parseInt(document.getElementById('htnMissedDays')?.value, 10);
     const triggers = getChecks('htnTriggers');
 
-    const otherSymptomsFree = document.getElementById('sx_other_free')?.value?.trim() || ctx.otherSymptomsFree || '';
+    const otherSymptomsFree = document.getElementById('hypertension_other_free')?.value?.trim() || ctx.otherSymptomsFree || '';
 
     const rec = {
       id: ctx.recordId || ctx.id,
@@ -1297,10 +1310,12 @@ const hypertensionModule = {
     }
 
     setChecks('htnTriggers', data.htnTriggers);
+    const otherFreeEl = document.getElementById('hypertension_other_free');
+    if (otherFreeEl) otherFreeEl.value = data.otherSymptomsFree || '';
   },
 
   clearForm: function() {
-    ['htnDurationVal', 'htnVisitReasonDetail', 'htnPeakSystolic', 'htnPeakDiastolic', 'htnPeakPulse', 'htnMissedDays'].forEach(id => {
+    ['htnDurationVal', 'htnVisitReasonDetail', 'htnPeakSystolic', 'htnPeakDiastolic', 'htnPeakPulse', 'htnMissedDays', 'hypertension_other_free'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.value = '';
     });

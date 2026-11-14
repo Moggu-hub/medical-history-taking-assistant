@@ -121,7 +121,7 @@ const server = http.createServer(async (req, res) => {
     return sendJson(res, 200, {
       status: 'ok',
       service: 'er-intake-sync-server',
-      version: 'v2.65-pilot',
+      version: 'v2.80-pilot',
       time: new Date().toISOString()
     });
   }

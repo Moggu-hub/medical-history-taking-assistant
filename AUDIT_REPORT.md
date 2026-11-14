@@ -1,8 +1,8 @@
 # 🕵️‍♂️ รายงานการตรวจสอบคุณภาพโค้ดและสถาปัตยกรรม (AUTOMATED & AI AUDIT REPORT)
 
-- **วันที่ตรวจสอบ:** `13/11/2026` เวลา `08:54` น. (24-Hour Format)
+- **วันที่ตรวจสอบ:** `14/11/2026` เวลา `19:23` น. (24-Hour Format)
 - **สถานะภาพรวม (Overall Verdict):** **✅ PASS (ผ่านการตรวจสอบครบทุกมิติ)**
-- **จำนวนหัวข้อที่ผ่าน (Passed Checks):** 7 รายการ
+- **จำนวนหัวข้อที่ผ่าน (Passed Checks):** 9 รายการ
 - **จำนวนคำเตือน (Warnings):** 0 รายการ
 - **จำนวนข้อผิดพลาดวิกฤต (Critical Failures):** 0 รายการ
 
@@ -12,9 +12,10 @@
 
 | ไฟล์ (File Path) | จำนวนบรรทัด (Lines) | เพดานสูงสุด (Max Limit) | สถานะ (Status) |
 | :--- | :---: | :---: | :---: |
-| `index.html` | 1,994 | 2,000 | ✅ ปกติ (Safe) |
-| `clinical_knowledge_core.js` | 997 | 1,000 | ✅ ปกติ (Safe) |
-| `core_engine.js` | 2,949 | 3,200 | ✅ ปกติ (Safe) |
+| `index.html` | 1,949 | 2,000 | ✅ ปกติ (Safe) |
+| `clinical_knowledge_core.js` | 907 | 1,000 | ✅ ปกติ (Safe) |
+| `ai_consultant_core.js` | 886 | 1,000 | ✅ ปกติ (Safe) |
+| `core_engine.js` | 2,297 | 3,200 | ✅ ปกติ (Safe) |
 | `cc_modules/01_abdpain.js` | 1,251 | 2,000 | ✅ ปกติ (Safe) |
 | `cc_modules/02_chestpain.js` | 1,346 | 2,000 | ✅ ปกติ (Safe) |
 | `cc_modules/03_dyspnea.js` | 1,062 | 2,000 | ✅ ปกติ (Safe) |
@@ -36,26 +37,30 @@
 | `cc_modules/19_hematuria.js` | 1,661 | 2,000 | ✅ ปกติ (Safe) |
 | `cc_modules/20_back_pain.js` | 1,757 | 2,000 | ✅ ปกติ (Safe) |
 | `cc_modules/21_neck_shoulder_pain.js` | 1,677 | 2,000 | ✅ ปกติ (Safe) |
-| `cc_modules/22_hemoptysis.js` | 1,672 | 2,000 | ✅ ปกติ (Safe) |
-| `cc_modules/23_epistaxis.js` | 1,303 | 2,000 | ✅ ปกติ (Safe) |
-| `cc_modules/24_hypertension.js` | 1,524 | 2,000 | ✅ ปกติ (Safe) |
-| `cc_modules/25_psychiatric_emergency.js` | 1,594 | 2,000 | ✅ ปกติ (Safe) |
-| `cc_modules/26_laceration_bleeding.js` | 1,998 | 2,000 | ✅ ปกติ (Safe) |
-| `cc_modules/27_fall_trauma.js` | 1,992 | 2,000 | ✅ ปกติ (Safe) |
-| `cc_modules/28_animal_bite.js` | 1,996 | 2,000 | ✅ ปกติ (Safe) |
-| `cc_modules/29_venomous_bite.js` | 1,858 | 2,000 | ✅ ปกติ (Safe) |
-| `cc_modules/30_physical_assault.js` | 1,675 | 2,000 | ✅ ปกติ (Safe) |
-| `cc_modules/31_traffic_accident.js` | 1,885 | 2,000 | ✅ ปกติ (Safe) |
+| `cc_modules/22_hemoptysis.js` | 1,687 | 2,000 | ✅ ปกติ (Safe) |
+| `cc_modules/23_epistaxis.js` | 1,318 | 2,000 | ✅ ปกติ (Safe) |
+| `cc_modules/24_hypertension.js` | 1,539 | 2,000 | ✅ ปกติ (Safe) |
+| `cc_modules/25_psychiatric_emergency.js` | 1,609 | 2,000 | ✅ ปกติ (Safe) |
+| `cc_modules/26_laceration_bleeding.js` | 1,906 | 2,000 | ✅ ปกติ (Safe) |
+| `cc_modules/27_fall_trauma.js` | 1,900 | 2,000 | ✅ ปกติ (Safe) |
+| `cc_modules/28_animal_bite.js` | 1,921 | 2,000 | ✅ ปกติ (Safe) |
+| `cc_modules/29_venomous_bite.js` | 1,844 | 2,000 | ✅ ปกติ (Safe) |
+| `cc_modules/30_physical_assault.js` | 1,658 | 2,000 | ✅ ปกติ (Safe) |
+| `cc_modules/31_traffic_accident.js` | 1,956 | 2,000 | ✅ ปกติ (Safe) |
+| `cc_modules/32_poisoning.js` | 1,990 | 2,000 | ✅ ปกติ (Safe) |
+| `cc_modules/33_self_harm.js` | 1,927 | 2,000 | ✅ ปกติ (Safe) |
 
 ---
 
 ## 2. สรุปรายการที่ตรวจผ่าน (Passed Verification Checks)
 
-- ✅ index.html: 1994 บรรทัด (อยู่ในเกณฑ์ปลอดภัย <= 2000 บรรทัด)
-- ✅ clinical_knowledge_core.js: 997 บรรทัด (อยู่ในเกณฑ์ปลอดภัย <= 1000 บรรทัด)
-- ✅ core_engine.js: 2949 บรรทัด (อยู่ในเกณฑ์ปลอดภัย <= 3200 บรรทัด)
-- ✅ Core System Freeze: core_engine.js ไม่ถูกแก้ไขนับจากจุดเซฟ 'v2.68-poisoning-lmp-cc-fix' (SHA-256 ตรงกัน 100%)
-- ✅ พบไฟล์โมดูลรายอาการใน cc_modules/ จำนวน 31 โมดูล
+- ✅ index.html: 1949 บรรทัด (อยู่ในเกณฑ์ปลอดภัย <= 2000 บรรทัด)
+- ✅ clinical_knowledge_core.js: 907 บรรทัด (อยู่ในเกณฑ์ปลอดภัย <= 1000 บรรทัด)
+- ✅ ai_consultant_core.js: 886 บรรทัด (อยู่ในเกณฑ์ปลอดภัย <= 1000 บรรทัด)
+- ✅ core_engine.js: 2297 บรรทัด (อยู่ในเกณฑ์ปลอดภัย <= 3200 บรรทัด)
+- ✅ Core System Freeze: core_engine.js ไม่ถูกแก้ไขนับจากจุดเซฟ 'v2.80-doctor-addendum-open' (SHA-256 ตรงกัน 100%)
+- ✅ Core System Freeze: ai_consultant_core.js ไม่ถูกแก้ไขนับจากจุดเซฟ 'v2.80-doctor-addendum-open' (SHA-256 ตรงกัน 100%)
+- ✅ พบไฟล์โมดูลรายอาการใน cc_modules/ จำนวน 33 โมดูล
 - ✅ ทุกโมดูลใน cc_modules/ ผ่านเกณฑ์โครงสร้าง Lifecycle Hooks, ความปลอดภัย UI คนไข้ และมาตรฐานวันที่ dd/mm/yyyy + เวลา 24 ชั่วโมง HH:mm
 - ✅ ชุดทดสอบ Mandatory 4-Dimension Core Guard TDD (tests/core_guard_test.js) ผ่านครบ 100% ทั้ง 4 มิติ!
 
@@ -74,7 +79,7 @@
 === มิติที่ (ก): ARCHITECTURE, DOM INTEGRITY, UX HYGIENE & UNIVERSAL DATE/TIME ===
 ✅ PASS: index.html โหลด clinical_knowledge_core.js
 ✅ PASS: index.html โหลด core_engine.js
-✅ PASS: index.html โหลดโมดูลอาการนำจาก cc_modules/ ครบ 31 โมดูล
+✅ PASS: index.html โหลดโมดูลอาการนำจาก cc_modules/ ครบ 33 โมดูล
 ✅ PASS: Zero missing static DOM IDs across all modules (found: none)
 ✅ PASS: Zero 🚩 emojis inside #patientView & all cc_modules formHtml
 ✅ PASS: Zero pre-checked inputs inside #patientView (Zero Default Bias) (found: 0)
@@ -84,15 +89,15 @@
 ✅ PASS: Universal Date descriptor converts ISO '2026-10-26' -> '26/10/2026' (dd/mm/yyyy)
 ✅ PASS: Universal Time descriptor converts '3:30 PM' -> '15:30' (24-hour HH:mm)
 
-=== มิติที่ (ง): DOCTOR UI RENDER, JSON SCHEMA & BUILT-IN CDS (ALL 117 SEED CASES) ===
-✅ PASS: Seed database has all 117 clinical cases across 31 Chief Complaints (found 117)
-✅ PASS: All 117 seed cases render Rapid Note, Narrative Note & JSON Schema on Doctor Dashboard with 0 errors
-✅ PASS: All 117 seed cases generate Built-in CDS Analysis with 0 errors
-✅ PASS: Zero Date/Time format violations across all 117 seed cases
-✅ PASS: Zero De-duplication, Clean Negative Syntax & Score Offloading violations across all 117 seed cases
+=== มิติที่ (ง): DOCTOR UI RENDER, JSON SCHEMA & RED FLAGS (ALL 125 SEED CASES) ===
+✅ PASS: Seed database has all 125 clinical cases across 33 Chief Complaints (found 125)
+✅ PASS: All 125 seed cases render Rapid Note (including Addendum), Narrative Note & JSON Schema on Doctor Dashboard with 0 errors
+✅ PASS: All 125 seed cases evaluate Red Flags cleanly with 0 errors (Zero Built-in CDS dependency)
+✅ PASS: Zero Date/Time format violations across all 125 seed cases
+✅ PASS: Zero De-duplication, Clean Negative Syntax & Score Offloading violations across all 125 seed cases
 
 === มิติที่ (ข): SAVE PERSISTENCE CHECK (PATIENT SUBMIT -> STATE & LOCALSTORAGE -> STATUS VIEW) ===
-✅ PASS: Save Persistence verified across all 30 active Chief Complaints (State + localStorage + #patientStatusView)
+✅ PASS: Save Persistence verified across all 33 active Chief Complaints (State + localStorage + #patientStatusView)
 
 === มิติที่ (ค): PATIENT ISOLATION & CONTEXT SWITCHING CHECK (PATIENT A <-> PATIENT B) ===
 ✅ PASS: Switching to Patient B cleanly isolates Patient B context from Patient A
@@ -106,11 +111,17 @@
 ✅ PASS: Zero seed patients stuck on legacy dummy vital signs (found: 0)
 ✅ PASS: Empty patient submission records age='ไม่ระบุ' and durationVal=null instead of fake defaults (got age=ไม่ระบุ, durationVal=null)
 ✅ PASS: Empty patient submission displays "ไม่ระบุ" in Doctor Rapid Note without fabricated age or duration
-✅ PASS: PDPA Shield 100% compliant: Zero leaks of Name, HN, Queue, or Hospital name across all 117 patients (leaks: 0)
-✅ PASS: parseAiConsultantResponse isolates Provisional & Differential Diagnosis cleanly
-✅ PASS: parseAiConsultantResponse isolates ER Orders checklist with "- [ ]" cleanly
-✅ PASS: 1-Click Apply populates both Dx and Plan fields directly when empty
-✅ PASS: 1-Click Apply accurately appends to pre-existing doctor notes without overwriting
+✅ PASS: Built-in CDS execution helper (generateBuiltInCdsAnalysis) is cleanly deprecated from runtime
+✅ PASS: PDPA Shield & Audit 100% compliant: Zero leaks across all 125 patients (leaks: 0)
+✅ PASS: Default System Instruction enforces [Provisional & Differential Diagnosis], ICD-10, External Cause & 2.1/2.2/2.3 ER Order structure
+✅ PASS: parseAiConsultantResponse enforces [Provisional & Differential Diagnosis] header cleanly and isolates DDx
+✅ PASS: normalizeDxOutputHeader avoids duplicating [Provisional & Differential Diagnosis] when already present
+✅ PASS: parseAiConsultantResponse preserves 2.1 History/PE, 2.2 Investigations, and 2.3 Management sections cleanly
+✅ PASS: Single-click Apply populates Dx (with [Provisional & Differential Diagnosis] header + ICD-10) and Plan cleanly
+✅ PASS: Trauma CC (31_traffic_accident) Clinical Text Summary includes Doctor Addendum, [Provisional & Differential Diagnosis], ICD-10, and ER Orders for Copy
+✅ PASS: Append mode updates doctor notes cleanly with [Provisional & Differential Diagnosis] & [Treatment Plan & ER Orders] without AI/CDS label
+✅ PASS: Separate Copy Dx includes [Provisional & Differential Diagnosis] header
+✅ PASS: Separate Copy Orders copies ER Orders cleanly
 ✅ PASS: Back Pain Case 1 triggers Cauda Equina Syndrome (CES) Red Flag
 ✅ PASS: Back Pain Case 2 triggers Ruptured/Leaking AAA Red Flag
 ✅ PASS: Back Pain Case 3 triggers Spinal Epidural Abscess/Infection Red Flag
@@ -207,78 +218,111 @@
 ✅ PASS: Traffic accident renders toe digits split by left and right
 ✅ PASS: Traffic accident renders 2.7 other location in Rapid Note
 ✅ PASS: Module abdpain has valid non-empty doctorCcBadgeHtml
+✅ PASS: Module abdpain is dynamically registered in CC_REGISTRY
 ✅ PASS: Module abdpain has valid non-empty doctorCcBadgeHtml
+✅ PASS: Module abdpain is dynamically registered in CC_REGISTRY
 ✅ PASS: Module chestpain has valid non-empty doctorCcBadgeHtml
+✅ PASS: Module chestpain is dynamically registered in CC_REGISTRY
 ✅ PASS: Module chestpain has valid non-empty doctorCcBadgeHtml
+✅ PASS: Module chestpain is dynamically registered in CC_REGISTRY
 ✅ PASS: Module dyspnea has valid non-empty doctorCcBadgeHtml
+✅ PASS: Module dyspnea is dynamically registered in CC_REGISTRY
 ✅ PASS: Module fever has valid non-empty doctorCcBadgeHtml
+✅ PASS: Module fever is dynamically registered in CC_REGISTRY
 ✅ PASS: Module fever has valid non-empty doctorCcBadgeHtml
+✅ PASS: Module fever is dynamically registered in CC_REGISTRY
 ✅ PASS: Module dizziness has valid non-empty doctorCcBadgeHtml
+✅ PASS: Module dizziness is dynamically registered in CC_REGISTRY
 ✅ PASS: Module headache has valid non-empty doctorCcBadgeHtml
+✅ PASS: Module headache is dynamically registered in CC_REGISTRY
 ✅ PASS: Module stroke_deficit has valid non-empty doctorCcBadgeHtml
+✅ PASS: Module stroke_deficit is dynamically registered in CC_REGISTRY
 ✅ PASS: Module seizure has valid non-empty doctorCcBadgeHtml
+✅ PASS: Module seizure is dynamically registered in CC_REGISTRY
 ✅ PASS: Module syncope has valid non-empty doctorCcBadgeHtml
+✅ PASS: Module syncope is dynamically registered in CC_REGISTRY
 ✅ PASS: Module altered_mental has valid non-empty doctorCcBadgeHtml
+✅ PASS: Module altered_mental is dynamically registered in CC_REGISTRY
 ✅ PASS: Module vomiting has valid non-empty doctorCcBadgeHtml
+✅ PASS: Module vomiting is dynamically registered in CC_REGISTRY
 ✅ PASS: Module diarrhea has valid non-empty doctorCcBadgeHtml
+✅ PASS: Module diarrhea is dynamically registered in CC_REGISTRY
 ✅ PASS: Module gi_bleed has valid non-empty doctorCcBadgeHtml
+✅ PASS: Module gi_bleed is dynamically registered in CC_REGISTRY
 ✅ PASS: Module gi_bleed has valid non-empty doctorCcBadgeHtml
+✅ PASS: Module gi_bleed is dynamically registered in CC_REGISTRY
 ✅ PASS: Module palpitation has valid non-empty doctorCcBadgeHtml
+✅ PASS: Module palpitation is dynamically registered in CC_REGISTRY
 ✅ PASS: Module palpitation has valid non-empty doctorCcBadgeHtml
+✅ PASS: Module palpitation is dynamically registered in CC_REGISTRY
 ✅ PASS: Module weakness has valid non-empty doctorCcBadgeHtml
+✅ PASS: Module weakness is dynamically registered in CC_REGISTRY
 ✅ PASS: Module weakness has valid non-empty doctorCcBadgeHtml
+✅ PASS: Module weakness is dynamically registered in CC_REGISTRY
 ✅ PASS: Module allergy has valid non-empty doctorCcBadgeHtml
+✅ PASS: Module allergy is dynamically registered in CC_REGISTRY
 ✅ PASS: Module allergy has valid non-empty doctorCcBadgeHtml
+✅ PASS: Module allergy is dynamically registered in CC_REGISTRY
 ✅ PASS: Module urinary_retention has valid non-empty doctorCcBadgeHtml
+✅ PASS: Module urinary_retention is dynamically registered in CC_REGISTRY
 ✅ PASS: Module dysuria has valid non-empty doctorCcBadgeHtml
+✅ PASS: Module dysuria is dynamically registered in CC_REGISTRY
 ✅ PASS: Module hematuria has valid non-empty doctorCcBadgeHtml
+✅ PASS: Module hematuria is dynamically registered in CC_REGISTRY
 ✅ PASS: Module back_pain has valid non-empty doctorCcBadgeHtml
+✅ PASS: Module back_pain is dynamically registered in CC_REGISTRY
 ✅ PASS: Module neck_shoulder_pain has valid non-empty doctorCcBadgeHtml
+✅ PASS: Module neck_shoulder_pain is dynamically registered in CC_REGISTRY
 ✅ PASS: Module hemoptysis has valid non-empty doctorCcBadgeHtml
+✅ PASS: Module hemoptysis is dynamically registered in CC_REGISTRY
 ✅ PASS: Module epistaxis has valid non-empty doctorCcBadgeHtml
+✅ PASS: Module epistaxis is dynamically registered in CC_REGISTRY
 ✅ PASS: Module hypertension has valid non-empty doctorCcBadgeHtml
+✅ PASS: Module hypertension is dynamically registered in CC_REGISTRY
 ✅ PASS: Module psychiatric_emergency has valid non-empty doctorCcBadgeHtml
+✅ PASS: Module psychiatric_emergency is dynamically registered in CC_REGISTRY
 ✅ PASS: Module laceration_bleeding has valid non-empty doctorCcBadgeHtml
+✅ PASS: Module laceration_bleeding is dynamically registered in CC_REGISTRY
 ✅ PASS: Module fall_trauma has valid non-empty doctorCcBadgeHtml
+✅ PASS: Module fall_trauma is dynamically registered in CC_REGISTRY
 ✅ PASS: Module animal_bite has valid non-empty doctorCcBadgeHtml
+✅ PASS: Module animal_bite is dynamically registered in CC_REGISTRY
 ✅ PASS: Module venomous_bite has valid non-empty doctorCcBadgeHtml
+✅ PASS: Module venomous_bite is dynamically registered in CC_REGISTRY
 ✅ PASS: Module physical_assault has valid non-empty doctorCcBadgeHtml
+✅ PASS: Module physical_assault is dynamically registered in CC_REGISTRY
 ✅ PASS: Module traffic_accident has valid non-empty doctorCcBadgeHtml
+✅ PASS: Module traffic_accident is dynamically registered in CC_REGISTRY
+✅ PASS: Module poisoning has valid non-empty doctorCcBadgeHtml
+✅ PASS: Module poisoning is dynamically registered in CC_REGISTRY
+✅ PASS: Module self_harm has valid non-empty doctorCcBadgeHtml
+✅ PASS: Module self_harm is dynamically registered in CC_REGISTRY
+✅ PASS: resolveCcFormId dynamically resolves both module ids (poisoning) and legacy schemaCodes (abdominal_pain)
+✅ PASS: setPatientFormChiefComplaint and resolveCcTitleTh support poisoning without static core hardcoding
 ✅ PASS: Patient case-040 shows Fever CC badge
 ✅ PASS: Patient case-bite-01 updates activeCcDisplay to animal bite badge instead of keeping previous CC
 ✅ PASS: Patient case-lac-01 updates activeCcDisplay to laceration badge
 ✅ PASS: Patient case-venom-01 updates activeCcDisplay to venomous bite badge
 ✅ PASS: Patient case-assault-01 updates activeCcDisplay to physical assault badge
 ✅ PASS: Patient case-traffic-01 updates activeCcDisplay to traffic accident badge
-✅ PASS: openAiConsultantModal preserves and restores saved AI consult diagnosis instead of overwriting with CDS
-✅ PASS: openAiConsultantModal preserves and restores saved AI consult orders checklist
-✅ PASS: openAiConsultantModal displays saved AI status banner indicating persisted consultation
-✅ PASS: AI consult result persists intact across multiple modal close/open cycles
-[Gemini Consult] Succeeded on attempt 1 using gemini-3.8-flash {
-  modelUsed: 'gemini-3.8-flash',
-  attemptCount: 1,
-  usageMetadata: { promptTokenCount: 120, candidatesTokenCount: 80 }
-}
+✅ PASS: Admin Role displays 3-Zone Workbench pre-send screen without auto-firing API fetch
+✅ PASS: Admin Zone 1 displays extracted clinical data and PDPA Verified audit badge
+✅ PASS: Admin Workbench restores persisted AI consult without overwriting with Built-in CDS
+✅ PASS: Admin Zone 2 saves custom System / Header / Footer prompt templates to localStorage and updates live preview
+✅ PASS: Admin confirm Send invokes API with customized System / Header / Footer and formats Dx cleanly
+✅ PASS: Admin Reset Prompt Templates restores factory System / Header / Footer defaults cleanly
+✅ PASS: Doctor Role hides Admin Workbench and immediately fires external API on 1-Click without Built-in CDS
+✅ PASS: Doctor Role with missing API key skips Built-in CDS completely, leaves outputs blank, and shows clear Admin error
+✅ PASS: Doctor Role on API failure displays explicit error without falling back to Built-in CDS
 ✅ PASS: Gemini Consult Attempt 1 succeeds cleanly on primary model (gemini-3.8-flash)
-[Gemini Consult] Succeeded on attempt 2 using gemini-3.8-flash {
-  modelUsed: 'gemini-3.8-flash',
-  attemptCount: 2,
-  usageMetadata: { promptTokenCount: 120, candidatesTokenCount: 80 }
-}
 ✅ PASS: Gemini Consult Attempt 2 fast-retries on primary model after 503 high demand
-[Gemini Consult] Succeeded on attempt 3 using gemini-3-flash-preview {
-  modelUsed: 'gemini-3-flash-preview',
-  attemptCount: 3,
-  usageMetadata: { promptTokenCount: 120, candidatesTokenCount: 80 }
-}
 ✅ PASS: Gemini Consult switches to Fallback 1 (gemini-3-flash-preview) after 2 failed attempts
-[Gemini Consult] Succeeded on attempt 4 using gemini-3.1-pro-preview {
-  modelUsed: 'gemini-3.1-pro-preview',
-  attemptCount: 4,
-  usageMetadata: { promptTokenCount: 120, candidatesTokenCount: 80 }
-}
 ✅ PASS: Gemini Consult switches to Fallback 2 (gemini-3.1-pro-preview) after Fallback 1 fails
 ✅ PASS: Gemini Consult halts immediately on HTTP 401 without retrying or falling back
+✅ PASS: Doctor's Notes & Clinical Addendum (#doctorAddendumFields) is open by default
+✅ PASS: toggleDoctorAddendumSection(false) collapses Doctor Addendum box cleanly
+✅ PASS: toggleDoctorAddendumSection(true) expands Doctor Addendum box cleanly
+✅ PASS: CC 06_headache uses correct Thai spelling "ไม่คลื่นไส้นำมาก่อน" with zero typos
 
 ====================================================================
 🎉 ALL 4 MANDATORY CORE GUARD TDD DIMENSIONS PASSED (0 FAILURES)!

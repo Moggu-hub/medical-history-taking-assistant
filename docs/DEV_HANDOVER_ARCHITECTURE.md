@@ -27,10 +27,10 @@
          | โหลดเรียง CC Modules: cc_modules/01_*.js -> cc_modules/20_*.js
          v
 +-------------------------------------------------------------------------------+
-|  3. core_engine.js (State Machine, Event Dispatcher & AI Gateway)             |
+|  3. ai_consultant_core.js + core_engine.js (State Machine & AI Gateway)      |
 |     - Immutable State Management: patientDatabase, activePatientId             |
 |     - URL Routing / QR Parameter Hydration, Role-Based Access Control         |
-|     - Offline Clinical Decision Support (CDS), Gemini 3.8 Flash Direct Client |
+|     - 1-Click AI Consultant (Doctor Direct API vs Admin 3-Zone Workbench)     |
 +-------------------------------------------------------------------------------+
 ```
 
@@ -84,10 +84,12 @@
 
 ---
 
-### 2.3 Google Gemini 3.8 Flash & Implicit Caching Protocol
-* **ไฟล์และตำแหน่ง:** `core_engine.js` -> ฟังก์ชัน `runDirectAiConsultation()` (บรรทัด ~2475–2590) และ `clinical_knowledge_core.js` -> `AI_CONSULTANT_CONFIG` (บรรทัด ~82–106)
+### 2.3 Google Gemini 3.8 Flash & Role-Based 1-Click AI Consultant
+* **ไฟล์และตำแหน่ง:** `ai_consultant_core.js` -> `openAiConsultantModal()`, `runDirectAiConsultation()`, `executeGeminiConsultWithRetry()`, `AI_CONSULTANT_CONFIG`
 * **The Why & Architectural Decisions:**
-  1. **Direct Browser CORS:** เรียกตรงไปยัง `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent` โดยส่ง API Key ผ่านทั้ง Header `x-goog-api-key: apiKey` และ Query Param เพื่อข้ามข้อจำกัด CORS ของเบราว์เซอร์
+  1. **Role Separation & No Built-in CDS Fallback:** แพทย์ (`doctor`) กด `1-Click AI Consultant` แล้วระบบยิง API ทันทีโดยข้ามหน้าต่างขั้นกลางและไม่แสดง Built-in CDS; ส่วน `admin` เห็น Workbench 3 โซนก่อนยืนยันส่ง API (1: Extracted Patient Data + ตรวจ PDPA, 2: แก้ไขและบันทึก System/Prompt Header/Footer ลง `localStorage`, 3: ตั้งค่า Model/Endpoint/API Key)
+  2. **Clinical Output Safety:** ส่วน Dx บังคับหัวข้อ `[Provisional & Differential Diagnosis]` + รหัส `ICD-10` (และ External Cause Code) และส่วน Orders แยกหัวข้อ `2.1 ประวัติและการตรวจร่างกายเพิ่มเติมที่ควรทำทันที`, `2.2 Immediate Investigations`, `2.3 Initial Management & Drug Safety`
+  3. **Direct Browser CORS:** เรียกตรงไปยัง `https://generativelanguage.googleapis.com/v1beta/models/<model>:generateContent` โดยส่ง API Key ผ่านทั้ง Header `x-goog-api-key: apiKey` และ Query Param เพื่อข้ามข้อจำกัด CORS ของเบราว์เซอร์
   2. **รองรับ Auth Key ยุคใหม่ (`AQ.Ab8R...`):** Google ปลดระวางโมเดลเก่า (`gemini-1.5-flash`, `gemini-2.0-flash`) สำหรับ Key รุ่นใหม่ หากเรียกโมเดลเก่าจะเจอ `HTTP 404 Model Not Found` ระบบจึงล็อกไว้ที่ `gemini-3.8-flash`
   3. **Implicit Context Caching (ลด Input Token 90%):**
      - **Static ส่วนระบบ:** กฎแพทย์, Anti-hallucination, โครงสร้างผลลัพธ์ ถูกแยกไว้เด็ดขาดใน `system_instruction` (ห้ามใส่ชื่อคนไข้หรือ Timestamp ในนี้) ทำให้ Google Cache ข้อมูลชุดนี้ซ้ำได้ 90%
@@ -234,7 +236,8 @@ interface DextorIntermediatePayload {
 | ไฟล์ / ไดเรกทอรี | เพดานบรรทัดสูงสุด (Max Limit) | หน้าที่และความรับผิดชอบ |
 | :--- | :---: | :--- |
 | `index.html` | **<= 2,000 บรรทัด** | UI Shell, Modals, Script Tag List (ห้ามเขียนฟังก์ชัน Logic ในนี้) |
-| `core_engine.js` | **<= 3,200 บรรทัด** | State, Routing, AI Gateway, Event Handlers |
+| `core_engine.js` | **<= 3,200 บรรทัด** | State, Routing, RBAC, Dashboard Rendering |
+| `ai_consultant_core.js` | **<= 1,000 บรรทัด** | 1-Click AI Consultant, Admin 3-Zone Workbench, PDPA Shield & Gemini Gateway |
 | `clinical_knowledge_core.js` | **<= 1,000 บรรทัด** | Registry, Algorithms, Payloads, Constants |
 | แต่ละไฟล์ใน `cc_modules/*.js` | **<= 2,000 บรรทัด** | แบบฟอร์มและอัลกอริทึมของอาการนั้นๆ จบในตัว |
 

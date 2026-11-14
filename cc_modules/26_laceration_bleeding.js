@@ -206,10 +206,12 @@ function formatLacProdrome(patient) {
 
 function formatLacTetanus(patient) {
   const map = {
-    within_5_years: 'เคยฉีดเข็มล่าสุดภายในไม่เกิน 5 ปี (ภูมิคุ้มกันยังครอบคลุม)',
-    '5_to_10_years': 'เคยฉีดเข็มล่าสุด 5-10 ปี (พิจารณาฉีดกระตุ้นหากแผลสกปรก) 🚩',
-    more_than_10_years: 'ฉีดเข็มล่าสุดเกิน 10 ปี (ต้องฉีดวัคซีนกระตุ้น dT) 🚩',
-    never_or_unsure: 'ไม่เคยฉีด หรือจำไม่ได้/ไม่แน่ใจ (ต้องฉีดวัคซีนกระตุ้น ± TIG) 🚩'
+    within_5_years: 'เคยฉีดเข็มกระตุ้นภายใน 5 ปีที่ผ่านมา',
+    '5_to_10_years': 'เคยฉีดในช่วง 5–10 ปีที่ผ่านมา',
+    more_than_10_years: 'เคยฉีดครบ แต่เกิน 10 ปีแล้ว',
+    over_10_years: 'เคยฉีดครบ แต่เกิน 10 ปีแล้ว',
+    never_or_unsure: 'ไม่เคยฉีด หรือจำประวัติไม่ได้',
+    unknown_or_never: 'ไม่เคยฉีด หรือจำประวัติไม่ได้'
   };
   return map[patient.lacTetanusHx] || 'ไม่ได้ระบุ';
 }
@@ -226,86 +228,77 @@ function formatLacAntithrombotic(patient) {
 
 function formatLacAnatomy(patient) {
   const parts = [];
-
-  const sideLabel = (arr) => {
-    if (!Array.isArray(arr) || arr.length === 0) return '';
+  const injMap = { wound: 'มีแผล', pain_swelling: 'ปวด/บวม/ฟกช้ำ', deformity: 'ผิดรูป' };
+  const sideLabel = (arr, injArr) => {
     const thMap = { left: 'ซ้าย', right: 'ขวา', center: 'ตรงกลาง' };
-    return ` [${arr.map(s => thMap[s] || s).join(', ')}]`;
+    const sStr = Array.isArray(arr) && arr.length > 0 ? arr.map(s => thMap[s] || s).join(', ') : '';
+    const iStr = Array.isArray(injArr) && injArr.length > 0 ? injArr.map(i => injMap[i] || i).join('/') : '';
+    if (sStr && iStr) return ` [${sStr} — ${iStr}]`;
+    if (sStr) return ` [${sStr}]`;
+    if (iStr) return ` [${iStr}]`;
+    return '';
   };
   const digitMap = { thumb: 'นิ้วโป้ง', index: 'นิ้วชี้', middle: 'นิ้วกลาง', ring: 'นิ้วนาง', little: 'นิ้วก้อย' };
-  const fmtDigitsBySide = (leftD, rightD, fallbackSides, fallbackD) => {
+  const fmtDigitsBySide = (leftD, rightD, fallbackSides, fallbackD, injArr) => {
     const dParts = [];
     if (Array.isArray(leftD) && leftD.length > 0) dParts.push(`ซ้าย: ${leftD.map(x => digitMap[x] || x).join(', ')}`);
     if (Array.isArray(rightD) && rightD.length > 0) dParts.push(`ขวา: ${rightD.map(x => digitMap[x] || x).join(', ')}`);
-    if (dParts.length > 0) return ` [${dParts.join('; ')}]`;
-    return `${sideLabel(fallbackSides)}${Array.isArray(fallbackD) && fallbackD.length > 0 ? ` [${fallbackD.map(x => digitMap[x] || x).join(', ')}]` : ''}`;
+    const iStr = Array.isArray(injArr) && injArr.length > 0 ? ` — ${injArr.map(i => injMap[i] || i).join('/')}` : '';
+    if (dParts.length > 0) return ` [${dParts.join('; ')}${iStr}]`;
+    return `${sideLabel(fallbackSides, injArr)}${Array.isArray(fallbackD) && fallbackD.length > 0 ? ` [${fallbackD.map(x => digitMap[x] || x).join(', ')}]` : ''}`;
   };
 
-  // 1. Head & Face
   if (patient.lacParentHeadFace) {
     const headParts = [];
-    if (patient.lacHeadScalp) headParts.push(`หนังศีรษะ/หน้าผาก${sideLabel(patient.lacHeadScalpSides)}`);
-    if (patient.lacHeadFace) headParts.push(`ใบหน้า/คิ้ว/แก้ม/คาง${sideLabel(patient.lacHeadFaceSides)}`);
-    if (patient.lacHeadEye) headParts.push(`ดวงตา/เปลือกตา${sideLabel(patient.lacHeadEyeSides)}`);
-    if (patient.lacHeadEar) headParts.push(`ใบหู${sideLabel(patient.lacHeadEarSides)}`);
-    if (patient.lacHeadNoseMouth) headParts.push(`จมูก/ปาก/ลิ้น${sideLabel(patient.lacHeadNoseMouthSides)}`);
+    if (patient.lacHeadScalp) headParts.push(`หนังศีรษะ/หน้าผาก${sideLabel(patient.lacHeadScalpSides, patient.lacHeadScalpInjuries)}`);
+    if (patient.lacHeadFace) headParts.push(`ใบหน้า/คิ้ว/แก้ม/คาง${sideLabel(patient.lacHeadFaceSides, patient.lacHeadFaceInjuries)}`);
+    if (patient.lacHeadEye) headParts.push(`ดวงตา/เปลือกตา${sideLabel(patient.lacHeadEyeSides, patient.lacHeadEyeInjuries)}`);
+    if (patient.lacHeadEar) headParts.push(`ใบหู${sideLabel(patient.lacHeadEarSides, patient.lacHeadEarInjuries)}`);
+    if (patient.lacHeadNoseMouth) headParts.push(`จมูก/ปาก/ลิ้น${sideLabel(patient.lacHeadNoseMouthSides, patient.lacHeadNoseMouthInjuries)}`);
     parts.push(`ศีรษะ/ใบหน้า: ${headParts.length > 0 ? headParts.join(', ') : 'มีบาดแผล'}`);
   }
-
-  // 2. Neck
   if (patient.lacParentNeck) {
     const neckParts = [];
-    if (patient.lacNeckFront) neckParts.push(`คอด้านหน้า${sideLabel(patient.lacNeckFrontSides)}`);
-    if (patient.lacNeckSide) neckParts.push(`คอด้านข้าง${sideLabel(patient.lacNeckSideSides)}`);
-    if (patient.lacNeckBack) neckParts.push(`ต้นคอด้านหลัง${sideLabel(patient.lacNeckBackSides)}`);
+    if (patient.lacNeckFront) neckParts.push(`คอด้านหน้า${sideLabel(patient.lacNeckFrontSides, patient.lacNeckFrontInjuries)}`);
+    if (patient.lacNeckSide) neckParts.push(`คอด้านข้าง${sideLabel(patient.lacNeckSideSides, patient.lacNeckSideInjuries)}`);
+    if (patient.lacNeckBack) neckParts.push(`ต้นคอด้านหลัง${sideLabel(patient.lacNeckBackSides, patient.lacNeckBackInjuries)}`);
     parts.push(`ลำคอ/ต้นคอ: ${neckParts.length > 0 ? neckParts.join(', ') : 'มีบาดแผล'}`);
   }
-
-  // 3. Chest & Upper Back
   if (patient.lacParentChest) {
     const chestParts = [];
-    if (patient.lacChestRibs) chestParts.push(`หน้าอก/ซี่โครง${sideLabel(patient.lacChestRibsSides)}`);
-    if (patient.lacChestUpperBack) chestParts.push(`หลังส่วนบน/สะบัก${sideLabel(patient.lacChestUpperBackSides)}`);
+    if (patient.lacChestRibs) chestParts.push(`หน้าอก/ซี่โครง${sideLabel(patient.lacChestRibsSides, patient.lacChestRibsInjuries)}`);
+    if (patient.lacChestUpperBack) chestParts.push(`หลังส่วนบน/สะบัก${sideLabel(patient.lacChestUpperBackSides, patient.lacChestUpperBackInjuries)}`);
     parts.push(`ทรวงอก/หลังส่วนบน: ${chestParts.length > 0 ? chestParts.join(', ') : 'มีบาดแผล'}`);
   }
-
-  // 4. Abdomen & Lower Back
   if (patient.lacParentAbdomen) {
     const abdParts = [];
-    if (patient.lacAbdWall) abdParts.push(`หน้าท้อง${sideLabel(patient.lacAbdWallSides)}`);
-    if (patient.lacAbdFlank) abdParts.push(`สีข้าง/บั้นเอว${sideLabel(patient.lacAbdFlankSides)}`);
-    if (patient.lacAbdLowerBack) abdParts.push(`หลังส่วนล่าง${sideLabel(patient.lacAbdLowerBackSides)}`);
-    if (patient.lacAbdButtock) abdParts.push(`ก้น/สะโพก${sideLabel(patient.lacAbdButtockSides)}`);
-    if (patient.lacAbdGenitalia) abdParts.push(`ขาหนีบ/อวัยวะเพศ${sideLabel(patient.lacAbdGenitaliaSides)}`);
+    if (patient.lacAbdWall) abdParts.push(`หน้าท้อง${sideLabel(patient.lacAbdWallSides, patient.lacAbdWallInjuries)}`);
+    if (patient.lacAbdFlank) abdParts.push(`สีข้าง/บั้นเอว${sideLabel(patient.lacAbdFlankSides, patient.lacAbdFlankInjuries)}`);
+    if (patient.lacAbdLowerBack) abdParts.push(`หลังส่วนล่าง${sideLabel(patient.lacAbdLowerBackSides, patient.lacAbdLowerBackInjuries)}`);
+    if (patient.lacAbdButtock) abdParts.push(`ก้น/สะโพก${sideLabel(patient.lacAbdButtockSides, patient.lacAbdButtockInjuries)}`);
+    if (patient.lacAbdGenitalia) abdParts.push(`ขาหนีบ/อวัยวะเพศ${sideLabel(patient.lacAbdGenitaliaSides, patient.lacAbdGenitaliaInjuries)}`);
     parts.push(`ช่องท้อง/หลังส่วนล่าง: ${abdParts.length > 0 ? abdParts.join(', ') : 'มีบาดแผล'}`);
   }
-
-  // 5. Upper Extremity
   if (patient.lacParentUpperExtremity) {
     const armParts = [];
-    if (patient.lacArmShoulder) armParts.push(`ไหล่/ต้นแขน${sideLabel(patient.lacArmShoulderSides)}`);
-    if (patient.lacArmElbow) armParts.push(`ข้อศอก/แขนท่อนล่าง${sideLabel(patient.lacArmElbowSides)}`);
-    if (patient.lacArmWrist) armParts.push(`ข้อมือ/ฝ่ามือ/หลังมือ${sideLabel(patient.lacArmWristSides)}`);
-    if (patient.lacArmFingers) armParts.push(`นิ้วมือ${fmtDigitsBySide(patient.lacArmFingersLeftDigits, patient.lacArmFingersRightDigits, patient.lacArmFingersSides, patient.lacArmFingersDigits)}`);
+    if (patient.lacArmShoulder) armParts.push(`ไหล่/ต้นแขน${sideLabel(patient.lacArmShoulderSides, patient.lacArmShoulderInjuries)}`);
+    if (patient.lacArmElbow) armParts.push(`ข้อศอก/แขนท่อนล่าง${sideLabel(patient.lacArmElbowSides, patient.lacArmElbowInjuries)}`);
+    if (patient.lacArmWrist) armParts.push(`ข้อมือ/ฝ่ามือ/หลังมือ${sideLabel(patient.lacArmWristSides, patient.lacArmWristInjuries)}`);
+    if (patient.lacArmFingers) armParts.push(`นิ้วมือ${fmtDigitsBySide(patient.lacArmFingersLeftDigits, patient.lacArmFingersRightDigits, patient.lacArmFingersSides, patient.lacArmFingersDigits, patient.lacArmFingersInjuries)}`);
     parts.push(`แขน/มือ: ${armParts.length > 0 ? armParts.join(', ') : 'มีบาดแผล'}`);
   }
-
-  // 6. Lower Extremity
   if (patient.lacParentLowerExtremity) {
     const legParts = [];
-    if (patient.lacLegThigh) legParts.push(`ต้นขา${sideLabel(patient.lacLegThighSides)}`);
-    if (patient.lacLegKneeShin) legParts.push(`เข่า/หน้าแข้ง/น่อง${sideLabel(patient.lacLegKneeShinSides)}`);
-    if (patient.lacLegAnkleFoot) legParts.push(`ข้อเท้า/เท้า${sideLabel(patient.lacLegAnkleFootSides)}`);
-    if (patient.lacLegToes) legParts.push(`นิ้วเท้า${fmtDigitsBySide(patient.lacLegToesLeftDigits, patient.lacLegToesRightDigits, patient.lacLegToesSides, patient.lacLegToesDigits)}`);
+    if (patient.lacLegThigh) legParts.push(`ต้นขา${sideLabel(patient.lacLegThighSides, patient.lacLegThighInjuries)}`);
+    if (patient.lacLegKneeShin) legParts.push(`เข่า/หน้าแข้ง/น่อง${sideLabel(patient.lacLegKneeShinSides, patient.lacLegKneeShinInjuries)}`);
+    if (patient.lacLegAnkleFoot) legParts.push(`ข้อเท้า/เท้า${sideLabel(patient.lacLegAnkleFootSides, patient.lacLegAnkleFootInjuries)}`);
+    if (patient.lacLegToes) legParts.push(`นิ้วเท้า${fmtDigitsBySide(patient.lacLegToesLeftDigits, patient.lacLegToesRightDigits, patient.lacLegToesSides, patient.lacLegToesDigits, patient.lacLegToesInjuries)}`);
     parts.push(`ขา/เท้า: ${legParts.length > 0 ? legParts.join(', ') : 'มีบาดแผล'}`);
   }
-
-  // 7. Other Location
   if (patient.lacParentOther) {
     parts.push(`ตำแหน่งอื่นๆ: ${patient.lacOtherLocationDetail || 'ระบุตำแหน่งอื่น'}`);
   }
-
-  return parts.length > 0 ? parts.join(' | ') : 'ไม่ได้ระบุตำแหน่งบาดแผลชัดเจน';
+  return parts.length > 0 ? parts.join(' | ') : 'ยังไม่ระบุตำแหน่งเฉพาะ';
 }
 
 // --- Rapid Note Generator (5 Standardized Sections) ---
@@ -415,7 +408,7 @@ function renderLacerationRapidHpi(patient) {
 [History of Present Illness (HPI)]
 • สาเหตุและระยะเวลา: ${formatLacCauses(patient)} | เป็นมา ${durationStr}
 • อาการนำก่อนเกิดเหตุ: ${formatLacProdrome(patient)}
-• ตำแหน่งบาดแผล: ${formatLacAnatomy(patient)}
+• ตำแหน่งบาดเจ็บและชนิดการบาดเจ็บ: ${formatLacAnatomy(patient)}
 • สถานะเลือดออกในขณะนี้: ${formatLacBleedingStatus(patient)}
 • สิ่งปนเปื้อนในบาดแผล: ${formatLacContaminants(patient)}
 • ระดับความปวดบริเวณแผล (Pain Score): ${painScoreStr}
@@ -429,7 +422,10 @@ ${negList.map(n => `  - ${n}`).join('\n')}
 [Past Medical History & Medications]
 • สถานะประวัติ รพ.ราชบุรี: ${hospLabel}
 • ประวัติวัคซีนบาดทะยัก: ${formatLacTetanus(patient)}
-• ประวัติยาละลายลิ่มเลือด/เลือดหยุดยาก: ${formatLacAntithrombotic(patient)}
+• ประวัติยาละลายลิ่มเลือด/เลือดหยุดยาก: ${formatLacAntithrombotic(patient)}${(() => {
+    const pregMap = { not_pregnant: 'ไม่ได้ตั้งครรภ์ / ประจำเดือนมาปกติ', suspected_or_missed: 'ขาดประจำเดือน / สงสัยอาจตั้งครรภ์', confirmed_pregnant: 'ยืนยันกำลังตั้งครรภ์', menopause_or_hysterectomy: 'วัยหมดประจำเดือน / ผ่าตัดมดลูกแล้ว', unknown: 'ไม่ทราบ' };
+    return (isLacFemalePatient(patient) && (patient.lacLmpDate || patient.lacPregnancyStatus)) ? `\n• ประวัติสตรี: LMP ${patient.lacLmpDate || 'ไม่ระบุ'} (${pregMap[patient.lacPregnancyStatus] || 'ไม่ระบุสถานะ'})` : '';
+  })()}
 • โรคประจำตัว (U/D): ${udDisplay}
 • ยาประจำตัว (Current Meds): ${medsText}
 • ประวัติแพ้ยา/แพ้อาหาร (Allergies): ${allergyDisplay}
@@ -461,7 +457,7 @@ function renderLacerationNarrative(patient) {
   const contStr = formatLacContaminants(patient);
   const tetStr = formatLacTetanus(patient);
 
-  let note = `ผู้ป่วย${patient.gender || ''} อายุ ${patient.age || 'ไม่ระบุ'} ปี มารับการตรวจที่ห้องฉุกเฉินด้วยบาดแผลฉีกขาด / มีเลือดออก สาเหตุเกิดจาก${causeStr} เป็นมาประมาณ ${durStr} ก่อนมารพ. ตรวจพบบาดแผลบริเวณ: ${anatStr} สถานะเลือดออกคือ${bleedStr} สภาพแผลคือ${contStr}`;
+  let note = `ผู้ป่วย${patient.gender || ''} อายุ ${patient.age || 'ไม่ระบุ'} ปี มารับการตรวจที่ห้องฉุกเฉินด้วยบาดแผลฉีกขาด / มีเลือดออก สาเหตุเกิดจาก${causeStr} เป็นมาประมาณ ${durStr} ก่อนมารพ. ตรวจพบตำแหน่งบาดเจ็บและชนิดการบาดเจ็บ: ${anatStr} สถานะเลือดออกคือ${bleedStr} สภาพแผลคือ${contStr}`;
 
   const headSigns = Array.isArray(patient.lacHeadSigns) ? patient.lacHeadSigns : [];
   const upperExtSigns = Array.isArray(patient.lacUpperExtSigns) ? patient.lacUpperExtSigns : [];
@@ -483,6 +479,10 @@ function renderLacerationNarrative(patient) {
   }
 
   note += ` ประวัติวัคซีนบาดทะยัก: ${tetStr}`;
+  if (isLacFemalePatient(patient) && (patient.lacLmpDate || patient.lacPregnancyStatus)) {
+    const pregMap = { not_pregnant: 'ไม่ได้ตั้งครรภ์ / ประจำเดือนมาปกติ', suspected_or_missed: 'ขาดประจำเดือน / สงสัยอาจตั้งครรภ์', confirmed_pregnant: 'ยืนยันกำลังตั้งครรภ์', menopause_or_hysterectomy: 'วัยหมดประจำเดือน / ผ่าตัดมดลูกแล้ว', unknown: 'ไม่ทราบ' };
+    note += ` ประวัติสตรี: LMP ${patient.lacLmpDate || 'ไม่ระบุ'} (${pregMap[patient.lacPregnancyStatus] || 'ไม่ระบุสถานะ'})`;
+  }
   return note;
 }
 
@@ -637,6 +637,69 @@ function generateLacerationCds(patient, { rfs, ddxList = [], workupList = [], ma
   return ddxList.join('\n');
 }
 
+// --- Female LMP & Anatomy Helpers ---
+function isLacFemalePatient(p) {
+  if (!p) return false;
+  if (p.gender === 'หญิง' || p.gender === 'female') return true;
+  if (p.gender === 'ชาย' || p.gender === 'male') return false;
+  return /นาง|น\.ส\.|ด\.ญ\.|\(หญิง\)|Mrs|Miss|Ms/i.test(`${p.patientTitle || ''} ${p.name || p.patientName || ''}`);
+}
+function toggleLacFemaleSection(forceShow) {
+  const sec = document.getElementById('lacFemaleSection');
+  if (!sec) return;
+  const show = typeof forceShow === 'boolean' ? forceShow : sec.classList.contains('hidden');
+  sec.classList.toggle('hidden', !show);
+  if (!show) {
+    const lmp = document.getElementById('lacLmpDate'); if (lmp) lmp.value = '';
+    const preg = document.getElementById('lacPregnancyStatus'); if (preg) preg.value = 'not_pregnant';
+  }
+}
+function checkAndDisplayLacLmp(patient) {
+  if (patient && (patient.gender || patient.name || patient.patientName || patient.patientTitle)) {
+    toggleLacFemaleSection(isLacFemalePatient(patient)); return;
+  }
+  const titleVal = document.getElementById('patientTitleSelect')?.value || '';
+  toggleLacFemaleSection(/นาง|น\.ส\.|ด\.ญ\.|\(หญิง\)|Mrs|Miss|Ms/i.test(titleVal));
+}
+function renderLacPart(id, label, hasCenter = false) {
+  return `<div class="p-2.5 rounded-xl border border-slate-200 bg-white">
+  <label class="flex items-center cursor-pointer">
+    <input type="checkbox" id="${id}" onchange="toggleLacGroup('${id}SidesContainer', this.checked)" class="text-medical-600 mr-2 h-4 w-4 rounded">
+    <span class="text-xs sm:text-sm font-medium text-slate-800">${label}</span>
+  </label>
+  <div id="${id}SidesContainer" class="hidden mt-2 pl-6 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs border-t border-slate-100 pt-2">
+    <span class="text-[11px] font-semibold text-slate-500">ด้าน:</span>
+    <label class="inline-flex items-center cursor-pointer"><input type="checkbox" name="${id}Sides" value="left" class="mr-1 text-medical-600 rounded"> ซ้าย</label>
+    <label class="inline-flex items-center cursor-pointer"><input type="checkbox" name="${id}Sides" value="right" class="mr-1 text-medical-600 rounded"> ขวา</label>
+    ${hasCenter ? `<label class="inline-flex items-center cursor-pointer"><input type="checkbox" name="${id}Sides" value="center" class="mr-1 text-medical-600 rounded"> ตรงกลาง</label>` : ''}
+    <span class="text-slate-300 mx-1.5">|</span>
+    <span class="text-[11px] font-semibold text-slate-500">การบาดเจ็บ:</span>
+    <label class="inline-flex items-center cursor-pointer"><input type="checkbox" name="${id}Injuries" value="wound" class="mr-1 text-medical-600 rounded"> มีแผล</label>
+    <label class="inline-flex items-center cursor-pointer"><input type="checkbox" name="${id}Injuries" value="pain_swelling" class="mr-1 text-medical-600 rounded"> ปวด/บวม</label>
+    <label class="inline-flex items-center cursor-pointer"><input type="checkbox" name="${id}Injuries" value="deformity" class="mr-1 text-medical-600 rounded"> ผิดรูป</label>
+  </div>
+</div>`;
+}
+function renderLacDigits(id, label) {
+  const digits = [['thumb','โป้ง'],['index','ชี้'],['middle','กลาง'],['ring','นาง'],['little','ก้อย']];
+  const row = (sideName, sideLabel) => `<div class="flex items-center flex-wrap gap-2"><span class="text-[11px] font-semibold text-slate-500 w-9">${sideLabel}:</span>${digits.map(([v,t]) => `<label class="inline-flex items-center cursor-pointer"><input type="checkbox" name="${id}${sideName}" value="${v}" class="mr-1 text-medical-600 rounded"> ${t}</label>`).join('')}</div>`;
+  return `<div class="p-2.5 rounded-xl border border-slate-200 bg-white">
+  <label class="flex items-center cursor-pointer">
+    <input type="checkbox" id="${id}" onchange="toggleLacGroup('${id}SidesContainer', this.checked)" class="text-medical-600 mr-2 h-4 w-4 rounded">
+    <span class="text-xs sm:text-sm font-medium text-slate-800">${label}</span>
+  </label>
+  <div id="${id}SidesContainer" class="hidden mt-2 pl-6 flex flex-col gap-1.5 text-xs border-t border-slate-100 pt-2">
+    ${row('LeftDigits','ซ้าย')}${row('RightDigits','ขวา')}
+    <div class="flex items-center flex-wrap gap-x-3 gap-y-1 pt-1 border-t border-slate-50">
+      <span class="text-[11px] font-semibold text-slate-500">การบาดเจ็บ:</span>
+      <label class="inline-flex items-center cursor-pointer"><input type="checkbox" name="${id}Injuries" value="wound" class="mr-1 text-medical-600 rounded"> มีแผล</label>
+      <label class="inline-flex items-center cursor-pointer"><input type="checkbox" name="${id}Injuries" value="pain_swelling" class="mr-1 text-medical-600 rounded"> ปวด/บวม</label>
+      <label class="inline-flex items-center cursor-pointer"><input type="checkbox" name="${id}Injuries" value="deformity" class="mr-1 text-medical-600 rounded"> ผิดรูป</label>
+    </div>
+  </div>
+</div>`;
+}
+
 // --- Patient Form HTML Template ---
 const LACERATION_FORM_HTML = `
 <div id="cc-laceration-bleeding-section" class="hidden space-y-6">
@@ -699,8 +762,8 @@ const LACERATION_FORM_HTML = `
       </label>
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
         <div>
-          <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-            <input type="checkbox" name="lacCauses" value="sharp_object" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4 rounded flex-shrink-0"
+          <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+            <input type="checkbox" name="lacCauses" value="sharp_object" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0"
               onchange="toggleLacGroup('lacCauseSharpDetailContainer', this.checked)">
             <span class="text-xs sm:text-sm text-slate-800">ของมีคมบาด หรือทิ่มแทง</span>
           </label>
@@ -711,8 +774,8 @@ const LACERATION_FORM_HTML = `
         </div>
 
         <div>
-          <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-            <input type="checkbox" name="lacCauses" value="machinery_tools" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4 rounded flex-shrink-0"
+          <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+            <input type="checkbox" name="lacCauses" value="machinery_tools" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0"
               onchange="toggleLacGroup('lacCauseMachineryDetailContainer', this.checked)">
             <span class="text-xs sm:text-sm text-slate-800">เครื่องจักรกล หรืออุปกรณ์ไฟฟ้า/การเกษตร</span>
           </label>
@@ -723,8 +786,8 @@ const LACERATION_FORM_HTML = `
         </div>
 
         <div>
-          <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-            <input type="checkbox" name="lacCauses" value="blunt_impact" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4 rounded flex-shrink-0"
+          <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+            <input type="checkbox" name="lacCauses" value="blunt_impact" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0"
               onchange="toggleLacGroup('lacCauseBluntDetailContainer', this.checked)">
             <span class="text-xs sm:text-sm text-slate-800">ถูกกระแทกด้วยของแข็ง</span>
           </label>
@@ -735,15 +798,15 @@ const LACERATION_FORM_HTML = `
         </div>
 
         <div>
-          <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer h-full">
-            <input type="checkbox" name="lacCauses" value="fall_collision" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4 rounded flex-shrink-0">
+          <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer h-full">
+            <input type="checkbox" name="lacCauses" value="fall_collision" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
             <span class="text-xs sm:text-sm text-slate-800">หกล้ม หรือชนกระแทกจนเกิดแผลแตก</span>
           </label>
         </div>
 
         <div>
-          <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-            <input type="checkbox" name="lacCauses" value="puncture_wound" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4 rounded flex-shrink-0"
+          <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+            <input type="checkbox" name="lacCauses" value="puncture_wound" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0"
               onchange="toggleLacGroup('lacCausePunctureDetailContainer', this.checked)">
             <span class="text-xs sm:text-sm text-slate-800">ถูกไม้ ตะปู เสี้ยน หรือของแหลมทิ่มตำ</span>
           </label>
@@ -754,8 +817,8 @@ const LACERATION_FORM_HTML = `
         </div>
 
         <div>
-          <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-            <input type="checkbox" name="lacCauses" value="other_cause" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4 rounded flex-shrink-0"
+          <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+            <input type="checkbox" name="lacCauses" value="other_cause" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0"
               onchange="toggleLacGroup('lacCauseOtherDetailContainer', this.checked)">
             <span class="text-xs sm:text-sm text-slate-800">สาเหตุอื่นๆ</span>
           </label>
@@ -773,16 +836,16 @@ const LACERATION_FORM_HTML = `
         1.3 สิ่งปนเปื้อน หรือสิ่งแปลกปลอมในบาดแผล (เลือกได้หลายข้อหากพบ):
       </label>
       <div class="space-y-2">
-        <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-          <input type="checkbox" name="lacContaminants" value="foreign_body_retained" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4 rounded flex-shrink-0">
+        <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+          <input type="checkbox" name="lacContaminants" value="foreign_body_retained" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
           <span class="text-xs sm:text-sm text-slate-800">มีวัตถุหักคา หรือปักคาอยู่ในบาดแผล (เช่น เศษแก้ว, เสี้ยนไม้, โลหะ, ของมีคม)</span>
         </label>
-        <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-          <input type="checkbox" name="lacContaminants" value="dirty_contaminated" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4 rounded flex-shrink-0">
+        <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+          <input type="checkbox" name="lacContaminants" value="dirty_contaminated" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
           <span class="text-xs sm:text-sm text-slate-800">บาดแผลปนเปื้อนดินโคลน สนิม น้ำสกปรก หรือเศษอาหาร/มูลสัตว์</span>
         </label>
-        <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-          <input type="checkbox" name="lacContaminants" value="clean_wound" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4 rounded flex-shrink-0">
+        <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+          <input type="checkbox" name="lacContaminants" value="clean_wound" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
           <span class="text-xs sm:text-sm text-slate-800">บาดแผลสะอาด ไม่มีสิ่งแปลกปลอมค้างอยู่</span>
         </label>
       </div>
@@ -794,16 +857,16 @@ const LACERATION_FORM_HTML = `
         1.4 สถานะเลือดออกในขณะนี้ (เลือกข้อที่ตรงกับปัจจุบันมากที่สุด) <span class="text-rose-500">*</span>
       </label>
       <div class="space-y-2">
-        <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-          <input type="radio" name="lacBleedingStatus" value="active_spurting" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4 flex-shrink-0">
+        <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+          <input type="radio" name="lacBleedingStatus" value="active_spurting" class="text-medical-600 focus:ring-medical-500 h-4 w-4 flex-shrink-0">
           <span class="text-xs sm:text-sm font-medium text-slate-900">เลือดยังไหลพุ่งเป็นจังหวะตามชีพจร หรือไหลทะลักออกมามากผิดปกติ (กดห้ามเลือดแล้วยังชุ่มผ้าอย่างรวดเร็ว)</span>
         </label>
-        <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-          <input type="radio" name="lacBleedingStatus" value="active_oozing" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4 flex-shrink-0">
+        <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+          <input type="radio" name="lacBleedingStatus" value="active_oozing" class="text-medical-600 focus:ring-medical-500 h-4 w-4 flex-shrink-0">
           <span class="text-xs sm:text-sm text-slate-800">เลือดยังไหลซึมออกมาเรื่อยๆ ต่อเนื่อง</span>
         </label>
-        <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-          <input type="radio" name="lacBleedingStatus" value="stopped" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4 flex-shrink-0">
+        <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+          <input type="radio" name="lacBleedingStatus" value="stopped" class="text-medical-600 focus:ring-medical-500 h-4 w-4 flex-shrink-0">
           <span class="text-xs sm:text-sm text-slate-800">เลือดหยุดไหลแล้ว หรือมีเพียงคราบเลือดซึมเล็กน้อย</span>
         </label>
       </div>
@@ -815,12 +878,12 @@ const LACERATION_FORM_HTML = `
         1.5 ก่อนเกิดบาดแผล มีอาการผิดปกตินำมาก่อนหรือไม่:
       </label>
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-        <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-          <input type="radio" name="lacProdrome" value="no_prodrome" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4 flex-shrink-0">
+        <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+          <input type="radio" name="lacProdrome" value="no_prodrome" class="text-medical-600 focus:ring-medical-500 h-4 w-4 flex-shrink-0">
           <span class="text-xs sm:text-sm text-slate-800">ไม่มีอาการผิดปกตินำมาก่อน (เกิดจากอุบัติเหตุโดยตรง)</span>
         </label>
-        <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-          <input type="radio" name="lacProdrome" value="has_prodrome" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4 flex-shrink-0">
+        <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+          <input type="radio" name="lacProdrome" value="has_prodrome" class="text-medical-600 focus:ring-medical-500 h-4 w-4 flex-shrink-0">
           <span class="text-xs sm:text-sm text-slate-800">มีอาการวูบ หน้ามืด เวียนศีรษะ เจ็บหน้าอก หรือแขนขาอ่อนแรงนำมาก่อนแล้วจึงเกิดเหตุ</span>
         </label>
       </div>
@@ -834,7 +897,7 @@ const LACERATION_FORM_HTML = `
         <i data-lucide="user-check" class="w-5 h-5"></i>
       </div>
       <div>
-        <h2 class="text-base font-bold text-slate-900">2. ตำแหน่งของร่างกายที่มีบาดแผล และอาการบาดเจ็บร่วม</h2>
+        <h2 class="text-base font-bold text-slate-900">2. ตำแหน่งของร่างกายที่ได้รับบาดเจ็บและชนิดการบาดเจ็บ</h2>
         <p class="text-xs text-slate-500">ติ๊กเลือกเฉพาะส่วนของร่างกายที่มีแผล และระบุด้าน (ซ้าย/ขวา/กลาง) แยกตามจุดได้อย่างอิสระ</p>
       </div>
     </div>
@@ -853,77 +916,37 @@ const LACERATION_FORM_HTML = `
 
         <div id="lacHeadSubGroup" class="hidden pl-4 sm:pl-6 space-y-4 border-l-2 border-medical-200">
           <div>
-            <p class="text-xs text-slate-600 font-semibold mb-2">จุดที่มีบาดแผล (เลือกได้หลายจุด พร้อมระบุด้าน):</p>
+            <p class="text-xs text-slate-600 font-semibold mb-2">จุดที่บาดเจ็บ (เลือกได้หลายจุด พร้อมระบุด้านและชนิดการบาดเจ็บ):</p>
             <div class="space-y-2">
-              <div class="p-2.5 rounded-xl border border-slate-200 bg-white">
-                <label class="flex items-center cursor-pointer">
-                  <input type="checkbox" id="lacHeadScalp" onchange="toggleLacGroup('lacHeadScalpSidesContainer', this.checked)" class="text-medical-600 mr-2 h-4 w-4 rounded">
-                  <span class="text-xs sm:text-sm font-medium text-slate-800">หนังศีรษะ / หน้าผาก / ท้ายทอย</span>
-                </label>
-                <div id="lacHeadScalpSidesContainer" class="hidden mt-2 pl-6 flex gap-4 text-xs">
-                  <label class="flex items-center cursor-pointer"><input type="checkbox" name="lacHeadScalpSides" value="left" class="mr-1"> ซ้าย</label> <label class="flex items-center cursor-pointer"><input type="checkbox" name="lacHeadScalpSides" value="right" class="mr-1"> ขวา</label> <label class="flex items-center cursor-pointer"><input type="checkbox" name="lacHeadScalpSides" value="center" class="mr-1"> ตรงกลาง</label>
-                </div>
-              </div>
+              ${renderLacPart('lacHeadScalp', 'หนังศีรษะ / หน้าผาก / ท้ายทอย', true)}
 
-              <div class="p-2.5 rounded-xl border border-slate-200 bg-white">
-                <label class="flex items-center cursor-pointer">
-                  <input type="checkbox" id="lacHeadFace" onchange="toggleLacGroup('lacHeadFaceSidesContainer', this.checked)" class="text-medical-600 mr-2 h-4 w-4 rounded">
-                  <span class="text-xs sm:text-sm font-medium text-slate-800">ใบหน้า / คิ้ว / แก้ม / คาง</span>
-                </label>
-                <div id="lacHeadFaceSidesContainer" class="hidden mt-2 pl-6 flex gap-4 text-xs">
-                  <label class="flex items-center cursor-pointer"><input type="checkbox" name="lacHeadFaceSides" value="left" class="mr-1"> ซ้าย</label> <label class="flex items-center cursor-pointer"><input type="checkbox" name="lacHeadFaceSides" value="right" class="mr-1"> ขวา</label> <label class="flex items-center cursor-pointer"><input type="checkbox" name="lacHeadFaceSides" value="center" class="mr-1"> ตรงกลาง</label>
-                </div>
-              </div>
+              ${renderLacPart('lacHeadFace', 'ใบหน้า / คิ้ว / แก้ม / คาง', true)}
 
-              <div class="p-2.5 rounded-xl border border-slate-200 bg-white">
-                <label class="flex items-center cursor-pointer">
-                  <input type="checkbox" id="lacHeadEye" onchange="toggleLacGroup('lacHeadEyeSidesContainer', this.checked)" class="text-medical-600 mr-2 h-4 w-4 rounded">
-                  <span class="text-xs sm:text-sm font-medium text-slate-800">ดวงตา / เปลือกตา</span>
-                </label>
-                <div id="lacHeadEyeSidesContainer" class="hidden mt-2 pl-6 flex gap-4 text-xs">
-                  <label class="flex items-center cursor-pointer"><input type="checkbox" name="lacHeadEyeSides" value="left" class="mr-1"> ซ้าย</label> <label class="flex items-center cursor-pointer"><input type="checkbox" name="lacHeadEyeSides" value="right" class="mr-1"> ขวา</label>
-                </div>
-              </div>
+              ${renderLacPart('lacHeadEye', 'ดวงตา / เปลือกตา', false)}
 
-              <div class="p-2.5 rounded-xl border border-slate-200 bg-white">
-                <label class="flex items-center cursor-pointer">
-                  <input type="checkbox" id="lacHeadEar" onchange="toggleLacGroup('lacHeadEarSidesContainer', this.checked)" class="text-medical-600 mr-2 h-4 w-4 rounded">
-                  <span class="text-xs sm:text-sm font-medium text-slate-800">ใบหู</span>
-                </label>
-                <div id="lacHeadEarSidesContainer" class="hidden mt-2 pl-6 flex gap-4 text-xs">
-                  <label class="flex items-center cursor-pointer"><input type="checkbox" name="lacHeadEarSides" value="left" class="mr-1"> ซ้าย</label> <label class="flex items-center cursor-pointer"><input type="checkbox" name="lacHeadEarSides" value="right" class="mr-1"> ขวา</label>
-                </div>
-              </div>
+              ${renderLacPart('lacHeadEar', 'ใบหู', false)}
 
-              <div class="p-2.5 rounded-xl border border-slate-200 bg-white">
-                <label class="flex items-center cursor-pointer">
-                  <input type="checkbox" id="lacHeadNoseMouth" onchange="toggleLacGroup('lacHeadNoseMouthSidesContainer', this.checked)" class="text-medical-600 mr-2 h-4 w-4 rounded">
-                  <span class="text-xs sm:text-sm font-medium text-slate-800">จมูก / ริมฝีปาก / ลิ้น / ในช่องปาก</span>
-                </label>
-                <div id="lacHeadNoseMouthSidesContainer" class="hidden mt-2 pl-6 flex gap-4 text-xs">
-                  <label class="flex items-center cursor-pointer"><input type="checkbox" name="lacHeadNoseMouthSides" value="left" class="mr-1"> ซ้าย</label> <label class="flex items-center cursor-pointer"><input type="checkbox" name="lacHeadNoseMouthSides" value="right" class="mr-1"> ขวา</label> <label class="flex items-center cursor-pointer"><input type="checkbox" name="lacHeadNoseMouthSides" value="center" class="mr-1"> ตรงกลาง</label>
-                </div>
-              </div>
+              ${renderLacPart('lacHeadNoseMouth', 'จมูก / ริมฝีปาก / ลิ้น / ในช่องปาก', true)}
             </div>
           </div>
 
           <div>
             <p class="text-xs text-slate-600 font-semibold mb-1">อาการสำคัญที่พบร่วมด้วย (เลือกได้หลายข้อหากมีอาการ):</p>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              <label class="selectable-card flex items-center p-2.5 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-                <input type="checkbox" name="lacHeadSigns" value="loss_of_consciousness" class="text-medical-600 mr-2 h-4 w-4 rounded flex-shrink-0">
+              <label class="selectable-card gap-2.5 flex items-center p-2.5 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+                <input type="checkbox" name="lacHeadSigns" value="loss_of_consciousness" class="text-medical-600 h-4 w-4 rounded flex-shrink-0">
                 <span class="text-xs text-slate-800">มีอาการสลบ หมดสติไปชั่วขณะ หรือจำเหตุการณ์ไม่ได้</span>
               </label>
-              <label class="selectable-card flex items-center p-2.5 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-                <input type="checkbox" name="lacHeadSigns" value="severe_headache_vomit" class="text-medical-600 mr-2 h-4 w-4 rounded flex-shrink-0">
+              <label class="selectable-card gap-2.5 flex items-center p-2.5 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+                <input type="checkbox" name="lacHeadSigns" value="severe_headache_vomit" class="text-medical-600 h-4 w-4 rounded flex-shrink-0">
                 <span class="text-xs text-slate-800">ปวดศีรษะรุนแรง มึนงงสับสน หรือมีอาเจียน</span>
               </label>
-              <label class="selectable-card flex items-center p-2.5 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-                <input type="checkbox" name="lacHeadSigns" value="vision_problem_eye_injury" class="text-medical-600 mr-2 h-4 w-4 rounded flex-shrink-0">
+              <label class="selectable-card gap-2.5 flex items-center p-2.5 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+                <input type="checkbox" name="lacHeadSigns" value="vision_problem_eye_injury" class="text-medical-600 h-4 w-4 rounded flex-shrink-0">
                 <span class="text-xs text-slate-800">ตาพร่ามัว มองเห็นภาพซ้อน หรือบาดแผลถูกดวงตาโดยตรง</span>
               </label>
-              <label class="selectable-card flex items-center p-2.5 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-                <input type="checkbox" name="lacHeadSigns" value="csf_leak_ear_nose" class="text-medical-600 mr-2 h-4 w-4 rounded flex-shrink-0">
+              <label class="selectable-card gap-2.5 flex items-center p-2.5 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+                <input type="checkbox" name="lacHeadSigns" value="csf_leak_ear_nose" class="text-medical-600 h-4 w-4 rounded flex-shrink-0">
                 <span class="text-xs text-slate-800">มีเลือดหรือน้ำใสไหลออกจากรูหู หรือรูจมูก</span>
               </label>
             </div>
@@ -944,53 +967,29 @@ const LACERATION_FORM_HTML = `
 
         <div id="lacNeckSubGroup" class="hidden pl-4 sm:pl-6 space-y-4 border-l-2 border-medical-200">
           <div>
-            <p class="text-xs text-slate-600 font-semibold mb-2">จุดที่มีบาดแผล (เลือกได้หลายจุด พร้อมระบุด้าน):</p>
+            <p class="text-xs text-slate-600 font-semibold mb-2">จุดที่บาดเจ็บ (เลือกได้หลายจุด พร้อมระบุด้านและชนิดการบาดเจ็บ):</p>
             <div class="space-y-2">
-              <div class="p-2.5 rounded-xl border border-slate-200 bg-white">
-                <label class="flex items-center cursor-pointer">
-                  <input type="checkbox" id="lacNeckFront" onchange="toggleLacGroup('lacNeckFrontSidesContainer', this.checked)" class="text-medical-600 mr-2 h-4 w-4 rounded">
-                  <span class="text-xs sm:text-sm font-medium text-slate-800">ลำคอด้านหน้า</span>
-                </label>
-                <div id="lacNeckFrontSidesContainer" class="hidden mt-2 pl-6 flex gap-4 text-xs">
-                  <label class="flex items-center cursor-pointer"><input type="checkbox" name="lacNeckFrontSides" value="left" class="mr-1"> ซ้าย</label> <label class="flex items-center cursor-pointer"><input type="checkbox" name="lacNeckFrontSides" value="right" class="mr-1"> ขวา</label> <label class="flex items-center cursor-pointer"><input type="checkbox" name="lacNeckFrontSides" value="center" class="mr-1"> ตรงกลาง</label>
-                </div>
-              </div>
+              ${renderLacPart('lacNeckFront', 'ลำคอด้านหน้า', true)}
 
-              <div class="p-2.5 rounded-xl border border-slate-200 bg-white">
-                <label class="flex items-center cursor-pointer">
-                  <input type="checkbox" id="lacNeckSide" onchange="toggleLacGroup('lacNeckSideSidesContainer', this.checked)" class="text-medical-600 mr-2 h-4 w-4 rounded">
-                  <span class="text-xs sm:text-sm font-medium text-slate-800">ลำคอด้านข้าง</span>
-                </label>
-                <div id="lacNeckSideSidesContainer" class="hidden mt-2 pl-6 flex gap-4 text-xs">
-                  <label class="flex items-center cursor-pointer"><input type="checkbox" name="lacNeckSideSides" value="left" class="mr-1"> ซ้าย</label> <label class="flex items-center cursor-pointer"><input type="checkbox" name="lacNeckSideSides" value="right" class="mr-1"> ขวา</label>
-                </div>
-              </div>
+              ${renderLacPart('lacNeckSide', 'ลำคอด้านข้าง', false)}
 
-              <div class="p-2.5 rounded-xl border border-slate-200 bg-white">
-                <label class="flex items-center cursor-pointer">
-                  <input type="checkbox" id="lacNeckBack" onchange="toggleLacGroup('lacNeckBackSidesContainer', this.checked)" class="text-medical-600 mr-2 h-4 w-4 rounded">
-                  <span class="text-xs sm:text-sm font-medium text-slate-800">ต้นคอด้านหลัง</span>
-                </label>
-                <div id="lacNeckBackSidesContainer" class="hidden mt-2 pl-6 flex gap-4 text-xs">
-                  <label class="flex items-center cursor-pointer"><input type="checkbox" name="lacNeckBackSides" value="left" class="mr-1"> ซ้าย</label> <label class="flex items-center cursor-pointer"><input type="checkbox" name="lacNeckBackSides" value="right" class="mr-1"> ขวา</label> <label class="flex items-center cursor-pointer"><input type="checkbox" name="lacNeckBackSides" value="center" class="mr-1"> ตรงกลาง</label>
-                </div>
-              </div>
+              ${renderLacPart('lacNeckBack', 'ต้นคอด้านหลัง', true)}
             </div>
           </div>
 
           <div>
             <p class="text-xs text-slate-600 font-semibold mb-1">อาการสำคัญที่พบร่วมด้วย (เลือกได้หลายข้อหากมีอาการ):</p>
             <div class="space-y-2">
-              <label class="selectable-card flex items-center p-2.5 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-                <input type="checkbox" name="lacNeckSigns" value="airway_dyspnea_stridor" class="text-medical-600 mr-2 h-4 w-4 rounded flex-shrink-0">
+              <label class="selectable-card gap-2.5 flex items-center p-2.5 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+                <input type="checkbox" name="lacNeckSigns" value="airway_dyspnea_stridor" class="text-medical-600 h-4 w-4 rounded flex-shrink-0">
                 <span class="text-xs text-slate-800">หายใจลำบาก กลืนลำบาก เสียงแหบ หรือมีฟองอากาศ/เสียงลมออกทางแผลที่คอ</span>
               </label>
-              <label class="selectable-card flex items-center p-2.5 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-                <input type="checkbox" name="lacNeckSigns" value="expanding_neck_mass" class="text-medical-600 mr-2 h-4 w-4 rounded flex-shrink-0">
+              <label class="selectable-card gap-2.5 flex items-center p-2.5 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+                <input type="checkbox" name="lacNeckSigns" value="expanding_neck_mass" class="text-medical-600 h-4 w-4 rounded flex-shrink-0">
                 <span class="text-xs text-slate-800">บริเวณแผลที่คอบวมโตขึ้นอย่างรวดเร็ว</span>
               </label>
-              <label class="selectable-card flex items-center p-2.5 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-                <input type="checkbox" name="lacNeckSigns" value="neck_pain_radiculopathy" class="text-medical-600 mr-2 h-4 w-4 rounded flex-shrink-0">
+              <label class="selectable-card gap-2.5 flex items-center p-2.5 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+                <input type="checkbox" name="lacNeckSigns" value="neck_pain_radiculopathy" class="text-medical-600 h-4 w-4 rounded flex-shrink-0">
                 <span class="text-xs text-slate-800">ปวดตึงต้นคอ หรือมีอาการชา/อ่อนแรงร้าวลงแขนขา</span>
               </label>
             </div>
@@ -1011,39 +1010,23 @@ const LACERATION_FORM_HTML = `
 
         <div id="lacChestSubGroup" class="hidden pl-4 sm:pl-6 space-y-4 border-l-2 border-medical-200">
           <div>
-            <p class="text-xs text-slate-600 font-semibold mb-2">จุดที่มีบาดแผล (เลือกได้หลายจุด พร้อมระบุด้าน):</p>
+            <p class="text-xs text-slate-600 font-semibold mb-2">จุดที่บาดเจ็บ (เลือกได้หลายจุด พร้อมระบุด้านและชนิดการบาดเจ็บ):</p>
             <div class="space-y-2">
-              <div class="p-2.5 rounded-xl border border-slate-200 bg-white">
-                <label class="flex items-center cursor-pointer">
-                  <input type="checkbox" id="lacChestRibs" onchange="toggleLacGroup('lacChestRibsSidesContainer', this.checked)" class="text-medical-600 mr-2 h-4 w-4 rounded">
-                  <span class="text-xs sm:text-sm font-medium text-slate-800">หน้าอก / ซี่โครง</span>
-                </label>
-                <div id="lacChestRibsSidesContainer" class="hidden mt-2 pl-6 flex gap-4 text-xs">
-                  <label class="flex items-center cursor-pointer"><input type="checkbox" name="lacChestRibsSides" value="left" class="mr-1"> ซ้าย</label> <label class="flex items-center cursor-pointer"><input type="checkbox" name="lacChestRibsSides" value="right" class="mr-1"> ขวา</label> <label class="flex items-center cursor-pointer"><input type="checkbox" name="lacChestRibsSides" value="center" class="mr-1"> ตรงกลาง</label>
-                </div>
-              </div>
+              ${renderLacPart('lacChestRibs', 'หน้าอก / ซี่โครง', true)}
 
-              <div class="p-2.5 rounded-xl border border-slate-200 bg-white">
-                <label class="flex items-center cursor-pointer">
-                  <input type="checkbox" id="lacChestUpperBack" onchange="toggleLacGroup('lacChestUpperBackSidesContainer', this.checked)" class="text-medical-600 mr-2 h-4 w-4 rounded">
-                  <span class="text-xs sm:text-sm font-medium text-slate-800">หลังส่วนบน / สะบัก</span>
-                </label>
-                <div id="lacChestUpperBackSidesContainer" class="hidden mt-2 pl-6 flex gap-4 text-xs">
-                  <label class="flex items-center cursor-pointer"><input type="checkbox" name="lacChestUpperBackSides" value="left" class="mr-1"> ซ้าย</label> <label class="flex items-center cursor-pointer"><input type="checkbox" name="lacChestUpperBackSides" value="right" class="mr-1"> ขวา</label> <label class="flex items-center cursor-pointer"><input type="checkbox" name="lacChestUpperBackSides" value="center" class="mr-1"> ตรงกลาง</label>
-                </div>
-              </div>
+              ${renderLacPart('lacChestUpperBack', 'หลังส่วนบน / สะบัก', true)}
             </div>
           </div>
 
           <div>
             <p class="text-xs text-slate-600 font-semibold mb-1">อาการสำคัญที่พบร่วมด้วย (เลือกได้หลายข้อหากมีอาการ):</p>
             <div class="space-y-2">
-              <label class="selectable-card flex items-center p-2.5 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-                <input type="checkbox" name="lacChestSigns" value="dyspnea_pleuritic_pain" class="text-medical-600 mr-2 h-4 w-4 rounded flex-shrink-0">
+              <label class="selectable-card gap-2.5 flex items-center p-2.5 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+                <input type="checkbox" name="lacChestSigns" value="dyspnea_pleuritic_pain" class="text-medical-600 h-4 w-4 rounded flex-shrink-0">
                 <span class="text-xs text-slate-800">หายใจหอบเหนื่อย แน่นหน้าอก หรือเจ็บแปล๊บเวลาหายใจเข้าลึกๆ</span>
               </label>
-              <label class="selectable-card flex items-center p-2.5 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-                <input type="checkbox" name="lacChestSigns" value="sucking_chest_wound" class="text-medical-600 mr-2 h-4 w-4 rounded flex-shrink-0">
+              <label class="selectable-card gap-2.5 flex items-center p-2.5 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+                <input type="checkbox" name="lacChestSigns" value="sucking_chest_wound" class="text-medical-600 h-4 w-4 rounded flex-shrink-0">
                 <span class="text-xs text-slate-800">แผลลึก หรือมีฟองอากาศ/เสียงลมดูดเข้า-ออกทางบาดแผล</span>
               </label>
             </div>
@@ -1064,73 +1047,33 @@ const LACERATION_FORM_HTML = `
 
         <div id="lacAbdomenSubGroup" class="hidden pl-4 sm:pl-6 space-y-4 border-l-2 border-medical-200">
           <div>
-            <p class="text-xs text-slate-600 font-semibold mb-2">จุดที่มีบาดแผล (เลือกได้หลายจุด พร้อมระบุด้าน):</p>
+            <p class="text-xs text-slate-600 font-semibold mb-2">จุดที่บาดเจ็บ (เลือกได้หลายจุด พร้อมระบุด้านและชนิดการบาดเจ็บ):</p>
             <div class="space-y-2">
-              <div class="p-2.5 rounded-xl border border-slate-200 bg-white">
-                <label class="flex items-center cursor-pointer">
-                  <input type="checkbox" id="lacAbdWall" onchange="toggleLacGroup('lacAbdWallSidesContainer', this.checked)" class="text-medical-600 mr-2 h-4 w-4 rounded">
-                  <span class="text-xs sm:text-sm font-medium text-slate-800">หน้าท้อง</span>
-                </label>
-                <div id="lacAbdWallSidesContainer" class="hidden mt-2 pl-6 flex gap-4 text-xs">
-                  <label class="flex items-center cursor-pointer"><input type="checkbox" name="lacAbdWallSides" value="left" class="mr-1"> ซ้าย</label> <label class="flex items-center cursor-pointer"><input type="checkbox" name="lacAbdWallSides" value="right" class="mr-1"> ขวา</label> <label class="flex items-center cursor-pointer"><input type="checkbox" name="lacAbdWallSides" value="center" class="mr-1"> ตรงกลาง</label>
-                </div>
-              </div>
+              ${renderLacPart('lacAbdWall', 'หน้าท้อง', true)}
 
-              <div class="p-2.5 rounded-xl border border-slate-200 bg-white">
-                <label class="flex items-center cursor-pointer">
-                  <input type="checkbox" id="lacAbdFlank" onchange="toggleLacGroup('lacAbdFlankSidesContainer', this.checked)" class="text-medical-600 mr-2 h-4 w-4 rounded">
-                  <span class="text-xs sm:text-sm font-medium text-slate-800">สีข้าง / บั้นเอว</span>
-                </label>
-                <div id="lacAbdFlankSidesContainer" class="hidden mt-2 pl-6 flex gap-4 text-xs">
-                  <label class="flex items-center cursor-pointer"><input type="checkbox" name="lacAbdFlankSides" value="left" class="mr-1"> ซ้าย</label> <label class="flex items-center cursor-pointer"><input type="checkbox" name="lacAbdFlankSides" value="right" class="mr-1"> ขวา</label>
-                </div>
-              </div>
+              ${renderLacPart('lacAbdFlank', 'สีข้าง / บั้นเอว', false)}
 
-              <div class="p-2.5 rounded-xl border border-slate-200 bg-white">
-                <label class="flex items-center cursor-pointer">
-                  <input type="checkbox" id="lacAbdLowerBack" onchange="toggleLacGroup('lacAbdLowerBackSidesContainer', this.checked)" class="text-medical-600 mr-2 h-4 w-4 rounded">
-                  <span class="text-xs sm:text-sm font-medium text-slate-800">หลังส่วนล่าง</span>
-                </label>
-                <div id="lacAbdLowerBackSidesContainer" class="hidden mt-2 pl-6 flex gap-4 text-xs">
-                  <label class="flex items-center cursor-pointer"><input type="checkbox" name="lacAbdLowerBackSides" value="left" class="mr-1"> ซ้าย</label> <label class="flex items-center cursor-pointer"><input type="checkbox" name="lacAbdLowerBackSides" value="right" class="mr-1"> ขวา</label> <label class="flex items-center cursor-pointer"><input type="checkbox" name="lacAbdLowerBackSides" value="center" class="mr-1"> ตรงกลาง</label>
-                </div>
-              </div>
+              ${renderLacPart('lacAbdLowerBack', 'หลังส่วนล่าง', true)}
 
-              <div class="p-2.5 rounded-xl border border-slate-200 bg-white">
-                <label class="flex items-center cursor-pointer">
-                  <input type="checkbox" id="lacAbdButtock" onchange="toggleLacGroup('lacAbdButtockSidesContainer', this.checked)" class="text-medical-600 mr-2 h-4 w-4 rounded">
-                  <span class="text-xs sm:text-sm font-medium text-slate-800">ก้น / สะโพก</span>
-                </label>
-                <div id="lacAbdButtockSidesContainer" class="hidden mt-2 pl-6 flex gap-4 text-xs">
-                  <label class="flex items-center cursor-pointer"><input type="checkbox" name="lacAbdButtockSides" value="left" class="mr-1"> ซ้าย</label> <label class="flex items-center cursor-pointer"><input type="checkbox" name="lacAbdButtockSides" value="right" class="mr-1"> ขวา</label> <label class="flex items-center cursor-pointer"><input type="checkbox" name="lacAbdButtockSides" value="center" class="mr-1"> ตรงกลาง</label>
-                </div>
-              </div>
+              ${renderLacPart('lacAbdButtock', 'ก้น / สะโพก', true)}
 
-              <div class="p-2.5 rounded-xl border border-slate-200 bg-white">
-                <label class="flex items-center cursor-pointer">
-                  <input type="checkbox" id="lacAbdGenitalia" onchange="toggleLacGroup('lacAbdGenitaliaSidesContainer', this.checked)" class="text-medical-600 mr-2 h-4 w-4 rounded">
-                  <span class="text-xs sm:text-sm font-medium text-slate-800">ขาหนีบ / อวัยวะเพศ</span>
-                </label>
-                <div id="lacAbdGenitaliaSidesContainer" class="hidden mt-2 pl-6 flex gap-4 text-xs">
-                  <label class="flex items-center cursor-pointer"><input type="checkbox" name="lacAbdGenitaliaSides" value="left" class="mr-1"> ซ้าย</label> <label class="flex items-center cursor-pointer"><input type="checkbox" name="lacAbdGenitaliaSides" value="right" class="mr-1"> ขวา</label> <label class="flex items-center cursor-pointer"><input type="checkbox" name="lacAbdGenitaliaSides" value="center" class="mr-1"> ตรงกลาง</label>
-                </div>
-              </div>
+              ${renderLacPart('lacAbdGenitalia', 'ขาหนีบ / อวัยวะเพศ', true)}
             </div>
           </div>
 
           <div>
             <p class="text-xs text-slate-600 font-semibold mb-1">อาการสำคัญที่พบร่วมด้วย (เลือกได้หลายข้อหากมีอาการ):</p>
             <div class="space-y-2">
-              <label class="selectable-card flex items-center p-2.5 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-                <input type="checkbox" name="lacAbdomenSigns" value="severe_abd_pain_rigid" class="text-medical-600 mr-2 h-4 w-4 rounded flex-shrink-0">
+              <label class="selectable-card gap-2.5 flex items-center p-2.5 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+                <input type="checkbox" name="lacAbdomenSigns" value="severe_abd_pain_rigid" class="text-medical-600 h-4 w-4 rounded flex-shrink-0">
                 <span class="text-xs text-slate-800">ปวดท้องรุนแรง หรือหน้าท้องแข็งตึง</span>
               </label>
-              <label class="selectable-card flex items-center p-2.5 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-                <input type="checkbox" name="lacAbdomenSigns" value="evisceration_internal_organ" class="text-medical-600 mr-2 h-4 w-4 rounded flex-shrink-0">
+              <label class="selectable-card gap-2.5 flex items-center p-2.5 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+                <input type="checkbox" name="lacAbdomenSigns" value="evisceration_internal_organ" class="text-medical-600 h-4 w-4 rounded flex-shrink-0">
                 <span class="text-xs text-slate-800">บาดแผลลึกจนมีเนื้อเยื่อหรืออวัยวะภายในโผล่ออกมา</span>
               </label>
-              <label class="selectable-card flex items-center p-2.5 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-                <input type="checkbox" name="lacAbdomenSigns" value="urinary_symptoms_hematuria" class="text-medical-600 mr-2 h-4 w-4 rounded flex-shrink-0">
+              <label class="selectable-card gap-2.5 flex items-center p-2.5 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+                <input type="checkbox" name="lacAbdomenSigns" value="urinary_symptoms_hematuria" class="text-medical-600 h-4 w-4 rounded flex-shrink-0">
                 <span class="text-xs text-slate-800">ปัสสาวะไม่ออก หรือมีเลือดปนในปัสสาวะ</span>
               </label>
             </div>
@@ -1151,88 +1094,39 @@ const LACERATION_FORM_HTML = `
 
         <div id="lacUpperExtSubGroup" class="hidden pl-4 sm:pl-6 space-y-4 border-l-2 border-medical-200">
           <div>
-            <p class="text-xs text-slate-600 font-semibold mb-2">จุดที่มีบาดแผล (เลือกได้หลายจุด พร้อมระบุข้าง ซ้าย/ขวา แยกตามอวัยวะ):</p>
+            <p class="text-xs text-slate-600 font-semibold mb-2">จุดที่บาดเจ็บ (เลือกได้หลายจุด พร้อมระบุด้านและชนิดการบาดเจ็บ):</p>
             <div class="space-y-2">
-              <div class="p-2.5 rounded-xl border border-slate-200 bg-white">
-                <label class="flex items-center cursor-pointer">
-                  <input type="checkbox" id="lacArmShoulder" onchange="toggleLacGroup('lacArmShoulderSidesContainer', this.checked)" class="text-medical-600 mr-2 h-4 w-4 rounded">
-                  <span class="text-xs sm:text-sm font-medium text-slate-800">ไหล่ / รักแร้ / ต้นแขน</span>
-                </label>
-                <div id="lacArmShoulderSidesContainer" class="hidden mt-2 pl-6 flex gap-4 text-xs">
-                  <label class="flex items-center cursor-pointer"><input type="checkbox" name="lacArmShoulderSides" value="left" class="mr-1"> ข้างซ้าย</label> <label class="flex items-center cursor-pointer"><input type="checkbox" name="lacArmShoulderSides" value="right" class="mr-1"> ข้างขวา</label>
-                </div>
-              </div>
+              ${renderLacPart('lacArmShoulder', 'ไหล่ / รักแร้ / ต้นแขน', false)}
 
-              <div class="p-2.5 rounded-xl border border-slate-200 bg-white">
-                <label class="flex items-center cursor-pointer">
-                  <input type="checkbox" id="lacArmElbow" onchange="toggleLacGroup('lacArmElbowSidesContainer', this.checked)" class="text-medical-600 mr-2 h-4 w-4 rounded">
-                  <span class="text-xs sm:text-sm font-medium text-slate-800">ข้อศอก / แขนท่อนล่าง</span>
-                </label>
-                <div id="lacArmElbowSidesContainer" class="hidden mt-2 pl-6 flex gap-4 text-xs">
-                  <label class="flex items-center cursor-pointer"><input type="checkbox" name="lacArmElbowSides" value="left" class="mr-1"> ข้างซ้าย</label> <label class="flex items-center cursor-pointer"><input type="checkbox" name="lacArmElbowSides" value="right" class="mr-1"> ข้างขวา</label>
-                </div>
-              </div>
+              ${renderLacPart('lacArmElbow', 'ข้อศอก / แขนท่อนล่าง', false)}
 
-              <div class="p-2.5 rounded-xl border border-slate-200 bg-white">
-                <label class="flex items-center cursor-pointer">
-                  <input type="checkbox" id="lacArmWrist" onchange="toggleLacGroup('lacArmWristSidesContainer', this.checked)" class="text-medical-600 mr-2 h-4 w-4 rounded">
-                  <span class="text-xs sm:text-sm font-medium text-slate-800">ข้อมือ / ฝ่ามือ / หลังมือ</span>
-                </label>
-                <div id="lacArmWristSidesContainer" class="hidden mt-2 pl-6 flex gap-4 text-xs">
-                  <label class="flex items-center cursor-pointer"><input type="checkbox" name="lacArmWristSides" value="left" class="mr-1"> ข้างซ้าย</label> <label class="flex items-center cursor-pointer"><input type="checkbox" name="lacArmWristSides" value="right" class="mr-1"> ข้างขวา</label>
-                </div>
-              </div>
+              ${renderLacPart('lacArmWrist', 'ข้อมือ / ฝ่ามือ / หลังมือ', false)}
 
-              <div class="p-2.5 rounded-xl border border-slate-200 bg-white">
-                <div class="flex flex-col sm:flex-row sm:items-start justify-between text-xs py-1.5 gap-2">
-                  <label class="flex items-center space-x-2 cursor-pointer mt-0.5">
-                    <input type="checkbox" id="lacArmFingers" onchange="toggleLacGroup('lacArmFingersSidesContainer', this.checked)" class="text-medical-600 rounded">
-                    <span class="text-xs sm:text-sm font-medium text-slate-800">นิ้วมือ</span>
-                  </label>
-                  <div id="lacArmFingersSidesContainer" class="hidden flex flex-col space-y-1.5 pl-6 sm:pl-0">
-                    <div class="flex items-center flex-wrap gap-1.5">
-                      <span class="text-[11px] text-slate-500 font-medium w-8">ซ้าย:</span>
-                      <label class="inline-flex items-center space-x-1 cursor-pointer"><input type="checkbox" name="lacArmFingersLeftDigits" value="thumb" class="text-medical-600 rounded"><span>โป้ง</span></label>
-                      <label class="inline-flex items-center space-x-1 cursor-pointer"><input type="checkbox" name="lacArmFingersLeftDigits" value="index" class="text-medical-600 rounded"><span>ชี้</span></label>
-                      <label class="inline-flex items-center space-x-1 cursor-pointer"><input type="checkbox" name="lacArmFingersLeftDigits" value="middle" class="text-medical-600 rounded"><span>กลาง</span></label>
-                      <label class="inline-flex items-center space-x-1 cursor-pointer"><input type="checkbox" name="lacArmFingersLeftDigits" value="ring" class="text-medical-600 rounded"><span>นาง</span></label>
-                      <label class="inline-flex items-center space-x-1 cursor-pointer"><input type="checkbox" name="lacArmFingersLeftDigits" value="little" class="text-medical-600 rounded"><span>ก้อย</span></label>
-                    </div>
-                    <div class="flex items-center flex-wrap gap-1.5">
-                      <span class="text-[11px] text-slate-500 font-medium w-8">ขวา:</span>
-                      <label class="inline-flex items-center space-x-1 cursor-pointer"><input type="checkbox" name="lacArmFingersRightDigits" value="thumb" class="text-medical-600 rounded"><span>โป้ง</span></label>
-                      <label class="inline-flex items-center space-x-1 cursor-pointer"><input type="checkbox" name="lacArmFingersRightDigits" value="index" class="text-medical-600 rounded"><span>ชี้</span></label>
-                      <label class="inline-flex items-center space-x-1 cursor-pointer"><input type="checkbox" name="lacArmFingersRightDigits" value="middle" class="text-medical-600 rounded"><span>กลาง</span></label>
-                      <label class="inline-flex items-center space-x-1 cursor-pointer"><input type="checkbox" name="lacArmFingersRightDigits" value="ring" class="text-medical-600 rounded"><span>นาง</span></label>
-                      <label class="inline-flex items-center space-x-1 cursor-pointer"><input type="checkbox" name="lacArmFingersRightDigits" value="little" class="text-medical-600 rounded"><span>ก้อย</span></label>
-                    </div>
-                  </div>
-                </div>
-              </div>
+              ${renderLacDigits('lacArmFingers', 'นิ้วมือ')}
             </div>
           </div>
 
           <div>
             <p class="text-xs text-slate-600 font-semibold mb-1">อาการสำคัญที่พบร่วมด้วย (เลือกได้หลายข้อหากมีอาการ):</p>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              <label class="selectable-card flex items-center p-2.5 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-                <input type="checkbox" name="lacUpperExtSigns" value="tendon_deficit_hand" class="text-medical-600 mr-2 h-4 w-4 rounded flex-shrink-0">
+              <label class="selectable-card gap-2.5 flex items-center p-2.5 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+                <input type="checkbox" name="lacUpperExtSigns" value="tendon_deficit_hand" class="text-medical-600 h-4 w-4 rounded flex-shrink-0">
                 <span class="text-xs text-slate-800">ขยับเหยียดหรืองอนิ้วมือ ข้อมือ หรือข้อศอกไม่ได้ตามปกติ</span>
               </label>
-              <label class="selectable-card flex items-center p-2.5 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-                <input type="checkbox" name="lacUpperExtSigns" value="nerve_numbness_hand" class="text-medical-600 mr-2 h-4 w-4 rounded flex-shrink-0">
+              <label class="selectable-card gap-2.5 flex items-center p-2.5 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+                <input type="checkbox" name="lacUpperExtSigns" value="nerve_numbness_hand" class="text-medical-600 h-4 w-4 rounded flex-shrink-0">
                 <span class="text-xs text-slate-800">มีอาการชา หรือไร้ความรู้สึกที่ปลายนิ้วมือ/ฝ่ามือ</span>
               </label>
-              <label class="selectable-card flex items-center p-2.5 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-                <input type="checkbox" name="lacUpperExtSigns" value="vascular_cold_pale_hand" class="text-medical-600 mr-2 h-4 w-4 rounded flex-shrink-0">
+              <label class="selectable-card gap-2.5 flex items-center p-2.5 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+                <input type="checkbox" name="lacUpperExtSigns" value="vascular_cold_pale_hand" class="text-medical-600 h-4 w-4 rounded flex-shrink-0">
                 <span class="text-xs text-slate-800">ปลายนิ้วมือซีดขาว เย็นเฉียบ หรือม่วงคล้ำ</span>
               </label>
-              <label class="selectable-card flex items-center p-2.5 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-                <input type="checkbox" name="lacUpperExtSigns" value="open_fracture_arm" class="text-medical-600 mr-2 h-4 w-4 rounded flex-shrink-0">
+              <label class="selectable-card gap-2.5 flex items-center p-2.5 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+                <input type="checkbox" name="lacUpperExtSigns" value="open_fracture_arm" class="text-medical-600 h-4 w-4 rounded flex-shrink-0">
                 <span class="text-xs text-slate-800">แขน ข้อมือ หรือนิ้วผิดรูป บิดเบี้ยว หรือแผลลึกจนมองเห็นกระดูก</span>
               </label>
-              <label class="selectable-card flex items-center p-2.5 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer sm:col-span-2">
-                <input type="checkbox" name="lacUpperExtSigns" value="amputation_hand" class="text-medical-600 mr-2 h-4 w-4 rounded flex-shrink-0">
+              <label class="selectable-card gap-2.5 flex items-center p-2.5 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer sm:col-span-2">
+                <input type="checkbox" name="lacUpperExtSigns" value="amputation_hand" class="text-medical-600 h-4 w-4 rounded flex-shrink-0">
                 <span class="text-xs text-slate-800">นิ้วมือหรือชิ้นส่วนของมือ/แขนขาดออกจากกัน</span>
               </label>
             </div>
@@ -1253,88 +1147,39 @@ const LACERATION_FORM_HTML = `
 
         <div id="lacLowerExtSubGroup" class="hidden pl-4 sm:pl-6 space-y-4 border-l-2 border-medical-200">
           <div>
-            <p class="text-xs text-slate-600 font-semibold mb-2">จุดที่มีบาดแผล (เลือกได้หลายจุด พร้อมระบุข้าง ซ้าย/ขวา แยกตามอวัยวะ):</p>
+            <p class="text-xs text-slate-600 font-semibold mb-2">จุดที่บาดเจ็บ (เลือกได้หลายจุด พร้อมระบุด้านและชนิดการบาดเจ็บ):</p>
             <div class="space-y-2">
-              <div class="p-2.5 rounded-xl border border-slate-200 bg-white">
-                <label class="flex items-center cursor-pointer">
-                  <input type="checkbox" id="lacLegThigh" onchange="toggleLacGroup('lacLegThighSidesContainer', this.checked)" class="text-medical-600 mr-2 h-4 w-4 rounded">
-                  <span class="text-xs sm:text-sm font-medium text-slate-800">ต้นขา</span>
-                </label>
-                <div id="lacLegThighSidesContainer" class="hidden mt-2 pl-6 flex gap-4 text-xs">
-                  <label class="flex items-center cursor-pointer"><input type="checkbox" name="lacLegThighSides" value="left" class="mr-1"> ข้างซ้าย</label> <label class="flex items-center cursor-pointer"><input type="checkbox" name="lacLegThighSides" value="right" class="mr-1"> ข้างขวา</label>
-                </div>
-              </div>
+              ${renderLacPart('lacLegThigh', 'ต้นขา', false)}
 
-              <div class="p-2.5 rounded-xl border border-slate-200 bg-white">
-                <label class="flex items-center cursor-pointer">
-                  <input type="checkbox" id="lacLegKneeShin" onchange="toggleLacGroup('lacLegKneeShinSidesContainer', this.checked)" class="text-medical-600 mr-2 h-4 w-4 rounded">
-                  <span class="text-xs sm:text-sm font-medium text-slate-800">เข่า / หน้าแข้ง / น่อง</span>
-                </label>
-                <div id="lacLegKneeShinSidesContainer" class="hidden mt-2 pl-6 flex gap-4 text-xs">
-                  <label class="flex items-center cursor-pointer"><input type="checkbox" name="lacLegKneeShinSides" value="left" class="mr-1"> ข้างซ้าย</label> <label class="flex items-center cursor-pointer"><input type="checkbox" name="lacLegKneeShinSides" value="right" class="mr-1"> ข้างขวา</label>
-                </div>
-              </div>
+              ${renderLacPart('lacLegKneeShin', 'เข่า / หน้าแข้ง / น่อง', false)}
 
-              <div class="p-2.5 rounded-xl border border-slate-200 bg-white">
-                <label class="flex items-center cursor-pointer">
-                  <input type="checkbox" id="lacLegAnkleFoot" onchange="toggleLacGroup('lacLegAnkleFootSidesContainer', this.checked)" class="text-medical-600 mr-2 h-4 w-4 rounded">
-                  <span class="text-xs sm:text-sm font-medium text-slate-800">ข้อเท้า / ส้นเท้า / ฝ่าเท้า / หลังเท้า</span>
-                </label>
-                <div id="lacLegAnkleFootSidesContainer" class="hidden mt-2 pl-6 flex gap-4 text-xs">
-                  <label class="flex items-center cursor-pointer"><input type="checkbox" name="lacLegAnkleFootSides" value="left" class="mr-1"> ข้างซ้าย</label> <label class="flex items-center cursor-pointer"><input type="checkbox" name="lacLegAnkleFootSides" value="right" class="mr-1"> ข้างขวา</label>
-                </div>
-              </div>
+              ${renderLacPart('lacLegAnkleFoot', 'ข้อเท้า / ส้นเท้า / ฝ่าเท้า / หลังเท้า', false)}
 
-              <div class="p-2.5 rounded-xl border border-slate-200 bg-white">
-                <div class="flex flex-col sm:flex-row sm:items-start justify-between text-xs py-1.5 gap-2">
-                  <label class="flex items-center space-x-2 cursor-pointer mt-0.5">
-                    <input type="checkbox" id="lacLegToes" onchange="toggleLacGroup('lacLegToesSidesContainer', this.checked)" class="text-medical-600 rounded">
-                    <span class="text-xs sm:text-sm font-medium text-slate-800">นิ้วเท้า</span>
-                  </label>
-                  <div id="lacLegToesSidesContainer" class="hidden flex flex-col space-y-1.5 pl-6 sm:pl-0">
-                    <div class="flex items-center flex-wrap gap-1.5">
-                      <span class="text-[11px] text-slate-500 font-medium w-8">ซ้าย:</span>
-                      <label class="inline-flex items-center space-x-1 cursor-pointer"><input type="checkbox" name="lacLegToesLeftDigits" value="thumb" class="text-medical-600 rounded"><span>โป้ง</span></label>
-                      <label class="inline-flex items-center space-x-1 cursor-pointer"><input type="checkbox" name="lacLegToesLeftDigits" value="index" class="text-medical-600 rounded"><span>ชี้</span></label>
-                      <label class="inline-flex items-center space-x-1 cursor-pointer"><input type="checkbox" name="lacLegToesLeftDigits" value="middle" class="text-medical-600 rounded"><span>กลาง</span></label>
-                      <label class="inline-flex items-center space-x-1 cursor-pointer"><input type="checkbox" name="lacLegToesLeftDigits" value="ring" class="text-medical-600 rounded"><span>นาง</span></label>
-                      <label class="inline-flex items-center space-x-1 cursor-pointer"><input type="checkbox" name="lacLegToesLeftDigits" value="little" class="text-medical-600 rounded"><span>ก้อย</span></label>
-                    </div>
-                    <div class="flex items-center flex-wrap gap-1.5">
-                      <span class="text-[11px] text-slate-500 font-medium w-8">ขวา:</span>
-                      <label class="inline-flex items-center space-x-1 cursor-pointer"><input type="checkbox" name="lacLegToesRightDigits" value="thumb" class="text-medical-600 rounded"><span>โป้ง</span></label>
-                      <label class="inline-flex items-center space-x-1 cursor-pointer"><input type="checkbox" name="lacLegToesRightDigits" value="index" class="text-medical-600 rounded"><span>ชี้</span></label>
-                      <label class="inline-flex items-center space-x-1 cursor-pointer"><input type="checkbox" name="lacLegToesRightDigits" value="middle" class="text-medical-600 rounded"><span>กลาง</span></label>
-                      <label class="inline-flex items-center space-x-1 cursor-pointer"><input type="checkbox" name="lacLegToesRightDigits" value="ring" class="text-medical-600 rounded"><span>นาง</span></label>
-                      <label class="inline-flex items-center space-x-1 cursor-pointer"><input type="checkbox" name="lacLegToesRightDigits" value="little" class="text-medical-600 rounded"><span>ก้อย</span></label>
-                    </div>
-                  </div>
-                </div>
-              </div>
+              ${renderLacDigits('lacLegToes', 'นิ้วเท้า')}
             </div>
           </div>
 
           <div>
             <p class="text-xs text-slate-600 font-semibold mb-1">อาการสำคัญที่พบร่วมด้วย (เลือกได้หลายข้อหากมีอาการ):</p>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              <label class="selectable-card flex items-center p-2.5 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-                <input type="checkbox" name="lacLowerExtSigns" value="tendon_bone_deficit_leg" class="text-medical-600 mr-2 h-4 w-4 rounded flex-shrink-0">
+              <label class="selectable-card gap-2.5 flex items-center p-2.5 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+                <input type="checkbox" name="lacLowerExtSigns" value="tendon_bone_deficit_leg" class="text-medical-600 h-4 w-4 rounded flex-shrink-0">
                 <span class="text-xs text-slate-800">เดินลงน้ำหนักไม่ได้ หรือกระดกข้อเท้า/ขยับนิ้วเท้าไม่ได้ตามปกติ</span>
               </label>
-              <label class="selectable-card flex items-center p-2.5 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-                <input type="checkbox" name="lacLowerExtSigns" value="nerve_numbness_foot" class="text-medical-600 mr-2 h-4 w-4 rounded flex-shrink-0">
+              <label class="selectable-card gap-2.5 flex items-center p-2.5 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+                <input type="checkbox" name="lacLowerExtSigns" value="nerve_numbness_foot" class="text-medical-600 h-4 w-4 rounded flex-shrink-0">
                 <span class="text-xs text-slate-800">มีอาการชา หรือไร้ความรู้สึกที่เท้า/นิ้วเท้า</span>
               </label>
-              <label class="selectable-card flex items-center p-2.5 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-                <input type="checkbox" name="lacLowerExtSigns" value="vascular_cold_pale_foot" class="text-medical-600 mr-2 h-4 w-4 rounded flex-shrink-0">
+              <label class="selectable-card gap-2.5 flex items-center p-2.5 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+                <input type="checkbox" name="lacLowerExtSigns" value="vascular_cold_pale_foot" class="text-medical-600 h-4 w-4 rounded flex-shrink-0">
                 <span class="text-xs text-slate-800">ปลายเท้าซีดขาว เย็นเฉียบ หรือม่วงคล้ำ</span>
               </label>
-              <label class="selectable-card flex items-center p-2.5 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-                <input type="checkbox" name="lacLowerExtSigns" value="open_fracture_leg" class="text-medical-600 mr-2 h-4 w-4 rounded flex-shrink-0">
+              <label class="selectable-card gap-2.5 flex items-center p-2.5 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+                <input type="checkbox" name="lacLowerExtSigns" value="open_fracture_leg" class="text-medical-600 h-4 w-4 rounded flex-shrink-0">
                 <span class="text-xs text-slate-800">ขา ข้อเท้า หรือเท้าผิดรูป บิดเบี้ยว หรือแผลลึกจนมองเห็นกระดูก</span>
               </label>
-              <label class="selectable-card flex items-center p-2.5 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer sm:col-span-2">
-                <input type="checkbox" name="lacLowerExtSigns" value="amputation_leg" class="text-medical-600 mr-2 h-4 w-4 rounded flex-shrink-0">
+              <label class="selectable-card gap-2.5 flex items-center p-2.5 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer sm:col-span-2">
+                <input type="checkbox" name="lacLowerExtSigns" value="amputation_leg" class="text-medical-600 h-4 w-4 rounded flex-shrink-0">
                 <span class="text-xs text-slate-800">นิ้วเท้าหรือชิ้นส่วนของเท้า/ขาขาดออกจากกัน</span>
               </label>
             </div>
@@ -1374,24 +1219,24 @@ const LACERATION_FORM_HTML = `
         3.1 อาการผิดปกติของร่างกายที่พบร่วมด้วยในขณะนี้ (เลือกได้หลายข้อหากมีอาการ):
       </label>
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-        <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-          <input type="checkbox" name="lacSystemicSigns" value="dizziness_presyncope" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4 rounded flex-shrink-0">
+        <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+          <input type="checkbox" name="lacSystemicSigns" value="dizziness_presyncope" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
           <span class="text-xs sm:text-sm text-slate-800">หน้ามืด เวียนศีรษะ วูบ หรือรู้สึกเหมือนจะเป็นลม</span>
         </label>
-        <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-          <input type="checkbox" name="lacSystemicSigns" value="palpitation_cold_sweat" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4 rounded flex-shrink-0">
+        <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+          <input type="checkbox" name="lacSystemicSigns" value="palpitation_cold_sweat" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
           <span class="text-xs sm:text-sm text-slate-800">ใจสั่น เหงื่อแตกท่วมตัว ตัวเย็น หรือหน้าซีดปากซีด</span>
         </label>
-        <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-          <input type="checkbox" name="lacSystemicSigns" value="excessive_thirst_weakness" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4 rounded flex-shrink-0">
+        <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+          <input type="checkbox" name="lacSystemicSigns" value="excessive_thirst_weakness" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
           <span class="text-xs sm:text-sm text-slate-800">กระหายน้ำมากผิดปกติ หรืออ่อนเพลียไม่มีแรง</span>
         </label>
-        <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-          <input type="checkbox" name="lacSystemicSigns" value="infection_signs_fever_pus" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4 rounded flex-shrink-0">
+        <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+          <input type="checkbox" name="lacSystemicSigns" value="infection_signs_fever_pus" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
           <span class="text-xs sm:text-sm text-slate-800">มีไข้ หนาวสั่น หรือบริเวณแผลเริ่มบวมแดงร้อนและมีหนองซึม (กรณีแผลเป็นมาหลายวัน)</span>
         </label>
-        <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer sm:col-span-2">
-          <input type="checkbox" name="lacSystemicSigns" value="no_systemic_signs" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4 rounded flex-shrink-0">
+        <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer sm:col-span-2">
+          <input type="checkbox" name="lacSystemicSigns" value="no_systemic_signs" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
           <span class="text-xs sm:text-sm text-slate-800">ไม่มีอาการผิดปกติของร่างกายดังกล่าว</span>
         </label>
       </div>
@@ -1442,49 +1287,82 @@ const LACERATION_FORM_HTML = `
         4.1 ประวัติการใช้ยาละลายลิ่มเลือด ยาต้านเกล็ดเลือด หรือโรคเลือดหยุดยาก:
       </label>
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-        <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-          <input type="radio" name="lacAntithrombotic" value="on_anticoagulant_antiplatelet" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4 flex-shrink-0">
+        <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+          <input type="radio" name="lacAntithrombotic" value="on_anticoagulant_antiplatelet" class="text-medical-600 focus:ring-medical-500 h-4 w-4 flex-shrink-0">
           <span class="text-xs sm:text-sm text-slate-800">รับประทานยาละลายลิ่มเลือด หรือยาต้านเกล็ดเลือด (เช่น Warfarin, Aspirin, Plavix/Clopidogrel, DOACs)</span>
         </label>
-        <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-          <input type="radio" name="lacAntithrombotic" value="bleeding_disorder" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4 flex-shrink-0">
+        <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+          <input type="radio" name="lacAntithrombotic" value="bleeding_disorder" class="text-medical-600 focus:ring-medical-500 h-4 w-4 flex-shrink-0">
           <span class="text-xs sm:text-sm text-slate-800">มีโรคประจำตัวที่ทำให้เลือดออกง่ายหรือหยุดยาก (เช่น โรคตับแข็ง, เกล็ดเลือดต่ำ, โรคฮีโมฟีเลีย)</span>
         </label>
-        <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-          <input type="radio" name="lacAntithrombotic" value="unknown_meds" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4 flex-shrink-0">
+        <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+          <input type="radio" name="lacAntithrombotic" value="unknown_meds" class="text-medical-600 focus:ring-medical-500 h-4 w-4 flex-shrink-0">
           <span class="text-xs sm:text-sm text-slate-800">มียาประจำตัวรับประทานอยู่ แต่ไม่ทราบชื่อยาแน่ชัด</span>
         </label>
-        <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-          <input type="radio" name="lacAntithrombotic" value="no_antithrombotic" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4 flex-shrink-0">
+        <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
+          <input type="radio" name="lacAntithrombotic" value="no_antithrombotic" class="text-medical-600 focus:ring-medical-500 h-4 w-4 flex-shrink-0">
           <span class="text-xs sm:text-sm text-slate-800">ไม่ได้ใช้ยากลุ่มนี้ และไม่มีโรคเลือดหยุดยาก</span>
         </label>
       </div>
     </div>
 
-    <!-- 4.2 ประวัติการฉีดวัคซีนป้องกันโรคบาดทะยัก -->
+    <!-- 4.2 ประวัติการได้รับวัคซีนป้องกันบาดทะยัก (Tetanus Vaccine) -->
     <div>
-      <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
-        4.2 ประวัติการฉีดวัคซีนป้องกันโรคบาดทะยัก (Tetanus Immunization):
+      <label class="block text-xs sm:text-sm font-semibold text-slate-800 mb-2">
+        4.2 ประวัติการได้รับวัคซีนป้องกันบาดทะยัก (Tetanus Vaccine):
       </label>
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-        <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-          <input type="radio" name="lacTetanusHx" value="within_5_years" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4 flex-shrink-0">
-          <span class="text-xs sm:text-sm text-slate-800">เคยฉีดวัคซีนบาดทะยักเข็มล่าสุด ภายในไม่เกิน 5 ปีที่ผ่านมา</span>
+        <label class="selectable-card flex items-start p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
+          <input type="radio" name="lacTetanusHx" value="within_5_years" class="mt-0.5 text-medical-600 focus:ring-medical-500 h-4 w-4">
+          <div class="ml-3"><span class="block text-xs sm:text-sm font-semibold text-slate-800">เคยฉีดเข็มกระตุ้นภายใน 5 ปีที่ผ่านมา</span><span class="block text-[11px] text-slate-500 font-normal mt-0.5">เคยฉีดครบ (3 เข็ม) มาก่อน และเข็มสุดท้ายหรือกระตุ้นไม่เกิน 5 ปี</span></div>
         </label>
-        <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-          <input type="radio" name="lacTetanusHx" value="5_to_10_years" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4 flex-shrink-0">
-          <span class="text-xs sm:text-sm text-slate-800">เคยฉีดวัคซีนบาดทะยักเข็มล่าสุด นานเกิน 5 ปี แต่ไม่เกิน 10 ปี</span>
+        <label class="selectable-card flex items-start p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
+          <input type="radio" name="lacTetanusHx" value="5_to_10_years" class="mt-0.5 text-medical-600 focus:ring-medical-500 h-4 w-4">
+          <div class="ml-3"><span class="block text-xs sm:text-sm font-semibold text-slate-800">เคยฉีดในช่วง 5–10 ปีที่ผ่านมา</span><span class="block text-[11px] text-slate-500 font-normal mt-0.5">เคยฉีดครบ (3 เข็ม) มาก่อน และเข็มสุดท้ายหรือกระตุ้นอยู่ในช่วง 5–10 ปี</span></div>
         </label>
-        <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-          <input type="radio" name="lacTetanusHx" value="more_than_10_years" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4 flex-shrink-0">
-          <span class="text-xs sm:text-sm text-slate-800">ฉีดเข็มล่าสุดนานเกิน 10 ปีแล้ว</span>
+        <label class="selectable-card flex items-start p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
+          <input type="radio" name="lacTetanusHx" value="more_than_10_years" class="mt-0.5 text-medical-600 focus:ring-medical-500 h-4 w-4">
+          <div class="ml-3"><span class="block text-xs sm:text-sm font-semibold text-slate-800">เคยฉีดครบ แต่เกิน 10 ปีแล้ว</span><span class="block text-[11px] text-slate-500 font-normal mt-0.5">เคยฉีดครบ (3 เข็ม) มาก่อน แต่เข็มสุดท้ายนานเกิน 10 ปีแล้ว</span></div>
         </label>
-        <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-          <input type="radio" name="lacTetanusHx" value="never_or_unsure" class="text-medical-600 focus:ring-medical-500 mr-2.5 h-4 w-4 flex-shrink-0">
-          <span class="text-xs sm:text-sm text-slate-800">ไม่เคยฉีดมาก่อน หรือจำไม่ได้ / ไม่แน่ใจว่าเคยฉีดครบหรือไม่</span>
+        <label class="selectable-card flex items-start p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
+          <input type="radio" name="lacTetanusHx" value="never_or_unsure" class="mt-0.5 text-medical-600 focus:ring-medical-500 h-4 w-4">
+          <div class="ml-3"><span class="block text-xs sm:text-sm font-semibold text-slate-800">ไม่เคยฉีด หรือจำประวัติไม่ได้</span><span class="block text-[11px] text-slate-500 font-normal mt-0.5">ไม่เคยได้รับวัคซีนบาดทะยัก ฉีดไม่ครบ 3 เข็ม หรือไม่ทราบประวัติ</span></div>
         </label>
       </div>
     </div>
+
+    <!-- 4.3 เฉพาะสตรี: ประจำเดือนและการตั้งครรภ์ -->
+    <div id="lacFemaleSection" class="hidden pt-3 border-t border-slate-100">
+      <div class="flex items-center justify-between mb-2">
+        <label class="text-xs sm:text-sm font-semibold text-slate-800">4.3 ประจำเดือนและการตั้งครรภ์ (LMP & Pregnancy):</label>
+        <span class="text-[10px] font-bold bg-pink-100 text-pink-700 px-2 py-0.5 rounded-full">เฉพาะสตรี</span>
+      </div>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-pink-50/40 p-3 rounded-xl border border-pink-100">
+        <div>
+          <label class="block text-[11px] font-semibold text-slate-700 mb-1">วันแรกของประจำเดือนครั้งล่าสุด (LMP):</label>
+          <input type="text" id="lacLmpDate" data-universal-date="true" placeholder="dd/mm/yyyy (ถ้าจำไม่ได้เว้นว่าง)" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-medical-500">
+        </div>
+        <div>
+          <label class="block text-[11px] font-semibold text-slate-700 mb-1">สถานะการตั้งครรภ์:</label>
+          <select id="lacPregnancyStatus" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-800 font-medium focus:outline-none focus:ring-2 focus:ring-medical-500">
+            <option value="not_pregnant">ไม่ได้ตั้งครรภ์ / ประจำเดือนมาปกติ</option>
+            <option value="suspected_or_missed">ขาดประจำเดือน / สงสัยอาจตั้งครรภ์</option>
+            <option value="confirmed_pregnant">ยืนยันกำลังตั้งครรภ์</option>
+            <option value="menopause_or_hysterectomy">วัยหมดประจำเดือน / ผ่าตัดมดลูกแล้ว</option>
+            <option value="unknown">ไม่ทราบ</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- อาการอื่นๆ เป็นช่องกรอกอิสระ -->
+  <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+    <div class="flex items-center space-x-3 mb-3 pb-2 border-b border-slate-100">
+      <div class="bg-slate-100 text-slate-600 p-2 rounded-xl"><i data-lucide="message-square-plus" class="w-5 h-5"></i></div>
+      <div><h2 class="text-base font-bold text-slate-800">อาการอื่นๆ ที่ต้องการแจ้งเพิ่มเติม</h2><p class="text-xs text-slate-500">ระบุอาการอื่นๆ ที่ท่านมีหรือต้องการบอกแพทย์เพิ่มเติม (ถ้ามี)</p></div>
+    </div>
+    <textarea id="laceration_bleeding_other_free" rows="2" placeholder="พิมพ์ระบุอาการอื่นๆ ที่ท่านมีหรือต้องการบอกแพทย์เพิ่มเติม (ถ้ามี)..." class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-medical-500 focus:bg-white"></textarea>
   </div>
 </div>
 `;
@@ -1530,10 +1408,10 @@ const lacerationBleedingModule = {
     const bleedingStatus = getRadio('lacBleedingStatus');
     const prodrome = getRadio('lacProdrome');
 
-    // Anatomical regions & side selections
+    // Anatomical regions, side & injury selections
     const getSubState = (parentActive, elId, sidesName) => {
       const active = parentActive && (document.getElementById(elId)?.checked || false);
-      return { active, sides: active ? getChecks(sidesName) : [] };
+      return { active, sides: active ? getChecks(sidesName) : [], injuries: active ? getChecks(elId + 'Injuries') : [] };
     };
 
     const parentHeadFace = document.getElementById('lacParentHeadFace')?.checked || false;
@@ -1574,6 +1452,7 @@ const lacerationBleedingModule = {
     if (armFingersLeftDigits.length > 0) armFingersSides.push('left');
     if (armFingersRightDigits.length > 0) armFingersSides.push('right');
     const armFingersDigits = [...new Set([...armFingersLeftDigits, ...armFingersRightDigits])];
+    const armFingersInjuries = isArmFingers ? getChecks('lacArmFingersInjuries') : [];
     const upperExtSigns = parentUpperExt ? getChecks('lacUpperExtSigns') : [];
 
     const parentLowerExt = document.getElementById('lacParentLowerExtremity')?.checked || false;
@@ -1587,6 +1466,7 @@ const lacerationBleedingModule = {
     if (legToesLeftDigits.length > 0) legToesSides.push('left');
     if (legToesRightDigits.length > 0) legToesSides.push('right');
     const legToesDigits = [...new Set([...legToesLeftDigits, ...legToesRightDigits])];
+    const legToesInjuries = isLegToes ? getChecks('lacLegToesInjuries') : [];
     const lowerExtSigns = parentLowerExt ? getChecks('lacLowerExtSigns') : [];
 
     const parentOther = document.getElementById('lacParentOther')?.checked || false;
@@ -1597,7 +1477,11 @@ const lacerationBleedingModule = {
     const antithrombotic = getRadio('lacAntithrombotic');
     const tetanusHx = getRadio('lacTetanusHx');
 
-    const otherSymptomsFree = document.getElementById('sx_other_free')?.value?.trim() || ctx.otherSymptomsFree || '';
+    const titleSelVal = document.getElementById('patientTitleSelect')?.value || '';
+    const isFemale = ctx.gender ? isLacFemalePatient(ctx) : (titleSelVal ? /นาง|น\.ส\.|ด\.ญ\.|\(หญิง\)|Mrs|Miss|Ms/i.test(titleSelVal) : isLacFemalePatient(ctx));
+    const lacLmpDate = isFemale ? (document.getElementById('lacLmpDate')?.value?.trim() || '') : '';
+    const lacPregnancyStatus = isFemale ? (document.getElementById('lacPregnancyStatus')?.value || 'not_pregnant') : '';
+    const otherSymptomsFree = document.getElementById('laceration_bleeding_other_free')?.value?.trim() || ctx.otherSymptomsFree || '';
 
     const rec = {
       id: ctx.recordId || ctx.id,
@@ -1631,72 +1515,72 @@ const lacerationBleedingModule = {
 
       lacParentHeadFace: parentHeadFace,
       lacHeadScalp: sScalp.active,
-      lacHeadScalpSides: sScalp.sides,
+      lacHeadScalpSides: sScalp.sides, lacHeadScalpInjuries: sScalp.injuries,
       lacHeadFace: sFace.active,
-      lacHeadFaceSides: sFace.sides,
+      lacHeadFaceSides: sFace.sides, lacHeadFaceInjuries: sFace.injuries,
       lacHeadEye: sEye.active,
-      lacHeadEyeSides: sEye.sides,
+      lacHeadEyeSides: sEye.sides, lacHeadEyeInjuries: sEye.injuries,
       lacHeadEar: sEar.active,
-      lacHeadEarSides: sEar.sides,
+      lacHeadEarSides: sEar.sides, lacHeadEarInjuries: sEar.injuries,
       lacHeadNoseMouth: sNoseMouth.active,
-      lacHeadNoseMouthSides: sNoseMouth.sides,
+      lacHeadNoseMouthSides: sNoseMouth.sides, lacHeadNoseMouthInjuries: sNoseMouth.injuries,
       lacHeadSigns: headSigns,
 
       lacParentNeck: parentNeck,
       lacNeckFront: sNeckFront.active,
-      lacNeckFrontSides: sNeckFront.sides,
+      lacNeckFrontSides: sNeckFront.sides, lacNeckFrontInjuries: sNeckFront.injuries,
       lacNeckSide: sNeckSide.active,
-      lacNeckSideSides: sNeckSide.sides,
+      lacNeckSideSides: sNeckSide.sides, lacNeckSideInjuries: sNeckSide.injuries,
       lacNeckBack: sNeckBack.active,
-      lacNeckBackSides: sNeckBack.sides,
+      lacNeckBackSides: sNeckBack.sides, lacNeckBackInjuries: sNeckBack.injuries,
       lacNeckSigns: neckSigns,
 
       lacParentChest: parentChest,
       lacChestRibs: sChestRibs.active,
-      lacChestRibsSides: sChestRibs.sides,
+      lacChestRibsSides: sChestRibs.sides, lacChestRibsInjuries: sChestRibs.injuries,
       lacChestUpperBack: sChestUpperBack.active,
-      lacChestUpperBackSides: sChestUpperBack.sides,
+      lacChestUpperBackSides: sChestUpperBack.sides, lacChestUpperBackInjuries: sChestUpperBack.injuries,
       lacChestSigns: chestSigns,
 
       lacParentAbdomen: parentAbdomen,
       lacAbdWall: sAbdWall.active,
-      lacAbdWallSides: sAbdWall.sides,
+      lacAbdWallSides: sAbdWall.sides, lacAbdWallInjuries: sAbdWall.injuries,
       lacAbdFlank: sAbdFlank.active,
-      lacAbdFlankSides: sAbdFlank.sides,
+      lacAbdFlankSides: sAbdFlank.sides, lacAbdFlankInjuries: sAbdFlank.injuries,
       lacAbdLowerBack: sAbdLowerBack.active,
-      lacAbdLowerBackSides: sAbdLowerBack.sides,
+      lacAbdLowerBackSides: sAbdLowerBack.sides, lacAbdLowerBackInjuries: sAbdLowerBack.injuries,
       lacAbdButtock: sAbdButtock.active,
-      lacAbdButtockSides: sAbdButtock.sides,
+      lacAbdButtockSides: sAbdButtock.sides, lacAbdButtockInjuries: sAbdButtock.injuries,
       lacAbdGenitalia: sAbdGenitalia.active,
-      lacAbdGenitaliaSides: sAbdGenitalia.sides,
+      lacAbdGenitaliaSides: sAbdGenitalia.sides, lacAbdGenitaliaInjuries: sAbdGenitalia.injuries,
       lacAbdomenSigns: abdomenSigns,
 
       lacParentUpperExtremity: parentUpperExt,
       lacArmShoulder: sArmShoulder.active,
-      lacArmShoulderSides: sArmShoulder.sides,
+      lacArmShoulderSides: sArmShoulder.sides, lacArmShoulderInjuries: sArmShoulder.injuries,
       lacArmElbow: sArmElbow.active,
-      lacArmElbowSides: sArmElbow.sides,
+      lacArmElbowSides: sArmElbow.sides, lacArmElbowInjuries: sArmElbow.injuries,
       lacArmWrist: sArmWrist.active,
-      lacArmWristSides: sArmWrist.sides,
+      lacArmWristSides: sArmWrist.sides, lacArmWristInjuries: sArmWrist.injuries,
       lacArmFingers: isArmFingers,
       lacArmFingersSides: armFingersSides,
       lacArmFingersLeftDigits: armFingersLeftDigits,
       lacArmFingersRightDigits: armFingersRightDigits,
-      lacArmFingersDigits: armFingersDigits,
+      lacArmFingersDigits: armFingersDigits, lacArmFingersInjuries: armFingersInjuries,
       lacUpperExtSigns: upperExtSigns,
 
       lacParentLowerExtremity: parentLowerExt,
       lacLegThigh: sLegThigh.active,
-      lacLegThighSides: sLegThigh.sides,
+      lacLegThighSides: sLegThigh.sides, lacLegThighInjuries: sLegThigh.injuries,
       lacLegKneeShin: sLegKneeShin.active,
-      lacLegKneeShinSides: sLegKneeShin.sides,
+      lacLegKneeShinSides: sLegKneeShin.sides, lacLegKneeShinInjuries: sLegKneeShin.injuries,
       lacLegAnkleFoot: sLegAnkleFoot.active,
-      lacLegAnkleFootSides: sLegAnkleFoot.sides,
+      lacLegAnkleFootSides: sLegAnkleFoot.sides, lacLegAnkleFootInjuries: sLegAnkleFoot.injuries,
       lacLegToes: isLegToes,
       lacLegToesSides: legToesSides,
       lacLegToesLeftDigits: legToesLeftDigits,
       lacLegToesRightDigits: legToesRightDigits,
-      lacLegToesDigits: legToesDigits,
+      lacLegToesDigits: legToesDigits, lacLegToesInjuries: legToesInjuries,
       lacLowerExtSigns: lowerExtSigns,
 
       lacParentOther: parentOther,
@@ -1705,7 +1589,9 @@ const lacerationBleedingModule = {
       lacSystemicSigns: systemicSigns,
       painScore: painScore,
       lacAntithrombotic: antithrombotic,
-      lacTetanusHx: tetanusHx
+      lacTetanusHx: tetanusHx,
+      lacLmpDate,
+      lacPregnancyStatus
     };
 
     updateLacerationOutputs(rec);
@@ -1768,6 +1654,7 @@ const lacerationBleedingModule = {
         setCheckById(id, true);
         toggleLacGroup(cont, true);
         if (sidesName && sidesData) setChecks(sidesName, sidesData);
+        setChecks(id + 'Injuries', data[id + 'Injuries']);
       }
     };
 
@@ -1821,6 +1708,7 @@ const lacerationBleedingModule = {
         toggleLacGroup('lacArmFingersSidesContainer', true);
         setChecks('lacArmFingersLeftDigits', data.lacArmFingersLeftDigits || (data.lacArmFingersSides?.includes('left') ? data.lacArmFingersDigits : []));
         setChecks('lacArmFingersRightDigits', data.lacArmFingersRightDigits || (data.lacArmFingersSides?.includes('right') ? data.lacArmFingersDigits : []));
+        setChecks('lacArmFingersInjuries', data.lacArmFingersInjuries);
       }
       setChecks('lacUpperExtSigns', data.lacUpperExtSigns);
     }
@@ -1836,6 +1724,7 @@ const lacerationBleedingModule = {
         toggleLacGroup('lacLegToesSidesContainer', true);
         setChecks('lacLegToesLeftDigits', data.lacLegToesLeftDigits || (data.lacLegToesSides?.includes('left') ? data.lacLegToesDigits : []));
         setChecks('lacLegToesRightDigits', data.lacLegToesRightDigits || (data.lacLegToesSides?.includes('right') ? data.lacLegToesDigits : []));
+        setChecks('lacLegToesInjuries', data.lacLegToesInjuries);
       }
       setChecks('lacLowerExtSigns', data.lacLowerExtSigns);
     }
@@ -1859,10 +1748,17 @@ const lacerationBleedingModule = {
 
     setRadio('lacAntithrombotic', data.lacAntithrombotic);
     setRadio('lacTetanusHx', data.lacTetanusHx);
+    checkAndDisplayLacLmp(data);
+    if (isLacFemalePatient(data)) {
+      const lmpEl = document.getElementById('lacLmpDate'); if (lmpEl) lmpEl.value = data.lacLmpDate || '';
+      const pregEl = document.getElementById('lacPregnancyStatus'); if (pregEl) pregEl.value = data.lacPregnancyStatus || 'not_pregnant';
+    }
+    const otherFreeEl = document.getElementById('laceration_bleeding_other_free');
+    if (otherFreeEl) otherFreeEl.value = data.otherSymptomsFree || '';
   },
 
   clearForm: function() {
-    ['lacDurationVal', 'lacCauseSharpDetail', 'lacCauseMachineryDetail', 'lacCauseBluntDetail', 'lacCausePunctureDetail', 'lacCauseOtherDetail', 'lacOtherLocationDetail'].forEach(id => {
+    ['lacDurationVal', 'lacCauseSharpDetail', 'lacCauseMachineryDetail', 'lacCauseBluntDetail', 'lacCausePunctureDetail', 'lacCauseOtherDetail', 'lacOtherLocationDetail', 'lacLmpDate', 'laceration_bleeding_other_free'].forEach(id => {
       const el = document.getElementById(id); if (el) el.value = '';
     });
     const durUnit = document.getElementById('lacDurationUnit');
@@ -1876,11 +1772,23 @@ const lacerationBleedingModule = {
       'lacChestSubGroup', 'lacChestRibsSidesContainer', 'lacChestUpperBackSidesContainer',
       'lacAbdomenSubGroup', 'lacAbdWallSidesContainer', 'lacAbdFlankSidesContainer', 'lacAbdLowerBackSidesContainer', 'lacAbdButtockSidesContainer', 'lacAbdGenitaliaSidesContainer',
       'lacUpperExtSubGroup', 'lacArmShoulderSidesContainer', 'lacArmElbowSidesContainer', 'lacArmWristSidesContainer', 'lacArmFingersSidesContainer',
-      'lacLowerExtSubGroup', 'lacLegThighSidesContainer', 'lacLegKneeShinSidesContainer', 'lacLegAnkleFootSidesContainer', 'lacLegToesSidesContainer', 'lacOtherSubGroup'
+      'lacLowerExtSubGroup', 'lacLegThighSidesContainer', 'lacLegKneeShinSidesContainer', 'lacLegAnkleFootSidesContainer', 'lacLegToesSidesContainer', 'lacOtherSubGroup', 'lacFemaleSection'
     ].forEach(id => { const el = document.getElementById(id); if (el) el.classList.add('hidden'); });
 
+    const pregEl = document.getElementById('lacPregnancyStatus'); if (pregEl) pregEl.value = 'not_pregnant';
     document.querySelectorAll('#cc-laceration-bleeding-section input[type="radio"], #cc-laceration-bleeding-section input[type="checkbox"]').forEach(i => { i.checked = false; });
   },
+
+  onTitleChange: function(arg) {
+    if (typeof arg === 'boolean') toggleLacFemaleSection(arg);
+    else if (arg && typeof arg === 'object') {
+      if (typeof arg.isFemale === 'boolean') toggleLacFemaleSection(arg.isFemale);
+      else toggleLacFemaleSection(/นาง|น\.ส\.|ด\.ญ\.|\(หญิง\)|Mrs|Miss|Ms/i.test(arg.title || ''));
+    } else toggleLacFemaleSection(/นาง|น\.ส\.|ด\.ญ\.|\(หญิง\)|Mrs|Miss|Ms/i.test(String(arg || '')));
+  },
+  onSelectForm: function() { checkAndDisplayLacLmp({}); },
+  onActivate: function(patient) { checkAndDisplayLacLmp(patient || {}); },
+  resetForm: function() { this.clearForm(); },
 
   isRedFlag: function(patient) {
     const rfs = evaluateLacerationRedFlags(patient);
