@@ -834,7 +834,8 @@ const TRAFFIC_ACCIDENT_FORM_HTML = `
               <label class="flex items-center"><input type="checkbox" name="trafficHeadScalpSides" value="left" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ซ้าย</span></label>
               <label class="flex items-center"><input type="checkbox" name="trafficHeadScalpSides" value="right" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ขวา</span></label>
               <label class="flex items-center"><input type="checkbox" name="trafficHeadScalpSides" value="center" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">กลาง</span></label>
-              <span class="text-slate-300">|</span>
+              <span class="text-slate-300 mx-1.5">|</span>
+              <span class="text-slate-500 font-medium">การบาดเจ็บ:</span>
               <label class="flex items-center"><input type="checkbox" name="trafficHeadScalpInjuries" value="wound" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">มีแผล</span></label>
               <label class="flex items-center"><input type="checkbox" name="trafficHeadScalpInjuries" value="pain_swelling" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ปวด/บวม</span></label>
               <label class="flex items-center"><input type="checkbox" name="trafficHeadScalpInjuries" value="deformity" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ผิดรูป/ยุบ</span></label>
@@ -847,7 +848,8 @@ const TRAFFIC_ACCIDENT_FORM_HTML = `
               <label class="flex items-center"><input type="checkbox" name="trafficHeadFaceSides" value="left" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ซ้าย</span></label>
               <label class="flex items-center"><input type="checkbox" name="trafficHeadFaceSides" value="right" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ขวา</span></label>
               <label class="flex items-center"><input type="checkbox" name="trafficHeadFaceSides" value="center" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">กลาง</span></label>
-              <span class="text-slate-300">|</span>
+              <span class="text-slate-300 mx-1.5">|</span>
+              <span class="text-slate-500 font-medium">การบาดเจ็บ:</span>
               <label class="flex items-center"><input type="checkbox" name="trafficHeadFaceInjuries" value="wound" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">มีแผล</span></label>
               <label class="flex items-center"><input type="checkbox" name="trafficHeadFaceInjuries" value="pain_swelling" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ปวด/บวม</span></label>
               <label class="flex items-center"><input type="checkbox" name="trafficHeadFaceInjuries" value="deformity" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ผิดรูป</span></label>
@@ -859,7 +861,8 @@ const TRAFFIC_ACCIDENT_FORM_HTML = `
               <span class="text-slate-500 font-medium">ด้าน:</span>
               <label class="flex items-center"><input type="checkbox" name="trafficHeadEyeSides" value="left" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ซ้าย</span></label>
               <label class="flex items-center"><input type="checkbox" name="trafficHeadEyeSides" value="right" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ขวา</span></label>
-              <span class="text-slate-300">|</span>
+              <span class="text-slate-300 mx-1.5">|</span>
+              <span class="text-slate-500 font-medium">การบาดเจ็บ:</span>
               <label class="flex items-center"><input type="checkbox" name="trafficHeadEyeInjuries" value="wound" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">มีแผล</span></label>
               <label class="flex items-center"><input type="checkbox" name="trafficHeadEyeInjuries" value="pain_swelling" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ปวด/บวม</span></label>
               <label class="flex items-center"><input type="checkbox" name="trafficHeadEyeInjuries" value="deformity" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ผิดรูป</span></label>
@@ -871,7 +874,8 @@ const TRAFFIC_ACCIDENT_FORM_HTML = `
               <span class="text-slate-500 font-medium">ด้าน:</span>
               <label class="flex items-center"><input type="checkbox" name="trafficHeadEarSides" value="left" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ซ้าย</span></label>
               <label class="flex items-center"><input type="checkbox" name="trafficHeadEarSides" value="right" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ขวา</span></label>
-              <span class="text-slate-300">|</span>
+              <span class="text-slate-300 mx-1.5">|</span>
+              <span class="text-slate-500 font-medium">การบาดเจ็บ:</span>
               <label class="flex items-center"><input type="checkbox" name="trafficHeadEarInjuries" value="wound" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">มีแผล</span></label>
               <label class="flex items-center"><input type="checkbox" name="trafficHeadEarInjuries" value="pain_swelling" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ปวด/บวม</span></label>
               <label class="flex items-center"><input type="checkbox" name="trafficHeadEarInjuries" value="deformity" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ผิดรูป</span></label>
@@ -884,7 +888,8 @@ const TRAFFIC_ACCIDENT_FORM_HTML = `
               <label class="flex items-center"><input type="checkbox" name="trafficHeadNoseMouthSides" value="left" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ซ้าย</span></label>
               <label class="flex items-center"><input type="checkbox" name="trafficHeadNoseMouthSides" value="right" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ขวา</span></label>
               <label class="flex items-center"><input type="checkbox" name="trafficHeadNoseMouthSides" value="center" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">กลาง</span></label>
-              <span class="text-slate-300">|</span>
+              <span class="text-slate-300 mx-1.5">|</span>
+              <span class="text-slate-500 font-medium">การบาดเจ็บ:</span>
               <label class="flex items-center"><input type="checkbox" name="trafficHeadNoseMouthInjuries" value="wound" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">มีแผล</span></label>
               <label class="flex items-center"><input type="checkbox" name="trafficHeadNoseMouthInjuries" value="pain_swelling" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ปวด/บวม</span></label>
               <label class="flex items-center"><input type="checkbox" name="trafficHeadNoseMouthInjuries" value="deformity" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ผิดรูป/ฟันหัก</span></label>
@@ -917,7 +922,8 @@ const TRAFFIC_ACCIDENT_FORM_HTML = `
               <label class="flex items-center"><input type="checkbox" name="trafficNeckBackSides" value="left" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ซ้าย</span></label>
               <label class="flex items-center"><input type="checkbox" name="trafficNeckBackSides" value="right" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ขวา</span></label>
               <label class="flex items-center"><input type="checkbox" name="trafficNeckBackSides" value="center" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">กลาง</span></label>
-              <span class="text-slate-300">|</span>
+              <span class="text-slate-300 mx-1.5">|</span>
+              <span class="text-slate-500 font-medium">การบาดเจ็บ:</span>
               <label class="flex items-center"><input type="checkbox" name="trafficNeckBackInjuries" value="wound" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">มีแผล</span></label>
               <label class="flex items-center"><input type="checkbox" name="trafficNeckBackInjuries" value="pain_swelling" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ปวด/บวม</span></label>
               <label class="flex items-center"><input type="checkbox" name="trafficNeckBackInjuries" value="deformity" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ผิดรูป</span></label>
@@ -930,7 +936,8 @@ const TRAFFIC_ACCIDENT_FORM_HTML = `
               <label class="flex items-center"><input type="checkbox" name="trafficNeckFrontSides" value="left" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ซ้าย</span></label>
               <label class="flex items-center"><input type="checkbox" name="trafficNeckFrontSides" value="right" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ขวา</span></label>
               <label class="flex items-center"><input type="checkbox" name="trafficNeckFrontSides" value="center" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">กลาง</span></label>
-              <span class="text-slate-300">|</span>
+              <span class="text-slate-300 mx-1.5">|</span>
+              <span class="text-slate-500 font-medium">การบาดเจ็บ:</span>
               <label class="flex items-center"><input type="checkbox" name="trafficNeckFrontInjuries" value="wound" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">มีแผล</span></label>
               <label class="flex items-center"><input type="checkbox" name="trafficNeckFrontInjuries" value="pain_swelling" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ปวด/บวม</span></label>
               <label class="flex items-center"><input type="checkbox" name="trafficNeckFrontInjuries" value="deformity" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ผิดรูป</span></label>
@@ -942,7 +949,8 @@ const TRAFFIC_ACCIDENT_FORM_HTML = `
               <span class="text-slate-500 font-medium">ด้าน:</span>
               <label class="flex items-center"><input type="checkbox" name="trafficNeckSideSides" value="left" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ซ้าย</span></label>
               <label class="flex items-center"><input type="checkbox" name="trafficNeckSideSides" value="right" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ขวา</span></label>
-              <span class="text-slate-300">|</span>
+              <span class="text-slate-300 mx-1.5">|</span>
+              <span class="text-slate-500 font-medium">การบาดเจ็บ:</span>
               <label class="flex items-center"><input type="checkbox" name="trafficNeckSideInjuries" value="wound" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">มีแผล</span></label>
               <label class="flex items-center"><input type="checkbox" name="trafficNeckSideInjuries" value="pain_swelling" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ปวด/บวม</span></label>
               <label class="flex items-center"><input type="checkbox" name="trafficNeckSideInjuries" value="deformity" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ผิดรูป</span></label>
@@ -973,7 +981,8 @@ const TRAFFIC_ACCIDENT_FORM_HTML = `
               <label class="flex items-center"><input type="checkbox" name="trafficChestWallSides" value="left" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ซ้าย</span></label>
               <label class="flex items-center"><input type="checkbox" name="trafficChestWallSides" value="right" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ขวา</span></label>
               <label class="flex items-center"><input type="checkbox" name="trafficChestWallSides" value="center" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">กลาง</span></label>
-              <span class="text-slate-300">|</span>
+              <span class="text-slate-300 mx-1.5">|</span>
+              <span class="text-slate-500 font-medium">การบาดเจ็บ:</span>
               <label class="flex items-center"><input type="checkbox" name="trafficChestWallInjuries" value="wound" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">มีแผล</span></label>
               <label class="flex items-center"><input type="checkbox" name="trafficChestWallInjuries" value="pain_swelling" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ปวด/บวม</span></label>
               <label class="flex items-center"><input type="checkbox" name="trafficChestWallInjuries" value="deformity" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ผิดรูป/ยุบ</span></label>
@@ -985,7 +994,8 @@ const TRAFFIC_ACCIDENT_FORM_HTML = `
               <span class="text-slate-500 font-medium">ด้าน:</span>
               <label class="flex items-center"><input type="checkbox" name="trafficChestClavicleSides" value="left" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ซ้าย</span></label>
               <label class="flex items-center"><input type="checkbox" name="trafficChestClavicleSides" value="right" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ขวา</span></label>
-              <span class="text-slate-300">|</span>
+              <span class="text-slate-300 mx-1.5">|</span>
+              <span class="text-slate-500 font-medium">การบาดเจ็บ:</span>
               <label class="flex items-center"><input type="checkbox" name="trafficChestClavicleInjuries" value="wound" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">มีแผล</span></label>
               <label class="flex items-center"><input type="checkbox" name="trafficChestClavicleInjuries" value="pain_swelling" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ปวด/บวม</span></label>
               <label class="flex items-center"><input type="checkbox" name="trafficChestClavicleInjuries" value="deformity" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ผิดรูป/ปูดนูน</span></label>
@@ -998,7 +1008,8 @@ const TRAFFIC_ACCIDENT_FORM_HTML = `
               <label class="flex items-center"><input type="checkbox" name="trafficChestUpperBackSides" value="left" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ซ้าย</span></label>
               <label class="flex items-center"><input type="checkbox" name="trafficChestUpperBackSides" value="right" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ขวา</span></label>
               <label class="flex items-center"><input type="checkbox" name="trafficChestUpperBackSides" value="center" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">กลาง</span></label>
-              <span class="text-slate-300">|</span>
+              <span class="text-slate-300 mx-1.5">|</span>
+              <span class="text-slate-500 font-medium">การบาดเจ็บ:</span>
               <label class="flex items-center"><input type="checkbox" name="trafficChestUpperBackInjuries" value="wound" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">มีแผล</span></label>
               <label class="flex items-center"><input type="checkbox" name="trafficChestUpperBackInjuries" value="pain_swelling" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ปวด/บวม</span></label>
               <label class="flex items-center"><input type="checkbox" name="trafficChestUpperBackInjuries" value="deformity" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ผิดรูป</span></label>
@@ -1029,7 +1040,8 @@ const TRAFFIC_ACCIDENT_FORM_HTML = `
               <label class="flex items-center"><input type="checkbox" name="trafficAbdWallSides" value="left" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ซ้าย</span></label>
               <label class="flex items-center"><input type="checkbox" name="trafficAbdWallSides" value="right" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ขวา</span></label>
               <label class="flex items-center"><input type="checkbox" name="trafficAbdWallSides" value="center" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">กลาง</span></label>
-              <span class="text-slate-300">|</span>
+              <span class="text-slate-300 mx-1.5">|</span>
+              <span class="text-slate-500 font-medium">การบาดเจ็บ:</span>
               <label class="flex items-center"><input type="checkbox" name="trafficAbdWallInjuries" value="wound" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">มีแผล</span></label>
               <label class="flex items-center"><input type="checkbox" name="trafficAbdWallInjuries" value="pain_swelling" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ปวด/บวม</span></label>
               <label class="flex items-center"><input type="checkbox" name="trafficAbdWallInjuries" value="deformity" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ท้องอืดตึง</span></label>
@@ -1041,7 +1053,8 @@ const TRAFFIC_ACCIDENT_FORM_HTML = `
               <span class="text-slate-500 font-medium">ด้าน:</span>
               <label class="flex items-center"><input type="checkbox" name="trafficAbdFlankSides" value="left" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ซ้าย</span></label>
               <label class="flex items-center"><input type="checkbox" name="trafficAbdFlankSides" value="right" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ขวา</span></label>
-              <span class="text-slate-300">|</span>
+              <span class="text-slate-300 mx-1.5">|</span>
+              <span class="text-slate-500 font-medium">การบาดเจ็บ:</span>
               <label class="flex items-center"><input type="checkbox" name="trafficAbdFlankInjuries" value="wound" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">มีแผล</span></label>
               <label class="flex items-center"><input type="checkbox" name="trafficAbdFlankInjuries" value="pain_swelling" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ปวด/บวม</span></label>
               <label class="flex items-center"><input type="checkbox" name="trafficAbdFlankInjuries" value="deformity" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ผิดรูป</span></label>
@@ -1054,7 +1067,8 @@ const TRAFFIC_ACCIDENT_FORM_HTML = `
               <label class="flex items-center"><input type="checkbox" name="trafficAbdLowerBackSides" value="left" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ซ้าย</span></label>
               <label class="flex items-center"><input type="checkbox" name="trafficAbdLowerBackSides" value="right" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ขวา</span></label>
               <label class="flex items-center"><input type="checkbox" name="trafficAbdLowerBackSides" value="center" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">กลาง</span></label>
-              <span class="text-slate-300">|</span>
+              <span class="text-slate-300 mx-1.5">|</span>
+              <span class="text-slate-500 font-medium">การบาดเจ็บ:</span>
               <label class="flex items-center"><input type="checkbox" name="trafficAbdLowerBackInjuries" value="wound" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">มีแผล</span></label>
               <label class="flex items-center"><input type="checkbox" name="trafficAbdLowerBackInjuries" value="pain_swelling" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ปวด/บวม</span></label>
               <label class="flex items-center"><input type="checkbox" name="trafficAbdLowerBackInjuries" value="deformity" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ผิดรูป</span></label>
@@ -1067,7 +1081,8 @@ const TRAFFIC_ACCIDENT_FORM_HTML = `
               <label class="flex items-center"><input type="checkbox" name="trafficAbdPelvisSides" value="left" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ซ้าย</span></label>
               <label class="flex items-center"><input type="checkbox" name="trafficAbdPelvisSides" value="right" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ขวา</span></label>
               <label class="flex items-center"><input type="checkbox" name="trafficAbdPelvisSides" value="center" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">กลาง</span></label>
-              <span class="text-slate-300">|</span>
+              <span class="text-slate-300 mx-1.5">|</span>
+              <span class="text-slate-500 font-medium">การบาดเจ็บ:</span>
               <label class="flex items-center"><input type="checkbox" name="trafficAbdPelvisInjuries" value="wound" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">มีแผล</span></label>
               <label class="flex items-center"><input type="checkbox" name="trafficAbdPelvisInjuries" value="pain_swelling" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ปวด/บวม</span></label>
               <label class="flex items-center"><input type="checkbox" name="trafficAbdPelvisInjuries" value="deformity" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ผิดรูป</span></label>
@@ -1080,7 +1095,8 @@ const TRAFFIC_ACCIDENT_FORM_HTML = `
               <label class="flex items-center"><input type="checkbox" name="trafficAbdGenitaliaSides" value="left" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ซ้าย</span></label>
               <label class="flex items-center"><input type="checkbox" name="trafficAbdGenitaliaSides" value="right" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ขวา</span></label>
               <label class="flex items-center"><input type="checkbox" name="trafficAbdGenitaliaSides" value="center" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">กลาง</span></label>
-              <span class="text-slate-300">|</span>
+              <span class="text-slate-300 mx-1.5">|</span>
+              <span class="text-slate-500 font-medium">การบาดเจ็บ:</span>
               <label class="flex items-center"><input type="checkbox" name="trafficAbdGenitaliaInjuries" value="wound" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">มีแผล</span></label>
               <label class="flex items-center"><input type="checkbox" name="trafficAbdGenitaliaInjuries" value="pain_swelling" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ปวด/บวม</span></label>
               <label class="flex items-center"><input type="checkbox" name="trafficAbdGenitaliaInjuries" value="deformity" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ผิดรูป</span></label>
@@ -1111,7 +1127,8 @@ const TRAFFIC_ACCIDENT_FORM_HTML = `
               <span class="text-slate-500 font-medium">ด้าน:</span>
               <label class="flex items-center"><input type="checkbox" name="trafficArmShoulderSides" value="left" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ซ้าย</span></label>
               <label class="flex items-center"><input type="checkbox" name="trafficArmShoulderSides" value="right" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ขวา</span></label>
-              <span class="text-slate-300">|</span>
+              <span class="text-slate-300 mx-1.5">|</span>
+              <span class="text-slate-500 font-medium">การบาดเจ็บ:</span>
               <label class="flex items-center"><input type="checkbox" name="trafficArmShoulderInjuries" value="wound" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">มีแผล</span></label>
               <label class="flex items-center"><input type="checkbox" name="trafficArmShoulderInjuries" value="pain_swelling" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ปวด/บวม</span></label>
               <label class="flex items-center"><input type="checkbox" name="trafficArmShoulderInjuries" value="deformity" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ผิดรูป</span></label>
@@ -1123,7 +1140,8 @@ const TRAFFIC_ACCIDENT_FORM_HTML = `
               <span class="text-slate-500 font-medium">ด้าน:</span>
               <label class="flex items-center"><input type="checkbox" name="trafficArmElbowForearmSides" value="left" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ซ้าย</span></label>
               <label class="flex items-center"><input type="checkbox" name="trafficArmElbowForearmSides" value="right" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ขวา</span></label>
-              <span class="text-slate-300">|</span>
+              <span class="text-slate-300 mx-1.5">|</span>
+              <span class="text-slate-500 font-medium">การบาดเจ็บ:</span>
               <label class="flex items-center"><input type="checkbox" name="trafficArmElbowForearmInjuries" value="wound" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">มีแผล</span></label>
               <label class="flex items-center"><input type="checkbox" name="trafficArmElbowForearmInjuries" value="pain_swelling" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ปวด/บวม</span></label>
               <label class="flex items-center"><input type="checkbox" name="trafficArmElbowForearmInjuries" value="deformity" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ผิดรูป</span></label>
@@ -1135,7 +1153,8 @@ const TRAFFIC_ACCIDENT_FORM_HTML = `
               <span class="text-slate-500 font-medium">ด้าน:</span>
               <label class="flex items-center"><input type="checkbox" name="trafficArmWristHandSides" value="left" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ซ้าย</span></label>
               <label class="flex items-center"><input type="checkbox" name="trafficArmWristHandSides" value="right" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ขวา</span></label>
-              <span class="text-slate-300">|</span>
+              <span class="text-slate-300 mx-1.5">|</span>
+              <span class="text-slate-500 font-medium">การบาดเจ็บ:</span>
               <label class="flex items-center"><input type="checkbox" name="trafficArmWristHandInjuries" value="wound" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">มีแผล</span></label>
               <label class="flex items-center"><input type="checkbox" name="trafficArmWristHandInjuries" value="pain_swelling" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ปวด/บวม</span></label>
               <label class="flex items-center"><input type="checkbox" name="trafficArmWristHandInjuries" value="deformity" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ผิดรูป</span></label>
@@ -1194,7 +1213,8 @@ const TRAFFIC_ACCIDENT_FORM_HTML = `
               <span class="text-slate-500 font-medium">ด้าน:</span>
               <label class="flex items-center"><input type="checkbox" name="trafficLegThighSides" value="left" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ซ้าย</span></label>
               <label class="flex items-center"><input type="checkbox" name="trafficLegThighSides" value="right" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ขวา</span></label>
-              <span class="text-slate-300">|</span>
+              <span class="text-slate-300 mx-1.5">|</span>
+              <span class="text-slate-500 font-medium">การบาดเจ็บ:</span>
               <label class="flex items-center"><input type="checkbox" name="trafficLegThighInjuries" value="wound" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">มีแผล</span></label>
               <label class="flex items-center"><input type="checkbox" name="trafficLegThighInjuries" value="pain_swelling" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ปวด/บวม</span></label>
               <label class="flex items-center"><input type="checkbox" name="trafficLegThighInjuries" value="deformity" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ผิดรูป</span></label>
@@ -1206,7 +1226,8 @@ const TRAFFIC_ACCIDENT_FORM_HTML = `
               <span class="text-slate-500 font-medium">ด้าน:</span>
               <label class="flex items-center"><input type="checkbox" name="trafficLegKneeShinSides" value="left" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ซ้าย</span></label>
               <label class="flex items-center"><input type="checkbox" name="trafficLegKneeShinSides" value="right" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ขวา</span></label>
-              <span class="text-slate-300">|</span>
+              <span class="text-slate-300 mx-1.5">|</span>
+              <span class="text-slate-500 font-medium">การบาดเจ็บ:</span>
               <label class="flex items-center"><input type="checkbox" name="trafficLegKneeShinInjuries" value="wound" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">มีแผล</span></label>
               <label class="flex items-center"><input type="checkbox" name="trafficLegKneeShinInjuries" value="pain_swelling" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ปวด/บวม</span></label>
               <label class="flex items-center"><input type="checkbox" name="trafficLegKneeShinInjuries" value="deformity" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ผิดรูป</span></label>
@@ -1218,7 +1239,8 @@ const TRAFFIC_ACCIDENT_FORM_HTML = `
               <span class="text-slate-500 font-medium">ด้าน:</span>
               <label class="flex items-center"><input type="checkbox" name="trafficLegAnkleFootSides" value="left" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ซ้าย</span></label>
               <label class="flex items-center"><input type="checkbox" name="trafficLegAnkleFootSides" value="right" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ขวา</span></label>
-              <span class="text-slate-300">|</span>
+              <span class="text-slate-300 mx-1.5">|</span>
+              <span class="text-slate-500 font-medium">การบาดเจ็บ:</span>
               <label class="flex items-center"><input type="checkbox" name="trafficLegAnkleFootInjuries" value="wound" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">มีแผล</span></label>
               <label class="flex items-center"><input type="checkbox" name="trafficLegAnkleFootInjuries" value="pain_swelling" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ปวด/บวม</span></label>
               <label class="flex items-center"><input type="checkbox" name="trafficLegAnkleFootInjuries" value="deformity" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ผิดรูป</span></label>
