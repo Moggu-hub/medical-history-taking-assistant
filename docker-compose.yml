@@ -1,0 +1,40 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: ratchaburi_er_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ratchaburi_er
+      POSTGRES_USER: er_admin
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-er_dev_change_me}
+    volumes:
+      - er_pg_data:/var/lib/postgresql/data
+      - ./server/schema.sql:/docker-entrypoint-initdb.d/01_schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U er_admin -d ratchaburi_er"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build: .
+    container_name: ratchaburi_er_app
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "${PORT:-3000}:3000"
+    environment:
+      PORT: 3000
+      DB_CLIENT: postgres
+      DATABASE_URL: postgres://er_admin:${POSTGRES_PASSWORD:-er_dev_change_me}@postgres:5432/ratchaburi_er
+      COMPLETED_TTL_HOURS: ${COMPLETED_TTL_HOURS:-12}
+      CLEANUP_MODE: ${CLEANUP_MODE:-archive}
+      CLEANUP_INTERVAL_MIN: ${CLEANUP_INTERVAL_MIN:-30}
+    volumes:
+      - er_sqlite_fallback:/app/data
+
+volumes:
+  er_pg_data:
+  er_sqlite_fallback:

@@ -824,10 +824,10 @@
                 <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
                 <span>เปลี่ยนอาการสำคัญหลัก (Change CC)</span>
               </button>
-              <button type="button" onclick="simulateNewQrQueuePass()"
-                class="w-full bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 font-medium py-2.5 px-4 rounded-xl text-xs transition flex items-center justify-center space-x-1.5">
-                <i data-lucide="qr-code" class="w-3.5 h-3.5"></i>
-                <span>จำลองสแกน QR ผู้ป่วยรายถัดไป</span>
+              <button type="button" id="patientStatusFeedbackBtn" onclick="openUserFeedbackModal('patient_status')"
+                class="w-full bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 font-medium py-2.5 px-4 rounded-xl text-xs transition flex items-center justify-center space-x-1.5 cursor-pointer">
+                <i data-lucide="message-square-plus" class="w-3.5 h-3.5"></i>
+                <span>แจ้งปัญหา / ส่งคำแนะนำระบบ</span>
               </button>
             </div>
           </div>
@@ -1988,6 +1988,6 @@
   <script src="cc_modules/32_poisoning.js"></script>
   <script src="cc_modules/33_self_harm.js"></script>
   <script src="core_engine.js"></script>
-  <script src="pmh_controls.js"></script>
+  <script src="pmh_controls.js"></script><script src="storage_adapter.js"></script><script src="feedback_module.js"></script>
 </body>
 </html>

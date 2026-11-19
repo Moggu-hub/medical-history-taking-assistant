@@ -1,6 +1,6 @@
 # 🕵️‍♂️ รายงานการตรวจสอบคุณภาพโค้ดและสถาปัตยกรรม (AUTOMATED & AI AUDIT REPORT)
 
-- **วันที่ตรวจสอบ:** `19/11/2026` เวลา `15:49` น. (24-Hour Format)
+- **วันที่ตรวจสอบ:** `19/11/2026` เวลา `22:55` น. (24-Hour Format)
 - **สถานะภาพรวม (Overall Verdict):** **✅ PASS (ผ่านการตรวจสอบครบทุกมิติ)**
 - **จำนวนหัวข้อที่ผ่าน (Passed Checks):** 9 รายการ
 - **จำนวนคำเตือน (Warnings):** 0 รายการ
@@ -13,9 +13,9 @@
 | ไฟล์ (File Path) | จำนวนบรรทัด (Lines) | เพดานสูงสุด (Max Limit) | สถานะ (Status) |
 | :--- | :---: | :---: | :---: |
 | `index.html` | 1,994 | 2,000 | ✅ ปกติ (Safe) |
-| `clinical_knowledge_core.js` | 996 | 1,000 | ✅ ปกติ (Safe) |
+| `clinical_knowledge_core.js` | 995 | 1,000 | ✅ ปกติ (Safe) |
 | `ai_consultant_core.js` | 886 | 1,000 | ✅ ปกติ (Safe) |
-| `core_engine.js` | 2,561 | 3,200 | ✅ ปกติ (Safe) |
+| `core_engine.js` | 2,588 | 3,200 | ✅ ปกติ (Safe) |
 | `cc_modules/01_abdpain.js` | 1,892 | 2,000 | ✅ ปกติ (Safe) |
 | `cc_modules/02_chestpain.js` | 1,930 | 2,000 | ✅ ปกติ (Safe) |
 | `cc_modules/03_dyspnea.js` | 1,800 | 2,000 | ✅ ปกติ (Safe) |
@@ -55,11 +55,11 @@
 ## 2. สรุปรายการที่ตรวจผ่าน (Passed Verification Checks)
 
 - ✅ index.html: 1994 บรรทัด (อยู่ในเกณฑ์ปลอดภัย <= 2000 บรรทัด)
-- ✅ clinical_knowledge_core.js: 996 บรรทัด (อยู่ในเกณฑ์ปลอดภัย <= 1000 บรรทัด)
+- ✅ clinical_knowledge_core.js: 995 บรรทัด (อยู่ในเกณฑ์ปลอดภัย <= 1000 บรรทัด)
 - ✅ ai_consultant_core.js: 886 บรรทัด (อยู่ในเกณฑ์ปลอดภัย <= 1000 บรรทัด)
-- ✅ core_engine.js: 2561 บรรทัด (อยู่ในเกณฑ์ปลอดภัย <= 3200 บรรทัด)
-- ✅ Core System Freeze: core_engine.js ไม่ถูกแก้ไขนับจากจุดเซฟ 'v2.81-pediatric-core-infra' (SHA-256 ตรงกัน 100%)
-- ✅ Core System Freeze: ai_consultant_core.js ไม่ถูกแก้ไขนับจากจุดเซฟ 'v2.81-pediatric-core-infra' (SHA-256 ตรงกัน 100%)
+- ✅ core_engine.js: 2588 บรรทัด (อยู่ในเกณฑ์ปลอดภัย <= 3200 บรรทัด)
+- ✅ Core System Freeze: core_engine.js ไม่ถูกแก้ไขนับจากจุดเซฟ 'v2.82-perf-optimization' (SHA-256 ตรงกัน 100%)
+- ✅ Core System Freeze: ai_consultant_core.js ไม่ถูกแก้ไขนับจากจุดเซฟ 'v2.82-perf-optimization' (SHA-256 ตรงกัน 100%)
 - ✅ พบไฟล์โมดูลรายอาการใน cc_modules/ จำนวน 33 โมดูล
 - ✅ ทุกโมดูลใน cc_modules/ ผ่านเกณฑ์โครงสร้าง Lifecycle Hooks, ความปลอดภัย UI คนไข้ และมาตรฐานวันที่ dd/mm/yyyy + เวลา 24 ชั่วโมง HH:mm
 - ✅ ชุดทดสอบ Mandatory 4-Dimension Core Guard TDD (tests/core_guard_test.js) ผ่านครบ 100% ทั้ง 4 มิติ!
