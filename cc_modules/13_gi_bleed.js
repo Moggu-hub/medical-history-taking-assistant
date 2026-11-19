@@ -383,7 +383,7 @@ function updateGiBleedOutputs(patient) {
     if (abdpainChars.includes('peritonitis_rigid')) charListTh.push('ปวดรุนแรงตลอดเวลา หน้าท้องแข็งเกร็งสะเทือน (Peritoneal signs)');
   }
 
-  let anticoagText = 'ปฏิเสธการใช้ยาละลายลิ่มเลือด/ยาต้านเกล็ดเลือด';
+  let anticoagText = anticoagMeds.includes('none_anticoag') ? 'ปฏิเสธการใช้ยาละลายลิ่มเลือด/ยาต้านเกล็ดเลือด' : 'ไม่ได้ระบุ';
   if (anticoagMeds.length > 0 && !anticoagMeds.includes('none_anticoag')) {
     anticoagText = anticoagMeds.map(m => {
       if (m === 'warfarin') return 'Warfarin';
@@ -393,7 +393,7 @@ function updateGiBleedOutputs(patient) {
     }).join(', ');
   }
 
-  let nsaidText = 'ปฏิเสธการใช้ NSAIDs/สเตียรอยด์/ยาลูกกลอน';
+  let nsaidText = nsaidMeds.includes('none_nsaids') ? 'ปฏิเสธการใช้ NSAIDs/สเตียรอยด์/ยาลูกกลอน' : 'ไม่ได้ระบุ';
   if (nsaidMeds.length > 0 && !nsaidMeds.includes('none_nsaids')) {
     nsaidText = nsaidMeds.map(m => {
       if (m === 'nsaids') return 'NSAIDs (Ibuprofen/Diclofenac)';
@@ -403,7 +403,7 @@ function updateGiBleedOutputs(patient) {
     }).join(', ');
   }
 
-  let liverText = 'ปฏิเสธประวัติดื่มสุราและโรคตับแข็ง';
+  let liverText = liverAlcohol.includes('none_liver') ? 'ปฏิเสธประวัติดื่มสุราและโรคตับแข็ง' : 'ไม่ได้ระบุ';
   if (liverAlcohol.length > 0 && !liverAlcohol.includes('none_liver')) {
     liverText = liverAlcohol.map(l => {
       if (l === 'heavy_alcohol') return 'ดื่มสุราหนักเป็นประจำ';
@@ -420,7 +420,8 @@ function updateGiBleedOutputs(patient) {
   if (hasAaaRepair) {
     pudAaaParts.push('เคยผ่าตัดใส่หลอดเลือดเทียมช่องท้อง (AAA Repair) 🚩');
   }
-  const pudAaaText = pudAaaParts.length > 0 ? pudAaaParts.join('; ') : 'ปฏิเสธ';
+  const pudAnswered = pastHistory.length > 0 || anticoagMeds.includes('none_anticoag') || nsaidMeds.includes('none_nsaids') || liverAlcohol.includes('none_liver');
+  const pudAaaText = pudAaaParts.length > 0 ? pudAaaParts.join('; ') : (pudAnswered ? 'ปฏิเสธ' : 'ไม่ได้ระบุ');
 
   const hemodynIssues = [];
   if (shockSigns.includes('syncope')) hemodynIssues.push('วูบหมดสติ 🚩');
@@ -429,27 +430,28 @@ function updateGiBleedOutputs(patient) {
   if (shockSigns.includes('palpitations')) hemodynIssues.push('ใจสั่นหัวใจเต้นเร็ว');
   if (shockSigns.includes('oliguria_anuria')) hemodynIssues.push('ปัสสาวะออกน้อยมาก 🚩');
   if (shockSigns.includes('altered_mental')) hemodynIssues.push('ซึมลง สับสน 🚩');
-  const hemodynamicSummary = hemodynIssues.length > 0 ? hemodynIssues.join(', ') : 'คงที่ รู้สึกตัวดี ไม่มีหน้ามืดหรือหมดสติ';
 
-  // Pertinent Positives & Negatives
+  // Pertinent Positives & Negatives (strictly gate denials)
   const positives = [];
   const negatives = [];
+  const anyBleedSelected = hasHema || hasMelena || hasChezia;
+  const shockAnswered = shockSigns.length > 0;
 
   if (hasHema) {
     positives.push(patient.giHematemesisChar === 'bright_red_clots' ? 'อาเจียนเป็นเลือดสดล้วน/ลิ่มเลือดก้อนใหญ่' : (patient.giHematemesisChar === 'coffee_ground' ? 'อาเจียนสีกากกาแฟ' : 'อาเจียนเป็นเลือดสด/สีกาแฟ'));
-  } else {
+  } else if (anyBleedSelected) {
     negatives.push('ปฏิเสธการอาเจียนเป็นเลือดหรือสีกาแฟ');
   }
 
   if (hasMelena) {
     positives.push(patient.giMelenaChar === 'tarry_foul' ? 'ถ่ายดำสนิทเหนียวคล้ายยางมะตอย กลิ่นคาวจัด' : 'ถ่ายอุจจาระดำเหนียวยางมะตอย (Melena)');
-  } else {
+  } else if (anyBleedSelected) {
     negatives.push('ปฏิเสธการถ่ายดำเหนียวยางมะตอย');
   }
 
   if (hasChezia) {
     positives.push(patient.giHematocheziaChar === 'profuse_bright_red' ? 'ถ่ายเป็นเลือดสดล้วนหรือลิ่มเลือดปริมาณมาก' : 'ถ่ายเป็นเลือดสดทางทวารหนัก (Hematochezia)');
-  } else {
+  } else if (anyBleedSelected) {
     negatives.push('ปฏิเสธการถ่ายเป็นเลือดสดล้วนทางทวารหนัก');
   }
 
@@ -460,20 +462,22 @@ function updateGiBleedOutputs(patient) {
   if (shockSigns.includes('oliguria_anuria')) positives.push('ปัสสาวะออกน้อยมากสีเข้มจัด 🚩');
   if (shockSigns.includes('altered_mental')) positives.push('ซึมลง สับสน 🚩');
 
-  if (!shockSigns.includes('syncope') && !shockSigns.includes('postural_dizziness')) {
-    negatives.push('ปฏิเสธหน้ามืดวิงเวียนหรือวูบหมดสติ');
-  }
-  if (!shockSigns.includes('cold_extremities')) {
-    negatives.push('ไม่มีเหงื่อแตกตัวเย็นชืด');
-  }
-  if (!shockSigns.includes('palpitations')) {
-    negatives.push('ไม่มีใจสั่นหัวใจเต้นเร็ว');
-  }
-  if (!shockSigns.includes('oliguria_anuria')) {
-    negatives.push('ปัสสาวะออกปกติ');
-  }
-  if (!shockSigns.includes('altered_mental')) {
-    negatives.push('รู้สึกตัวดี ถามตอบรู้เรื่อง');
+  if (shockAnswered) {
+    if (!shockSigns.includes('syncope') && !shockSigns.includes('postural_dizziness')) {
+      negatives.push('ปฏิเสธหน้ามืดวิงเวียนหรือวูบหมดสติ');
+    }
+    if (!shockSigns.includes('cold_extremities')) {
+      negatives.push('ไม่มีเหงื่อแตกตัวเย็นชืด');
+    }
+    if (!shockSigns.includes('palpitations')) {
+      negatives.push('ไม่มีใจสั่นหัวใจเต้นเร็ว');
+    }
+    if (!shockSigns.includes('oliguria_anuria')) {
+      negatives.push('ปัสสาวะออกปกติ');
+    }
+    if (!shockSigns.includes('altered_mental')) {
+      negatives.push('รู้สึกตัวดี ถามตอบรู้เรื่อง');
+    }
   }
 
   if (patient.giHasAbdpain === 'yes') {
@@ -482,7 +486,7 @@ function updateGiBleedOutputs(patient) {
     if (abdpainChars.includes('peritonitis_rigid')) positives.push(`ปวดท้องรุนแรงตลอดเวลา หน้าท้องแข็งเกร็ง${locSuffix} 🚩`);
     if (abdpainChars.includes('colicky_spasm')) positives.push(`ปวดบิดมวนเกร็งเป็นพักๆ สัมพันธ์กับการถ่าย${locSuffix}`);
     if (abdpainChars.length === 0) positives.push(`ปวดท้องบริเวณ ${locTh}`);
-  } else {
+  } else if (patient.giHasAbdpain === 'no') {
     negatives.push('ปฏิเสธอาการปวดท้อง (Painless GI bleeding)');
   }
 
@@ -500,11 +504,15 @@ function updateGiBleedOutputs(patient) {
     !p.startsWith('มีประวัติโรคตับแข็ง')
   );
 
-  patient.pertinentPositives = rapidPositives.length > 0 ? rapidPositives : ['ไม่มีอาการร่วมผิดปกติ'];
-  patient.pertinentNegatives = negatives;
+  patient.pertinentPositives = rapidPositives.length > 0 ? rapidPositives : (positives.length > 0 ? positives : ['ผู้ป่วยไม่ได้ระบุอาการร่วมเพิ่มเติม']);
+  patient.pertinentNegatives = negatives.length > 0 ? negatives : ['ผู้ป่วยไม่ได้ระบุคำตอบยืนยันในหมวดอาการร่วม'];
 
   const docNotes = patient.doctor_notes || {};
-  const medsText = (!patient.currentMeds || patient.currentMeds === 'ไม่ได้ระบุ' || patient.currentMeds === 'ไม่มี') ? 'ไม่มี' : patient.currentMeds;
+  const medsText = (!patient.currentMeds || patient.currentMeds === 'ไม่ได้ระบุ') ? 'ไม่ได้ระบุ' : patient.currentMeds;
+  const udArr = Array.isArray(patient.underlying) ? patient.underlying.filter(u => u && !u.includes('ปฏิเสธ') && u !== 'ไม่มี' && u !== 'ไม่มีโรคประจำตัว') : [];
+  const udExplicitDeny = Array.isArray(patient.underlying) && patient.underlying.some(u => u && u.includes('ปฏิเสธ'));
+  const udText = udArr.length > 0 ? udArr.join(', ') : ((patient.hospRecordStatus === 'self' || patient.hospRecordStatus === 'additional' || udExplicitDeny) ? 'ปฏิเสธ' : 'ไม่ได้ระบุ');
+  const allergyText = (!patient.drugAllergy || patient.drugAllergy === 'ไม่ได้ระบุ') ? 'ไม่ได้ระบุ' : patient.drugAllergy;
   const hospLabel = {
     complete: 'มีประวัติกับ รพ.ราชบุรี ครบถ้วน (ดึงข้อมูลเดิมจากระบบ)',
     additional: 'มีประวัติกับ รพ.ราชบุรี และขอให้ข้อมูลเพิ่มเติม',
@@ -521,10 +529,10 @@ ${bleedTypesTh.join(' & ')} มา ${durationStr}
 • รูปแบบการเริ่มมีอาการ: ${onsetModeTh}${onsetExactStr}
 ${hasHema ? `• อาเจียนเป็นเลือด (Hematemesis): อาเจียน${hemaCharTh}, ${hemaVolTh}, ความถี่ ${hemaFreqTh} ใน 24 ชม., ${hemaRetchTh}\n` : ''}${hasMelena ? `• ถ่ายดำ (Melena): ถ่าย${melenaCharTh}, ความถี่ ${melenaFreqTh} ใน 24 ชม., ${melenaStatusTh}${daysStr}${pseudoStr}\n` : ''}${hasChezia ? `• ถ่ายเป็นเลือดสด (Hematochezia): ถ่าย${cheziaCharTh}, ความถี่ ${cheziaFreqTh} ใน 24 ชม., ${cheziaAnalPainTh}, ${cheziaMassTh}\n` : ''}
 • Pertinent Positives:
-${rapidPositives.length > 0 ? rapidPositives.map(p => `  - ${p}`).join('\n') : '  - ไม่มีอาการร่วมอื่นที่เด่นชัด'}
+${rapidPositives.length > 0 ? rapidPositives.map(p => `  - ${p}`).join('\n') : '  - ผู้ป่วยไม่ได้ระบุอาการร่วมเพิ่มเติม'}
 
 • Pertinent Negatives:
-${negatives.map(n => `  - ${n}`).join('\n')}
+${patient.pertinentNegatives.map(n => `  - ${n}`).join('\n')}
 
 [Past Medical History & Medications]
 • สถานะประวัติ รพ.ราชบุรี: ${hospLabel}
@@ -532,9 +540,9 @@ ${negatives.map(n => `  - ${n}`).join('\n')}
 • ประวัติโรคตับและแอลกอฮอล์: ${liverText}
 • ยาต้านการแข็งตัวของเลือด/เกล็ดเลือด: ${anticoagText}
 • ยา NSAIDs/สเตียรอยด์/สมุนไพร: ${nsaidText}
-• โรคประจำตัว (U/D): ${patient.underlying?.length > 0 ? patient.underlying.join(', ') : 'ปฏิเสธ'}
+• โรคประจำตัว (U/D): ${udText}
 • ยาประจำตัว (Current Meds): ${medsText}
-• ประวัติแพ้ยา/แพ้อาหาร (Allergies): ${patient.drugAllergy || 'ปฏิเสธ'}
+• ประวัติแพ้ยา/แพ้อาหาร (Allergies): ${allergyText}
 
 [Emergency Risk Assessment (Red Flags)]
 ${rfs.length > 0
@@ -549,7 +557,7 @@ ${rfs.length > 0
 
   // 2. Narrative Note Mode
   let narrative = `History of Present Illness (HPI):\n`;
-  narrative += `ผู้ป่วย${patient.gender === 'หญิง' ? 'หญิง' : 'ชาย'}ไทย อายุ ${patient.age || '-'} ปี มาโรงพยาบาลด้วยอาการ${bleedTypesTh.join(' และ ')} เป็นมาประมาณ ${durationStr} ก่อนมาโรงพยาบาล `;
+  narrative += `ผู้ป่วย${patient.gender === 'หญิง' ? 'หญิง' : (patient.gender === 'ชาย' ? 'ชาย' : '')} อายุ ${patient.age || '-'} ปี มาโรงพยาบาลด้วยอาการ${bleedTypesTh.join(' และ ')} เป็นมาประมาณ ${durationStr} ก่อนมาโรงพยาบาล `;
   
   if (patient.giOnsetMode === 'sudden_severe') {
     narrative += `โดยอาการเกิดขึ้นเฉียบพลันทันที `;
@@ -613,7 +621,7 @@ ${rfs.length > 0
 
   if (posShock.length > 0) {
     narrative += `ผู้ป่วยมีอาการเตือนภาวะเสียเลือดและระบบไหลเวียนโลหิตบกพร่อง ได้แก่ ${posShock.join(', ')} `;
-  } else {
+  } else if (shockAnswered) {
     narrative += `ปฏิเสธอาการหน้ามืด เป็นลม วูบหมดสติ หรือใจสั่น ปัสสาวะออกได้ตามปกติ `;
   }
 
@@ -627,7 +635,7 @@ ${rfs.length > 0
 
     if (abdpainChars.includes('burning_gnawing')) narrative += `ลักษณะปวดแสบจุกแน่นสัมพันธ์กับอาหาร `;
     if (abdpainChars.includes('peritonitis_rigid')) narrative += `ปวดรุนแรงตลอดเวลาหน้าท้องแข็งเกร็งสะเทือน `;
-  } else {
+  } else if (patient.giHasAbdpain === 'no') {
     narrative += `ไม่มีอาการปวดท้อง `;
   }
 
@@ -1426,7 +1434,7 @@ registerCcModule({
 
     const giShockSigns = Array.from(document.querySelectorAll('input[name="giShockSigns"]:checked')).map(el => el.value);
 
-    const giHasAbdpain = document.querySelector('input[name="giHasAbdpain"]:checked')?.value || 'no';
+    const giHasAbdpain = document.querySelector('input[name="giHasAbdpain"]:checked')?.value || 'unspecified';
     const giAbdpainLoc = document.querySelector('input[name="giAbdpainLoc"]:checked')?.value || '';
     const giAbdpainChars = Array.from(document.querySelectorAll('input[name="giAbdpainChars"]:checked')).map(el => el.value);
 

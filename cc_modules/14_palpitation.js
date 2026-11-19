@@ -243,7 +243,7 @@ function updatePalpitationOutputs(patient) {
   if (triggers.includes('rest_or_nocturnal')) triggerListTh.push('กำเริบขณะพักผ่อนหรือตื่นขึ้นมากลางดึก');
   if (triggers.includes('anxiety_panic')) triggerListTh.push('สัมพันธ์กับความวิตกกังวลหรือตกใจกลัว');
 
-  let substText = 'ปฏิเสธสารกระตุ้น';
+  let substText = substances.includes('none_substances') ? 'ปฏิเสธสารกระตุ้น' : 'ไม่ได้ระบุ';
   if (substances.length > 0 && !substances.includes('none_substances')) {
     substText = substances.map(s => {
       if (s === 'energy_drinks') return 'เครื่องดื่มชูกำลัง';
@@ -255,7 +255,7 @@ function updatePalpitationOutputs(patient) {
     }).join(', ');
   }
 
-  let medText = 'ปฏิเสธยาประจำตัวกลุ่มเสี่ยง';
+  let medText = meds.includes('none_meds') ? 'ปฏิเสธยาประจำตัวกลุ่มเสี่ยง' : 'ไม่ได้ระบุ';
   if (meds.length > 0 && !meds.includes('none_meds')) {
     medText = meds.map(m => {
       if (m === 'decongestants') return 'ยาลดน้ำมูก (Pseudoephedrine)';
@@ -267,7 +267,7 @@ function updatePalpitationOutputs(patient) {
     }).join(', ');
   }
 
-  let cardHistText = 'ปฏิเสธประวัติโรคหัวใจเดิม';
+  let cardHistText = cardiacHistory.includes('none_cardiac_pmh') ? 'ปฏิเสธประวัติโรคหัวใจเดิม' : 'ไม่ได้ระบุ';
   if (cardiacHistory.length > 0 && !cardiacHistory.includes('none_cardiac_pmh')) {
     cardHistText = cardiacHistory.map(c => {
       if (c === 'cad_stent') return 'โรคหลอดเลือดหัวใจตีบ/ใส่ขดลวด (CAD/Stent)';
@@ -282,7 +282,7 @@ function updatePalpitationOutputs(patient) {
 
   let famText = patient.palpitationFamilyHistory === 'sudden_death_under50'
     ? 'มีคนในครอบครัวสายตรงเสียชีวิตกะทันหันก่อนอายุ 50 ปี หรือใหลตาย (Positive Family History of SCD)'
-    : 'ปฏิเสธประวัติคนในครอบครัวเสียชีวิตกะทันหันในวัยหนุ่มสาว';
+    : (patient.palpitationFamilyHistory === 'no_family_sudden_death' ? 'ปฏิเสธประวัติคนในครอบครัวเสียชีวิตกะทันหันในวัยหนุ่มสาว' : 'ไม่ได้ระบุ');
 
   const hemodynIssues = [];
   if (warningSigns.includes('syncope')) hemodynIssues.push('วูบหมดสติ (Syncope) 🚩');
@@ -291,30 +291,30 @@ function updatePalpitationOutputs(patient) {
   if (warningSigns.includes('acute_heart_failure')) hemodynIssues.push('หอบเหนื่อยนอนราบไม่ได้ 🚩');
   if (warningSigns.includes('cold_diaphoresis')) hemodynIssues.push('เหงื่อแตกตัวเย็นชืด 🚩');
   if (warningSigns.includes('altered_mental')) hemodynIssues.push('ซึมลง สับสน 🚩');
-  const hemodynamicSummary = hemodynIssues.length > 0 ? hemodynIssues.join(', ') : 'คงที่ รู้สึกตัวดี ไม่มีหมดสติหรือแน่นหน้าอก';
 
   // Calculate Pertinent Positives and Negatives for Patient Review & Core Summary
   const positives = [];
   const negatives = [];
+  const warningAnswered = warningSigns.length > 0;
 
   // Warning signs (ACLS)
   if (warningSigns.includes('syncope')) positives.push('วูบหมดสติ (Syncope) 🚩');
-  else negatives.push('ปฏิเสธวูบหมดสติ');
+  else if (warningAnswered) negatives.push('ปฏิเสธวูบหมดสติ');
 
   if (warningSigns.includes('presyncope_dizziness')) positives.push('หน้ามืด วิงเวียน ตาพร่ามัว');
-  else negatives.push('ไม่มีหน้ามืดวิงเวียน');
+  else if (warningAnswered) negatives.push('ไม่มีหน้ามืดวิงเวียน');
 
   if (warningSigns.includes('ischemic_chest_pain')) positives.push('เจ็บแน่นหน้าอกรุนแรง 🚩');
-  else negatives.push('ปฏิเสธเจ็บแน่นหน้าอก');
+  else if (warningAnswered) negatives.push('ปฏิเสธเจ็บแน่นหน้าอก');
 
   if (warningSigns.includes('acute_heart_failure')) positives.push('หายใจหอบเหนื่อย นอนราบไม่ได้ 🚩');
-  else negatives.push('ปฏิเสธหายใจหอบเหนื่อย');
+  else if (warningAnswered) negatives.push('ปฏิเสธหายใจหอบเหนื่อย');
 
   if (warningSigns.includes('cold_diaphoresis')) positives.push('เหงื่อแตกท่วมตัว มือเท้าเย็นชืด 🚩');
-  else negatives.push('ไม่มีเหงื่อแตกตัวเย็นชืด');
+  else if (warningAnswered) negatives.push('ไม่มีเหงื่อแตกตัวเย็นชืด');
 
   if (warningSigns.includes('altered_mental')) positives.push('ซึมลง สับสน 🚩');
-  else negatives.push('รู้สึกตัวดี ถามตอบรู้เรื่อง');
+  else if (warningAnswered) negatives.push('รู้สึกตัวดี ถามตอบรู้เรื่อง');
 
   if (warningSigns.includes('hyperventilation_tingling')) positives.push('มือเท้าชา หายใจเร็วตื้น นิ้วเกร็ง');
 
@@ -326,11 +326,15 @@ function updatePalpitationOutputs(patient) {
     positives.push(patient.otherSymptomsFree);
   }
 
-  patient.pertinentPositives = positives.length > 0 ? positives : ['ไม่มีอาการร่วมผิดปกติ'];
-  patient.pertinentNegatives = negatives;
+  patient.pertinentPositives = positives.length > 0 ? positives : ['ผู้ป่วยไม่ได้ระบุอาการร่วมเพิ่มเติม'];
+  patient.pertinentNegatives = negatives.length > 0 ? negatives : ['ผู้ป่วยไม่ได้ระบุคำตอบยืนยันในหมวดอาการร่วม'];
 
   const docNotes = patient.doctor_notes || {};
-  const medsText = (!patient.currentMeds || patient.currentMeds === 'ไม่ได้ระบุ' || patient.currentMeds === 'ไม่มี') ? 'ไม่มี' : patient.currentMeds;
+  const medsText = (!patient.currentMeds || patient.currentMeds === 'ไม่ได้ระบุ') ? 'ไม่ได้ระบุ' : patient.currentMeds;
+  const udArr = Array.isArray(patient.underlying) ? patient.underlying.filter(u => u && !u.includes('ปฏิเสธ') && u !== 'ไม่มี' && u !== 'ไม่มีโรคประจำตัว') : [];
+  const udExplicitDeny = Array.isArray(patient.underlying) && patient.underlying.some(u => u && u.includes('ปฏิเสธ'));
+  const udText = udArr.length > 0 ? udArr.join(', ') : ((patient.hospRecordStatus === 'self' || patient.hospRecordStatus === 'additional' || udExplicitDeny) ? 'ปฏิเสธ' : 'ไม่ได้ระบุ');
+  const allergyText = (!patient.drugAllergy || patient.drugAllergy === 'ไม่ได้ระบุ') ? 'ไม่ได้ระบุ' : patient.drugAllergy;
   const hospLabel = {
     complete: 'มีประวัติกับ รพ.ราชบุรี ครบถ้วน (ดึงข้อมูลเดิมจากระบบ)',
     additional: 'มีประวัติกับ รพ.ราชบุรี และขอให้ข้อมูลเพิ่มเติม',
@@ -347,13 +351,13 @@ function updatePalpitationOutputs(patient) {
 • สถานะปัจจุบัน: ${statusTh}
 • ลักษณะจังหวะการเต้น (Rhythm): ${rhythmTh}
 • รูปแบบการเริ่มและหยุด (Onset/Offset): ${onsetOffsetTh}
-• ปัจจัยกระตุ้น/บรรเทา: ${triggerListTh.join(', ') || 'ไม่มีสิ่งกระตุ้นจำเพาะ'}
+• ปัจจัยกระตุ้น/บรรเทา: ${triggerListTh.join(', ') || 'ไม่ได้ระบุ'}
 
 • Pertinent Positives:
-${positives.length > 0 ? positives.map(p => `  - ${p}`).join('\n') : '  - ไม่มีอาการร่วมอื่นที่เด่นชัด'}
+${positives.length > 0 ? positives.map(p => `  - ${p}`).join('\n') : '  - ผู้ป่วยไม่ได้ระบุอาการร่วมเพิ่มเติม'}
 
 • Pertinent Negatives:
-${negatives.map(n => `  - ${n}`).join('\n')}
+${patient.pertinentNegatives.map(n => `  - ${n}`).join('\n')}
 
 [Past Medical History & Medications]
 • สถานะประวัติ รพ.ราชบุรี: ${hospLabel}
@@ -361,9 +365,9 @@ ${negatives.map(n => `  - ${n}`).join('\n')}
 • ประวัติครอบครัว (Sudden Death): ${famText}
 • สารกระตุ้น/เครื่องดื่ม: ${substText}
 • ยาประจำตัวกลุ่มเสี่ยง: ${medText}
-• โรคประจำตัว (U/D): ${patient.underlying?.length > 0 ? patient.underlying.join(', ') : 'ปฏิเสธ'}
+• โรคประจำตัว (U/D): ${udText}
 • ยาประจำตัว (Current Meds): ${medsText}
-• ประวัติแพ้ยา/แพ้อาหาร (Allergies): ${patient.drugAllergy || 'ปฏิเสธ'}
+• ประวัติแพ้ยา/แพ้อาหาร (Allergies): ${allergyText}
 
 [Emergency Risk Assessment (Red Flags)]
 ${rfs.length > 0
@@ -378,12 +382,12 @@ ${rfs.length > 0
 
   // 2. Narrative Note Mode
   let narrative = `History of Present Illness (HPI):\n`;
-  narrative += `ผู้ป่วย${patient.gender === 'หญิง' ? 'หญิง' : 'ชาย'}ไทย อายุ ${patient.age || '-'} ปี มาโรงพยาบาลด้วยอาการใจสั่น ${durationStr} ก่อนมาโรงพยาบาล `;
+  narrative += `ผู้ป่วย${patient.gender === 'หญิง' ? 'หญิง' : (patient.gender === 'ชาย' ? 'ชาย' : '')} อายุ ${patient.age || '-'} ปี มาโรงพยาบาลด้วยอาการใจสั่น ${durationStr} ก่อนมาโรงพยาบาล `;
   narrative += `ลักษณะการเต้นของหัวใจคือ ${rhythmTh} โดย${onsetOffsetTh} `;
   
   if (patient.palpitationCurrentStatus === 'currently_ongoing') {
     narrative += `ขณะมาถึงห้องฉุกเฉินผู้ป่วยยังคงรู้สึกใจสั่นเต้นเร็วต่อเนื่องอยู่ตลอดเวลา `;
-  } else {
+  } else if (patient.palpitationCurrentStatus === 'intermittent_resolved') {
     narrative += `อาการใจสั่นขณะนี้หยุดไปแล้วแต่มีอาการกำเริบเป็นๆ หายๆ `;
   }
 
@@ -401,7 +405,7 @@ ${rfs.length > 0
 
   if (posWarn.length > 0) {
     narrative += `\nอาการร่วมที่ตรวจพบ: ผู้ป่วยมี ${posWarn.join(', ')} เข้าได้กับภาวะความไม่คงที่ของระบบไหลเวียนโลหิต `;
-  } else {
+  } else if (warningAnswered) {
     narrative += `\nอาการร่วม: ปฏิเสธอาการวูบหมดสติ หน้ามืด เจ็บแน่นหน้าอก หรือหายใจหอบเหนื่อย `;
   }
 
@@ -961,13 +965,13 @@ registerCcModule({
     const palpitationSubstances = Array.from(document.querySelectorAll('input[name="palpitationSubstances"]:checked')).map(el => el.value);
     const palpitationMeds = Array.from(document.querySelectorAll('input[name="palpitationMeds"]:checked')).map(el => el.value);
 
-    const palpitationCustomTriggerCheck = document.querySelector('input[name="palpitationCustomTriggerCheck"]:checked')?.value || 'no_custom_trigger';
+    const palpitationCustomTriggerCheck = document.querySelector('input[name="palpitationCustomTriggerCheck"]:checked')?.value || '';
     const palpitationCustomTriggerText = document.getElementById('palpitationCustomTriggerText')?.value?.trim() || '';
 
     const palpitationImportantConditions = Array.from(document.querySelectorAll('input[name="palpitationImportantConditions"]:checked')).map(el => el.value);
     const palpitationCardiacHistory = Array.from(document.querySelectorAll('input[name="palpitationCardiacHistory"]:checked')).map(el => el.value);
     const palpitationNonCardiacHistory = palpitationImportantConditions.filter(c => c !== 'heart_disease');
-    const palpitationFamilyHistory = document.querySelector('input[name="palpitationFamilyHistory"]:checked')?.value || 'no_family_sudden_death';
+    const palpitationFamilyHistory = document.querySelector('input[name="palpitationFamilyHistory"]:checked')?.value || 'unspecified';
     const otherSymptomsFree = document.getElementById('palpitation_other_free')?.value?.trim() || ctx.otherSymptomsFree || '';
 
     return {

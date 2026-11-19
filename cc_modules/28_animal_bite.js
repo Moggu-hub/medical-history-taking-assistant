@@ -37,7 +37,7 @@ function toggleBiteFemaleSection(isFemale) {
     const lmpEl = document.getElementById('biteLmpDate');
     const pregEl = document.getElementById('bitePregnancyStatus');
     if (lmpEl) lmpEl.value = '';
-    if (pregEl) pregEl.selectedIndex = 0;
+    if (pregEl) { pregEl.selectedIndex = 0; pregEl.value = ''; }
   }
 }
 
@@ -246,7 +246,7 @@ function updateBiteOutputs(rec) {
   if (posMatch) {
     rec.pertinentPositives = posMatch[1].trim().split('\n').map(l => l.replace(/^[-*\s]+/, '').trim());
   } else {
-    rec.pertinentPositives = ['ไม่มีอาการบาดเจ็บรุนแรงเฉพาะจุด'];
+    rec.pertinentPositives = ['ผู้ป่วยไม่ได้ระบุอาการร่วมเพิ่มเติม'];
   }
 
   const negMatch = rapidText.match(/• Pertinent Negatives:\n((?:\s*-[^\n]+\n?)+)/);
@@ -452,7 +452,8 @@ function formatBiteLocations(patient) {
 
 function formatBiteInfectionSigns(patient) {
   const arr = Array.isArray(patient.biteInfectionSigns) ? patient.biteInfectionSigns : [];
-  if (arr.includes('no_local_infection') || arr.length === 0) return 'ไม่มีอาการบวมแดงร้อนหรือหนอง';
+  if (arr.length === 0) return 'ไม่ได้ระบุ';
+  if (arr.includes('no_local_infection')) return 'ไม่มีอาการบวมแดงร้อนหรือหนอง';
   const map = {
     erythema_edema_throbbing_pain: 'รอบแผลบวมแดงร้อน/ปวดตุบๆ',
     pus_purulent_discharge: 'มีหนองหรือน้ำเหลืองขุ่นกลิ่นเหม็น',
@@ -463,7 +464,8 @@ function formatBiteInfectionSigns(patient) {
 
 function formatBiteSystemicSigns(patient) {
   const arr = Array.isArray(patient.biteSystemicSigns) ? patient.biteSystemicSigns : [];
-  if (arr.includes('no_systemic_signs') || arr.length === 0) return 'ไม่มีอาการผิดปกติทางระบบร่างกาย';
+  if (arr.length === 0) return 'ไม่ได้ระบุ';
+  if (arr.includes('no_systemic_signs')) return 'ไม่มีอาการผิดปกติทางระบบร่างกาย';
   const map = {
     fever_chills: 'มีไข้หนาวสั่น/ครั่นเนื้อตัว',
     dizziness_presyncope_shock: 'หน้ามืด เวียนศีรษะ วูบ ใจสั่นเหงื่อแตกตัวเย็น',
@@ -503,9 +505,9 @@ function formatBiteFemaleHx(patient) {
     suspected_or_missed: 'ขาดประจำเดือน / สงสัยอาจตั้งครรภ์',
     confirmed_pregnant: 'ยืนยันกำลังตั้งครรภ์',
     menopause_or_hysterectomy: 'วัยหมดประจำเดือน / ผ่าตัดมดลูกแล้ว',
-    unknown: 'ไม่ทราบ'
+    unknown: 'ไม่ทราบสถานะการตั้งครรภ์'
   };
-  return `LMP ${patient.biteLmpDate || 'ไม่ระบุ'} (${pregMap[patient.bitePregnancyStatus] || 'ไม่ระบุสถานะ'})`;
+  return `LMP ${patient.biteLmpDate || 'ไม่ระบุ'} (${pregMap[patient.bitePregnancyStatus] || 'ไม่ได้ระบุ'})`;
 }
 
 // --- Rapid HPI Note Generator ---
@@ -547,14 +549,29 @@ function renderBiteRapidHpi(patient) {
   if (sysSigns.includes('fever_chills')) posList.push('มีไข้หนาวสั่น');
   if (sysSigns.includes('dizziness_presyncope_shock')) posList.push('มีอาการหน้ามืด วูบ หรือเหงื่อแตกตัวเย็น');
   if (sysSigns.includes('hydrophobia_aerophobia_agitation')) posList.push('มีอาการกลืนน้ำลำบาก กลัวน้ำ กลัวลม หรือกระสับกระส่าย');
-  if (infectionSigns.includes('no_local_infection') || infectionSigns.length === 0) negList.push('ไม่มีอาการบวมแดงร้อนหรือหนอง');
-  if (sysSigns.includes('no_systemic_signs') || sysSigns.length === 0) negList.push('ไม่มีไข้หนาวสั่น และไม่มีอาการหน้ามืดช็อก');
+  if (infectionSigns.includes('no_local_infection')) negList.push('ไม่มีอาการบวมแดงร้อนหรือหนอง');
+  if (sysSigns.includes('no_systemic_signs')) negList.push('ไม่มีไข้หนาวสั่น และไม่มีอาการหน้ามืดช็อก');
 
-  const hospRecordMap = { complete: 'มีประวัติเดิมครบถ้วนในระบบ รพ.', verified: 'มีประวัติในระบบ ยืนยันข้อมูลถูกต้อง', self: 'ผู้ป่วย/ญาติให้ประวัติตนเอง' };
-  const hospRecordStr = hospRecordMap[patient.hospRecordStatus] || 'ผู้ป่วย/ญาติให้ประวัติตนเอง';
-  const udDisplay = (Array.isArray(patient.underlying) && patient.underlying.length > 0) ? patient.underlying.join(', ') : 'ปฏิเสธ';
-  const allergyDisplay = patient.drugAllergy || 'ปฏิเสธ';
-  const medsDisplay = patient.currentMeds || 'ไม่มี';
+  const hospRecordMap = {
+    complete: 'มีประวัติกับ รพ.ราชบุรี ครบถ้วน (ดึงข้อมูลเดิมจากระบบ)',
+    additional: 'มีประวัติกับ รพ.ราชบุรี และขอให้ข้อมูลเพิ่มเติม',
+    verified: 'มีประวัติในระบบ ยืนยันข้อมูลถูกต้อง',
+    self: 'ขอให้ข้อมูลด้วยตนเองทั้งหมด',
+    unspecified: 'ไม่ได้ระบุ'
+  };
+  const hospRecordStr = hospRecordMap[patient.hospRecordStatus] || 'ไม่ได้ระบุ';
+  const udArr = Array.isArray(patient.underlying) ? patient.underlying : (patient.underlying ? [patient.underlying] : []);
+  const filteredUd = udArr.filter(u => u && !u.includes('ปฏิเสธ') && u !== 'ไม่มี' && u !== 'ไม่มีโรคประจำตัว' && u !== 'ไม่ได้ระบุ');
+  const hasExplicitUdDeny = udArr.some(u => u && (u.includes('ปฏิเสธ') || u === 'ไม่มี' || u === 'ไม่มีโรคประจำตัว'));
+  const udDisplay = filteredUd.length > 0
+    ? filteredUd.join(', ')
+    : ((hasExplicitUdDeny || patient.hospRecordStatus === 'self' || patient.hospRecordStatus === 'additional') ? 'ปฏิเสธ' : 'ไม่ได้ระบุ');
+  const allergyDisplay = (!patient.drugAllergy || patient.drugAllergy === 'ไม่ได้ระบุ')
+    ? 'ไม่ได้ระบุ'
+    : ((patient.drugAllergy.includes('ปฏิเสธ') || patient.drugAllergy === 'ไม่มี') ? 'ปฏิเสธ' : patient.drugAllergy);
+  const medsDisplay = (!patient.currentMeds || patient.currentMeds === 'ไม่ได้ระบุ')
+    ? 'ไม่ได้ระบุ'
+    : (patient.currentMeds === 'ไม่มี' ? 'ไม่มี' : patient.currentMeds);
 
   return `[Chief Complaint (CC)]
 สุนัข แมว สัตว์เลี้ยงลูกด้วยนมกัด เป็นมา ${durStr}
@@ -569,10 +586,10 @@ function renderBiteRapidHpi(patient) {
 • ระดับความเจ็บปวด (Pain Score): ${painScoreStr}
 
 • Pertinent Positives:
-${posList.length > 0 ? posList.map(p => `  - ${p}`).join('\n') : '  - ไม่มีอาการบาดเจ็บรุนแรงเฉพาะจุด'}
+${posList.length > 0 ? posList.map(p => `  - ${p}`).join('\n') : '  - ผู้ป่วยไม่ได้ระบุอาการร่วมเพิ่มเติม'}
 
 • Pertinent Negatives:
-${negList.length > 0 ? negList.map(n => `  - ${n}`).join('\n') : '  - ปฏิเสธอาการผิดปกติอื่นๆ'}
+${negList.length > 0 ? negList.map(n => `  - ${n}`).join('\n') : '  - ผู้ป่วยไม่ได้ระบุคำตอบยืนยันในหมวดอาการร่วม'}
 
 [Past Medical History & Immunization Profile]
 • สถานะประวัติ รพ.ราชบุรี: ${hospRecordStr}
@@ -601,7 +618,8 @@ function renderBiteNarrative(patient) {
   const rabiesHxStr = formatBiteRabiesHx(patient);
   const pScore = (typeof patient.painScore === 'number' && patient.painScore > 0) ? `${patient.painScore}/10` : 'ไม่ระบุ';
 
-  let note = `ผู้ป่วย${patient.gender || ''} อายุ ${patient.age || 'ไม่ระบุ'} ปี ได้รับบาดเจ็บถูก${animalStr} โดยมีลักษณะ${exposureStr} เป็นมาประมาณ ${durStr} ก่อนมาโรงพยาบาล สถานะเลือดออกในขณะนี้: ${bleedingStr} ตรวจพบตำแหน่งบาดเจ็บและชนิดการบาดเจ็บที่บริเวณ${locStr} การปฐมพยาบาลเบื้องต้น: ${cleansingStr} ระดับความเจ็บปวดประเมินได้ ${pScore} ประวัติวัคซีนพิษสุนัขบ้าเดิมในตัวผู้ป่วย: ${rabiesHxStr} ประวัติวัคซีนบาดทะยัก: ${formatBiteTetanusHx(patient)}`;
+  const genderLabel = (patient.gender && patient.gender !== 'ไม่ระบุ') ? patient.gender : '';
+  let note = `ผู้ป่วย${genderLabel} อายุ ${patient.age || 'ไม่ระบุ'} ปี ได้รับบาดเจ็บถูก${animalStr} โดยมีลักษณะ${exposureStr} เป็นมาประมาณ ${durStr} ก่อนมาโรงพยาบาล สถานะเลือดออกในขณะนี้: ${bleedingStr} ตรวจพบตำแหน่งบาดเจ็บและชนิดการบาดเจ็บที่บริเวณ${locStr} การปฐมพยาบาลเบื้องต้น: ${cleansingStr} ระดับความเจ็บปวดประเมินได้ ${pScore} ประวัติวัคซีนพิษสุนัขบ้าเดิมในตัวผู้ป่วย: ${rabiesHxStr} ประวัติวัคซีนบาดทะยัก: ${formatBiteTetanusHx(patient)}`;
   const femStr = formatBiteFemaleHx(patient);
   if (femStr) note += ` ประวัติสตรี: ${femStr}`;
 
@@ -676,6 +694,7 @@ function generateBiteCds(patient, ctx) {
 // --- FORM HTML TEMPLATE ---
 const ANIMAL_BITE_FORM_HTML = `
 <div id="cc-animal-bite-section" class="hidden space-y-6">
+  <div data-cc-top-banner="animal_bite"><div class="flex flex-col gap-4">
   <!-- 💡 ส่วนต้น: ข้อแนะนำการปฐมพยาบาลและการล้างแผลเบื้องต้น -->
   <div class="bg-amber-50 border border-amber-200 rounded-2xl p-4 text-xs sm:text-sm text-amber-900 shadow-sm flex items-start space-x-3">
     <div class="text-amber-600 mt-0.5 flex-shrink-0">
@@ -692,6 +711,7 @@ const ANIMAL_BITE_FORM_HTML = `
       </ul>
     </div>
   </div>
+  </div></div>
 
   <!-- CARD 1: ข้อมูลเหตุการณ์ ชนิดของสัตว์ ลักษณะแผล/เลือดออก และสถานะของสัตว์ -->
   <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
@@ -1325,6 +1345,7 @@ const ANIMAL_BITE_FORM_HTML = `
         <div class="min-w-0">
           <span class="block text-xs font-semibold text-slate-700 mb-1">สถานะการตั้งครรภ์:</span>
           <select id="bitePregnancyStatus" class="w-full min-w-0 text-xs sm:text-sm border-slate-300 rounded-lg p-2 focus:ring-medical-500 focus:border-medical-500 bg-white">
+            <option value="">-- ไม่ระบุ --</option>
             <option value="not_pregnant">ไม่ได้ตั้งครรภ์ / ประจำเดือนมาปกติ</option>
             <option value="suspected_or_missed">ขาดประจำเดือน / สงสัยอาจตั้งครรภ์</option>
             <option value="confirmed_pregnant">ได้รับการยืนยันว่ากำลังตั้งครรภ์</option>
@@ -1612,7 +1633,7 @@ const animalBiteModule = {
       })(),
       ...(isBiteFemaleCtx(ctx) ? {
         biteLmpDate: document.getElementById('biteLmpDate')?.value?.trim() || '',
-        bitePregnancyStatus: document.getElementById('bitePregnancyStatus')?.value || 'not_pregnant'
+        bitePregnancyStatus: document.getElementById('bitePregnancyStatus')?.value || ''
       } : {})
     };
 
@@ -1759,7 +1780,7 @@ const animalBiteModule = {
       const lmpEl = document.getElementById('biteLmpDate');
       if (lmpEl) lmpEl.value = data.biteLmpDate || '';
       const pregEl = document.getElementById('bitePregnancyStatus');
-      if (pregEl && data.bitePregnancyStatus) pregEl.value = data.bitePregnancyStatus;
+      if (pregEl) pregEl.value = data.bitePregnancyStatus || '';
     }
     checkAndDisplayBiteLmp(data);
   },
@@ -1788,7 +1809,7 @@ const animalBiteModule = {
       'biteOtherSubGroup', 'biteFemaleSection'
     ].forEach(id => { const el = document.getElementById(id); if (el) el.classList.add('hidden'); });
     const pregEl = document.getElementById('bitePregnancyStatus');
-    if (pregEl) pregEl.selectedIndex = 0;
+    if (pregEl) { pregEl.selectedIndex = 0; pregEl.value = ''; }
 
     const radios = document.querySelectorAll('#cc-animal-bite-section input[type="radio"]');
     radios.forEach(r => { r.checked = false; });

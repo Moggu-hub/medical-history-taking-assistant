@@ -159,6 +159,16 @@ function ensureCcRegistryEntry(ccIdOrCode) {
   return CC_REGISTRY[targetMod.id];
 }
 
+function ensureCcMounted(ccIdOrMod) {
+  const mod = (ccIdOrMod && typeof ccIdOrMod === 'object')
+    ? ccIdOrMod
+    : (typeof getCcModule === 'function' ? getCcModule(ccIdOrMod) : null);
+  if (mod && typeof mountCcQuestionnaireHtml === 'function') {
+    mountCcQuestionnaireHtml(mod);
+  }
+  return mod;
+}
+
 function resolveCcFormId(ccIdOrCode) {
   const reg = ensureCcRegistryEntry(ccIdOrCode);
   if (reg) return reg.formId;
@@ -275,7 +285,10 @@ function initDatabase() {
 }
 
 function saveDatabase() {
-  localStorage.setItem(DB_STORAGE_KEY, JSON.stringify(patientDatabase));
+  const serialized = JSON.stringify(patientDatabase, (key, val) => (
+    (key === 'rapidHpi' || key === 'narrativeHpi' || key === 'medicalJson') ? undefined : val
+  ));
+  localStorage.setItem(DB_STORAGE_KEY, serialized);
   updateTopCounter();
 }
 
@@ -649,8 +662,10 @@ function renderPatientStatusView() {
     timeEl.textContent = `บันทึกข้อมูลเมื่อ ${dateDdMm ? `${dateDdMm} ` : ''}เวลา ${tStr} น.`;
   }
 
-  // Ensure outputs are computed so pertinentPositives are populated
-  updateDoctorTextAndJsonOutputs(patient);
+  // Ensure outputs are computed so pertinentPositives are populated (skip redundant run if already computed)
+  if (!Array.isArray(patient.pertinentPositives) || patient.pertinentPositives.length === 0) {
+    updateDoctorTextAndJsonOutputs(patient);
+  }
 
   if (summaryEl) {
     const unitMap = { minutes: 'นาที', hours: 'ชั่วโมง', days: 'วัน', weeks: 'สัปดาห์', months: 'เดือน', years: 'ปี' };
@@ -664,7 +679,7 @@ function renderPatientStatusView() {
       <li><strong>ยาประจำตัว:</strong> ${escapeHtml(patient.currentMeds || 'ไม่ได้ระบุ')}</li>
     `;
   }
-  if (typeof lucide !== 'undefined') lucide.createIcons();
+  scheduleLucideRefresh();
 }
 
 // Seizure Progressive Disclosure Handlers & Pediatric Guidance
@@ -692,9 +707,9 @@ function resetIntakeFormClean() {
   if (lsnDateEl) { lsnDateEl.disabled = false; lsnDateEl.value = ''; }
   if (lsnTimeEl) { lsnTimeEl.disabled = false; lsnTimeEl.value = ''; }
 
-  clearChestpainPainScore();
-  clearAbdpainPainScore();
-  clearHeadachePainScore();
+  if (document.getElementById('chestpainPainScore')) clearChestpainPainScore();
+  if (document.getElementById('abdpainPainScore')) clearAbdpainPainScore();
+  if (document.getElementById('headachePainScore')) clearHeadachePainScore();
   [
     'sx_other_free', 'abdpain_other_free', 'chestpain_other_free', 'dyspnea_other_free', 'dizziness_other_free', 'headache_other_free', 'stroke_other_free', 'seizure_other_free', 'syncope_other_free', 'vomiting_other_free', 'seizureDurationVal', 'seizureEpisodeCountVal', 'seizureSubstanceDetails', 'seizurePrecedingPostureOtherText', 'seizureDurationGte5mVal', 'syncopeDurationVal', 'syncopeDurationGte5mVal', 'syncopeEpisodeCountVal', 'syncopePostureOtherText', 'syncopeLmpDate', 'alteredMentalDurationVal', 'alteredMentalReporterRelation', 'alteredMentalReporterPhone', 'alteredMentalHeadWoundLocation', 'alteredMentalDiarrheaFreq', 'alteredMentalVomitFreq', 'alteredMentalToxinDetails', 'alteredMentalAdditionalNotes', 'vomitingDurationVal', 'vomitingDiarrheaFreq', 'vomitingToxinFoodType', 'vomitingToxinFoodTime', 'vomitingToxinFoodPlace', 'vomitingToxinFoodCoEaters', 'vomitingToxinFoodDetails', 'vomitingChemicalDetails', 'vomitingLmpDate', 'vomitingAdditionalNotes', 'abdpainLmpDate', 'strokeExactDate', 'strokeExactTime', 'strokeLsnDate', 'strokeLsnTime', 'strokeDiscoveryDate', 'strokeDiscoveryTime'
   ].forEach(id => {
@@ -702,17 +717,20 @@ function resetIntakeFormClean() {
     if (el) el.value = '';
   });
   if (typeof CC_MODULES !== 'undefined') {
-    Object.values(CC_MODULES).forEach(mod => {
-      if (mod && Array.isArray(mod.branchIds)) {
+    const seenMods = new Set(Object.values(CC_MODULES));
+    seenMods.forEach(mod => {
+      if (!mod) return;
+      if (mod.sectionDomId && !document.getElementById(mod.sectionDomId)) return;
+      if (Array.isArray(mod.branchIds)) {
         mod.branchIds.forEach(bId => toggleBranch(bId, false));
       }
-      if (mod && Array.isArray(mod.inputIdsToClear)) {
+      if (Array.isArray(mod.inputIdsToClear)) {
         mod.inputIdsToClear.forEach(iId => {
           const el = document.getElementById(iId);
           if (el) el.value = '';
         });
       }
-      if (mod && typeof mod.resetForm === 'function') {
+      if (typeof mod.resetForm === 'function') {
         mod.resetForm();
       }
     });
@@ -962,9 +980,8 @@ function populateFormFromPatient(patient) {
 
 
   // 4. Hydrate CC-Specific Fields via Modular CC Registry
-  mountAllCcQuestionnaires();
+  const ccMod = ensureCcMounted(formCc);
   initUniversalDateTimeInputs();
-  const ccMod = getCcModule(formCc);
   if (ccMod && typeof ccMod.hydrateForm === 'function') {
     ccMod.hydrateForm(patient);
   }
@@ -976,7 +993,7 @@ function populateFormFromPatient(patient) {
   });
 
   updateSectionNumbering();
-  if (typeof lucide !== 'undefined') lucide.createIcons();
+  scheduleLucideRefresh();
 }
 
 // =========================================================================
@@ -1107,17 +1124,21 @@ function renderQueueCards() {
     return;
   }
 
-  // Sort: Red Flag patients first, then by queue_number
+  // Sort: Red Flag patients first (cached once per patient), then by queue_number
+  const rfFlagMap = new Map();
+  filtered.forEach(p => {
+    rfFlagMap.set(p.id, isPatientRedFlag(p));
+  });
   filtered.sort((a, b) => {
-    const aRf = isPatientRedFlag(a) ? 1 : 0;
-    const bRf = isPatientRedFlag(b) ? 1 : 0;
+    const aRf = rfFlagMap.get(a.id) ? 1 : 0;
+    const bRf = rfFlagMap.get(b.id) ? 1 : 0;
     if (aRf !== bRf) return bRf - aRf;
     return (a.queue_number || '').localeCompare(b.queue_number || '', undefined, { numeric: true });
   });
 
   container.innerHTML = filtered.map(p => {
     const isActive = p.id === activePatientId;
-    const hasRedFlag = isPatientRedFlag(p);
+    const hasRedFlag = Boolean(rfFlagMap.get(p.id));
     const safeId = escapeHtml(p.id);
     const safeQueue = escapeHtml(p.queue_number);
     const safeName = escapeHtml(p.name);
@@ -1153,7 +1174,7 @@ function renderQueueCards() {
       </div>
     `;
   }).join('');
-  if (typeof lucide !== 'undefined') lucide.createIcons();
+  scheduleLucideRefresh();
 }
 
 function selectPatient(patientId) {
@@ -1360,27 +1381,16 @@ function toggleJsonDevViewer(forceState) {
 // INITIALIZATION & ROUTING
 // =========================================================================
 document.addEventListener('DOMContentLoaded', () => {
-  mountAllCcQuestionnaires();
   initUniversalDateTimeInputs();
   renderChiefComplaints();
   initDatabase();
-  clearChestpainPainScore();
-  clearAbdpainPainScore();
-  toggleBranch('dyspnea_orthopnea_wrap', false); toggleBranch('dyspnea_cough_wrap', false);
-  toggleBranch('dyspnea_sputum_color_wrap', false); toggleBranch('dyspnea_chestpain_wrap', false);
-  toggleBranch('dyspnea_leg_wrap', false); toggleBranch('dyspnea_allergy_wrap', false);
-  toggleBranch('dyspnea_char_other_wrap', false); toggleBranch('ud_inhaler_detail_wrap', false);
-  toggleBranch('dizziness_trig_other_wrap', false); toggleBranch('dizziness_tinnitus_side_wrap', false);
-  toggleBranch('dizziness_hearing_loss_side_wrap', false); toggleBranch('dizziness_fullness_side_wrap', false);
-  toggleBranch('dizziness_vomit_detail_wrap', false); toggleBranch('dizziness_vomit_actual_wrap', false);
-  toggleBranch('dizziness_diarrhea_detail_wrap', false);
   updateRoleUiState();
   updateQrBannerUi();
   toggleJsonDevViewer(false);
   switchDoctorMobileTab('note');
   navigateTo('doctor'); // Open doctor view as default
   initQrQueueFromUrl(); // Override if URL has ?role=patient or ?queue=...
-  if (typeof lucide !== 'undefined') lucide.createIcons();
+  scheduleLucideRefresh();
 });
 
 function buildChiefComplaintCardHtml(cc) {
@@ -1426,7 +1436,7 @@ function renderChiefComplaints() {
   if (pedContainer) {
     pedContainer.innerHTML = CHIEF_COMPLAINTS.filter(cc => cc.isPediatric).map(buildChiefComplaintCardHtml).join('');
   }
-  if (typeof lucide !== 'undefined') lucide.createIcons();
+  scheduleLucideRefresh();
 }
 
 function filterChiefComplaints() {
@@ -1474,7 +1484,7 @@ function setPatientFormChiefComplaint(ccId) {
   ccId = reg.formId;
   const dynMod = typeof getCcModule === 'function' ? getCcModule(ccId) : null;
 
-  mountAllCcQuestionnaires();
+  ensureCcMounted(dynMod || ccId);
   initUniversalDateTimeInputs();
   currentPatientFormCC = ccId;
 
@@ -1529,7 +1539,7 @@ function setPatientFormChiefComplaint(ccId) {
     clearChestpainPainScore();
     checkChestpainHighRiskMedTrigger();
   }
-  if (typeof lucide !== 'undefined') lucide.createIcons();
+  scheduleLucideRefresh();
   return true;
 }
 
@@ -1604,7 +1614,7 @@ function handlePatientTitleChange() {
   if (dynMod && typeof dynMod.onTitleChange === 'function') {
     dynMod.onTitleChange({ title, isFemale });
   }
-  if (typeof lucide !== 'undefined') lucide.createIcons();
+  scheduleLucideRefresh();
 }
 
 function focusPatientAgeInput() {
@@ -1812,18 +1822,36 @@ function navigateTo(view) {
     }
   }
 
-  if (typeof lucide !== 'undefined') lucide.createIcons();
+  scheduleLucideRefresh();
   if (typeof window !== 'undefined' && typeof window.scrollTo === 'function') {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 }
 
+let _lucideRefreshPending = false;
+function scheduleLucideRefresh() {
+  if (typeof lucide === 'undefined' || _lucideRefreshPending) return;
+  _lucideRefreshPending = true;
+  const flush = () => {
+    _lucideRefreshPending = false;
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+  };
+  if (typeof requestAnimationFrame === 'function') requestAnimationFrame(flush);
+  else if (typeof queueMicrotask === 'function') queueMicrotask(flush);
+  else flush();
+}
+
 function toggleBranch(elementId, isVisible) {
   const el = document.getElementById(elementId);
   if (!el) return;
-  if (isVisible) el.classList.remove('hidden');
-  else el.classList.add('hidden');
-  if (typeof lucide !== 'undefined') lucide.createIcons();
+  if (isVisible) {
+    el.classList.remove('hidden');
+    if (typeof lucide !== 'undefined' && (!el.querySelector || el.querySelector('i[data-lucide]'))) {
+      scheduleLucideRefresh();
+    }
+  } else {
+    el.classList.add('hidden');
+  }
 }
 
 function toggleOtherInput(wrapId, isChecked) {
@@ -2093,8 +2121,7 @@ function handlePatientSubmit(e) {
     const otherSymptomsFree = getOtherSymptomsFree();
 
     let newPatient;
-    mountAllCcQuestionnaires();
-    const ccMod = getCcModule(currentPatientFormCC) || getCcModule('fever');
+    const ccMod = ensureCcMounted(currentPatientFormCC) || ensureCcMounted('fever');
     if (ccMod && typeof ccMod.collectIntake === 'function') {
       newPatient = ccMod.collectIntake({
         recordId,

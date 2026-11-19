@@ -359,15 +359,12 @@ function detectAlteredMentalRedFlags(patient) {
 
       // Cognitive behaviors
       const cogs = patient.alteredMentalCognitiveBehaviors || [];
-      if (cogs.length === 0) {
-        negatives.push('ไม่พบพฤติกรรมกระสับกระส่าย เอะอะโวยวาย หรือภาพหลอนชัดเจน');
-      }
 
       // Neuro flags
       const neuro = patient.alteredMentalNeuroFlags || [];
       if (neuro.includes('none_neuro_flags')) {
         negatives.push('ปฏิเสธแขนขาอ่อนแรง ชัก คอแข็ง รูม่านตาผิดปกติ และประวัติศีรษะกระแทก');
-      } else {
+      } else if (neuro.length > 0) {
         if (neuro.includes('focal_weakness_numbness')) positives.push(neuroFlagsMap.focal_weakness_numbness);
         else negatives.push('ไม่มีแขนขาอ่อนแรงครึ่งซีกหรือปากเบี้ยว');
 
@@ -406,22 +403,23 @@ function detectAlteredMentalRedFlags(patient) {
         systemic.forEach(k => {
           if (systemicFlagsMap[k]) positives.push(systemicFlagsMap[k]);
         });
+        if (!systemic.includes('high_fever_or_hypothermia')) negatives.push('ไม่มีไข้สูงหรือตัวเย็นเฉียบ');
+        if (!systemic.includes('tachypnea_labored_breathing')) negatives.push('ไม่มีหายใจหอบเร็วเหนื่อยรุนแรง');
+        if (!systemic.includes('cyanosis_cold_clammy')) negatives.push('ไม่มีตัวเย็นซีด ปลายมือเท้าเขียวคล้ำ');
+        if (!systemic.includes('cough_purulent_sputum')) negatives.push('ไม่มีไอเสมหะข้น');
+        if (!systemic.includes('foul_cloudy_urine')) negatives.push('ไม่มีปัสสาวะขุ่นกลิ่นเหม็นรุนแรง');
+        if (!systemic.includes('infected_bedsore_wound')) negatives.push('ไม่มีแผลกดทับติดเชื้อบวมแดง');
       }
-      if (!systemic.includes('high_fever_or_hypothermia')) negatives.push('ไม่มีไข้สูงหรือตัวเย็นเฉียบ');
-      if (!systemic.includes('tachypnea_labored_breathing')) negatives.push('ไม่มีหายใจหอบเร็วเหนื่อยรุนแรง');
-      if (!systemic.includes('cyanosis_cold_clammy')) negatives.push('ไม่มีตัวเย็นซีด ปลายมือเท้าเขียวคล้ำ');
-      if (!systemic.includes('cough_purulent_sputum')) negatives.push('ไม่มีไอเสมหะข้น');
-      if (!systemic.includes('foul_cloudy_urine')) negatives.push('ไม่มีปัสสาวะขุ่นกลิ่นเหม็นรุนแรง');
-      if (!systemic.includes('infected_bedsore_wound')) negatives.push('ไม่มีแผลกดทับติดเชื้อบวมแดง');
 
       // GI review
+      const anyAmGi = Boolean(patient.alteredMentalGiAbdpain || patient.alteredMentalGiDiarrhea || patient.alteredMentalGiVomit);
       if (patient.alteredMentalGiAbdpain) {
         let abdDesc = 'มีอาการปวดท้องร่วมด้วย';
         const locs = patient.alteredMentalAbdpainLocs || [];
         if (locs.length > 0) abdDesc += ` ตำแหน่ง: ${locs.join(', ')}`;
         if (patient.alteredMentalAbdpainChar) abdDesc += ` ลักษณะ: ${patient.alteredMentalAbdpainChar}`;
         positives.push(abdDesc);
-      } else {
+      } else if (anyAmGi) {
         negatives.push('ไม่มีอาการปวดท้อง');
       }
 
@@ -430,7 +428,7 @@ function detectAlteredMentalRedFlags(patient) {
         const stools = patient.alteredMentalDiarrheaStools || [];
         if (stools.length > 0) diaDesc += ` [ลักษณะ: ${stools.join(', ')}]`;
         positives.push(diaDesc);
-      } else {
+      } else if (anyAmGi) {
         negatives.push('ไม่มีอาการถ่ายเหลว/ท้องเสีย');
       }
 
@@ -439,7 +437,7 @@ function detectAlteredMentalRedFlags(patient) {
         const contents = patient.alteredMentalVomitContents || [];
         if (contents.length > 0) vomDesc += ` [สิ่งที่อาเจียน: ${contents.join(', ')}]`;
         positives.push(vomDesc);
-      } else {
+      } else if (anyAmGi) {
         negatives.push('ไม่มีอาการคลื่นไส้อาเจียน');
       }
 
@@ -447,7 +445,7 @@ function detectAlteredMentalRedFlags(patient) {
       const risks = patient.alteredMentalRiskPrecipitants || [];
       if (risks.includes('none_risk_factors')) {
         negatives.push('ปฏิเสธประวัติเบาหวานขาดน้ำตาล ไตวายขาดการฟอก ตับแข็ง ยานอนหลับ สุรา หรือสารพิษ');
-      } else {
+      } else if (risks.length > 0) {
         risks.forEach(k => {
           if (k === 'suspected_overdose_toxin') {
             let toxDesc = riskPrecipitantsMap.suspected_overdose_toxin;
@@ -463,6 +461,9 @@ function detectAlteredMentalRedFlags(patient) {
         positives.push(`ข้อสังเกตเพิ่มเติมของผู้ให้ประวัติ: ${patient.alteredMentalAdditionalNotes}`);
       }
 
+      patient.pertinentPositives = positives.length > 0 ? positives : ['ผู้ป่วยไม่ได้ระบุอาการร่วมเพิ่มเติม'];
+      patient.pertinentNegatives = negatives.length > 0 ? negatives : ['ผู้ป่วยไม่ได้ระบุคำตอบยืนยันในหมวดอาการร่วม'];
+
       // CAM-ICU Assessment
       const cam1 = Boolean(
         patient.alteredMentalOnsetPattern === 'hyperacute_minutes' ||
@@ -470,12 +471,19 @@ function detectAlteredMentalRedFlags(patient) {
         patient.alteredMentalOnsetPattern === 'fluctuating_day_night'
       );
       const cam2 = cogs.includes('inattention_unfocused');
-      const cam3 = Boolean(patient.alteredMentalLevelOfConsciousness && patient.alteredMentalLevelOfConsciousness !== 'normal_alert');
+      const cam3 = Boolean(patient.alteredMentalLevelOfConsciousness && patient.alteredMentalLevelOfConsciousness !== 'unspecified' && patient.alteredMentalLevelOfConsciousness !== 'normal_alert');
       const cam4 = Boolean(cogs.includes('speech_slurred_or_incoherent') || cogs.includes('disoriented_time_place') || cogs.includes('hallucinations_paranoid'));
       const camPositive = (cam1 && cam2 && (cam3 || cam4));
+      const camInputPresent = Boolean(
+        (patient.alteredMentalOnsetPattern && patient.alteredMentalOnsetPattern !== 'unspecified') ||
+        (patient.alteredMentalLevelOfConsciousness && patient.alteredMentalLevelOfConsciousness !== 'unspecified') ||
+        cogs.length > 0
+      );
       const camStatusText = camPositive
         ? 'CAM Positive: เข้าได้กับภาวะเพ้อเฉียบพลัน (Delirium) ต้องหาสาเหตุกระตุ้นทันที'
-        : 'CAM Incomplete / Stupor-Coma: ระดับความรู้สึกตัวลดลง จำเป็นต้องแยกโรค Metabolic / Sepsis / Structural Brain Lesion';
+        : (camInputPresent
+            ? 'CAM Incomplete / Stupor-Coma: ระดับความรู้สึกตัวลดลง จำเป็นต้องแยกโรค Metabolic / Sepsis / Structural Brain Lesion'
+            : 'ไม่ได้ระบุข้อมูลเพียงพอสำหรับการคัดกรอง CAM-ICU');
 
       const hospLabel = {
         complete: 'มีประวัติกับ รพ.ราชบุรี ครบถ้วน (ดึงข้อมูลเดิมจากระบบ)',
@@ -485,7 +493,11 @@ function detectAlteredMentalRedFlags(patient) {
       }[patient.hospRecordStatus] || 'ไม่ได้ระบุ';
 
       const docNotes = patient.doctor_notes || {};
-      const medsText = (!patient.currentMeds || patient.currentMeds === 'ไม่ได้ระบุ' || patient.currentMeds === 'ไม่มี') ? 'ไม่มี' : patient.currentMeds;
+      const medsText = (!patient.currentMeds || patient.currentMeds === 'ไม่ได้ระบุ') ? 'ไม่ได้ระบุ' : patient.currentMeds;
+      const udArr = Array.isArray(patient.underlying) ? patient.underlying.filter(u => u && !u.includes('ปฏิเสธ') && u !== 'ไม่มี' && u !== 'ไม่มีโรคประจำตัว') : [];
+      const udExplicitDeny = Array.isArray(patient.underlying) && patient.underlying.some(u => u && u.includes('ปฏิเสธ'));
+      const udText = udArr.length > 0 ? udArr.join(', ') : ((patient.hospRecordStatus === 'self' || patient.hospRecordStatus === 'additional' || udExplicitDeny) ? 'ปฏิเสธ' : 'ไม่ได้ระบุ');
+      const allergyText = (!patient.drugAllergy || patient.drugAllergy === 'ไม่ได้ระบุ') ? 'ไม่ได้ระบุ' : patient.drugAllergy;
 
       // A) Rapid Bullet Format for Altered Mental Status
       const defaultRapid =
@@ -493,24 +505,24 @@ function detectAlteredMentalRedFlags(patient) {
 ซึมลง / สับสนเฉียบพลัน / ระดับความรู้สึกตัวเปลี่ยนแปลง (Altered Mental Status / Delirium / Coma) มา ${durationText}
 
 [History of Present Illness (HPI)]
-• ผู้ให้ประวัติ: ${reporterMap[patient.alteredMentalReporter] || 'ไม่ระบุ'} ${patient.alteredMentalReporterRelation ? `(${patient.alteredMentalReporterRelation})` : ''} ${patient.alteredMentalReporterPhone ? `โทร: ${patient.alteredMentalReporterPhone}` : ''}
-• ระดับความสามารถเดิม (Baseline Status): ${baselineMap[patient.alteredMentalBaselineStatus] || 'ไม่ระบุ'}
-• รูปแบบการเริ่มมีอาการ: ${onsetPatternMap[patient.alteredMentalOnsetPattern] || 'ไม่ระบุ'}
+• ผู้ให้ประวัติ: ${reporterMap[patient.alteredMentalReporter] || 'ไม่ได้ระบุ'} ${patient.alteredMentalReporterRelation ? `(${patient.alteredMentalReporterRelation})` : ''} ${patient.alteredMentalReporterPhone ? `โทร: ${patient.alteredMentalReporterPhone}` : ''}
+• ระดับความสามารถเดิม (Baseline Status): ${baselineMap[patient.alteredMentalBaselineStatus] || 'ไม่ได้ระบุ'}
+• รูปแบบการเริ่มมีอาการ: ${onsetPatternMap[patient.alteredMentalOnsetPattern] || 'ไม่ได้ระบุ'}
 • เวลาปกติครั้งสุดท้าย (Last Seen Normal - LSN): ${lsnText}
-• ระดับการตื่นตัวหลักในขณะนี้: ${consciousLevelMap[patient.alteredMentalLevelOfConsciousness] || 'ไม่ระบุ'}
-• พฤติกรรมและการรู้คิดผิดปกติ: ${cogs.length > 0 ? cogs.map(k => cognitiveMap[k] || k).join('; ') : 'ไม่มีพฤติกรรมกระสับกระส่าย/เพ้อชัดเจน'}
+• ระดับการตื่นตัวหลักในขณะนี้: ${consciousLevelMap[patient.alteredMentalLevelOfConsciousness] || 'ไม่ได้ระบุ'}
+• พฤติกรรมและการรู้คิดผิดปกติ: ${cogs.length > 0 ? cogs.map(k => cognitiveMap[k] || k).join('; ') : 'ไม่ได้ระบุ'}
 
 • Pertinent Positives:
-${positives.length > 0 ? positives.map(p => `  - ${p}`).join('\n') : '  - ไม่มีอาการร่วมอื่นที่เด่นชัด'}
+${positives.length > 0 ? positives.map(p => `  - ${p}`).join('\n') : '  - ผู้ป่วยไม่ได้ระบุอาการร่วมเพิ่มเติม'}
 
 • Pertinent Negatives:
-${negatives.map(n => `  - ${n}`).join('\n')}
+${patient.pertinentNegatives.map(n => `  - ${n}`).join('\n')}
 
 [Past Medical History & Medications]
 • สถานะประวัติ รพ.ราชบุรี: ${hospLabel}
-• โรคประจำตัว (U/D): ${patient.underlying?.length > 0 ? patient.underlying.join(', ') : 'ปฏิเสธ'}
+• โรคประจำตัว (U/D): ${udText}
 • ยาประจำตัว (Current Meds): ${medsText}
-• ประวัติแพ้ยา/แพ้อาหาร (Allergies): ${patient.drugAllergy || 'ปฏิเสธ'}
+• ประวัติแพ้ยา/แพ้อาหาร (Allergies): ${allergyText}
 
 [Emergency Risk Assessment (Red Flags)]
 ${patient.redFlags?.length > 0
@@ -526,15 +538,15 @@ ${patient.redFlags?.length > 0
       // B) Narrative Paragraph Format for Altered Mental Status
       const defaultNarrative =
 `ผู้ป่วย [${patient.name}] อายุ ${patient.age || '-'} ปี เพศ ${patient.gender || 'ไม่ระบุ'} มารับการตรวจที่ห้องฉุกเฉิน รพ.ราชบุรี ด้วยอาการซึมลง / สับสนเฉียบพลัน / ระดับความรู้สึกตัวเปลี่ยนแปลง มา ${durationText}
-ข้อมูลประวัติ: ให้ประวัติโดย [${reporterMap[patient.alteredMentalReporter] || 'ไม่ระบุ'}] ${patient.alteredMentalReporterRelation ? `ความสัมพันธ์: ${patient.alteredMentalReporterRelation} ` : ''}${patient.alteredMentalReporterPhone ? `โทร: ${patient.alteredMentalReporterPhone} ` : ''}ระดับความสามารถเดิมก่อนเกิดเหตุ: [${baselineMap[patient.alteredMentalBaselineStatus] || 'ไม่ระบุ'}] รูปแบบการเริ่มมีอาการ: [${onsetPatternMap[patient.alteredMentalOnsetPattern] || 'ไม่ระบุ'}] เวลาปกติครั้งสุดท้าย (LSN): [${lsnText}]
-ระดับการตื่นตัวในขณะนี้ตรวจพบเป็น [${consciousLevelMap[patient.alteredMentalLevelOfConsciousness] || 'ไม่ระบุ'}] พฤติกรรมการรู้คิด: [${cogs.length > 0 ? cogs.map(k => cognitiveMap[k] || k).join(', ') : 'ไม่มีพฤติกรรมกระสับกระส่ายผิดปกติ'}]
-การประเมินสัญญาณอันตรายทางสมองและระบบประสาท: [${neuro.length > 0 ? neuro.map(k => neuroFlagsMap[k] || k).join(', ') : 'ปฏิเสธอาการทางระบบประสาท'}] การประเมินสัญญาณการติดเชื้อและระบบหายใจ: [${systemic.length > 0 ? systemic.map(k => systemicFlagsMap[k] || k).join(', ') : 'ไม่พบสัญญาณติดเชื้อชัดเจน'}] ประวัติความเสี่ยง ยาที่ใช้ สารพิษ: [${risks.length > 0 ? risks.map(k => riskPrecipitantsMap[k] || k).join(', ') : 'ปฏิเสธ'}] ${patient.alteredMentalToxinDetails ? `สงสัยสารพิษ: ${patient.alteredMentalToxinDetails} ` : ''}
+ข้อมูลประวัติ: ให้ประวัติโดย [${reporterMap[patient.alteredMentalReporter] || 'ไม่ได้ระบุ'}] ${patient.alteredMentalReporterRelation ? `ความสัมพันธ์: ${patient.alteredMentalReporterRelation} ` : ''}${patient.alteredMentalReporterPhone ? `โทร: ${patient.alteredMentalReporterPhone} ` : ''}ระดับความสามารถเดิมก่อนเกิดเหตุ: [${baselineMap[patient.alteredMentalBaselineStatus] || 'ไม่ได้ระบุ'}] รูปแบบการเริ่มมีอาการ: [${onsetPatternMap[patient.alteredMentalOnsetPattern] || 'ไม่ได้ระบุ'}] เวลาปกติครั้งสุดท้าย (LSN): [${lsnText}]
+ระดับการตื่นตัวในขณะนี้ตรวจพบเป็น [${consciousLevelMap[patient.alteredMentalLevelOfConsciousness] || 'ไม่ได้ระบุ'}] พฤติกรรมการรู้คิด: [${cogs.length > 0 ? cogs.map(k => cognitiveMap[k] || k).join(', ') : 'ไม่ได้ระบุ'}]
+การประเมินสัญญาณอันตรายทางสมองและระบบประสาท: [${neuro.length > 0 ? neuro.map(k => neuroFlagsMap[k] || k).join(', ') : 'ไม่ได้ระบุ'}] การประเมินสัญญาณการติดเชื้อและระบบหายใจ: [${systemic.length > 0 ? systemic.map(k => systemicFlagsMap[k] || k).join(', ') : 'ไม่ได้ระบุ'}] ประวัติความเสี่ยง ยาที่ใช้ สารพิษ: [${risks.length > 0 ? risks.map(k => riskPrecipitantsMap[k] || k).join(', ') : 'ไม่ได้ระบุ'}] ${patient.alteredMentalToxinDetails ? `สงสัยสารพิษ: ${patient.alteredMentalToxinDetails} ` : ''}
 
 ผลการประเมินภาวะเพ้อสับสน (Delirium Screening): ${camStatusText}
-อาการสำคัญที่ตรวจพบ (Pertinent Positives): ${positives.join(', ')}
-อาการสำคัญที่ให้ผลลบ (Pertinent Negatives): ${negatives.join(', ')}
+อาการสำคัญที่ตรวจพบ (Pertinent Positives): ${patient.pertinentPositives.join(', ')}
+อาการสำคัญที่ให้ผลลบ (Pertinent Negatives): ${patient.pertinentNegatives.join(', ')}
 
-ประวัติการเจ็บป่วยเดิม: โรคประจำตัว: ${patient.underlying?.length > 0 ? patient.underlying.join(', ') : 'ปฏิเสธ'}, ยาประจำตัว: ${medsText}, ประวัติแพ้ยา/แพ้อาหาร: ${patient.drugAllergy || 'ปฏิเสธ'}
+ประวัติการเจ็บป่วยเดิม: โรคประจำตัว: ${udText}, ยาประจำตัว: ${medsText}, ประวัติแพ้ยา/แพ้อาหาร: ${allergyText}
 ${patient.redFlags?.length > 0 ? `\n[🚩 สัญญาณเตือนอันตราย (Red Flags)]: ${patient.redFlags.map(rf => `${rf.textTh} (${rf.risk})`).join('; ')}` : ''}
 
 [บันทึกการตรวจและการประเมินโดยแพทย์]:
@@ -1575,7 +1587,7 @@ registerCcModule({
         alteredMentalAdditionalNotes,
         otherSymptomsFree,
         hospRecordStatus,
-        underlying: underlying.length > 0 ? underlying: ['ปฏิเสธ'],
+        underlying: underlying.length > 0 ? underlying : ((hospRecordStatus === 'self' || hospRecordStatus === 'additional') ? ['ปฏิเสธ'] : []),
         drugAllergy,
         currentMeds,
         doctor_notes: preservedDoctorNotes

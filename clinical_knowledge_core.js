@@ -48,7 +48,7 @@ const CHIEF_COMPLAINTS = [
   { id: 'seizure', schemaCode: 'seizure', titleTh: 'ชัก / เกร็งกระตุก', titleEn: 'Seizure / Convulsion', icon: 'zap', active: true, phase: 5 },
   { id: 'syncope', schemaCode: 'syncope', titleTh: 'หมดสติ / วูบ / เป็นลม', titleEn: 'Syncope / Loss of consciousness', icon: 'sparkles', active: true, phase: 5 },
   { id: 'altered_mental', schemaCode: 'altered_mental_status', titleTh: 'ซึมลง / สับสนเฉียบพลัน / ระดับความรู้สึกตัวเปลี่ยนแปลง', titleEn: 'Altered mental status / Confusion', icon: 'help-circle', active: true, phase: 5 },
-  { id: 'vomiting', schemaCode: 'severe_nausea_vomiting', titleTh: 'คลื่นไส้ / อาเจียนรุนแรง', titleEn: 'Nausea & Severe Vomiting', icon: 'frown', active: true, phase: 6 },
+  { id: 'vomiting', schemaCode: 'severe_nausea_vomiting', titleTh: 'คลื่นไส้ / อาเจียน', titleEn: 'Nausea & Vomiting', icon: 'frown', active: true, phase: 6 },
   { id: 'diarrhea', schemaCode: 'diarrhea', titleTh: 'ถ่ายเหลว / ถ่ายเป็นน้ำ', titleEn: 'Diarrhea', icon: 'droplets', active: true, phase: 7 },
   { id: 'gi_bleed', schemaCode: 'gi_bleeding', titleTh: 'อาเจียนเป็นเลือด / ถ่ายดำ / ถ่ายเป็นเลือดสด', titleEn: 'Hematemesis / Melena / Hematochezia', icon: 'alert-triangle', active: true, phase: 7 },
   { id: 'palpitation', schemaCode: 'palpitations', titleTh: 'ใจสั่น', titleEn: 'Palpitations', icon: 'activity', active: true, phase: 8 },
@@ -107,10 +107,12 @@ function mountCcQuestionnaireHtml(mod) {
   if (mod.sectionDomId && document.getElementById(mod.sectionDomId)) return;
   const container = document.getElementById('ccQuestionnairesContainer');
   if (!container) return;
-  if (typeof container.insertAdjacentHTML === 'function') {
-    container.insertAdjacentHTML('beforeend', mod.formHtml);
-  } else {
-    container.innerHTML += mod.formHtml;
+  if (typeof container.insertAdjacentHTML === 'function') container.insertAdjacentHTML('beforeend', mod.formHtml);
+  else container.innerHTML += mod.formHtml;
+  const sec = mod.sectionDomId ? document.getElementById(mod.sectionDomId) : null;
+  const topInner = document.getElementById('ccTopBannersInner');
+  if (sec && topInner && typeof sec.querySelectorAll === 'function') {
+    sec.querySelectorAll('[data-cc-top-banner]').forEach(el => { el.classList.add('hidden'); topInner.appendChild(el); });
   }
 }
 
@@ -156,7 +158,6 @@ function registerCcModule(mod) {
       }
     });
   }
-  mountCcQuestionnaireHtml(mod);
 }
 
 function getCcModule(ccIdOrRecordCc) {
@@ -935,7 +936,7 @@ const PEDIATRIC_TO_ADULT_CC_MAP = {
   pediatric_fever: { targetCc: 'fever', label: 'ไข้ / หนาวสั่น (ผู้ใหญ่)' },
   pediatric_dyspnea: { targetCc: 'dyspnea', label: 'เหนื่อย / หายใจหอบเหนื่อย (ผู้ใหญ่)' },
   pediatric_abdpain: { targetCc: 'abdpain', label: 'ปวดท้อง (ผู้ใหญ่)' },
-  pediatric_vomiting: { targetCc: 'vomiting', label: 'คลื่นไส้ / อาเจียนรุนแรง (ผู้ใหญ่)' },
+  pediatric_vomiting: { targetCc: 'vomiting', label: 'คลื่นไส้ / อาเจียน (ผู้ใหญ่)' },
   pediatric_seizure: { targetCc: 'seizure', label: 'ชัก / เกร็งกระตุก (ผู้ใหญ่)' },
   pediatric_lethargy: { targetCc: 'weakness', label: 'อ่อนเพลีย / ซึมลง (ผู้ใหญ่)' },
   pediatric_gi_bleed: { targetCc: 'gi_bleed', label: 'อาเจียนเป็นเลือด / ถ่ายดำ / ถ่ายเป็นเลือดสด (ผู้ใหญ่)' },
@@ -946,8 +947,21 @@ function getCcEntry(ccIdOrCode) {
   return CHIEF_COMPLAINTS.find(c => c.id === ccIdOrCode || c.schemaCode === ccIdOrCode) || null;
 }
 
+function syncCcTopBanners(ccId) {
+  if (typeof document === 'undefined') return;
+  const wrap = document.getElementById('ccTopBannersWrapper'), cont = document.getElementById('ccTopBannersContainer'), inner = document.getElementById('ccTopBannersInner');
+  let hasCcBanner = false;
+  if (inner && typeof inner.querySelectorAll === 'function') {
+    inner.querySelectorAll('[data-cc-top-banner]').forEach(el => { const show = el.getAttribute('data-cc-top-banner') === ccId; el.classList.toggle('hidden', !show); if (show) hasCcBanner = true; });
+  }
+  if (cont) cont.classList.toggle('hidden', !hasCcBanner);
+  const entry = getCcEntry(ccId);
+  const hasRedirect = Boolean(!(entry && entry.isPediatric) && typeof ADULT_TO_PEDIATRIC_CC_MAP !== 'undefined' && ADULT_TO_PEDIATRIC_CC_MAP[ccId]);
+  if (wrap) wrap.classList.toggle('hidden', !hasCcBanner && !hasRedirect);
+}
 function isPediatricCc(ccIdOrCode) {
   const entry = getCcEntry(ccIdOrCode);
+  if (typeof currentPatientFormCC === 'string' && ccIdOrCode === currentPatientFormCC) syncCcTopBanners(ccIdOrCode);
   return Boolean(entry && entry.isPediatric);
 }
 

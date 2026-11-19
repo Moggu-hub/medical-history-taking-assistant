@@ -408,7 +408,7 @@ const selfHarmModule = {
 
   formHtml: `
     <div id="ccSelfHarmSection" class="space-y-6">
-
+      <div data-cc-top-banner="self_harm"><div class="flex flex-col gap-4">
       <!-- BANNER แจ้งเตือนกรณีรับประทานสารพิษ / กินยาเกินขนาด -->
       <div class="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-start space-x-3">
         <div class="p-2 bg-amber-100 text-amber-800 rounded-xl flex-shrink-0 mt-0.5">
@@ -426,6 +426,7 @@ const selfHarmModule = {
           </div>
         </div>
       </div>
+      </div></div>
 
       <!-- CARD 1: INFORMANT, TIMELINE & MECHANISM -->
       <div class="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-xs space-y-4">
@@ -934,6 +935,7 @@ const selfHarmModule = {
             <div class="min-w-0">
               <span class="block text-xs font-semibold text-slate-700 mb-1">สถานะการตั้งครรภ์:</span>
               <select id="selfHarmPregnancyStatus" class="w-full min-w-0 text-xs sm:text-sm border-slate-300 rounded-lg p-2 focus:ring-medical-500 focus:border-medical-500 bg-white">
+                <option value="">-- ไม่ระบุ --</option>
                 <option value="not_pregnant">ไม่ได้ตั้งครรภ์ / ประจำเดือนมาปกติ</option>
                 <option value="suspected_or_missed">ขาดประจำเดือน / สงสัยอาจตั้งครรภ์</option>
                 <option value="confirmed_pregnant">ได้รับการยืนยันว่ากำลังตั้งครรภ์</option>
@@ -980,10 +982,10 @@ const selfHarmModule = {
       chief_complaint_title: 'ทำร้ายตนเอง / พยายามฆ่าตัวตาย',
       timestamp: new Date().toISOString(),
       status: ctx.recordStatus || 'waiting',
-      hospRecordStatus: ctx.hospRecordStatus || 'complete',
+      hospRecordStatus: ctx.hospRecordStatus || 'unspecified',
       underlying: ctx.underlying || [],
-      drugAllergy: ctx.drugAllergy || 'ปฏิเสธ',
-      currentMeds: ctx.currentMeds || 'ไม่มี',
+      drugAllergy: ctx.drugAllergy || 'ไม่ได้ระบุ',
+      currentMeds: ctx.currentMeds || 'ไม่ได้ระบุ',
       otherSymptomsFree: document.getElementById('self_harm_other_free')?.value?.trim() || ctx.otherSymptomsFree || '',
       doctor_notes: ctx.preservedDoctorNotes || { additional_hpi: '', physical_exam: '', preliminary_dx: '', plan: '' }
     };
@@ -996,7 +998,7 @@ const selfHarmModule = {
     p.selfHarmInformant = getRadio('selfHarmInformant');
     p.selfHarmInformantRelText = getVal('selfHarmInformantRelText');
     p.selfHarmInformantRescuerText = getVal('selfHarmInformantRescuerText');
-    p.durationVal = parseInt(document.getElementById('selfHarmDurationVal')?.value, 10) || 0;
+    p.durationVal = parseInt(document.getElementById('selfHarmDurationVal')?.value, 10) || null;
     p.durationUnit = document.getElementById('selfHarmDurationUnit')?.value || 'minutes';
     p.selfHarmExactDate = getVal('selfHarmExactDate');
     p.selfHarmExactTime = getVal('selfHarmExactTime');
@@ -1077,7 +1079,7 @@ const selfHarmModule = {
     const isFem = p.gender === 'female' || p.gender === 'หญิง' || /นาง|น\.ส\./.test(p.patientTitle || '');
     if (isFem) {
       p.selfHarmLmpDate = getVal('selfHarmLmpDate');
-      p.selfHarmPregnancyStatus = document.getElementById('selfHarmPregnancyStatus')?.value || 'not_pregnant';
+      p.selfHarmPregnancyStatus = document.getElementById('selfHarmPregnancyStatus')?.value || '';
     } else {
       delete p.selfHarmLmpDate;
       delete p.selfHarmPregnancyStatus;
@@ -1239,7 +1241,7 @@ const selfHarmModule = {
       femSec.classList.toggle('hidden', !isFem);
       if (isFem) {
         setVal('selfHarmLmpDate', patient.selfHarmLmpDate || '');
-        if (document.getElementById('selfHarmPregnancyStatus')) document.getElementById('selfHarmPregnancyStatus').value = patient.selfHarmPregnancyStatus || 'not_pregnant';
+        if (document.getElementById('selfHarmPregnancyStatus')) document.getElementById('selfHarmPregnancyStatus').value = patient.selfHarmPregnancyStatus || '';
       }
     }
     setVal('self_harm_other_free', patient.otherSymptomsFree || '');
@@ -1254,6 +1256,8 @@ const selfHarmModule = {
     sec.querySelectorAll('input[type="text"], input[type="number"], textarea').forEach(el => { el.value = ''; });
     sec.querySelectorAll('input[type="checkbox"], input[type="radio"]').forEach(el => { el.checked = false; });
     sec.querySelectorAll('select').forEach(el => { el.selectedIndex = 0; });
+    const pregEl = document.getElementById('selfHarmPregnancyStatus');
+    if (pregEl) pregEl.value = '';
     clearShPainScore();
 
     const toHide = [
@@ -1478,14 +1482,22 @@ const selfHarmModule = {
       suspected_or_missed: 'ขาดประจำเดือน / สงสัยอาจตั้งครรภ์',
       confirmed_pregnant: 'ยืนยันกำลังตั้งครรภ์',
       menopause_or_hysterectomy: 'วัยหมดประจำเดือน / ผ่าตัดมดลูกแล้ว',
-      unknown: 'ไม่ทราบ'
+      unknown: 'ไม่ทราบสถานะการตั้งครรภ์'
     };
     const isFemalePatient = patient.gender === 'female' || patient.gender === 'หญิง' || /นาง|น\.ส\./.test(patient.patientTitle || '');
-    const femaleStr = `LMP ${patient.selfHarmLmpDate || 'ไม่ระบุ'} (${pregMap[patient.selfHarmPregnancyStatus] || 'ไม่ระบุสถานะ'})`;
+    const femaleStr = `LMP ${patient.selfHarmLmpDate || 'ไม่ระบุ'} (${pregMap[patient.selfHarmPregnancyStatus] || 'ไม่ได้ระบุ'})`;
 
     const painStr = (patient.selfHarmPainScore !== null && patient.selfHarmPainScore !== undefined) ? `${patient.selfHarmPainScore}/10` : 'ไม่ได้ระบุ';
-    const hospMap = { complete: 'เคยมีประวัติและรับยาต่อเนื่องที่นี่', incomplete: 'มีประวัติเดิมแต่จำรายละเอียดยาไม่ครบ', none: 'ผู้ป่วยใหม่ / ไม่มีประวัติที่นี่', new: 'ผู้ป่วยใหม่ / ไม่มีประวัติที่นี่' };
-    const hospLabel = hospMap[patient.hospRecordStatus] || 'เคยมีประวัติ รพ.ราชบุรี';
+    const hospMap = {
+      complete: 'มีประวัติกับ รพ.ราชบุรี ครบถ้วน (ดึงข้อมูลเดิมจากระบบ)',
+      additional: 'มีประวัติกับ รพ.ราชบุรี และขอให้ข้อมูลเพิ่มเติม',
+      self: 'ขอให้ข้อมูลด้วยตนเองทั้งหมด',
+      incomplete: 'มีประวัติเดิมแต่จำรายละเอียดยาไม่ครบ',
+      none: 'ผู้ป่วยใหม่ / ไม่มีประวัติที่นี่',
+      new: 'ผู้ป่วยใหม่ / ไม่มีประวัติที่นี่',
+      unspecified: 'ไม่ได้ระบุ'
+    };
+    const hospLabel = hospMap[patient.hospRecordStatus] || 'ไม่ได้ระบุ';
 
     // 2. Pertinent Positives & Negatives (Symptoms, Per-Region Signs & Pre-conditions — Single-Placement)
     const positives = [];
@@ -1549,21 +1561,24 @@ const selfHarmModule = {
       positives.push(`ข้อมูลเพิ่มเติมจากผู้ป่วย: ${String(patient.otherSymptomsFree).trim()}`);
     }
 
-    if (positives.length === 0) positives.push(`มีประวัติทำร้ายตนเองโดยวิธี${methodStr}`);
+    if (positives.length === 0) {
+      positives.push(methods.length > 0 ? `มีประวัติทำร้ายตนเอง (${methodStr})` : 'ผู้ป่วยไม่ได้ระบุอาการร่วมเพิ่มเติม');
+    }
 
-    if (!symList.includes('hoarseness') && !symList.includes('stridor') && !(patient.shNeckSigns || []).includes('airway_compromise_hoarseness')) {
+    const symAnswered = symList.includes('none') || symList.length > 0;
+    if ((symAnswered || patient.shParentNeck) && !symList.includes('hoarseness') && !symList.includes('stridor') && !(patient.shNeckSigns || []).includes('airway_compromise_hoarseness')) {
       negatives.push('ไม่มีเสียงแหบ กลืนลำบาก หรือหายใจเหนื่อยหอบ');
     }
-    if (!symList.includes('active_bleeding') && patient.selfHarmBleedingStatus !== 'pulsatile') {
+    if ((symAnswered || (patient.selfHarmBleedingStatus && patient.selfHarmBleedingStatus !== 'pulsatile')) && !symList.includes('active_bleeding') && patient.selfHarmBleedingStatus !== 'pulsatile') {
       negatives.push('ไม่มีเลือดออกพุ่งหรือไหลไม่หยุด');
     }
-    if (!symList.includes('unconscious') && !(patient.shHeadSigns || []).includes('loc_amnesia')) {
+    if ((symAnswered || patient.shParentHeadFace) && !symList.includes('unconscious') && !(patient.shHeadSigns || []).includes('loc_amnesia')) {
       negatives.push('รู้สึกตัวดี ถามตอบรู้เรื่อง ไม่สลบ');
     }
-    if (!symList.includes('numbness_distal') && !symList.includes('motor_deficit') && !(patient.shUpperExtSigns || []).includes('numbness_sensory_loss')) {
+    if ((symAnswered || patient.shParentUpperExtremity || patient.shParentLowerExtremity) && !symList.includes('numbness_distal') && !symList.includes('motor_deficit') && !(patient.shUpperExtSigns || []).includes('numbness_sensory_loss')) {
       negatives.push('ไม่มีอาการชาหรืออ่อนแรงของรยางค์ส่วนปลาย');
     }
-    if (preList.includes('none') || !preList.includes('note')) {
+    if (preList.includes('none') || (preList.length > 0 && !preList.includes('note'))) {
       negatives.push('ไม่มีจดหมายหรือข้อความสั่งเสีย');
     }
 
@@ -1572,7 +1587,18 @@ const selfHarmModule = {
 
     const effectiveRfs = this.evaluateRedFlags(patient) || [];
     const docNotes = patient.doctor_notes || {};
-    const medsText = (!patient.currentMeds || patient.currentMeds === 'ไม่ได้ระบุ' || patient.currentMeds === 'ไม่มี') ? 'ไม่มี' : patient.currentMeds;
+    const udArr = Array.isArray(patient.underlying) ? patient.underlying : (patient.underlying ? [patient.underlying] : []);
+    const filteredUd = udArr.filter(u => u && !u.includes('ปฏิเสธ') && u !== 'ไม่มี' && u !== 'ไม่มีโรคประจำตัว' && u !== 'ไม่ได้ระบุ');
+    const hasExplicitUdDeny = udArr.some(u => u && (u.includes('ปฏิเสธ') || u === 'ไม่มี' || u === 'ไม่มีโรคประจำตัว'));
+    const udDisplay = filteredUd.length > 0
+      ? filteredUd.join(', ')
+      : ((hasExplicitUdDeny || patient.hospRecordStatus === 'self' || patient.hospRecordStatus === 'additional') ? 'ปฏิเสธ' : 'ไม่ได้ระบุ');
+    const allergyDisplay = (!patient.drugAllergy || patient.drugAllergy === 'ไม่ได้ระบุ')
+      ? 'ไม่ได้ระบุ'
+      : ((patient.drugAllergy.includes('ปฏิเสธ') || patient.drugAllergy === 'ไม่มี') ? 'ปฏิเสธ' : patient.drugAllergy);
+    const medsText = (!patient.currentMeds || patient.currentMeds === 'ไม่ได้ระบุ')
+      ? 'ไม่ได้ระบุ'
+      : (patient.currentMeds === 'ไม่มี' ? 'ไม่มี' : patient.currentMeds);
     const bleedLine = patient.selfHarmBleedingStatus ? `\n• ภาวะเลือดออก: ${bleedMap[patient.selfHarmBleedingStatus] || patient.selfHarmBleedingStatus}` : '';
     const femLine = (isFemalePatient && (patient.selfHarmLmpDate || patient.selfHarmPregnancyStatus)) ? `\n• ประวัติสตรี: ${femaleStr}` : '';
 
@@ -1596,13 +1622,13 @@ const selfHarmModule = {
   - ${positives.join('\n  - ')}
 
 • Pertinent Negatives:
-  - ${negatives.join('\n  - ')}
+  - ${negatives.length > 0 ? negatives.join('\n  - ') : 'ผู้ป่วยไม่ได้ระบุคำตอบยืนยันในหมวดอาการร่วม'}
 
 [Past Medical History & Medications]
 • สถานะประวัติ รพ.ราชบุรี: ${hospLabel}
-• โรคประจำตัว (U/D): ${(Array.isArray(patient.underlying) && patient.underlying.length > 0) ? patient.underlying.join(', ') : 'ปฏิเสธ'}
+• โรคประจำตัว (U/D): ${udDisplay}
 • ยาประจำตัว (Current Meds): ${medsText}
-• ประวัติแพ้ยา/แพ้อาหาร (Allergies): ${patient.drugAllergy || 'ปฏิเสธ'}
+• ประวัติแพ้ยา/แพ้อาหาร (Allergies): ${allergyDisplay}
 
 [Emergency Risk Assessment (Red Flags)]
 ${effectiveRfs.length > 0 ? `🚩 RED FLAGS DETECTED:\n${effectiveRfs.map(r => `  * ${r.textTh}`).join('\n')}` : '✓ ไม่พบสัญญาณวิกฤตเฉพาะหน้า (Low-Risk)'}
@@ -1615,11 +1641,11 @@ ${effectiveRfs.length > 0 ? `🚩 RED FLAGS DETECTED:\n${effectiveRfs.map(r => `
 • แผนการรักษา (Plan/Orders): ${docNotes.plan || '-'}`;
 
     // 4. NARRATIVE NOTE
-    let narrative = `ผู้ป่วย [${patient.name || 'ไม่ระบุชื่อ'}] อายุ ${patient.age !== undefined && patient.age !== null ? patient.age + ' ปี' : '-'} เพศ ${patient.gender || 'ไม่ระบุ'} มาตรวจที่ห้องฉุกเฉิน รพ.ราชบุรี ด้วยเรื่องทำร้ายตนเอง / พยายามฆ่าตัวตาย เกิดเหตุเมื่อประมาณ ${durText} ก่อนมาโรงพยาบาล (ผู้ให้ข้อมูล: ${informantStr}) โดยใช้วิธี${methodStr} `;
+    let narrative = `ผู้ป่วย [${patient.name || 'ไม่ระบุชื่อ'}] อายุ ${patient.age && patient.age !== 'ไม่ระบุ' ? patient.age + ' ปี' : 'ไม่ระบุ'}${(patient.gender && patient.gender !== 'ไม่ระบุ') ? ' เพศ ' + patient.gender : ''} มาตรวจที่ห้องฉุกเฉิน รพ.ราชบุรี ด้วยเรื่องทำร้ายตนเอง / พยายามฆ่าตัวตาย เกิดเหตุเมื่อประมาณ ${durText} ก่อนมาโรงพยาบาล (ผู้ให้ข้อมูล: ${informantStr}) โดยใช้วิธี${methodStr} `;
     narrative += `ตรวจพบตำแหน่งบาดเจ็บและชนิดการบาดเจ็บคือ ${anatomyStr} `;
     narrative += `ระดับความปวด ${painStr} ความรู้สึกขณะนี้: ${feelingStr} ปัจจัยกระตุ้นคือ ${stressorStr} ประวัติจิตเวช: ${psychStr} ประวัติทำร้ายตนเองในอดีต: ${pastStr} วัคซีนบาดทะยัก: ${tetanusStr} `;
     if (isFemalePatient && (patient.selfHarmLmpDate || patient.selfHarmPregnancyStatus)) narrative += `ประวัติสตรี: ${femaleStr} `;
-    narrative += `\n\nอาการสำคัญที่ตรวจพบ: ${positives.join(', ')}\nอาการสำคัญที่ปฏิเสธ: ${negatives.join(', ')}`;
+    narrative += `\n\nอาการสำคัญที่ตรวจพบ: ${positives.join(', ')}\nอาการสำคัญที่ปฏิเสธ: ${negatives.length > 0 ? negatives.join(', ') : 'ไม่ได้ระบุ'}`;
 
     // 5. MEDICAL JSON SCHEMA
     const jsonSchema = {

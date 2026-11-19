@@ -234,11 +234,12 @@ function formatHtnCompliance(patient) {
 
 function formatHtnPregnancyStatus(patient) {
   const map = {
-    none: 'ไม่ได้ตั้งครรภ์ / ชาย / ไม่อยู่ในเกณฑ์',
+    none: 'ไม่ได้ตั้งครรภ์',
     pregnancy_lt_20wks: 'กำลังตั้งครรภ์ (อายุครรภ์น้อยกว่า 20 สัปดาห์) [ส่งต่อ High-Risk ANC] 🚩',
     pregnancy_gt_20wks: 'กำลังตั้งครรภ์ (> 20 สัปดาห์) หรือเพิ่งคลอดบุตรไม่เกิน 6 สัปดาห์ (เสี่ยง Severe Preeclampsia) 🚩'
   };
-  return map[patient.htnPregnancyStatus] || 'ไม่ได้ระบุ';
+  if (map[patient.htnPregnancyStatus]) return map[patient.htnPregnancyStatus];
+  return patient.gender === 'ชาย' ? 'ไม่อยู่ในเกณฑ์ (เพศชาย)' : 'ไม่ได้ระบุ';
 }
 
 // --- Rapid Note Generator (5 Standardized Sections) ---
@@ -314,23 +315,29 @@ function renderHypertensionRapidHpi(patient) {
     posList.push(patient.otherSymptomsFree);
   }
 
-  // Negatives evaluation
-  if (!cardioSigns.includes('crushing_chest_pressure') && !cardioSigns.includes('tearing_chest_back_pain')) {
-    negList.push('ปฏิเสธเจ็บแน่นหน้าอก และปฏิเสธอาการเจ็บฉีกขาดทะลุหลัง');
+  // Negatives evaluation (เฉพาะหมวดที่มีการระบุคำตอบ)
+  if (cardioSigns.length > 0) {
+    if (!cardioSigns.includes('crushing_chest_pressure') && !cardioSigns.includes('tearing_chest_back_pain')) {
+      negList.push('ปฏิเสธเจ็บแน่นหน้าอก และปฏิเสธอาการเจ็บฉีกขาดทะลุหลัง');
+    }
+    if (!cardioSigns.includes('orthopnea_pulmonary_edema') && !cardioSigns.includes('pink_frothy_sputum')) {
+      negList.push('ปฏิเสธหอบเหนื่อยรุนแรง นอนราบได้ ไม่มีไอเสมหะฟองสีชมพู');
+    }
   }
-  if (!cardioSigns.includes('orthopnea_pulmonary_edema') && !cardioSigns.includes('pink_frothy_sputum')) {
-    negList.push('ปฏิเสธหอบเหนื่อยรุนแรง นอนราบได้ ไม่มีไอเสมหะฟองสีชมพู');
+  if (neuroSigns.length > 0) {
+    if (!neuroSigns.includes('facial_droop_dysarthria') && !neuroSigns.includes('hemiparesis_numbness')) {
+      negList.push('ปฏิเสธปากเบี้ยว พูดไม่ชัด และปฏิเสธแขนขาอ่อนแรงครึ่งซีก');
+    }
+    if (!neuroSigns.includes('severe_headache_occipital') && !neuroSigns.includes('blurred_vision_scotoma')) {
+      negList.push('ปฏิเสธปวดศีรษะรุนแรง และปฏิเสธตามัว/เห็นภาพซ้อน');
+    }
   }
-  if (!neuroSigns.includes('facial_droop_dysarthria') && !neuroSigns.includes('hemiparesis_numbness')) {
-    negList.push('ปฏิเสธปากเบี้ยว พูดไม่ชัด และปฏิเสธแขนขาอ่อนแรงครึ่งซีก');
+  if (renalSigns.length > 0) {
+    if (!renalSigns.includes('anuria_oliguria') && !renalSigns.includes('gross_hematuria_coca_cola')) {
+      negList.push('ปฏิเสธปัสสาวะออกน้อย ปัสสาวะสีปกติไม่มีเลือดปน');
+    }
   }
-  if (!neuroSigns.includes('severe_headache_occipital') && !neuroSigns.includes('blurred_vision_scotoma')) {
-    negList.push('ปฏิเสธปวดศีรษะรุนแรง และปฏิเสธตามัว/เห็นภาพซ้อน');
-  }
-  if (!renalSigns.includes('anuria_oliguria') && !renalSigns.includes('gross_hematuria_coca_cola')) {
-    negList.push('ปฏิเสธปัสสาวะออกน้อย ปัสสาวะสีปกติไม่มีเลือดปน');
-  }
-  if (!triggers.includes('substance_stimulants')) {
+  if (triggers.length > 0 && !triggers.includes('substance_stimulants')) {
     negList.push('ปฏิเสธการใช้สารเสพติด สารกระตุ้นประสาท กัญชา หรือกระท่อม');
   }
   if (patient.htnPregnancyStatus === 'none') {
@@ -344,18 +351,23 @@ function renderHypertensionRapidHpi(patient) {
     unspecified: 'ไม่ได้ระบุ'
   }[patient.hospRecordStatus] || 'ไม่ได้ระบุ';
 
-  let udDisplay = 'ปฏิเสธ';
-  if (patient.underlying && patient.underlying.length > 0) {
-    const filteredUd = (Array.isArray(patient.underlying) ? patient.underlying : [patient.underlying])
-      .filter(u => u && !u.includes('ปฏิเสธ') && u !== 'ไม่มี' && u !== 'ไม่มีโรคประจำตัว');
-    if (filteredUd.length > 0) udDisplay = filteredUd.join(', ');
-  }
-  const allergyDisplay = (!patient.drugAllergy || patient.drugAllergy.includes('ปฏิเสธ') || patient.drugAllergy === 'ไม่มี') ? 'ปฏิเสธ' : patient.drugAllergy;
-  const medsText = (!patient.currentMeds || patient.currentMeds === 'ไม่ได้ระบุ' || patient.currentMeds === 'ไม่มี') ? 'ไม่มี' : patient.currentMeds;
+  const udArr = Array.isArray(patient.underlying) ? patient.underlying : (patient.underlying ? [patient.underlying] : []);
+  const filteredUd = udArr.filter(u => u && !u.includes('ปฏิเสธ') && u !== 'ไม่มี' && u !== 'ไม่มีโรคประจำตัว' && u !== 'ไม่ได้ระบุ');
+  const hasExplicitUdDeny = udArr.some(u => u && (u.includes('ปฏิเสธ') || u === 'ไม่มี' || u === 'ไม่มีโรคประจำตัว'));
+  const udDisplay = filteredUd.length > 0
+    ? filteredUd.join(', ')
+    : ((hasExplicitUdDeny || patient.hospRecordStatus === 'self' || patient.hospRecordStatus === 'additional') ? 'ปฏิเสธ' : 'ไม่ได้ระบุ');
+
+  const allergyDisplay = (!patient.drugAllergy || patient.drugAllergy === 'ไม่ได้ระบุ')
+    ? 'ไม่ได้ระบุ'
+    : ((patient.drugAllergy.includes('ปฏิเสธ') || patient.drugAllergy === 'ไม่มี') ? 'ปฏิเสธ' : patient.drugAllergy);
+  const medsText = (!patient.currentMeds || patient.currentMeds === 'ไม่ได้ระบุ')
+    ? 'ไม่ได้ระบุ'
+    : (patient.currentMeds === 'ไม่มี' ? 'ไม่มี' : patient.currentMeds);
   const docNotes = patient.doctor_notes || {};
   const redFlags = evaluateHypertensionRedFlags(patient);
 
-  let bpString = 'ไม่ระบุแน่ชัด';
+  let bpString = 'ไม่ได้ระบุ';
   if (patient.htnPeakSystolic || patient.htnPeakDiastolic) {
     const sbp = patient.htnPeakSystolic || '?';
     const dbp = patient.htnPeakDiastolic || '?';
@@ -378,17 +390,17 @@ function renderHypertensionRapidHpi(patient) {
 • สถานะการตั้งครรภ์: ${formatHtnPregnancyStatus(patient)}
 
 • Pertinent Positives:
-${posList.length > 0 ? posList.map(p => `  - ${p}`).join('\n') : '  - ไม่มีอาการร่วมอื่นที่เด่นชัด'}
+${posList.length > 0 ? posList.map(p => `  - ${p}`).join('\n') : '  - ผู้ป่วยไม่ได้ระบุอาการร่วมเพิ่มเติม'}
 
 • Pertinent Negatives:
-${negList.map(n => `  - ${n}`).join('\n')}
+${negList.length > 0 ? negList.map(n => `  - ${n}`).join('\n') : '  - ผู้ป่วยไม่ได้ระบุคำตอบยืนยันในหมวดอาการร่วม'}
 
 [Past Medical History & Medications]
 • สถานะประวัติ รพ.ราชบุรี: ${hospLabel}
 • โรคประจำตัว (U/D): ${udDisplay}
 • ยาประจำตัว (Current Meds): ${medsText}
 • ประวัติแพ้ยา/แพ้อาหาร (Allergies): ${allergyDisplay}
-• ปัจจัยกระตุ้นร่วม: ${triggers.length > 0 ? triggers.join(', ') : 'ปฏิเสธปัจจัยกระตุ้นเฉียบพลัน'}
+• ปัจจัยกระตุ้นร่วม: ${triggers.length > 0 ? triggers.join(', ') : 'ไม่ได้ระบุ'}
 
 [Emergency Risk Assessment (Red Flags)]
 ${redFlags.length > 0
@@ -421,7 +433,8 @@ function renderHypertensionNarrative(patient) {
     bpStr = `${patient.htnPeakSystolic || '?'}/${patient.htnPeakDiastolic || '?'} mmHg`;
   }
 
-  let note = `ผู้ป่วย${patient.gender || ''} อายุ ${patient.age || 'ไม่ระบุ'} ปี มารับการตรวจที่ห้องฉุกเฉินด้วยอาการตรวจพบความดันโลหิตสูง เป็นมา ${durStr} ก่อนมารพ. สาเหตุที่มาคือ${reasonStr} ค่าความดันสูงสุดที่วัดได้คือ ${bpStr} โดยตรวจพบจาก${sourceStr} ประวัติเดิมคือ${hxStr} ด้านการรับประทานยาความดันคือ${compStr}`;
+  const genderLabel = (patient.gender && patient.gender !== 'ไม่ระบุ') ? patient.gender : '';
+  let note = `ผู้ป่วย${genderLabel} อายุ ${patient.age || 'ไม่ระบุ'} ปี มารับการตรวจที่ห้องฉุกเฉินด้วยอาการตรวจพบความดันโลหิตสูง เป็นมา ${durStr} ก่อนมารพ. สาเหตุที่มาคือ${reasonStr} ค่าความดันสูงสุดที่วัดได้คือ ${bpStr} โดยตรวจพบจาก${sourceStr} ประวัติเดิมคือ${hxStr} ด้านการรับประทานยาความดันคือ${compStr}`;
 
   const neuroSigns = Array.isArray(patient.htnNeuroSigns) ? patient.htnNeuroSigns : [];
   const cardioSigns = Array.isArray(patient.htnCardioSigns) ? patient.htnCardioSigns : [];
@@ -439,8 +452,6 @@ function renderHypertensionNarrative(patient) {
 
   if (syms.length > 0) {
     note += ` ร่วมกับมีอาการสำคัญ: ${syms.join(', ')}`;
-  } else {
-    note += ' ผู้ป่วยปฏิเสธเจ็บแน่นหน้าอก ปฏิเสธหอบเหนื่อยนอนราบไม่ได้ ปฏิเสธปากเบี้ยวหรือแขนขาอ่อนแรง และไม่มีปัสสาวะออกน้อย';
   }
 
   return note;
@@ -465,7 +476,7 @@ function updateHypertensionOutputs(rec) {
   if (posMatch) {
     rec.pertinentPositives = posMatch[1].trim().split('\n').map(l => l.replace(/^[-*\s]+/, '').trim());
   } else {
-    rec.pertinentPositives = ['ไม่มีอาการร่วมผิดปกติ'];
+    rec.pertinentPositives = ['ผู้ป่วยไม่ได้ระบุอาการร่วมเพิ่มเติม'];
   }
 
   const negMatch = rapidText.match(/• Pertinent Negatives:\n((?:\s*-[^\n]+\n?)+)/);
@@ -1158,7 +1169,7 @@ const hypertensionModule = {
 
     const femaleSection = document.getElementById('htnFemalePregnancySection');
     const isFemaleVisible = femaleSection && !femaleSection.classList.contains('hidden');
-    const pregStatus = isFemaleVisible ? getRadio('htnPregnancyStatus') : 'none';
+    const pregStatus = isFemaleVisible ? (getRadio('htnPregnancyStatus') || null) : null;
     const pregSigns = isFemaleVisible && pregStatus === 'pregnancy_gt_20wks' ? getChecks('htnPregnancySigns') : [];
 
     const generalSigns = getChecks('htnGeneralSigns');

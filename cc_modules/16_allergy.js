@@ -1,241 +1,262 @@
 // =========================================================================
 // MODULAR CHIEF COMPLAINT MODULE: 16_allergy.js
 // อาการนำ: ผื่นแพ้เฉียบพลัน / แน่นคอ ตาบวม ปากบวม (Acute Allergic Reaction / Angioedema / Anaphylaxis)
-// ไฟล์นี้แยกอิสระสำหรับอาการนำ allergy เพื่อให้ทีมแพทย์และ IT โรงพยาบาลนำไปพัฒนาต่อได้โดยไม่กระทบระบบหลัก
+// แผนการพัฒนา: 4 การ์ดมาตรฐาน + Universal Free-Text Card + Dynamic Context Filtering (C-AP1 ถึง C-AP16)
 // =========================================================================
 
-// --- UI Toggle Handlers ---
-function handleAllergyTriggerFoodToggle(el) {
-  const wrap = document.getElementById('allergyTriggerFoodWrap');
-  if (wrap) {
-    if (el && el.checked) {
-      wrap.classList.remove('hidden');
-    } else {
-      wrap.classList.add('hidden');
-      const inp = document.getElementById('allergyTriggerFoodText');
+// --- Lookup Dictionaries (Zero Raw Enum Leaks: C-AP14) ---
+const ALLERGY_LABELS = {
+  durationUnit: {
+    minutes: 'นาที',
+    hours: 'ชั่วโมง',
+    days: 'วัน',
+    weeks: 'สัปดาห์',
+    months: 'เดือน',
+    years: 'ปี'
+  },
+  onsetSpeed: {
+    rapid_within_minutes: 'เกิดขึ้นเร็วมากภายในไม่กี่นาทีถึง 2 ชั่วโมง',
+    gradual_throughout_day: 'ค่อยๆ เป็นมากขึ้นใน 2 ถึง 24 ชั่วโมง',
+    chronic_gt_6weeks: 'เป็นผื่นต่อเนื่องหรือเป็นๆ หายๆ หลายวัน (มากกว่า 1 วัน)',
+    unspecified: 'ไม่ได้ระบุความเร็วในการเกิดอาการ'
+  },
+  onsetTimeKnown: {
+    known: 'ระบุวันที่และเวลาที่เริ่มมีอาการได้',
+    unknown: 'ไม่ทราบเวลาที่แน่นอน',
+    unspecified: 'ไม่ได้ระบุเวลาเริ่มอาการ'
+  },
+  trigger: {
+    food: 'รับประทานอาหาร',
+    medication: 'รับประทานยา หรือฉีดยาแผนปัจจุบัน',
+    herbal_supplement: 'ทานสมุนไพร ยาชุด ยาต้ม หรืออาหารเสริม',
+    insect_sting: 'ถูกแมลงกัดหรือต่อย',
+    radiocontrast_anesthesia: 'ฉีดสารทึบรังสี หรือได้รับยาชา',
+    contact_latex_chemical: 'สัมผัสสารเคมี ถุงมือยาง หรือเครื่องสำอาง',
+    unknown_trigger: 'ไม่ทราบสิ่งกระตุ้นแน่ชัด'
+  },
+  skinRash: {
+    urticaria: 'ผื่นลมพิษนูนแดง คันมาก (Urticaria)',
+    flushing: 'ผิวหนังแดงก่ำ ร้อนวูบวาบ (Flushing)',
+    erythema_maculopapular: 'ผื่นแดงราบ หรือตุ่มแดงเล็กๆ',
+    blisters_peeling: 'ตุ่มน้ำพอง หรือผิวหนังลอก',
+    purpura_petechiae: 'จุดเลือดออกใต้ผิวหนัง หรือจ้ำม่วง',
+    none_rash: 'ไม่มีผื่นขึ้นตามผิวหนัง'
+  },
+  mucosaFever: {
+    mucosal_oral_ulcer: 'มีแผลเจ็บในปาก หรือริมฝีปากลอกแตก',
+    mucosal_ocular: 'ตาแดง แสบตา หรือมีขี้ตามากผิดปกติ',
+    skin_pain_tenderness: 'ปวดแสบปวดร้อนบริเวณผิวหนังที่เป็นผื่น',
+    fever_chills: 'มีไข้ ตัวร้อน หรือหนาวสั่นร่วมด้วย',
+    none_mucosa_fever: 'ไม่มีอาการเจ็บเยื่อบุหรือไข้ข้างต้น'
+  },
+  angioedema: {
+    lips: 'ริมฝีปากบวมเจ่อ',
+    tongue_palate: 'ลิ้นบวมคับปาก หรือเพดานปากบวม',
+    periorbital_face: 'เปลือกตาบวม หรือใบหน้าบวมตึง',
+    ears_neck: 'ใบหูบวม หรือลำคอด้านนอกบวม',
+    extremities_genitalia: 'มือบวม เท้าบวม หรืออวัยวะเพศบวม',
+    none_angioedema: 'ไม่มีอาการบวมตามร่างกาย'
+  },
+  upperAirway: {
+    throat_tightness: 'แน่นในลำคอ หรือจุกคอหอย',
+    dysphagia_drooling: 'กลืนลำบาก หรือน้ำลายไหลย้อย',
+    voice_hoarseness: 'เสียงแหบ หรือพูดเสียงเปลี่ยน',
+    stridor: 'หายใจมีเสียงฮืดแหลมในลำคอ (Stridor)',
+    nasal_congestion: 'คัดแน่นจมูก น้ำมูกไหล หรือจามรัว',
+    none_upper_airway: 'ไม่มีอาการทางลำคอและทางเดินหายใจส่วนบน'
+  },
+  lowerAirway: {
+    dyspnea: 'หายใจหอบเหนื่อย หรือหายใจไม่อิ่ม',
+    wheezing: 'หายใจมีเสียงหวีดในหน้าอก (Wheezing)',
+    chest_tightness: 'แน่นอึดอัดหน้าอก หรือไอแห้งๆ รัวๆ',
+    cyanosis: 'ริมฝีปากเขียว หรือปลายมือเขียวคล้ำ',
+    none_lower_airway: 'ไม่มีอาการเหนื่อยหอบหรือทางเดินหายใจส่วนล่าง'
+  },
+  circulation: {
+    presyncope_dizziness: 'หน้ามืด วิงเวียน หรือตาพร่ามัว',
+    syncope: 'วูบ เป็นลม หรือหมดสติ',
+    cold_diaphoresis: 'เหงื่อแตกตัวเย็น หน้าซีด หรือใจสั่น',
+    altered_mental: 'สับสน กระสับกระส่าย หรือซึมลง',
+    none_circulation: 'ไม่มีอาการหน้ามืด วูบ หรือภาวะช็อก'
+  },
+  gi: {
+    severe_abd_cramps: 'ปวดบิดเกร็งท้องรุนแรง',
+    repetitive_vomiting: 'คลื่นไส้ หรืออาเจียนหลายครั้ง',
+    watery_diarrhea: 'ถ่ายเหลวเป็นน้ำเฉียบพลัน',
+    none_gi: 'ไม่มีอาการระบบทางเดินอาหาร'
+  },
+  priorAnaphylaxis: {
+    prior_severe_hosp: 'เคยแพ้รุนแรงจนต้องฉีดยาที่ต้นขาหรือนอนโรงพยาบาล',
+    prior_mild_urticaria: 'เคยมีเฉพาะผื่นลมพิษหรือผื่นคันธรรมดา (ไม่ได้นอน รพ.)',
+    first_time_never: 'ไม่เคยมีประวัติแพ้มาก่อน ครั้งนี้เป็นครั้งแรก',
+    unspecified: 'ไม่ได้ระบุประวัติการแพ้ในอดีต'
+  },
+  epipenUsage: {
+    used_prehospital: 'ได้ฉีดยาแก้แพ้พกพา (EpiPen) แล้วก่อนมาโรงพยาบาล',
+    has_not_used: 'มียาฉีดแก้แพ้พกพา (EpiPen) แต่ยังไม่ได้ฉีด',
+    none_epipen: 'ไม่มียาฉีดแก้แพ้พกพาประจำตัว',
+    unspecified: 'ไม่ได้ระบุการใช้ยาฉีดแก้แพ้พกพา'
+  },
+  prehospOralMed: {
+    none_oral_med: 'ยังไม่ได้รับประทานยาแก้แพ้ใดๆ',
+    antihistamine_no_improve: 'รับประทานยาแก้แพ้มาแล้วแต่อาการยังไม่ดีขึ้น',
+    unspecified: 'ไม่ได้ระบุการทานยาแก้แพ้เบื้องต้น'
+  },
+  specialMed: {
+    ace_inhibitors: 'ยาลดความดันกลุ่ม ACE inhibitors (-pril)',
+    beta_blockers: 'ยาลดความดัน/ลดชีพจรกลุ่ม Beta-blockers (-lol)',
+    unknown_special_meds: 'ไม่แน่ใจ (มียาประจำตัวแต่ไม่ทราบกลุ่มยา)',
+    none_special_meds: 'ไม่ได้รับประทานยากลุ่มเสี่ยงดังกล่าว'
+  },
+  pmh: {
+    asthma: 'โรคหอบหืด หรือโรคปอดเรื้อรัง',
+    cad_cvd: 'โรคหัวใจ หรือโรคหลอดเลือดหัวใจ',
+    atopic_dermatitis: 'โรคผื่นภูมิแพ้ผิวหนัง',
+    none_pmh_specific: 'ไม่มีโรคประจำตัวดังกล่าว'
+  },
+  hospStatus: {
+    complete: 'มีประวัติกับ รพ.ราชบุรี ครบถ้วน (ดึงข้อมูลเดิมจากระบบ)',
+    additional: 'มีประวัติกับ รพ.ราชบุรี และขอให้ข้อมูลเพิ่มเติม',
+    self: 'ขอให้ข้อมูลด้วยตนเองทั้งหมด',
+    unspecified: 'ไม่ได้ระบุ'
+  }
+};
+
+// --- DOM Helpers & Dynamic Context Handlers ---
+function toggleAllergyBranch(id, show) {
+  const el = document.getElementById(id);
+  if (el) el.classList.toggle('hidden', !show);
+}
+
+function getAllergyRadioValue(name) {
+  const el = document.querySelector(`input[name="${name}"]:checked`);
+  return el ? el.value : '';
+}
+
+function setAllergyRadioValue(name, val) {
+  document.querySelectorAll(`input[name="${name}"]`).forEach(r => {
+    r.checked = Boolean(val && r.value === val);
+  });
+}
+
+function getAllergyCheckedValues(name) {
+  return Array.from(document.querySelectorAll(`input[name="${name}"]:checked`)).map(el => el.value);
+}
+
+function setAllergyCheckboxGroup(name, values) {
+  const list = Array.isArray(values) ? values : [];
+  document.querySelectorAll(`input[name="${name}"]`).forEach(cb => {
+    cb.checked = list.includes(cb.value);
+  });
+}
+
+function handleAllergyExclusiveGroup(name, noneVal, el) {
+  if (!el || !el.checked) return;
+  if (el.value === noneVal) {
+    document.querySelectorAll(`input[name="${name}"]`).forEach(cb => {
+      if (cb !== el) cb.checked = false;
+    });
+  } else {
+    const noneEl = document.querySelector(`input[name="${name}"][value="${noneVal}"]`);
+    if (noneEl) noneEl.checked = false;
+  }
+}
+
+function handleAllergyOnsetTimeKnownChange(val) {
+  const isKnown = (val || getAllergyRadioValue('allergyOnsetTimeKnown')) === 'known';
+  toggleAllergyBranch('allergyExactTimeWrap', isKnown);
+  if (!isKnown) {
+    const d = document.getElementById('allergyOnsetExactDate');
+    const t = document.getElementById('allergyOnsetExactTime');
+    if (d) d.value = '';
+    if (t) t.value = '';
+  }
+}
+
+const ALLERGY_TRIGGER_WRAPS = {
+  food: { wrap: 'allergyTriggerFoodWrap', input: 'allergyTriggerFoodText' },
+  medication: { wrap: 'allergyTriggerMedWrap', input: 'allergyTriggerMedText' },
+  herbal_supplement: { wrap: 'allergyTriggerHerbWrap', input: 'allergyTriggerHerbText' },
+  insect_sting: { wrap: 'allergyTriggerInsectWrap', input: 'allergyTriggerInsectText' }
+};
+
+function syncAllergyTriggerBranches() {
+  Object.entries(ALLERGY_TRIGGER_WRAPS).forEach(([val, cfg]) => {
+    const cb = document.querySelector(`input[name="allergySuspectedTriggers"][value="${val}"]`);
+    const active = Boolean(cb && cb.checked);
+    toggleAllergyBranch(cfg.wrap, active);
+    if (!active) {
+      const inp = document.getElementById(cfg.input);
       if (inp) inp.value = '';
     }
-  }
+  });
 }
 
-function handleAllergyTriggerMedToggle(el) {
-  const wrap = document.getElementById('allergyTriggerMedWrap');
-  if (wrap) {
-    if (el && el.checked) {
-      wrap.classList.remove('hidden');
-    } else {
-      wrap.classList.add('hidden');
-      const inp = document.getElementById('allergyTriggerMedText');
-      if (inp) inp.value = '';
-    }
-  }
+function handleAllergyTriggerChange(el) {
+  handleAllergyExclusiveGroup('allergySuspectedTriggers', 'unknown_trigger', el);
+  syncAllergyTriggerBranches();
 }
 
-function handleAllergyTriggerInsectToggle(el) {
-  const wrap = document.getElementById('allergyTriggerInsectWrap');
-  if (wrap) {
-    if (el && el.checked) {
-      wrap.classList.remove('hidden');
-    } else {
-      wrap.classList.add('hidden');
-      const inp = document.getElementById('allergyTriggerInsectText');
-      if (inp) inp.value = '';
-    }
-  }
-}
-
-function handleAllergySkinRashNoneToggle(el) {
-  if (el && el.checked) {
-    document.querySelectorAll('input[name="allergySkinRash"]').forEach(cb => {
-      if (cb !== el) cb.checked = false;
+function updateAllergyMucosaContext() {
+  const checked = getAllergyCheckedValues('allergySkinRash');
+  const needsMucosa = ['blisters_peeling', 'erythema_maculopapular', 'purpura_petechiae'].some(k => checked.includes(k));
+  toggleAllergyBranch('allergyMucosaFeverWrap', needsMucosa);
+  if (!needsMucosa) {
+    document.querySelectorAll('input[name="allergyMucosaFever"]').forEach(cb => {
+      cb.checked = false;
     });
   }
 }
 
-function handleAllergyAngioedemaNoneToggle(el) {
-  if (el && el.checked) {
-    document.querySelectorAll('input[name="allergyAngioedema"]').forEach(cb => {
-      if (cb !== el) cb.checked = false;
-    });
-  }
-}
-
-function handleAllergyUpperAirwayNoneToggle(el) {
-  if (el && el.checked) {
-    document.querySelectorAll('input[name="allergyUpperAirway"]').forEach(cb => {
-      if (cb !== el) cb.checked = false;
-    });
-  }
-}
-
-function handleAllergyLowerAirwayNoneToggle(el) {
-  if (el && el.checked) {
-    document.querySelectorAll('input[name="allergyLowerAirway"]').forEach(cb => {
-      if (cb !== el) cb.checked = false;
-    });
-  }
-}
-
-function handleAllergyCirculationNoneToggle(el) {
-  if (el && el.checked) {
-    document.querySelectorAll('input[name="allergyCirculationShock"]').forEach(cb => {
-      if (cb !== el) cb.checked = false;
-    });
-  }
-}
-
-function handleAllergyGiNoneToggle(el) {
-  if (el && el.checked) {
-    document.querySelectorAll('input[name="allergyGiSymptoms"]').forEach(cb => {
-      if (cb !== el) cb.checked = false;
-    });
-  }
+function handleAllergySkinRashChange(el) {
+  handleAllergyExclusiveGroup('allergySkinRash', 'none_rash', el);
+  updateAllergyMucosaContext();
 }
 
 function handleAllergyPriorAnaphylaxisChange(val) {
-  const wrap = document.getElementById('allergyEpipenWrap');
-  if (wrap) {
-    if (val === 'prior_severe_hosp') {
-      wrap.classList.remove('hidden');
-    } else {
-      wrap.classList.add('hidden');
-      document.querySelectorAll('input[name="allergyEpipenUsage"]').forEach(r => { r.checked = false; });
-      const tWrap = document.getElementById('allergyEpipenTimeWrap');
-      if (tWrap) tWrap.classList.add('hidden');
-      const tInp = document.getElementById('allergyEpipenTimeText');
-      if (tInp) tInp.value = '';
-    }
+  const current = val || getAllergyRadioValue('allergyPriorAnaphylaxis');
+  const showEpi = current === 'prior_severe_hosp';
+  toggleAllergyBranch('allergyEpipenWrap', showEpi);
+  if (!showEpi) {
+    setAllergyRadioValue('allergyEpipenUsage', '');
+    handleAllergyEpipenUsageChange('');
   }
 }
 
 function handleAllergyEpipenUsageChange(val) {
-  const wrap = document.getElementById('allergyEpipenTimeWrap');
-  if (wrap) {
-    if (val === 'used_prehospital') {
-      wrap.classList.remove('hidden');
-    } else {
-      wrap.classList.add('hidden');
-      const inp = document.getElementById('allergyEpipenTimeText');
-      if (inp) inp.value = '';
-    }
+  const current = val || getAllergyRadioValue('allergyEpipenUsage');
+  const showTime = current === 'used_prehospital';
+  toggleAllergyBranch('allergyEpipenTimeWrap', showTime);
+  if (!showTime) {
+    const inp = document.getElementById('allergyEpipenTimeText');
+    const unk = document.getElementById('allergyEpipenTimeUnknown');
+    if (inp) inp.value = '';
+    if (unk) unk.checked = false;
   }
 }
 
-function handleAllergySpecialMedsNoneToggle(el) {
-  if (el && el.checked) {
-    document.querySelectorAll('input[name="allergySpecialMeds"]').forEach(cb => {
-      if (cb !== el) cb.checked = false;
-    });
+function handleAllergyEpipenTimeUnknownToggle(el) {
+  const inp = document.getElementById('allergyEpipenTimeText');
+  if (el && el.checked && inp) {
+    inp.value = '';
   }
 }
 
-function handleAllergyPmhNoneToggle(el) {
-  if (el && el.checked) {
-    document.querySelectorAll('input[name="allergyPmhSpecific"]').forEach(cb => {
-      if (cb !== el) cb.checked = false;
-    });
+function handleAllergyEpipenTimeInput() {
+  const inp = document.getElementById('allergyEpipenTimeText');
+  const unk = document.getElementById('allergyEpipenTimeUnknown');
+  if (inp && inp.value.trim() && unk) {
+    unk.checked = false;
   }
 }
 
-// --- Red Flag Evaluator ---
+// --- Red Flag Evaluator (WAO 2020 / NIAID Anaphylaxis + SCARs + ACEi — No Under, No Over) ---
 function evaluateAllergyRedFlags(patient) {
   const flags = [];
   if (!patient) return flags;
 
   const skinRash = Array.isArray(patient.allergySkinRash) ? patient.allergySkinRash : [];
-  const angioedema = Array.isArray(patient.allergyAngioedema) ? patient.allergyAngioedema : [];
-  const upperAirway = Array.isArray(patient.allergyUpperAirway) ? patient.allergyUpperAirway : [];
-  const lowerAirway = Array.isArray(patient.allergyLowerAirway) ? patient.allergyLowerAirway : [];
-  const circulation = Array.isArray(patient.allergyCirculationShock) ? patient.allergyCirculationShock : [];
-  const gi = Array.isArray(patient.allergyGiSymptoms) ? patient.allergyGiSymptoms : [];
-  const triggers = Array.isArray(patient.allergySuspectedTriggers) ? patient.allergySuspectedTriggers : [];
-  const specialMeds = Array.isArray(patient.allergySpecialMeds) ? patient.allergySpecialMeds : [];
-
-  const hasSkinMucosa = skinRash.includes('urticaria') || skinRash.includes('flushing') ||
-                        angioedema.includes('lips') || angioedema.includes('tongue_palate') || angioedema.includes('periorbital_face');
-  const hasUpperAirway = upperAirway.includes('throat_tightness') || upperAirway.includes('dysphagia_drooling') ||
-                         upperAirway.includes('voice_hoarseness') || upperAirway.includes('stridor');
-  const hasLowerAirway = lowerAirway.includes('dyspnea') || lowerAirway.includes('wheezing') || lowerAirway.includes('chest_tightness');
-  const hasCirculation = circulation.includes('presyncope_dizziness') || circulation.includes('syncope') || circulation.includes('cold_diaphoresis');
-  const hasSevereGi = gi.includes('severe_abd_cramps') || gi.includes('repetitive_vomiting') || gi.includes('watery_diarrhea');
-
-  const hasKnownTrigger = triggers.some(t => ['food', 'medication', 'insect_sting', 'radiocontrast_anesthesia'].includes(t));
-
-  // 1. ANAPHYLAXIS CRITICAL ALERT (WAO 2020 / NIAID Criteria)
-  const isAnaphylaxisCriteria1 = hasSkinMucosa && (hasUpperAirway || hasLowerAirway || hasCirculation || hasSevereGi);
-  const isAnaphylaxisCriteria2 = hasKnownTrigger && (hasUpperAirway || hasLowerAirway || hasCirculation);
-
-  if (isAnaphylaxisCriteria1 || isAnaphylaxisCriteria2) {
-    flags.push({
-      key: 'allergy_rf_anaphylaxis_shock',
-      textTh: 'ภาวะแพ้รุนแรงคุกคามชีวิต (Anaphylaxis Alert / Impending Anaphylactic Shock)',
-      risk: 'มีอาการแพ้เฉียบพลันร่วมกับระบบทางเดินหายใจ (แน่นคอ/เสียงแหบ/หวีด) หรือระบบไหลเวียนโลหิต (หน้ามืด/เป็นลม/ช็อก) หรือระบบทางเดินอาหารรุนแรง เข้าเกณฑ์ Anaphylaxis ตามแนวทาง WAO/NIAID',
-      triageLevel: 1,
-      severity: 'CRITICAL',
-      suggestedAction: 'Triage Level 1: เคลื่อนย้ายเข้าห้อง Resuscitation ทันที, ฉีด Adrenaline (1:1,000) 0.3–0.5 mg IM บริเวณ anterolateral thigh ทันที (ห้ามรอช้า!), ให้นอนราบยกขาสูง (Supine with legs elevated), ให้ออกซิเจน High-flow Mask with Reservoir Bag 10–15 LPM, เปิด IV เส้นใหญ่ 2 เส้น (18G) และให้ IV 0.9% NSS 1,000–2,000 mL bolus อย่างรวดเร็ว, ฉีด Adrenaline ซ้ำได้ทุก 5–15 นาที'
-    });
-  }
-
-  // 2. IMPENDING UPPER AIRWAY OBSTRUCTION (Laryngeal Angioedema)
-  if (upperAirway.includes('stridor') || angioedema.includes('tongue_palate') ||
-      upperAirway.includes('voice_hoarseness') || upperAirway.includes('dysphagia_drooling')) {
-    flags.push({
-      key: 'allergy_rf_airway_obstruction',
-      textTh: 'เสี่ยงต่อการอุดกั้นทางเดินหายใจส่วนบนเฉียบพลัน (Impending Upper Airway Obstruction / Laryngeal Edema)',
-      risk: 'ตรวจพบลิ้นบวมโตคับปาก เสียงแหบเฉียบพลัน กลืนน้ำลายไม่ได้ หรือมีเสียง Stridor',
-      triageLevel: 1,
-      severity: 'CRITICAL',
-      suggestedAction: 'เตรียมอุปกรณ์เปิดทางเดินหายใจขั้นสูง (Video Laryngoscope / Surgical Cricothyroidotomy) ข้างเตียงทันที, ปรึกษาแพทย์ดมยาและแพทย์ หู คอ จมูก (ENT) ทันที เพื่อประเมินการใส่ท่อช่วยหายใจตั้งแต่เนิ่นๆ, ฉีด Adrenaline IM ทันที และพิจารณา Adrenaline 1:1,000 (2-5 mL) Nebulizer'
-    });
-  }
-
-  // 3. ACE-INHIBITOR INDUCED ANGIOEDEMA
-  const takesAcei = specialMeds.includes('ace_inhibitors') || (Array.isArray(patient.underlying) && patient.underlying.some(u => /acei|enalapril|ramipril|captopril|lisinopril/i.test(u)));
-  if (takesAcei && (angioedema.includes('lips') || angioedema.includes('tongue_palate') || upperAirway.includes('throat_tightness'))) {
-    flags.push({
-      key: 'allergy_rf_acei_angioedema',
-      textTh: 'สงสัยภาวะ Angioedema จากยากลุ่ม ACE Inhibitors (ACEi-induced Angioedema)',
-      risk: 'ผู้ป่วยที่รับประทานยากลุ่ม ACEi (เช่น Enalapril) มีอาการปากบวม ลิ้นบวม หรือแน่นคอ มักเป็น Bradykinin-mediated',
-      triageLevel: 2,
-      severity: 'HIGH',
-      suggestedAction: 'สั่งหยุดยากลุ่ม ACEi และห้ามใช้ยากลุ่ม ARBs โดยเด็ดขาดตลอดชีวิต, เฝ้าระวังทางเดินหายใจอย่างใกล้ชิดใน ICU/Observation อย่างน้อย 24-48 ชม., พิจารณาให้ Fresh Frozen Plasma (FFP 1–2 units) เพื่อช่วยสลาย Bradykinin (มี Kininase II) ในกรณีที่ไม่มี Icatibant หรือ C1-esterase inhibitor concentrate, เตรียมพร้อมเปิดทางเดินหายใจขั้นสูง'
-    });
-  }
-
-  // 4. REFRACTORY ANAPHYLAXIS RISK (Beta-blocker user)
-  const takesBetaBlockers = specialMeds.includes('beta_blockers');
-  if (takesBetaBlockers && (isAnaphylaxisCriteria1 || isAnaphylaxisCriteria2)) {
-    flags.push({
-      key: 'allergy_rf_beta_blocker_refractory',
-      textTh: 'เสี่ยงต่อภาวะดื้อยา Adrenaline จากการใช้ยา Beta-Blockers',
-      risk: 'ผู้ป่วยแพ้รุนแรงที่ใช้ยา Beta-blockers อาจไม่ตอบสนองต่อ Adrenaline ในขนาดปกติ',
-      triageLevel: 2,
-      severity: 'HIGH',
-      suggestedAction: 'หากฉีด Adrenaline IM ซ้ำแล้วความดันยังตกหรือไม่ดีขึ้น ให้เตรียม IV Glucagon 1–5 mg IV push over 5 mins ตามด้วย infusion 5–15 mcg/min, ให้ IV Isoproterenol หรือ Atropine ร่วมด้วยตามข้อบ่งชี้ทางโรคหัวใจ'
-    });
-  }
-
-  // 5. SEVERE CUTANEOUS ADVERSE REACTIONS (SCARs Suspect)
-  if (skinRash.includes('blisters_peeling')) {
-    flags.push({
-      key: 'allergy_rf_blistering_mucocutaneous',
-      textTh: 'สงสัยกลุ่มอาการผื่นแพ้ยารุนแรง (Suspected Severe Cutaneous Adverse Reaction - SCARs / SJS / TEN)',
-      risk: 'มีตุ่มน้ำพองใส ผิวหนังลอกหลุด เจ็บแสบผิว เสี่ยงต่อการติดเชื้อและการสูญเสียสมดุลสารน้ำ',
-      triageLevel: 2,
-      severity: 'HIGH',
-      suggestedAction: 'หยุดยาทุกชนิดที่สงสัยทันที, ดูแลแผลผิวหนังและเยื่อบุ, ตรวจ Stat CBC, BUN, Cr, Electrolytes, LFTs, ประเมินการรับไว้รักษาในหอผู้ป่วยแผลไฟไหม้ (Burn Unit) หรือ ICU'
-    });
-  }
-
-  return flags;
-}
-
-// --- Outputs Updater (Rapid, Narrative, JSON Schema) ---
-function updateAllergyOutputs(patient) {
-  if (!patient) return;
-
-  const rfs = evaluateAllergyRedFlags(patient);
-  const skinRash = Array.isArray(patient.allergySkinRash) ? patient.allergySkinRash : [];
+  const mucosaFever = Array.isArray(patient.allergyMucosaFever) ? patient.allergyMucosaFever : [];
   const angioedema = Array.isArray(patient.allergyAngioedema) ? patient.allergyAngioedema : [];
   const upperAirway = Array.isArray(patient.allergyUpperAirway) ? patient.allergyUpperAirway : [];
   const lowerAirway = Array.isArray(patient.allergyLowerAirway) ? patient.allergyLowerAirway : [];
@@ -245,175 +266,237 @@ function updateAllergyOutputs(patient) {
   const specialMeds = Array.isArray(patient.allergySpecialMeds) ? patient.allergySpecialMeds : [];
   const pmhSpecific = Array.isArray(patient.allergyPmhSpecific) ? patient.allergyPmhSpecific : [];
 
-  const unitMapTh = { minutes: 'นาที', hours: 'ชั่วโมง', days: 'วัน', weeks: 'สัปดาห์', months: 'เดือน', years: 'ปี' };
-  const durationStr = patient.durationVal ? `${patient.durationVal} ${unitMapTh[patient.durationUnit] || patient.durationUnit || 'นาที'}` : 'ไม่ระบุ';
+  const hasSkinMucosa = ['urticaria', 'flushing'].some(k => skinRash.includes(k)) ||
+    ['lips', 'tongue_palate', 'periorbital_face'].some(k => angioedema.includes(k));
+  const hasUpperCompromise = ['throat_tightness', 'dysphagia_drooling', 'voice_hoarseness', 'stridor'].some(k => upperAirway.includes(k));
+  const hasLowerAirway = ['dyspnea', 'wheezing', 'chest_tightness', 'cyanosis'].some(k => lowerAirway.includes(k));
+  const hasCirculation = ['presyncope_dizziness', 'syncope', 'cold_diaphoresis', 'altered_mental'].some(k => circulation.includes(k));
+  const hasSevereGi = ['severe_abd_cramps', 'repetitive_vomiting', 'watery_diarrhea'].some(k => gi.includes(k));
+  const hasKnownTrigger = triggers.some(t => ['food', 'medication', 'herbal_supplement', 'insect_sting', 'radiocontrast_anesthesia'].includes(t));
 
-  let speedTh = 'ไม่ระบุ';
-  if (patient.allergyOnsetSpeed === 'rapid_within_minutes') speedTh = 'เกิดขึ้นอย่างรวดเร็วมาก (นาทีถึง 1-2 ชม.)';
-  else if (patient.allergyOnsetSpeed === 'gradual_throughout_day') speedTh = 'ค่อยๆ เป็นเพิ่มขึ้นตลอดทั้งวัน';
-  else if (patient.allergyOnsetSpeed === 'chronic_gt_6weeks') speedTh = 'ผื่นเรื้อรังเป็นๆ หายๆ มาหลายวัน';
+  // 1. Anaphylaxis Critical Alert (WAO 2020 / NIAID Criteria)
+  const isAnaphylaxisCriteria1 = hasSkinMucosa && (hasUpperCompromise || hasLowerAirway || hasCirculation || hasSevereGi);
+  const isAnaphylaxisCriteria2 = (hasKnownTrigger && (hasUpperCompromise || hasLowerAirway || hasCirculation)) ||
+    patient.allergyEpipenUsage === 'used_prehospital';
+  const isAnaphylaxis = isAnaphylaxisCriteria1 || isAnaphylaxisCriteria2;
 
-  let onsetExactStr = '';
-  if (patient.allergyOnsetExactDate || patient.allergyOnsetExactTime) {
-    onsetExactStr = ` (ระบุเวลาเริ่ม: ${patient.allergyOnsetExactDate || '-'} ${patient.allergyOnsetExactTime || '-'})`;
+  if (isAnaphylaxis) {
+    flags.push({
+      key: 'allergy_rf_anaphylaxis_shock',
+      textTh: 'ภาวะแพ้รุนแรงเฉียบพลันคุกคามชีวิต (Anaphylaxis / Impending Shock)',
+      risk: 'เข้าเกณฑ์วินิจฉัย Anaphylaxis ตามแนวทาง WAO/NIAID ต้องได้รับยา Adrenaline 1:1,000 IM ทันที นอนราบยกขาสูง และเฝ้าระวัง Biphasic reaction',
+      triageLevel: 1,
+      severity: 'CRITICAL'
+    });
   }
 
-  const trigThs = [];
-  if (triggers.includes('food')) trigThs.push(`อาหาร (${patient.allergyTriggerFoodText || 'อาหารทะเล/ถั่ว/ไข่'})`);
-  if (triggers.includes('medication')) trigThs.push(`ยา (${patient.allergyTriggerMedText || 'ยาปฏิชีวนะ/NSAIDs'})`);
-  if (triggers.includes('insect_sting')) trigThs.push(`แมลงสัตว์กัดต่อย (${patient.allergyTriggerInsectText || 'ผึ้ง/ต่อ/แตน'})`);
-  if (triggers.includes('radiocontrast_anesthesia')) trigThs.push('สารทึบรังสี/ยาชา/ยาสลบ');
-  if (triggers.includes('contact_latex_chemical')) trigThs.push('สารสัมผัสภายนอก/ลาเท็กซ์/สารเคมี');
-  if (triggers.includes('unknown_trigger')) trigThs.push('ไม่ทราบสิ่งกระตุ้นแน่ชัด');
-
-  const rashThs = [];
-  if (skinRash.includes('urticaria')) rashThs.push('ผื่นลมพิษนูนหนาสีแดงคันมาก (Urticaria)');
-  if (skinRash.includes('flushing')) rashThs.push('ผิวแดงก่ำร้อนวูบวาบ (Flushing)');
-  if (skinRash.includes('erythema_maculopapular')) rashThs.push('ผื่นแดงราบ/จุดแดงคัน');
-  if (skinRash.includes('blisters_peeling')) rashThs.push('ตุ่มน้ำพองใส/ผิวลอกหลุด (SCARs Alert)');
-
-  const angioThs = [];
-  if (angioedema.includes('lips')) angioThs.push('ริมฝีปากบวมเจ่อ');
-  if (angioedema.includes('tongue_palate')) angioThs.push('ลิ้นบวมโตคับปาก/เพดานปากบวม');
-  if (angioedema.includes('periorbital_face')) angioThs.push('เปลือกตาบวม/ใบหน้าบวมตึง');
-  if (angioedema.includes('ears_neck')) angioThs.push('ใบหูบวม/ลำคอด้านนอกบวม');
-  if (angioedema.includes('extremities_genitalia')) angioThs.push('มือเท้าบวม/อวัยวะเพศบวม');
-
-  const upperThs = [];
-  if (upperAirway.includes('stridor')) upperThs.push('หายใจมีเสียงฮืด/วี้ดแหลมในลำคอ (Stridor)');
-  if (upperAirway.includes('throat_tightness')) upperThs.push('แน่นในลำคอเหมือนมีก้อนจุกติดคอหอย');
-  if (upperAirway.includes('dysphagia_drooling')) upperThs.push('กลืนลำบาก/กลืนน้ำลายไม่ลง/น้ำลายไหลย้อย');
-  if (upperAirway.includes('voice_hoarseness')) upperThs.push('เสียงแหบเฉียบพลัน/เสียงเปลี่ยนเหมือนอมของร้อน');
-  if (upperAirway.includes('nasal_congestion')) upperThs.push('แน่นจมูก');
-
-  const lowerThs = [];
-  if (lowerAirway.includes('wheezing')) lowerThs.push('หายใจมีเสียงหวีดในหน้าอก (Wheezing)');
-  if (lowerAirway.includes('dyspnea')) lowerThs.push('หายใจหอบเหนื่อย/หายใจไม่อิ่ม');
-  if (lowerAirway.includes('chest_tightness')) lowerThs.push('แน่นอึดอัดกลางหน้าอก หายใจเข้าไม่เต็มปอด');
-
-  const circThs = [];
-  if (circulation.includes('syncope')) circThs.push('วูบหมดสติ (Syncope)');
-  if (circulation.includes('presyncope_dizziness')) circThs.push('หน้ามืดวิงเวียนตาพร่าทรงตัวไม่อยู่');
-  if (circulation.includes('cold_diaphoresis')) circThs.push('เหงื่อแตกท่วมตัว ตัวเย็นชืด มือเท้าเย็นจัด');
-
-  const giThs = [];
-  if (gi.includes('severe_abd_cramps')) giThs.push('ปวดเกร็งท้องรุนแรง');
-  if (gi.includes('repetitive_vomiting')) giThs.push('คลื่นไส้อาเจียนหลายครั้ง');
-  if (gi.includes('watery_diarrhea')) giThs.push('ถ่ายเหลวเป็นน้ำ');
-
-  let priorTh = 'ครั้งแรกในชีวิต';
-  if (patient.allergyPriorAnaphylaxis === 'prior_severe_hosp') priorTh = 'เคยแพ้รุนแรง (Anaphylaxis) นอน รพ./เคยฉีด Adrenaline';
-  else if (patient.allergyPriorAnaphylaxis === 'prior_mild_urticaria') priorTh = 'เคยมีเฉพาะผื่นลมพิษธรรมดา';
-
-  let epipenText = 'ไม่ได้ใช้ยา EpiPen';
-  if (patient.allergyEpipenUsage === 'used_prehospital') {
-    epipenText = `ฉีดยา EpiPen พกพาไปแล้วก่อนมา รพ. (${patient.allergyEpipenTimeText || 'ไม่ระบุเวลา'}) 🚩`;
-  } else if (patient.allergyEpipenUsage === 'has_not_used') {
-    epipenText = 'มียา EpiPen พกพาประจำตัว แต่ยังไม่ได้ฉีดยา';
+  // 2. Impending Upper Airway Obstruction
+  if (hasUpperCompromise || angioedema.includes('tongue_palate')) {
+    flags.push({
+      key: 'allergy_rf_airway_obstruction',
+      textTh: 'เสี่ยงต่อการอุดกั้นทางเดินหายใจส่วนบนเฉียบพลัน (Upper Airway / Laryngeal Edema)',
+      risk: 'พบลิ้นบวมคับปาก แน่นคอ เสียงแหบ กลืนน้ำลายลำบาก หรือมีเสียง Stridor เสี่ยงทางเดินหายใจอุดกั้นฉับพลัน ต้องเตรียมอุปกรณ์เปิดทางเดินหายใจขั้นสูง',
+      triageLevel: 1,
+      severity: 'CRITICAL'
+    });
   }
 
-  const medThs = [];
-  if (specialMeds.includes('ace_inhibitors')) medThs.push('รับประทานยา ACE inhibitors (High Risk Angioedema)');
-  if (specialMeds.includes('beta_blockers')) medThs.push('รับประทานยา Beta-blockers (Risk of Epinephrine Resistance)');
+  // 3. Severe Cutaneous Adverse Reactions (SCARs: SJS / TEN / DRESS / Vasculitis)
+  const hasScars = skinRash.includes('blisters_peeling') ||
+    mucosaFever.includes('mucosal_oral_ulcer') ||
+    mucosaFever.includes('mucosal_ocular') ||
+    mucosaFever.includes('skin_pain_tenderness') ||
+    (skinRash.includes('purpura_petechiae') && mucosaFever.includes('fever_chills'));
 
-  const pmhThs = [];
-  if (pmhSpecific.includes('asthma')) pmhThs.push('หอบหืด (Bronchial Asthma — Risk of Fatal Bronchospasm)');
-  if (pmhSpecific.includes('cad_cvd')) pmhThs.push('โรคหลอดเลือดหัวใจ (CAD/CVD)');
+  if (hasScars) {
+    flags.push({
+      key: 'allergy_rf_blistering_mucocutaneous',
+      textTh: 'สงสัยกลุ่มอาการผื่นแพ้ยารุนแรงทางผิวหนังและเยื่อบุ (Suspected SCARs / SJS / TEN / DRESS)',
+      risk: 'มีตุ่มน้ำพอง ผิวลอก เจ็บแสบผิว แผลในปาก ตาแดง หรือจุดเลือดออกร่วมกับไข้ ต้องหยุดยาที่สงสัยทันทีและประเมินระดับความรุนแรงของเยื่อบุ',
+      triageLevel: 2,
+      severity: 'HIGH'
+    });
+  }
 
-  // Calculate Pertinent Positives and Negatives for Patient Review & Core Summary
+  // 4. ACE-Inhibitor Induced Angioedema
+  const medAndUdText = [
+    patient.currentMeds || '',
+    ...(Array.isArray(patient.underlying) ? patient.underlying : [])
+  ].join(' ');
+  const takesAcei = specialMeds.includes('ace_inhibitors') ||
+    /acei|enalapril|ramipril|captopril|lisinopril|perindopril/i.test(medAndUdText);
+
+  if (takesAcei && (angioedema.includes('lips') || angioedema.includes('tongue_palate') || upperAirway.includes('throat_tightness'))) {
+    flags.push({
+      key: 'allergy_rf_acei_angioedema',
+      textTh: 'สงสัยภาวะบวมจากยากลุ่ม ACE Inhibitors (Bradykinin-Mediated Angioedema)',
+      risk: 'ผู้ป่วยรับประทานยากลุ่ม ACEi มีอาการปากบวม ลิ้นบวม หรือแน่นคอ มักไม่ตอบสนองต่อ Antihistamine/Steroid ต้องเฝ้าระวังทางเดินหายใจใกล้ชิดและสั่งหยุดยา',
+      triageLevel: 2,
+      severity: 'HIGH'
+    });
+  }
+
+  // 5. Refractory Anaphylaxis / Severe Bronchospasm Risk
+  const takesBetaBlockers = specialMeds.includes('beta_blockers') ||
+    /atenolol|propranolol|metoprolol|carvedilol|bisoprolol|nebivolol/i.test(medAndUdText);
+  const hasAsthma = pmhSpecific.includes('asthma');
+
+  if ((isAnaphylaxis || hasLowerAirway || hasUpperCompromise) && (takesBetaBlockers || (hasAsthma && hasLowerAirway))) {
+    flags.push({
+      key: 'allergy_rf_beta_blocker_refractory',
+      textTh: 'ความเสี่ยงสูงต่อภาวะดื้อยา Adrenaline หรือหลอดลมตีบรุนแรง (Beta-blocker / Asthma)',
+      risk: 'ผู้ป่วยที่ใช้ยา Beta-blocker เสี่ยงไม่ตอบสนองต่อ Adrenaline (พิจารณาเตรียม IV Glucagon) หรือผู้ป่วยหอบหืดมีอาการทางหายใจเสี่ยงหลอดลมตีบรุนแรง',
+      triageLevel: 2,
+      severity: 'HIGH'
+    });
+  }
+
+  return flags;
+}
+
+// --- Outputs Updater (Rapid Note, Narrative Note, JSON Schema: C-AP5/6/9/11/12/14) ---
+function updateAllergyOutputs(patient) {
+  if (!patient) return;
+
+  const rfs = evaluateAllergyRedFlags(patient);
+  const skinRash = Array.isArray(patient.allergySkinRash) ? patient.allergySkinRash : [];
+  const mucosaFever = Array.isArray(patient.allergyMucosaFever) ? patient.allergyMucosaFever : [];
+  const angioedema = Array.isArray(patient.allergyAngioedema) ? patient.allergyAngioedema : [];
+  const upperAirway = Array.isArray(patient.allergyUpperAirway) ? patient.allergyUpperAirway : [];
+  const lowerAirway = Array.isArray(patient.allergyLowerAirway) ? patient.allergyLowerAirway : [];
+  const circulation = Array.isArray(patient.allergyCirculationShock) ? patient.allergyCirculationShock : [];
+  const gi = Array.isArray(patient.allergyGiSymptoms) ? patient.allergyGiSymptoms : [];
+  const triggers = Array.isArray(patient.allergySuspectedTriggers) ? patient.allergySuspectedTriggers : [];
+  const specialMeds = Array.isArray(patient.allergySpecialMeds) ? patient.allergySpecialMeds : [];
+  const pmhSpecific = Array.isArray(patient.allergyPmhSpecific) ? patient.allergyPmhSpecific : [];
+
+  const durationStr = patient.durationVal
+    ? `${patient.durationVal} ${ALLERGY_LABELS.durationUnit[patient.durationUnit] || patient.durationUnit || 'นาที'}`
+    : 'ไม่ระบุระยะเวลา';
+
+  const speedStr = ALLERGY_LABELS.onsetSpeed[patient.allergyOnsetSpeed] || 'ไม่ได้ระบุความเร็วในการเกิดอาการ';
+  let onsetTimeStr = ALLERGY_LABELS.onsetTimeKnown[patient.allergyOnsetTimeKnown] || '';
+  if (patient.allergyOnsetTimeKnown === 'known' && (patient.allergyOnsetExactDate || patient.allergyOnsetExactTime)) {
+    onsetTimeStr = `เริ่มเมื่อ ${patient.allergyOnsetExactDate || '-'} เวลา ${patient.allergyOnsetExactTime || '-'} น.`;
+  } else if (!patient.allergyOnsetTimeKnown && (patient.allergyOnsetExactDate || patient.allergyOnsetExactTime)) {
+    onsetTimeStr = `เริ่มเมื่อ ${patient.allergyOnsetExactDate || '-'} เวลา ${patient.allergyOnsetExactTime || '-'} น.`;
+  }
+
+  const trigThs = triggers.map(t => {
+    if (t === 'food') return patient.allergyTriggerFoodText ? `อาหาร (${patient.allergyTriggerFoodText})` : ALLERGY_LABELS.trigger.food;
+    if (t === 'medication') return patient.allergyTriggerMedText ? `ยาแผนปัจจุบัน (${patient.allergyTriggerMedText})` : ALLERGY_LABELS.trigger.medication;
+    if (t === 'herbal_supplement') return patient.allergyTriggerHerbText ? `สมุนไพร/ยาชุด (${patient.allergyTriggerHerbText})` : ALLERGY_LABELS.trigger.herbal_supplement;
+    if (t === 'insect_sting') return patient.allergyTriggerInsectText ? `แมลงกัดต่อย (${patient.allergyTriggerInsectText})` : ALLERGY_LABELS.trigger.insect_sting;
+    return ALLERGY_LABELS.trigger[t] || t;
+  });
+  const triggersStr = trigThs.length > 0 ? trigThs.join(', ') : 'ไม่ได้ระบุสิ่งกระตุ้น';
+
+  const priorStr = ALLERGY_LABELS.priorAnaphylaxis[patient.allergyPriorAnaphylaxis] || 'ไม่ได้ระบุ';
+  let epipenStr = (patient.allergyEpipenUsage && patient.allergyEpipenUsage !== 'none_epipen') ? '' : (patient.allergyEpipenUsage === 'none_epipen' ? 'ไม่ได้ใช้ยาฉีดแก้แพ้พกพา' : 'ไม่ได้ระบุ');
+  if (patient.allergyPriorAnaphylaxis === 'prior_severe_hosp') {
+    if (patient.allergyEpipenUsage === 'used_prehospital') {
+      const timeDetail = patient.allergyEpipenTimeUnknown
+        ? 'จำเวลาที่ฉีดไม่ได้'
+        : (patient.allergyEpipenTimeText ? `เวลา ${patient.allergyEpipenTimeText} น.` : 'ไม่ระบุเวลา');
+      epipenStr = `ฉีดยาแก้แพ้พกพา (EpiPen) แล้วก่อนมา รพ. (${timeDetail})`;
+    } else {
+      epipenStr = ALLERGY_LABELS.epipenUsage[patient.allergyEpipenUsage] || 'ไม่ได้ระบุสถานะยาพกพา';
+    }
+  }
+  const oralMedStr = ALLERGY_LABELS.prehospOralMed[patient.allergyPrehospOralMed] || 'ไม่ได้ระบุ';
+
+  const specMedThs = specialMeds
+    .filter(m => m !== 'none_special_meds')
+    .map(m => ALLERGY_LABELS.specialMed[m] || m);
+  const specPmhThs = pmhSpecific
+    .filter(m => m !== 'none_pmh_specific')
+    .map(m => ALLERGY_LABELS.pmh[m] || m);
+  const specMedText = specMedThs.length > 0 ? specMedThs.join(', ') : (specialMeds.includes('none_special_meds') ? 'ปฏิเสธ' : 'ไม่ได้ระบุ');
+  const specPmhText = specPmhThs.length > 0 ? specPmhThs.join(', ') : (pmhSpecific.includes('none_pmh_specific') ? 'ปฏิเสธ' : 'ไม่ได้ระบุ');
+
+  // Pertinent Positives & Negatives (NO 🚩 symbols in patient-facing pertinent arrays: P-AP8 / Single-placement: C-AP5)
   const positives = [];
   const negatives = [];
 
-  // Rash & skin
-  if (skinRash.includes('urticaria')) positives.push('ผื่นลมพิษ (Urticaria) 🚩');
-  if (skinRash.includes('flushing')) positives.push('ผิวแดงก่ำร้อนวูบวาบ');
-  if (skinRash.includes('erythema_maculopapular')) positives.push('ผื่นแดงราบ/ตุ่มคัน');
-  if (skinRash.includes('blisters_peeling')) positives.push('ตุ่มน้ำพองใส/ผิวลอกหลุด 🚩');
-  if (skinRash.includes('none_rash')) negatives.push('ปฏิเสธผื่นผิวหนัง');
+  skinRash.forEach(s => {
+    if (s === 'none_rash') negatives.push(ALLERGY_LABELS.skinRash.none_rash);
+    else positives.push(ALLERGY_LABELS.skinRash[s] || s);
+  });
 
-  // Angioedema
-  if (angioedema.includes('lips')) positives.push('ริมฝีปากบวมเจ่อ 🚩');
-  if (angioedema.includes('tongue_palate')) positives.push('ลิ้นบวมโตคับปาก/เพดานปากบวม 🚩');
-  if (angioedema.includes('periorbital_face')) positives.push('เปลือกตาบวม/หน้าบวม 🚩');
-  if (angioedema.includes('ears_neck')) positives.push('ใบหู/ลำคอด้านนอกบวม 🚩');
-  if (angioedema.includes('extremities_genitalia')) positives.push('มือเท้า/อวัยวะเพศบวม');
-  if (angioedema.includes('none_angioedema')) negatives.push('ปฏิเสธอาการบวมตามใบหน้า');
+  mucosaFever.forEach(m => {
+    if (m === 'none_mucosa_fever') negatives.push(ALLERGY_LABELS.mucosaFever.none_mucosa_fever);
+    else positives.push(ALLERGY_LABELS.mucosaFever[m] || m);
+  });
 
-  // Upper airway
-  if (upperAirway.includes('stridor')) positives.push('หายใจมีเสียงฮืดในลำคอ (Stridor) 🚩');
-  if (upperAirway.includes('throat_tightness')) positives.push('แน่นในลำคอ จุกคอหอย 🚩');
-  if (upperAirway.includes('dysphagia_drooling')) positives.push('กลืนลำบาก น้ำลายไหล 🚩');
-  if (upperAirway.includes('voice_hoarseness')) positives.push('เสียงแหบเฉียบพลัน 🚩');
-  if (upperAirway.includes('nasal_congestion')) positives.push('แน่นจมูก');
-  if (upperAirway.includes('none_upper_airway')) negatives.push('ทางเดินหายใจส่วนบนปกติ');
+  angioedema.forEach(a => {
+    if (a === 'none_angioedema') negatives.push(ALLERGY_LABELS.angioedema.none_angioedema);
+    else positives.push(ALLERGY_LABELS.angioedema[a] || a);
+  });
 
-  // Lower airway
-  if (lowerAirway.includes('wheezing')) positives.push('หายใจมีเสียงหวีด (Wheezing) 🚩');
-  if (lowerAirway.includes('dyspnea')) positives.push('หายใจหอบเหนื่อย 🚩');
-  if (lowerAirway.includes('chest_tightness')) positives.push('แน่นอึดอัดกลางหน้าอก 🚩');
-  if (lowerAirway.includes('none_lower_airway')) negatives.push('ทางเดินหายใจส่วนล่างปกติ');
+  upperAirway.forEach(u => {
+    if (u === 'none_upper_airway') negatives.push(ALLERGY_LABELS.upperAirway.none_upper_airway);
+    else positives.push(ALLERGY_LABELS.upperAirway[u] || u);
+  });
 
-  // Circulation
-  if (circulation.includes('syncope')) positives.push('วูบหมดสติ (Syncope) 🚩');
-  if (circulation.includes('presyncope_dizziness')) positives.push('หน้ามืดวิงเวียน ตาพร่า');
-  if (circulation.includes('cold_diaphoresis')) positives.push('เหงื่อแตกท่วมตัว ตัวเย็นชืด 🚩');
-  if (circulation.includes('none_circulation')) negatives.push('ระบบไหลเวียนโลหิตปกติ');
+  lowerAirway.forEach(l => {
+    if (l === 'none_lower_airway') negatives.push(ALLERGY_LABELS.lowerAirway.none_lower_airway);
+    else positives.push(ALLERGY_LABELS.lowerAirway[l] || l);
+  });
 
-  // GI
-  if (gi.includes('severe_abd_cramps')) positives.push('ปวดเกร็งท้องรุนแรง 🚩');
-  if (gi.includes('repetitive_vomiting')) positives.push('คลื่นไส้อาเจียนหลายครั้ง 🚩');
-  if (gi.includes('watery_diarrhea')) positives.push('ถ่ายเหลวเป็นน้ำเฉียบพลัน 🚩');
-  if (gi.includes('none_gi') || giThs.length === 0) negatives.push('ปฏิเสธปวดท้อง/อาเจียน/ถ่ายเหลว');
+  circulation.forEach(c => {
+    if (c === 'none_circulation') negatives.push(ALLERGY_LABELS.circulation.none_circulation);
+    else positives.push(ALLERGY_LABELS.circulation[c] || c);
+  });
 
-  if (!skinRash.includes('blisters_peeling') && negatives.length === 0) {
-    negatives.push('ปฏิเสธตุ่มน้ำพองใสหรือผิวลอกหลุด');
-  }
+  gi.forEach(g => {
+    if (g === 'none_gi') negatives.push(ALLERGY_LABELS.gi.none_gi);
+    else positives.push(ALLERGY_LABELS.gi[g] || g);
+  });
 
   if (patient.otherSymptomsFree) {
     positives.push(patient.otherSymptomsFree);
   }
 
-  patient.pertinentPositives = positives.length > 0 ? positives : ['ไม่มีอาการร่วมผิดปกติ'];
-  patient.pertinentNegatives = negatives;
+  patient.pertinentPositives = positives.length > 0 ? positives : ['ผู้ป่วยไม่ได้ระบุอาการร่วมเพิ่มเติม'];
+  patient.pertinentNegatives = negatives.length > 0 ? negatives : ['ผู้ป่วยไม่ได้ระบุคำตอบยืนยันในหมวดอาการร่วม'];
 
+  const hospLabel = ALLERGY_LABELS.hospStatus[patient.hospRecordStatus] || 'ไม่ได้ระบุ';
   const docNotes = patient.doctor_notes || {};
-  const medsText = (!patient.currentMeds || patient.currentMeds === 'ไม่ได้ระบุ' || patient.currentMeds === 'ไม่มี') ? 'ไม่มี' : patient.currentMeds;
-  const hospLabel = {
-    complete: 'มีประวัติกับ รพ.ราชบุรี ครบถ้วน (ดึงข้อมูลเดิมจากระบบ)',
-    additional: 'มีประวัติกับ รพ.ราชบุรี และขอให้ข้อมูลเพิ่มเติม',
-    self: 'ขอให้ข้อมูลด้วยตนเองทั้งหมด',
-    unspecified: 'ไม่ได้ระบุ'
-  }[patient.hospRecordStatus] || 'ไม่ได้ระบุ';
-
-  let udDisplay = 'ปฏิเสธ';
-  if (patient.underlying && patient.underlying.length > 0) {
-    const filteredUd = (Array.isArray(patient.underlying) ? patient.underlying : [patient.underlying])
-      .filter(u => u && !u.includes('ปฏิเสธ') && u !== 'ไม่มี' && u !== 'ไม่มีโรคประจำตัว');
+  const medsText = (!patient.currentMeds || patient.currentMeds === 'ไม่ได้ระบุ') ? 'ไม่ได้ระบุ' : patient.currentMeds;
+  const udExplicitDeny = Array.isArray(patient.underlying) && patient.underlying.some(u => u && u.includes('ปฏิเสธ'));
+  let udDisplay = (patient.hospRecordStatus === 'self' || patient.hospRecordStatus === 'additional' || udExplicitDeny) ? 'ปฏิเสธ' : 'ไม่ได้ระบุ';
+  if (Array.isArray(patient.underlying) && patient.underlying.length > 0) {
+    const filteredUd = patient.underlying.filter(u => u && !u.includes('ปฏิเสธ') && u !== 'ไม่มี' && u !== 'ไม่มีโรคประจำตัว');
     if (filteredUd.length > 0) udDisplay = filteredUd.join(', ');
   }
-  const allergyDisplay = (!patient.drugAllergy || patient.drugAllergy.includes('ปฏิเสธ') || patient.drugAllergy === 'ไม่มี') ? 'ปฏิเสธ' : patient.drugAllergy;
+  const allergyDisplay = (!patient.drugAllergy || patient.drugAllergy === 'ไม่ได้ระบุ')
+    ? 'ไม่ได้ระบุ'
+    : ((patient.drugAllergy.includes('ปฏิเสธ') || patient.drugAllergy === 'ไม่มี') ? 'ปฏิเสธ' : patient.drugAllergy);
 
-  // 1. Rapid Bullet Mode (Standardized: Primary onset & triggers at top, organ system findings in Pertinent only)
+  const hpiTimelineLine = onsetTimeStr ? `${speedStr} (${onsetTimeStr})` : speedStr;
+  const rapidEpipenLine = patient.allergyPriorAnaphylaxis === 'prior_severe_hosp' ? `\n• การใช้ยาฉีดพกพา (EpiPen): ${epipenStr}` : '';
+
   const defaultRapid =
 `[Chief Complaint (CC)]
-ผื่นแพ้เฉียบพลัน / แน่นคอ ตาบวม ปากบวม (Allergic Reaction / Anaphylaxis) มา ${durationStr}
+ผื่นแพ้เฉียบพลัน / แน่นคอ ตาบวม ปากบวม (Acute Allergic Reaction / Anaphylaxis) มา ${durationStr}
 
 [History of Present Illness (HPI)]
-• รูปแบบการเริ่มมีอาการและความเร็ว: ${speedTh}${onsetExactStr}
-• สิ่งกระตุ้นที่สงสัย (Suspected Triggers): ${trigThs.length > 0 ? trigThs.join(', ') : 'ไม่ระบุสิ่งกระตุ้นแน่ชัด'}
+• ลักษณะการเริ่มมีอาการ: ${hpiTimelineLine}
+• สิ่งกระตุ้นที่สงสัย: ${triggersStr}
+• ประวัติการแพ้เดิม: ${priorStr}${rapidEpipenLine}
+• ยาแก้แพ้เบื้องต้นก่อนมา รพ.: ${oralMedStr}
 
 • Pertinent Positives:
-${positives.length > 0 ? positives.map(p => `  - ${p}`).join('\n') : '  - ไม่มีอาการร่วมอื่นที่เด่นชัด'}
+${patient.pertinentPositives.map(p => `  - ${p}`).join('\n')}
 
 • Pertinent Negatives:
-${negatives.map(n => `  - ${n}`).join('\n')}
+${patient.pertinentNegatives.map(n => `  - ${n}`).join('\n')}
 
 [Past Medical History & Medications]
 • สถานะประวัติ รพ.ราชบุรี: ${hospLabel}
-• ประวัติแพ้รุนแรงในอดีต (Prior Anaphylaxis): ${priorTh}
-• การใช้ยา EpiPen ก่อนมา รพ.: ${epipenText}
-• ยาประจำตัวกลุ่มเสี่ยง (ACEi / Beta-blockers): ${medThs.length > 0 ? medThs.join(', ') : 'ปฏิเสธ'}
-• โรคประจำตัว (U/D): ${udDisplay}
+• ยาประจำตัวกลุ่มเสี่ยง (ACEi / Beta-blocker): ${specMedText}
+• โรคประจำตัวกลุ่มเสี่ยงเฉพาะ: ${specPmhText}
+• โรคประจำตัวทั่วไป (U/D): ${udDisplay}
 • ยาประจำตัว (Current Meds): ${medsText}
 • ประวัติแพ้ยา/แพ้อาหาร (Allergies): ${allergyDisplay}
 
@@ -428,651 +511,564 @@ ${rfs.length > 0
 • การวินิจฉัยเบื้องต้น (Impression): ${docNotes.preliminary_dx || '-'}
 • แผนการรักษา (Plan/Orders): ${docNotes.plan || '-'}`;
 
-  // 2. NARRATIVE NOTE
-  let narrative = `ผู้ป่วย${patient.gender || ''} อายุ ${patient.age || '-'} ปี `;
-  if (Array.isArray(patient.underlying) && patient.underlying.length > 0) {
-    narrative += `มีโรคประจำตัวได้แก่ ${patient.underlying.join(', ')} `;
-  } else {
-    narrative += `ไม่มีโรคประจำตัว `;
-  }
-  narrative += `มารับบริการที่ห้องฉุกเฉินด้วยอาการผื่นแพ้เฉียบพลัน แน่นคอ ตาบวม หรือปากบวม ระยะเวลาประมาณ ${durationStr} ก่อนมาโรงพยาบาล `;
-  narrative += `รูปแบบการเกิดอาการ: ${speedTh}${onsetExactStr} `;
+  const defaultNarrative =
+`ผู้ป่วย [${patient.name || 'ไม่ระบุชื่อ'}] อายุ ${patient.age || '-'} ปี เพศ ${patient.gender || 'ไม่ระบุ'} มารับการตรวจที่ห้องฉุกเฉิน รพ.ราชบุรี ด้วยอาการผื่นแพ้เฉียบพลัน / แน่นคอ ตาบวม ปากบวม มา ${durationStr}
+ประวัติปัจจุบัน: อาการเริ่มเกิดลักษณะ [${hpiTimelineLine}] สิ่งกระตุ้นที่สงสัย [${triggersStr}] ประวัติแพ้เดิม [${priorStr}]${patient.allergyPriorAnaphylaxis === 'prior_severe_hosp' ? ` การใช้ยาพกพา [${epipenStr}]` : ''} การดูแลเบื้องต้น [${oralMedStr}]
+อาการสำคัญที่ตรวจพบ: ${patient.pertinentPositives.join(', ')}
+อาการสำคัญที่ปฏิเสธ: ${patient.pertinentNegatives.join(', ')}
+ประวัติสุขภาพและยา: [${hospLabel}], ยากลุ่มเสี่ยง: ${specMedText}, โรคกลุ่มเสี่ยง: ${specPmhText}, โรคประจำตัว (U/D): ${udDisplay}, ยาประจำตัว: ${medsText}, แพ้ยาเดิม: ${allergyDisplay}${rfs.length > 0 ? `\n[🚩 สัญญาณเตือนวิกฤต (Red Flags)]: ${rfs.map(rf => rf.textTh).join('; ')}` : ''}
 
-  if (trigThs.length > 0) {
-    narrative += `สงสัยสิ่งกระตุ้นได้แก่ ${trigThs.join(', ')} `;
-  }
+[บันทึกการตรวจและการประเมินโดยแพทย์]:
+${docNotes.additional_hpi ? `• ประวัติเพิ่มเติม: ${docNotes.additional_hpi}\n` : ''}${docNotes.physical_exam ? `• การตรวจร่างกาย: ${docNotes.physical_exam}\n` : ''}${docNotes.preliminary_dx ? `• การวินิจฉัย: ${docNotes.preliminary_dx}\n` : ''}${docNotes.plan ? `• แผนการรักษา: ${docNotes.plan}` : ''}`;
 
-  if (rashThs.length > 0) {
-    narrative += `อาการทางผิวหนังตรวจพบ ${rashThs.join(', ')} `;
-  } else {
-    narrative += `ปฏิเสธผื่นลมพิษหรือผื่นคันตามร่างกาย `;
-  }
-
-  if (angioThs.length > 0) {
-    narrative += `อาการบวมใต้ผิวหนังตรวจพบ ${angioThs.join(', ')} `;
-  }
-
-  if (upperThs.length > 0) {
-    narrative += `อาการทางเดินหายใจส่วนบนตรวจพบ ${upperThs.join(', ')} `;
-  } else {
-    narrative += `ปฏิเสธอาการแน่นคอ กลืนลำบาก หรือเสียงแหบ `;
-  }
-
-  if (lowerThs.length > 0) {
-    narrative += `อาการทางเดินหายใจส่วนล่างตรวจพบ ${lowerThs.join(', ')} `;
-  } else {
-    narrative += `ปฏิเสธเสียงหวีดในหน้าอกหรือหายใจหอบเหนื่อย `;
-  }
-
-  if (circThs.length > 0) {
-    narrative += `อาการระบบไหลเวียนโลหิตตรวจพบ ${circThs.join(', ')} `;
-  } else {
-    narrative += `ปฏิเสธอาการหน้ามืด เป็นลม วูบหมดสติ หรือเหงื่อแตกตัวเย็น `;
-  }
-
-  if (giThs.length > 0) {
-    narrative += `อาการทางเดินอาหารร่วมตรวจพบ ${giThs.join(', ')} `;
-  }
-
-  narrative += `ประวัติการแพ้ในอดีต: ${priorTh} `;
-  if (patient.allergyEpipenUsage === 'used_prehospital') {
-    narrative += `ผู้ป่วยได้ใช้ยาฉีด EpiPen ประจำตัวไปแล้วก่อนมาถึงโรงพยาบาล `;
-  }
-
-  if (medThs.length > 0) {
-    narrative += `ประวัติด้านยาสำคัญ: ${medThs.join(', ')} `;
-  }
-  if (patient.currentMeds) {
-    narrative += `ยาเดิมประจำตัว: ${patient.currentMeds} `;
-  }
-
-  if (rfs.length > 0) {
-    narrative += `\n\nการประเมินสัญญาณวิกฤตห้องฉุกเฉิน: ตรวจพบ ${rfs.map(r => r.textTh).join(', ')}`;
-  } else {
-    narrative += `\n\nการประเมินสัญญาณวิกฤตห้องฉุกเฉิน: อาการทั่วไปคงที่ ไม่พบสัญญาณวิกฤตที่ต้องช่วยชีวิตเร่งด่วน`;
-  }
-
-  // 3. JSON SCHEMA v2.0
   const jsonSchema = {
+    '$schema': 'https://json-schema.org/draft/2020-12/schema',
     encounter: {
+      hospital_site: 'Ratchaburi Hospital',
+      queue_id: patient.queue_number || null,
+      hn: patient.hn || null,
+      patient_name: patient.name || null,
+      age: patient.age !== undefined ? patient.age : null,
+      gender: patient.gender || null,
       chief_complaint: 'allergy',
       chief_complaint_title_th: 'ผื่นแพ้เฉียบพลัน / แน่นคอ ตาบวม ปากบวม',
-      triage_category: 'emergency_medicine',
       calculated_triage_level: rfs.length > 0 ? Math.min(...rfs.map(r => r.triageLevel)) : 4,
-      entry_timestamp: new Date().toISOString()
+      red_flags_count: rfs.length,
+      entry_timestamp: patient.timestamp || new Date().toISOString()
     },
     clinical_assessment: {
       onset: {
         duration_value: patient.durationVal || null,
         duration_unit: patient.durationUnit || 'minutes',
         onset_speed: patient.allergyOnsetSpeed || null,
+        onset_time_known: patient.allergyOnsetTimeKnown || null,
         exact_onset_date: patient.allergyOnsetExactDate || null,
         exact_onset_time: patient.allergyOnsetExactTime || null
       },
-      suspected_triggers: {
-        food: triggers.includes('food') ? (patient.allergyTriggerFoodText || true) : false,
-        medication: triggers.includes('medication') ? (patient.allergyTriggerMedText || true) : false,
-        insect_sting: triggers.includes('insect_sting') ? (patient.allergyTriggerInsectText || true) : false,
-        radiocontrast_or_anesthesia: triggers.includes('radiocontrast_anesthesia'),
-        contact_allergen: triggers.includes('contact_latex_chemical'),
-        unknown_trigger: triggers.includes('unknown_trigger')
+      suspected_triggers: triggers,
+      trigger_details: {
+        food: patient.allergyTriggerFoodText || '',
+        medication: patient.allergyTriggerMedText || '',
+        herbal_supplement: patient.allergyTriggerHerbText || '',
+        insect_sting: patient.allergyTriggerInsectText || ''
       },
-      dermatologic_and_mucosal: {
-        urticaria: skinRash.includes('urticaria'),
-        flushing: skinRash.includes('flushing'),
-        erythema: skinRash.includes('erythema_maculopapular'),
-        blisters_peeling: skinRash.includes('blisters_peeling'),
-        angioedema_lips: angioedema.includes('lips'),
-        angioedema_tongue_palate: angioedema.includes('tongue_palate'),
-        angioedema_periorbital: angioedema.includes('periorbital_face'),
-        angioedema_neck: angioedema.includes('ears_neck'),
-        angioedema_extremities: angioedema.includes('extremities_genitalia')
+      skin_and_mucosa: {
+        skin_rash: skinRash,
+        mucosa_and_fever: mucosaFever,
+        angioedema
       },
-      airway_and_respiratory: {
-        stridor: upperAirway.includes('stridor'),
-        throat_tightness: upperAirway.includes('throat_tightness'),
-        dysphagia_or_drooling: upperAirway.includes('dysphagia_drooling'),
-        voice_hoarseness: upperAirway.includes('voice_hoarseness'),
-        wheezing: lowerAirway.includes('wheezing'),
-        dyspnea: lowerAirway.includes('dyspnea'),
-        chest_tightness: lowerAirway.includes('chest_tightness')
+      systemic_anaphylaxis: {
+        upper_airway: upperAirway,
+        lower_airway: lowerAirway,
+        circulation,
+        gastrointestinal: gi
       },
-      circulation_and_shock: {
-        syncope: circulation.includes('syncope'),
-        presyncope_dizziness: circulation.includes('presyncope_dizziness'),
-        cold_diaphoresis: circulation.includes('cold_diaphoresis')
+      history_and_meds: {
+        prior_anaphylaxis: patient.allergyPriorAnaphylaxis || null,
+        epipen_usage: patient.allergyEpipenUsage || null,
+        epipen_time: patient.allergyEpipenTimeUnknown ? 'unknown' : (patient.allergyEpipenTimeText || null),
+        prehospital_oral_med: patient.allergyPrehospOralMed || null,
+        special_meds: specialMeds,
+        pmh_specific: pmhSpecific
       },
-      gastrointestinal: {
-        severe_abd_cramps: gi.includes('severe_abd_cramps'),
-        repetitive_vomiting: gi.includes('repetitive_vomiting'),
-        watery_diarrhea: gi.includes('watery_diarrhea')
-      },
-      medications_and_history: {
-        prior_anaphylaxis: patient.allergyPriorAnaphylaxis === 'prior_severe_hosp',
-        epipen_used_prehospital: patient.allergyEpipenUsage === 'used_prehospital',
-        epipen_time: patient.allergyEpipenTimeText || null,
-        takes_ace_inhibitors: specialMeds.includes('ace_inhibitors'),
-        takes_beta_blockers: specialMeds.includes('beta_blockers'),
-        has_asthma: pmhSpecific.includes('asthma'),
-        has_cad: pmhSpecific.includes('cad_cvd')
-      },
-      red_flags: rfs.map(rf => ({
-        id: rf.key,
-        severity: rf.severity,
-        title: rf.textTh,
-        triage_level: rf.triageLevel
-      }))
+      red_flags: rfs.map(rf => ({ id: rf.key, severity: rf.severity, title: rf.textTh, triage_level: rf.triageLevel }))
     }
   };
 
-  // Render to Doctor dashboard DOM elements
+  patient.rapidHpi = patient.custom_rapid_note || defaultRapid;
+  patient.narrativeHpi = patient.custom_narrative_note || defaultNarrative;
+  patient.medicalJson = jsonSchema;
+
   const rapidBox = document.getElementById('rapidTextView');
-  if (rapidBox) rapidBox.value = patient.custom_rapid_note || defaultRapid;
+  if (rapidBox) rapidBox.value = patient.rapidHpi;
 
   const narrativeBox = document.getElementById('narrativeTextView');
-  if (narrativeBox) narrativeBox.value = patient.custom_narrative_note || narrative;
+  if (narrativeBox) narrativeBox.value = patient.narrativeHpi;
 
   const jsonBox = document.getElementById('jsonViewer');
   if (jsonBox) jsonBox.textContent = JSON.stringify(jsonSchema, null, 2);
+
+  return { rapid: patient.rapidHpi, narrative: patient.narrativeHpi, json: jsonSchema };
 }
+
+// --- UI Card Template Helpers (Uniform C-AP1 Compliant Cards) ---
+function renderAllergyOption(opt) {
+  const kind = opt.kind || 'radio';
+  const idAttr = opt.id ? `id="${opt.id}"` : '';
+  const nameAttr = opt.name ? `name="${opt.name}"` : '';
+  const valAttr = opt.value !== undefined ? `value="${opt.value}"` : '';
+  const onchangeAttr = opt.onchange ? `onchange="${opt.onchange}"` : '';
+  const colSpan = opt.colSpan2 ? ' sm:col-span-2' : '';
+
+  if (opt.desc) {
+    return `<label class="selectable-card flex items-start p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition${colSpan}">
+      <input type="${kind}" ${idAttr} ${nameAttr} ${valAttr} ${onchangeAttr} class="mt-0.5 text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
+      <div class="ml-3">
+        <span class="block text-xs sm:text-sm font-semibold text-slate-800">${opt.title}</span>
+        <span class="block text-[11px] text-slate-500 font-normal mt-0.5">${opt.desc}</span>
+      </div>
+    </label>`;
+  }
+
+  return `<label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition${colSpan}">
+    <input type="${kind}" ${idAttr} ${nameAttr} ${valAttr} ${onchangeAttr} class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
+    <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800">${opt.title}</span>
+  </label>`;
+}
+
+function renderAllergyGrid(colsClass, options) {
+  return `<div class="grid ${colsClass} gap-2.5">${options.map(renderAllergyOption).join('')}</div>`;
+}
+
+// --- 4-Card Form HTML Assembly ---
+const ALLERGY_CARD1_HTML = `
+<div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+  <div class="flex items-center space-x-3 mb-4 pb-3 border-b border-slate-100">
+    <div class="bg-medical-100 text-medical-700 p-2 rounded-xl"><i data-lucide="clock" class="w-5 h-5"></i></div>
+    <div>
+      <h2 class="text-base font-bold text-slate-900">1. ระยะเวลา ความเร็วในการเกิดอาการ และสิ่งกระตุ้นที่สงสัย</h2>
+      <p class="text-xs text-slate-500 font-sans">Onset, Speed &amp; Suspected Exposure Triggers</p>
+    </div>
+  </div>
+  <div class="space-y-5">
+    <div>
+      <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">1.1 ระยะเวลาตั้งแต่เริ่มมีอาการผื่น คัน หรือบวมในครั้งนี้ <span class="text-rose-500">*</span></label>
+      <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        <div class="col-span-1 sm:col-span-2">
+          <input type="number" id="allergyDurationVal" min="1" max="1000" placeholder="เช่น 30" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-slate-800 font-semibold focus:outline-none focus:ring-2 focus:ring-medical-500 focus:bg-white text-sm placeholder:text-slate-400 placeholder:font-normal">
+        </div>
+        <div class="col-span-1">
+          <select id="allergyDurationUnit" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 text-slate-800 font-medium focus:outline-none focus:ring-2 focus:ring-medical-500 focus:bg-white text-sm">
+            <option value="minutes" selected>นาที</option>
+            <option value="hours">ชั่วโมง</option>
+            <option value="days">วัน</option>
+            <option value="weeks">สัปดาห์</option>
+            <option value="months">เดือน</option>
+            <option value="years">ปี</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="pt-3 border-t border-slate-100 space-y-4">
+      <div>
+        <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">1.2 ความรวดเร็วในการเกิดอาการ และเวลาที่เริ่มสังเกตเห็น</label>
+        ${renderAllergyGrid('grid-cols-1 sm:grid-cols-3', [
+          { name: 'allergyOnsetSpeed', value: 'rapid_within_minutes', title: 'เกิดขึ้นเร็วมากภายในไม่กี่นาทีถึง 2 ชั่วโมง', desc: 'ผื่นขึ้น บวม หรือแน่นคออย่างรวดเร็วหลังสัมผัสอาหาร ยา หรือแมลงต่อย' },
+          { name: 'allergyOnsetSpeed', value: 'gradual_throughout_day', title: 'ค่อยๆ เป็นมากขึ้นใน 2 ถึง 24 ชั่วโมง', desc: 'อาการผื่นหรือบวมค่อยๆ ทยอยขึ้นต่อเนื่องกันภายในวันเดียว' },
+          { name: 'allergyOnsetSpeed', value: 'chronic_gt_6weeks', title: 'เป็นผื่นต่อเนื่องหรือเป็นๆ หายๆ หลายวัน', desc: 'มีผื่นขึ้นยุบสลับกันติดต่อกันมากกว่า 1 วัน' }
+        ])}
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-slate-700 mb-2">เวลาที่เริ่มสังเกตเห็นอาการครั้งแรก:</label>
+        ${renderAllergyGrid('grid-cols-1 sm:grid-cols-2', [
+          { name: 'allergyOnsetTimeKnown', value: 'known', onchange: "handleAllergyOnsetTimeKnownChange('known')", title: 'ระบุวันที่และเวลาที่เริ่มมีอาการได้' },
+          { name: 'allergyOnsetTimeKnown', value: 'unknown', onchange: "handleAllergyOnsetTimeKnownChange('unknown')", title: 'ไม่ทราบเวลาที่แน่นอน' }
+        ])}
+        <div id="allergyExactTimeWrap" class="hidden bg-slate-50 border border-slate-200 rounded-2xl p-4 mt-2.5 grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">วันที่เริ่มมีอาการ</label>
+            <input type="text" id="allergyOnsetExactDate" data-universal-date="true" placeholder="วว/ดด/ปปปป (dd/mm/yyyy)" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs sm:text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-medical-500">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">เวลาที่เริ่มมีอาการ (24 ชม.)</label>
+            <input type="text" id="allergyOnsetExactTime" data-universal-time="true" placeholder="ชช:นน (เช่น 14:30)" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs sm:text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-medical-500">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="pt-3 border-t border-slate-100">
+      <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">1.3 สิ่งกระตุ้นที่สงสัยก่อนเริ่มมีอาการ (เลือกได้หลายข้อ)</label>
+      <div class="space-y-2">
+        ${renderAllergyOption({ kind: 'checkbox', name: 'allergySuspectedTriggers', value: 'food', onchange: 'handleAllergyTriggerChange(this)', title: 'รับประทานอาหาร', desc: 'เช่น กุ้ง ปู หอย ปลาหมึก ถั่ว ไข่ นมวัว แป้งสาลี หรือแมลงทอด' })}
+        <div id="allergyTriggerFoodWrap" class="hidden bg-slate-50 border border-slate-200 rounded-xl p-4">
+          <label class="block text-xs font-semibold text-slate-700 mb-1.5">ชื่ออาหารที่รับประทาน</label>
+          <input type="text" id="allergyTriggerFoodText" placeholder="เช่น ต้มยำกุ้ง, ส้มตำปูม้า, ถั่วลิสง" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs sm:text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-medical-500">
+        </div>
+
+        ${renderAllergyOption({ kind: 'checkbox', name: 'allergySuspectedTriggers', value: 'medication', onchange: 'handleAllergyTriggerChange(this)', title: 'รับประทานยา หรือฉีดยาแผนปัจจุบัน', desc: 'เช่น ยาปฏิชีวนะฆ่าเชื้อ ยาแก้ปวดลดอักเสบ ยากันชัก หรือยาที่เพิ่งเริ่มใช้ใหม่' })}
+        <div id="allergyTriggerMedWrap" class="hidden bg-slate-50 border border-slate-200 rounded-xl p-4">
+          <label class="block text-xs font-semibold text-slate-700 mb-1.5">ชื่อยาหรือชนิดยาที่สงสัย</label>
+          <input type="text" id="allergyTriggerMedText" placeholder="เช่น ยาฆ่าเชื้อ Amoxicillin, ยาแก้ปวด Ibuprofen" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs sm:text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-medical-500">
+        </div>
+
+        ${renderAllergyOption({ kind: 'checkbox', name: 'allergySuspectedTriggers', value: 'herbal_supplement', onchange: 'handleAllergyTriggerChange(this)', title: 'ทานสมุนไพร ยาชุด ยาต้ม หรืออาหารเสริม', desc: 'เช่น ยาชุดแก้ปวดเมื่อย ยาหม้อ ยาลูกกลอน สมุนไพรจีน/ไทย หรือวิตามินเสริม' })}
+        <div id="allergyTriggerHerbWrap" class="hidden bg-slate-50 border border-slate-200 rounded-xl p-4">
+          <label class="block text-xs font-semibold text-slate-700 mb-1.5">ชื่อสมุนไพร ยาชุด หรืออาหารเสริมที่ทาน</label>
+          <input type="text" id="allergyTriggerHerbText" placeholder="เช่น ยาชุดแก้ปวดซองสีชมพู, ยาต้มสมุนไพร" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs sm:text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-medical-500">
+        </div>
+
+        ${renderAllergyOption({ kind: 'checkbox', name: 'allergySuspectedTriggers', value: 'insect_sting', onchange: 'handleAllergyTriggerChange(this)', title: 'ถูกแมลงกัดหรือต่อย', desc: 'เช่น ผึ้ง ต่อ แตน มดตะนอย หรือมดคันไฟ' })}
+        <div id="allergyTriggerInsectWrap" class="hidden bg-slate-50 border border-slate-200 rounded-xl p-4">
+          <label class="block text-xs font-semibold text-slate-700 mb-1.5">ชนิดแมลงและตำแหน่งที่ถูกกัดต่อย</label>
+          <input type="text" id="allergyTriggerInsectText" placeholder="เช่น แตนต่อยที่แขนขวา 2 จุด" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs sm:text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-medical-500">
+        </div>
+
+        ${renderAllergyGrid('grid-cols-1 sm:grid-cols-2', [
+          { kind: 'checkbox', name: 'allergySuspectedTriggers', value: 'radiocontrast_anesthesia', onchange: 'handleAllergyTriggerChange(this)', title: 'ฉีดสารทึบรังสี หรือได้รับยาชา', desc: 'เพิ่งได้รับการฉีดสีเอกซเรย์คอมพิวเตอร์ ฉีดยาชาทำฟัน หรือดมยาสลบ' },
+          { kind: 'checkbox', name: 'allergySuspectedTriggers', value: 'contact_latex_chemical', onchange: 'handleAllergyTriggerChange(this)', title: 'สัมผัสสารเคมี ถุงมือยาง หรือเครื่องสำอาง', desc: 'ผิวหนังสัมผัสยางลาเท็กซ์ น้ำยาเคมี ยาย้อมผม ครีมทาหน้า หรือขนสัตว์' },
+          { kind: 'checkbox', name: 'allergySuspectedTriggers', value: 'unknown_trigger', onchange: 'handleAllergyTriggerChange(this)', title: 'ไม่ทราบสิ่งกระตุ้นแน่ชัด', desc: 'อยู่ดีๆ ก็มีอาการผื่นขึ้นหรือบวมขึ้นมาเองโดยไม่ได้สัมผัสสิ่งแปลกใหม่', colSpan2: true }
+        ])}
+      </div>
+    </div>
+  </div>
+</div>`;
+
+const ALLERGY_CARD2_HTML = `
+<div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+  <div class="flex items-center space-x-3 mb-4 pb-3 border-b border-slate-100">
+    <div class="bg-medical-100 text-medical-700 p-2 rounded-xl"><i data-lucide="activity" class="w-5 h-5"></i></div>
+    <div>
+      <h2 class="text-base font-bold text-slate-900">2. ลักษณะผื่นผิวหนัง และอาการบวมตามใบหน้าหรือร่างกาย</h2>
+      <p class="text-xs text-slate-500 font-sans">Skin Rash, Mucosa &amp; Soft Tissue Angioedema</p>
+    </div>
+  </div>
+  <div class="space-y-5">
+    <div>
+      <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">2.1 ลักษณะผื่นหรือความผิดปกติทางผิวหนัง (เลือกได้หลายข้อ)</label>
+      ${renderAllergyGrid('grid-cols-1 sm:grid-cols-2', [
+        { kind: 'checkbox', name: 'allergySkinRash', value: 'urticaria', onchange: 'handleAllergySkinRashChange(this)', title: 'ผื่นลมพิษนูนแดง คันมาก', desc: 'ผื่นนูนขอบชัดคล้ายรอยยุงกัดหรือแผนที่ คันมาก ยุบและย้ายที่ไปมาได้' },
+        { kind: 'checkbox', name: 'allergySkinRash', value: 'flushing', onchange: 'handleAllergySkinRashChange(this)', title: 'ผิวหนังแดงก่ำ ร้อนวูบวาบ', desc: 'ผิวแดงเห่อร้อนตามใบหน้า ลำคอ หรือกระจายทั่วตัว' },
+        { kind: 'checkbox', name: 'allergySkinRash', value: 'erythema_maculopapular', onchange: 'handleAllergySkinRashChange(this)', title: 'ผื่นแดงราบ หรือตุ่มแดงเล็กๆ', desc: 'ผื่นจุดแดงกระจายตามลำตัวและแขนขา ไม่นูนหนาเหมือนผื่นลมพิษ' },
+        { kind: 'checkbox', name: 'allergySkinRash', value: 'blisters_peeling', onchange: 'handleAllergySkinRashChange(this)', title: 'ตุ่มน้ำพอง หรือผิวหนังลอก', desc: 'มีตุ่มน้ำใสขึ้นตามผิวหนัง หรือผิวหนังเปื่อยลอกหลุด' },
+        { kind: 'checkbox', name: 'allergySkinRash', value: 'purpura_petechiae', onchange: 'handleAllergySkinRashChange(this)', title: 'จุดเลือดออกใต้ผิวหนัง หรือจ้ำม่วง', desc: 'จุดแดงคล้ำหรือจ้ำสีม่วงที่ใช้นิ้วกดทับแล้วสีไม่จางหาย' },
+        { kind: 'checkbox', name: 'allergySkinRash', value: 'none_rash', onchange: 'handleAllergySkinRashChange(this)', title: 'ไม่มีผื่นขึ้นตามผิวหนัง', desc: 'มีเฉพาะอาการบวม แน่นคอ หรืออาการระบบอื่นโดยไม่มีผื่นคัน' }
+      ])}
+
+      <div id="allergyMucosaFeverWrap" class="hidden bg-slate-50 border border-slate-200 rounded-2xl p-4 mt-3 space-y-2.5">
+        <span class="block text-xs font-semibold text-slate-800">อาการทางเยื่อบุและอาการร่วมที่พบพร้อมผื่น (เลือกได้หลายข้อ):</span>
+        ${renderAllergyGrid('grid-cols-1 sm:grid-cols-2', [
+          { kind: 'checkbox', name: 'allergyMucosaFever', value: 'mucosal_oral_ulcer', onchange: "handleAllergyExclusiveGroup('allergyMucosaFever','none_mucosa_fever',this)", title: 'มีแผลเจ็บในปาก หรือริมฝีปากลอกแตก', desc: 'เจ็บแสบในช่องปาก มีแผลถลอกที่ริมฝีปาก ลิ้น หรือกระพุ้งแก้ม' },
+          { kind: 'checkbox', name: 'allergyMucosaFever', value: 'mucosal_ocular', onchange: "handleAllergyExclusiveGroup('allergyMucosaFever','none_mucosa_fever',this)", title: 'ตาแดง แสบตา หรือมีขี้ตามากผิดปกติ', desc: 'เยื่อบุตาแดงเคืองทั้งสองข้าง น้ำตาไหล หรือลืมตาลำบาก' },
+          { kind: 'checkbox', name: 'allergyMucosaFever', value: 'skin_pain_tenderness', onchange: "handleAllergyExclusiveGroup('allergyMucosaFever','none_mucosa_fever',this)", title: 'ปวดแสบปวดร้อนบริเวณผิวหนังที่เป็นผื่น', desc: 'รู้สึกเจ็บแสบผิวหนังมากผิดปกติเมื่อสัมผัสโดนเสื้อผ้าหรือแตะถูกผื่น' },
+          { kind: 'checkbox', name: 'allergyMucosaFever', value: 'fever_chills', onchange: "handleAllergyExclusiveGroup('allergyMucosaFever','none_mucosa_fever',this)", title: 'มีไข้ ตัวร้อน หรือหนาวสั่นร่วมด้วย', desc: 'รู้สึกตัวร้อนรุมๆ หรือมีไข้สูงนำมาก่อนหรือพร้อมกับที่ผื่นขึ้น' },
+          { kind: 'checkbox', name: 'allergyMucosaFever', value: 'none_mucosa_fever', onchange: "handleAllergyExclusiveGroup('allergyMucosaFever','none_mucosa_fever',this)", title: 'ไม่มีอาการเจ็บเยื่อบุหรือไข้ข้างต้น', colSpan2: true }
+        ])}
+      </div>
+    </div>
+
+    <div class="pt-3 border-t border-slate-100">
+      <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">2.2 บริเวณที่มีอาการบวมของใบหน้าหรือร่างกาย (เลือกได้หลายข้อ)</label>
+      ${renderAllergyGrid('grid-cols-1 sm:grid-cols-2', [
+        { kind: 'checkbox', name: 'allergyAngioedema', value: 'lips', onchange: "handleAllergyExclusiveGroup('allergyAngioedema','none_angioedema',this)", title: 'ริมฝีปากบวมเจ่อ', desc: 'ริมฝีปากบนหรือล่างบวมหนา ตึง หรือเจ่อขึ้นอย่างเห็นได้ชัด' },
+        { kind: 'checkbox', name: 'allergyAngioedema', value: 'tongue_palate', onchange: "handleAllergyExclusiveGroup('allergyAngioedema','none_angioedema',this)", title: 'ลิ้นบวมคับปาก หรือเพดานปากบวม', desc: 'รู้สึกว่าลิ้นโตคับฟัน พูดไม่ชัด หรือบวมบริเวณเพดานปากและลิ้นไก่' },
+        { kind: 'checkbox', name: 'allergyAngioedema', value: 'periorbital_face', onchange: "handleAllergyExclusiveGroup('allergyAngioedema','none_angioedema',this)", title: 'เปลือกตาบวม หรือใบหน้าบวมตึง', desc: 'หนังตาบวมตุ่ยจนลืมตาได้น้อยลง หรือแก้มและใบหน้าบวมตึง' },
+        { kind: 'checkbox', name: 'allergyAngioedema', value: 'ears_neck', onchange: "handleAllergyExclusiveGroup('allergyAngioedema','none_angioedema',this)", title: 'ใบหูบวม หรือลำคอด้านนอกบวม', desc: 'สังเกตเห็นใบหูบวมแดงหนาขึ้น หรือบริเวณลำคอบวมตึง' },
+        { kind: 'checkbox', name: 'allergyAngioedema', value: 'extremities_genitalia', onchange: "handleAllergyExclusiveGroup('allergyAngioedema','none_angioedema',this)", title: 'มือบวม เท้าบวม หรืออวัยวะเพศบวม', desc: 'หลังมือ หลังเท้า นิ้วมือ หรืออวัยวะเพศบวมตึง' },
+        { kind: 'checkbox', name: 'allergyAngioedema', value: 'none_angioedema', onchange: "handleAllergyExclusiveGroup('allergyAngioedema','none_angioedema',this)", title: 'ไม่มีอาการบวมตามร่างกาย' }
+      ])}
+    </div>
+  </div>
+</div>`;
+
+const ALLERGY_CARD3_HTML = `
+<div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+  <div class="flex items-center space-x-3 mb-4 pb-3 border-b border-slate-100">
+    <div class="bg-medical-100 text-medical-700 p-2 rounded-xl"><i data-lucide="shield-alert" class="w-5 h-5"></i></div>
+    <div>
+      <h2 class="text-base font-bold text-slate-900">3. อาการทางลำคอ การหายใจ ระบบไหลเวียนโลหิต และทางเดินอาหาร</h2>
+      <p class="text-xs text-slate-500 font-sans">Systemic Anaphylaxis Screening (Airway, Breathing, Circulation &amp; GI)</p>
+    </div>
+  </div>
+  <div class="space-y-5">
+    <div>
+      <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">3.1 อาการทางลำคอและทางเดินหายใจส่วนบน (เลือกได้หลายข้อ)</label>
+      ${renderAllergyGrid('grid-cols-1 sm:grid-cols-2', [
+        { kind: 'checkbox', name: 'allergyUpperAirway', value: 'throat_tightness', onchange: "handleAllergyExclusiveGroup('allergyUpperAirway','none_upper_airway',this)", title: 'แน่นในลำคอ หรือจุกคอหอย', desc: 'รู้สึกตีบตันในคอ เหมือนมีก้อนจุกขวางอยู่ในลำคอ' },
+        { kind: 'checkbox', name: 'allergyUpperAirway', value: 'dysphagia_drooling', onchange: "handleAllergyExclusiveGroup('allergyUpperAirway','none_upper_airway',this)", title: 'กลืนลำบาก หรือน้ำลายไหลย้อย', desc: 'กลืนน้ำลายไม่ลง เจ็บเวลากลืน หรือมีน้ำลายไหลออกทางมุมปาก' },
+        { kind: 'checkbox', name: 'allergyUpperAirway', value: 'voice_hoarseness', onchange: "handleAllergyExclusiveGroup('allergyUpperAirway','none_upper_airway',this)", title: 'เสียงแหบ หรือพูดเสียงเปลี่ยน', desc: 'เสียงแหบพร่าเฉียบพลัน พูดเสียงอู้อี้ หรือพูดไม่ออก' },
+        { kind: 'checkbox', name: 'allergyUpperAirway', value: 'stridor', onchange: "handleAllergyExclusiveGroup('allergyUpperAirway','none_upper_airway',this)", title: 'หายใจมีเสียงฮืดแหลมในลำคอ', desc: 'ได้ยินเสียงดังฮืดหรือวี้ดแหลมที่ลำคอเวลาสูดหายใจเข้า' },
+        { kind: 'checkbox', name: 'allergyUpperAirway', value: 'nasal_congestion', onchange: "handleAllergyExclusiveGroup('allergyUpperAirway','none_upper_airway',this)", title: 'คัดแน่นจมูก น้ำมูกไหล หรือจามรัว', desc: 'แน่นจมูกทั้งสองข้าง คันจมูก คันหัวตา หรือจามติดกันหลายครั้ง' },
+        { kind: 'checkbox', name: 'allergyUpperAirway', value: 'none_upper_airway', onchange: "handleAllergyExclusiveGroup('allergyUpperAirway','none_upper_airway',this)", title: 'ไม่มีอาการทางลำคอข้างต้น' }
+      ])}
+    </div>
+
+    <div class="pt-3 border-t border-slate-100">
+      <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">3.2 อาการทางปอดและการหายใจ (เลือกได้หลายข้อ)</label>
+      ${renderAllergyGrid('grid-cols-1 sm:grid-cols-2', [
+        { kind: 'checkbox', name: 'allergyLowerAirway', value: 'dyspnea', onchange: "handleAllergyExclusiveGroup('allergyLowerAirway','none_lower_airway',this)", title: 'หายใจหอบเหนื่อย หรือหายใจไม่อิ่ม', desc: 'รู้สึกเหนื่อยหอบ หายใจสั้นถี่ หรือพูดได้เพียงประโยคสั้นๆ' },
+        { kind: 'checkbox', name: 'allergyLowerAirway', value: 'wheezing', onchange: "handleAllergyExclusiveGroup('allergyLowerAirway','none_lower_airway',this)", title: 'หายใจมีเสียงหวีดในหน้าอก', desc: 'ได้ยินเสียงดังวี้ดๆ ออกมาจากในปอดเวลาหายใจออก' },
+        { kind: 'checkbox', name: 'allergyLowerAirway', value: 'chest_tightness', onchange: "handleAllergyExclusiveGroup('allergyLowerAirway','none_lower_airway',this)", title: 'แน่นอึดอัดหน้าอก หรือไอแห้งๆ รัวๆ', desc: 'รู้สึกแน่นตื้อกลางหน้าอก หายใจเข้าไม่เต็มปอด หรือไอรัวต่อเนื่อง' },
+        { kind: 'checkbox', name: 'allergyLowerAirway', value: 'cyanosis', onchange: "handleAllergyExclusiveGroup('allergyLowerAirway','none_lower_airway',this)", title: 'ริมฝีปากเขียว หรือปลายมือเขียวคล้ำ', desc: 'สังเกตเห็นริมฝีปาก ลิ้น หรือปลายนิ้วมือมีสีม่วงคล้ำ' },
+        { kind: 'checkbox', name: 'allergyLowerAirway', value: 'none_lower_airway', onchange: "handleAllergyExclusiveGroup('allergyLowerAirway','none_lower_airway',this)", title: 'ไม่มีอาการเหนื่อยหอบข้างต้น', colSpan2: true }
+      ])}
+    </div>
+
+    <div class="pt-3 border-t border-slate-100">
+      <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">3.3 อาการหน้ามืด วูบ และระบบไหลเวียนโลหิต (เลือกได้หลายข้อ)</label>
+      ${renderAllergyGrid('grid-cols-1 sm:grid-cols-2', [
+        { kind: 'checkbox', name: 'allergyCirculationShock', value: 'presyncope_dizziness', onchange: "handleAllergyExclusiveGroup('allergyCirculationShock','none_circulation',this)", title: 'หน้ามืด วิงเวียน หรือตาพร่ามัว', desc: 'รู้สึกศีรษะเบาหวิว ทรงตัวไม่อยู่ โดยเฉพาะเมื่อลุกนั่งหรือยืน' },
+        { kind: 'checkbox', name: 'allergyCirculationShock', value: 'syncope', onchange: "handleAllergyExclusiveGroup('allergyCirculationShock','none_circulation',this)", title: 'วูบ เป็นลม หรือหมดสติ', desc: 'หน้ามืดจนล้มฟุบลงกับพื้น หรือไม่รู้สึกตัวไปชั่วขณะ' },
+        { kind: 'checkbox', name: 'allergyCirculationShock', value: 'cold_diaphoresis', onchange: "handleAllergyExclusiveGroup('allergyCirculationShock','none_circulation',this)", title: 'เหงื่อแตกตัวเย็น หน้าซีด หรือใจสั่น', desc: 'เหงื่อออกชุ่มตัว มือเท้าเย็นเฉียบ หน้าซีดขาว หรือหัวใจเต้นรัวแรง' },
+        { kind: 'checkbox', name: 'allergyCirculationShock', value: 'altered_mental', onchange: "handleAllergyExclusiveGroup('allergyCirculationShock','none_circulation',this)", title: 'สับสน กระสับกระส่าย หรือซึมลง', desc: 'รู้สึกกระวนกระวายผิดปกติ มึนงงสับสน หรือปลุกตื่นยาก' },
+        { kind: 'checkbox', name: 'allergyCirculationShock', value: 'none_circulation', onchange: "handleAllergyExclusiveGroup('allergyCirculationShock','none_circulation',this)", title: 'ไม่มีอาการหน้ามืดหรือวูบข้างต้น', colSpan2: true }
+      ])}
+    </div>
+
+    <div class="pt-3 border-t border-slate-100">
+      <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">3.4 อาการระบบทางเดินอาหารที่เกิดร่วมด้วย (เลือกได้หลายข้อ)</label>
+      ${renderAllergyGrid('grid-cols-1 sm:grid-cols-2', [
+        { kind: 'checkbox', name: 'allergyGiSymptoms', value: 'severe_abd_cramps', onchange: "handleAllergyExclusiveGroup('allergyGiSymptoms','none_gi',this)", title: 'ปวดบิดเกร็งท้องรุนแรง', desc: 'ปวดมวนหรือปวดบิดเกร็งในช่องท้องอย่างรุนแรงหลังสัมผัสสิ่งกระตุ้น' },
+        { kind: 'checkbox', name: 'allergyGiSymptoms', value: 'repetitive_vomiting', onchange: "handleAllergyExclusiveGroup('allergyGiSymptoms','none_gi',this)", title: 'คลื่นไส้ หรืออาเจียนหลายครั้ง', desc: 'พะอืดพะอมมาก อาเจียนพุ่ง หรืออาเจียนซ้ำติดต่อกัน' },
+        { kind: 'checkbox', name: 'allergyGiSymptoms', value: 'watery_diarrhea', onchange: "handleAllergyExclusiveGroup('allergyGiSymptoms','none_gi',this)", title: 'ถ่ายเหลวเป็นน้ำเฉียบพลัน', desc: 'ท้องเสียถ่ายเหลวตามมาอย่างรวดเร็วหลังเริ่มมีอาการแพ้' },
+        { kind: 'checkbox', name: 'allergyGiSymptoms', value: 'none_gi', onchange: "handleAllergyExclusiveGroup('allergyGiSymptoms','none_gi',this)", title: 'ไม่มีอาการทางเดินอาหารข้างต้น' }
+      ])}
+    </div>
+  </div>
+</div>`;
+
+const ALLERGY_CARD4_HTML = `
+<div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+  <div class="flex items-center space-x-3 mb-4 pb-3 border-b border-slate-100">
+    <div class="bg-medical-100 text-medical-700 p-2 rounded-xl"><i data-lucide="file-text" class="w-5 h-5"></i></div>
+    <div>
+      <h2 class="text-base font-bold text-slate-900">4. ประวัติการแพ้ในอดีต การดูแลเบื้องต้น และยาประจำตัวกลุ่มเสี่ยง</h2>
+      <p class="text-xs text-slate-500 font-sans">Prior History, Pre-hospital Care &amp; High-Risk Medications</p>
+    </div>
+  </div>
+  <div class="space-y-5">
+    <div>
+      <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">4.1 ประวัติการแพ้ในอดีต และการพกยาฉีดแก้แพ้ฉุกเฉิน</label>
+      <div class="space-y-2">
+        ${renderAllergyOption({ name: 'allergyPriorAnaphylaxis', value: 'prior_severe_hosp', onchange: "handleAllergyPriorAnaphylaxisChange('prior_severe_hosp')", title: 'เคยแพ้รุนแรงจนต้องฉีดยาที่ต้นขาหรือนอนโรงพยาบาล', desc: 'เคยมีอาการแพ้รุนแรงจนแน่นคอ หอบเหนื่อย หรือความดันตกมาก่อน' })}
+        <div id="allergyEpipenWrap" class="hidden bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-2">
+          <span class="block text-xs font-semibold text-slate-800">การใช้ยาฉีดแก้แพ้พกพาประจำตัวในครั้งนี้:</span>
+          ${renderAllergyOption({ name: 'allergyEpipenUsage', value: 'used_prehospital', onchange: "handleAllergyEpipenUsageChange('used_prehospital')", title: 'ได้ฉีดยาแก้แพ้พกพาแล้วก่อนมาโรงพยาบาล' })}
+          <div id="allergyEpipenTimeWrap" class="hidden bg-white border border-slate-200 rounded-xl p-3 space-y-2">
+            <label class="block text-xs font-semibold text-slate-700">เวลาที่ฉีดยาแก้แพ้พกพา (24 ชม.)</label>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 items-center">
+              <input type="text" id="allergyEpipenTimeText" data-universal-time="true" oninput="handleAllergyEpipenTimeInput()" placeholder="ชช:นน (เช่น 11:30)" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs sm:text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-medical-500">
+              ${renderAllergyOption({ kind: 'checkbox', id: 'allergyEpipenTimeUnknown', value: 'unknown', onchange: 'handleAllergyEpipenTimeUnknownToggle(this)', title: 'จำเวลาที่ฉีดไม่ได้' })}
+            </div>
+          </div>
+          ${renderAllergyGrid('grid-cols-1 sm:grid-cols-2', [
+            { name: 'allergyEpipenUsage', value: 'has_not_used', onchange: "handleAllergyEpipenUsageChange('has_not_used')", title: 'มียาฉีดแก้แพ้พกพา แต่ยังไม่ได้ฉีด' },
+            { name: 'allergyEpipenUsage', value: 'none_epipen', onchange: "handleAllergyEpipenUsageChange('none_epipen')", title: 'ไม่มียาฉีดแก้แพ้พกพาประจำตัว' }
+          ])}
+        </div>
+        ${renderAllergyGrid('grid-cols-1 sm:grid-cols-2', [
+          { name: 'allergyPriorAnaphylaxis', value: 'prior_mild_urticaria', onchange: "handleAllergyPriorAnaphylaxisChange('prior_mild_urticaria')", title: 'เคยมีเฉพาะผื่นลมพิษหรือผื่นคันธรรมดา', desc: 'เคยมีผื่นคันขึ้นมาก่อน แต่รักษาด้วยยาทาน หรือฉีดยาเข้าเส้นเลือดเท่านั้น ไม่ได้นอน รพ.' },
+          { name: 'allergyPriorAnaphylaxis', value: 'first_time_never', onchange: "handleAllergyPriorAnaphylaxisChange('first_time_never')", title: 'ไม่เคยมีประวัติแพ้มาก่อน ครั้งนี้เป็นครั้งแรก' }
+        ])}
+      </div>
+    </div>
+
+    <div class="pt-3 border-t border-slate-100">
+      <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">4.2 การรับประทานยาแก้แพ้เบื้องต้นในครั้งนี้ก่อนมาโรงพยาบาล</label>
+      ${renderAllergyGrid('grid-cols-1 sm:grid-cols-2', [
+        { name: 'allergyPrehospOralMed', value: 'none_oral_med', title: 'ยังไม่ได้รับประทานยาแก้แพ้ใดๆ' },
+        { name: 'allergyPrehospOralMed', value: 'antihistamine_no_improve', title: 'รับประทานยาแก้แพ้มาแล้วแต่อาการยังไม่ดีขึ้น', desc: 'ทานยาแก้แพ้เม็ดมาจากบ้านหรือร้านยาแล้ว แต่ผื่นยังไม่ยุบหรือมีอาการเพิ่มขึ้น' }
+      ])}
+    </div>
+
+    <div class="pt-3 border-t border-slate-100 grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div>
+        <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">4.3 ยาประจำตัวที่รับประทานอยู่ในปัจจุบัน (เลือกได้หลายข้อ)</label>
+        <div class="space-y-2">
+          ${renderAllergyOption({ kind: 'checkbox', name: 'allergySpecialMeds', value: 'ace_inhibitors', onchange: "handleAllergyExclusiveGroup('allergySpecialMeds','none_special_meds',this)", title: 'ยาลดความดันโลหิตกลุ่มลงท้ายด้วย -pril', desc: 'เช่น ยา Enalapril, Ramipril, Captopril, Lisinopril ซึ่งอาจทำให้ปากบวมหรือลิ้นบวมได้แม้ทานมานานแล้ว' })}
+          ${renderAllergyOption({ kind: 'checkbox', name: 'allergySpecialMeds', value: 'beta_blockers', onchange: "handleAllergyExclusiveGroup('allergySpecialMeds','none_special_meds',this)", title: 'ยาลดความดันหรือลดชีพจรกลุ่มลงท้ายด้วย -lol', desc: 'เช่น ยา Propranolol, Atenolol, Metoprolol, Carvedilol, Bisoprolol' })}
+          ${renderAllergyOption({ kind: 'checkbox', name: 'allergySpecialMeds', value: 'none_special_meds', onchange: "handleAllergyExclusiveGroup('allergySpecialMeds','none_special_meds',this)", title: 'ไม่ได้รับประทานยากลุ่มดังกล่าว' })}
+          ${renderAllergyOption({ kind: 'checkbox', name: 'allergySpecialMeds', value: 'unknown_special_meds', onchange: "handleAllergyExclusiveGroup('allergySpecialMeds','none_special_meds',this)", title: 'ไม่แน่ใจ', desc: 'มียาประจำตัวที่ทานอยู่ แต่จำชื่อยาหรือกลุ่มยาไม่ได้' })}
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">โรคประจำตัวที่สำคัญ (เลือกได้หลายข้อ)</label>
+        <div class="space-y-2">
+          ${renderAllergyOption({ kind: 'checkbox', name: 'allergyPmhSpecific', value: 'asthma', onchange: "handleAllergyExclusiveGroup('allergyPmhSpecific','none_pmh_specific',this)", title: 'โรคหอบหืด หรือโรคปอดเรื้อรัง', desc: 'เคยใช้ยาพ่นขยายหลอดลม หรือมีอาการหอบเหนื่อยง่าย' })}
+          ${renderAllergyOption({ kind: 'checkbox', name: 'allergyPmhSpecific', value: 'cad_cvd', onchange: "handleAllergyExclusiveGroup('allergyPmhSpecific','none_pmh_specific',this)", title: 'โรคหัวใจ หรือโรคหลอดเลือดหัวใจ', desc: 'เช่น โรคหลอดเลือดหัวใจตีบ หัวใจเต้นผิดจังหวะ หรือภาวะหัวใจล้มเหลว' })}
+          ${renderAllergyOption({ kind: 'checkbox', name: 'allergyPmhSpecific', value: 'atopic_dermatitis', onchange: "handleAllergyExclusiveGroup('allergyPmhSpecific','none_pmh_specific',this)", title: 'โรคผื่นภูมิแพ้ผิวหนัง' })}
+          ${renderAllergyOption({ kind: 'checkbox', name: 'allergyPmhSpecific', value: 'none_pmh_specific', onchange: "handleAllergyExclusiveGroup('allergyPmhSpecific','none_pmh_specific',this)", title: 'ไม่มีโรคประจำตัวดังกล่าว' })}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>`;
+
+const ALLERGY_FORM_HTML = `
+<div id="allergyQuestionnaireSection" class="space-y-6 hidden">
+  <div data-cc-top-banner="allergy"><div class="flex flex-col gap-4">
+  <div class="p-4 bg-sky-50 border border-sky-200 rounded-2xl flex items-start space-x-3 text-xs text-slate-800 leading-relaxed">
+    <i data-lucide="info" class="w-5 h-5 text-medical-600 mt-0.5 flex-shrink-0"></i>
+    <div class="space-y-1">
+      <p class="font-bold text-slate-900">ข้อแนะนำการปฏิบัติตัวเบื้องต้นระหว่างรอตรวจ:</p>
+      <p>1. <strong>หากรู้สึกหน้ามืด วิงเวียน หรือเหนื่อยหอบ:</strong> ห้ามลุกขึ้นยืนหรือเดินไปมาตามลำพัง แจ้งพยาบาลเพื่อขอเตียงนอนราบ (แต่หากนอนราบแล้วเหนื่อยมากขึ้น ให้นั่งเอนหลังพิงพนักในท่าที่หายใจสะดวกที่สุดได้)</p>
+      <p>2. <strong>หากนำซองยาหรือตัวอย่างอาหารมาด้วย:</strong> กรุณาเตรียมไว้ให้แพทย์ดู แนะนำงดดื่มน้ำหรือรับประทานอาหารเพิ่มเติมระหว่างรอตรวจ</p>
+      <p>3. <strong>แจ้งพยาบาลหน้าห้องตรวจทันทีหากมีอาการต่อไปนี้:</strong> รู้สึกแน่นในลำคอ กลืนน้ำลายลำบาก เสียงแหบ ลิ้นหรือริมฝีปากบวมโต หายใจมีเสียงหวีด หรือหน้ามืดคล้ายจะเป็นลม</p>
+    </div>
+  </div>
+  </div></div>
+
+  ${ALLERGY_CARD1_HTML}
+  ${ALLERGY_CARD2_HTML}
+  ${ALLERGY_CARD3_HTML}
+  ${ALLERGY_CARD4_HTML}
+
+  <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+    <div class="flex items-center space-x-3 mb-3 pb-3 border-b border-slate-100">
+      <div class="bg-medical-100 text-medical-700 p-2 rounded-xl"><i data-lucide="message-square-plus" class="w-5 h-5"></i></div>
+      <div>
+        <h2 class="text-base font-bold text-slate-900">อาการอื่นๆ ที่ต้องการแจ้งเพิ่มเติม</h2>
+        <p class="text-xs text-slate-500 font-sans">Additional Notes (ระบุรายละเอียดเพิ่มเติม เช่น ชื่อร้านอาหาร ชื่อยา หรืออาการอื่นๆ)</p>
+      </div>
+    </div>
+    <textarea id="allergy_other_free" rows="2" placeholder="ระบุอาการอื่นๆ หรือข้อมูลเพิ่มเติมที่ต้องการแจ้งแพทย์หรือพยาบาล..." class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-slate-800 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-medical-500 focus:bg-white placeholder:text-slate-400"></textarea>
+  </div>
+</div>`;
 
 // --- Module Registration ---
 registerCcModule({
   id: 'allergy',
-  recordCc: 'acute_allergy',
+  recordCc: 'allergy',
   titleTh: 'ผื่นแพ้เฉียบพลัน / แน่นคอ ตาบวม ปากบวม',
+  titleEn: 'Acute allergic reaction / Angioedema',
   sectionDomId: 'allergyQuestionnaireSection',
   headerTh: 'แบบฟอร์มซักประวัติ: ผื่นแพ้เฉียบพลัน / แน่นคอ ตาบวม ปากบวม (Acute Allergic Reaction / Angioedema / Anaphylaxis)',
   headerEn: '(Airway & Hemodynamic Triage)',
   patientBadgeHtml: '<i data-lucide="shield-alert" class="w-5 h-5 sm:w-6 sm:h-6 flex-shrink-0 text-rose-500"></i><span class="whitespace-nowrap">ผื่นแพ้เฉียบพลัน / แน่นคอ ตาบวม ปากบวม</span>',
   doctorCcBadgeHtml: '<i data-lucide="shield-alert" class="w-3.5 h-3.5 mr-1 text-rose-500"></i> CC: ผื่นแพ้เฉียบพลัน / แน่นคอ ตาบวม ปากบวม',
-  pmhSectionNumber: 7,
+  pmhSectionNumber: 5,
+  getPmhSectionNumber: () => 5,
   dateFields: ['allergyOnsetExactDate'],
-  timeFields: ['allergyOnsetExactTime'],
-  branchIds: ['allergyTriggerFoodWrap', 'allergyTriggerMedWrap', 'allergyTriggerInsectWrap', 'allergyEpipenWrap', 'allergyEpipenTimeWrap'],
-  inputIdsToClear: ['allergyDurationVal', 'allergyOnsetExactDate', 'allergyOnsetExactTime', 'allergyTriggerFoodText', 'allergyTriggerMedText', 'allergyTriggerInsectText', 'allergyEpipenTimeText', 'allergy_other_free'],
+  timeFields: ['allergyOnsetExactTime', 'allergyEpipenTimeText'],
+  branchIds: [
+    'allergyExactTimeWrap',
+    'allergyTriggerFoodWrap',
+    'allergyTriggerMedWrap',
+    'allergyTriggerHerbWrap',
+    'allergyTriggerInsectWrap',
+    'allergyMucosaFeverWrap',
+    'allergyEpipenWrap',
+    'allergyEpipenTimeWrap'
+  ],
+  inputIdsToClear: [
+    'allergyDurationVal',
+    'allergyOnsetExactDate',
+    'allergyOnsetExactTime',
+    'allergyTriggerFoodText',
+    'allergyTriggerMedText',
+    'allergyTriggerHerbText',
+    'allergyTriggerInsectText',
+    'allergyEpipenTimeText',
+    'allergy_other_free'
+  ],
 
   algorithm: {
     chiefComplaint: 'acute_allergy',
     titleTh: 'ผื่นแพ้เฉียบพลัน / แน่นคอ ตาบวม ปากบวม',
     schemaCode: 'acute_allergy',
-    version: '2.0.0',
-    redFlagDefinitions: [
-      { key: 'allergy_rf_anaphylaxis_shock', level: 1, textTh: 'ภาวะแพ้รุนแรงคุกคามชีวิต (Anaphylaxis Alert / Impending Shock)' },
-      { key: 'allergy_rf_airway_obstruction', level: 1, textTh: 'เสี่ยงต่อการอุดกั้นทางเดินหายใจส่วนบนเฉียบพลัน (Upper Airway Angioedema)' },
-      { key: 'allergy_rf_acei_angioedema', level: 2, textTh: 'สงสัยภาวะ Angioedema จากยากลุ่ม ACE Inhibitors (ACEi-induced Angioedema)' },
-      { key: 'allergy_rf_beta_blocker_refractory', level: 2, textTh: 'เสี่ยงต่อภาวะดื้อยา Adrenaline จากการใช้ยา Beta-Blockers' },
-      { key: 'allergy_rf_blistering_mucocutaneous', level: 2, textTh: 'สงสัยกลุ่มอาการผื่นแพ้ยารุนแรง (SCARs / SJS / TEN)' }
+    version: '3.0.0',
+    triageLevelRules: [
+      { level: 1, criteria: 'Anaphylaxis (WAO/NIAID criteria met), Prehospital EpiPen administered, Impending Upper Airway Obstruction (Stridor / Hoarseness / Dysphagia / Tongue or Throat edema)' },
+      { level: 2, criteria: 'Suspected SCARs (SJS/TEN/DRESS: blistering, skin peeling, mucosal ulcer/ocular pain, purpura + fever), ACEi-induced angioedema, Refractory risk on Beta-blocker or severe Asthma bronchospasm' },
+      { level: 4, criteria: 'Uncomplicated acute urticaria / flushing / mild localized rash without airway, hemodynamic, GI, mucosal or ACEi risk' }
     ]
   },
 
-  formHtml: `
-    <div id="allergyQuestionnaireSection" class="space-y-6 hidden">
-      <!-- Card 1: Onset, Duration & Exposure Triggers -->
-      <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
-        <div class="flex items-center space-x-3 mb-4 pb-3 border-b border-slate-100">
-          <div class="bg-medical-100 text-medical-700 p-2 rounded-xl">
-            <i data-lucide="clock" class="w-5 h-5"></i>
-          </div>
-          <div>
-            <h2 class="text-base font-bold text-slate-900">1. ระยะเวลาและสิ่งกระตุ้นต้องสงสัย (Onset, Duration & Exposure Triggers)</h2>
-            <p class="text-xs text-slate-500">ประเมินระยะเวลาการสัมผัสสิ่งกระตุ้น ยา อาหาร หรือแมลงกัดต่อย</p>
-          </div>
-        </div>
-        <div class="space-y-5">
-          <!-- 1.1 ระยะเวลาตั้งแต่เริ่มมีอาการ -->
-          <div>
-            <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
-              ระยะเวลาตั้งแต่เริ่มมีอาการผื่น คัน หรือบวมรอบนี้ <span class="text-rose-500">*</span>
-            </label>
-            <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              <div class="col-span-1 sm:col-span-2">
-                <input type="number" id="allergyDurationVal" min="1" max="1000" placeholder="เช่น 30" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-slate-800 font-semibold focus:outline-none focus:ring-2 focus:ring-medical-500 focus:bg-white text-sm placeholder:text-slate-400 placeholder:font-normal">
-              </div>
-              <div class="col-span-1">
-                <select id="allergyDurationUnit" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 text-slate-800 font-medium focus:outline-none focus:ring-2 focus:ring-medical-500 focus:bg-white text-sm">
-                  <option value="minutes" selected>นาที</option>
-                  <option value="hours">ชั่วโมง</option>
-                  <option value="days">วัน</option>
-                  <option value="weeks">สัปดาห์</option>
-                  <option value="months">เดือน</option>
-                  <option value="years">ปี</option>
-                </select>
-              </div>
-            </div>
-          </div>
+  formHtml: ALLERGY_FORM_HTML,
 
-          <!-- 1.2 ความรวดเร็วในการเกิดอาการ -->
-          <div>
-            <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
-              ความรวดเร็วในการเกิดอาการ
-            </label>
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-              <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-                <input type="radio" name="allergyOnsetSpeed" value="rapid_within_minutes" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
-                <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800">รวดเร็วมาก (ในไม่กี่นาที ถึง 1–2 ชม.)</span>
-              </label>
-              <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-                <input type="radio" name="allergyOnsetSpeed" value="gradual_throughout_day" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
-                <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800">ค่อยๆ เป็นเพิ่มขึ้นตลอดวัน</span>
-              </label>
-              <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-                <input type="radio" name="allergyOnsetSpeed" value="chronic_gt_6weeks" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
-                <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800">เป็นๆ หายๆ มาหลายวัน</span>
-              </label>
-            </div>
-          </div>
-        </div>
+  onTitleChange() {},
 
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4 pt-4 border-t border-slate-100">
-          <div>
-            <label class="block text-xs font-medium text-slate-700 mb-1">ระบุวันที่และเวลาที่เริ่มสังเกตเห็นอาการ (หากทราบ)</label>
-            <div class="grid grid-cols-2 gap-2">
-              <input type="text" id="allergyOnsetExactDate" placeholder="วว/ดด/ปปปป" data-universal-date="true" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-medical-500">
-              <input type="text" id="allergyOnsetExactTime" placeholder="ชช:นน (24 ชม.)" data-universal-time="true" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-medical-500">
-            </div>
-          </div>
-          <div>
-            <label class="block text-xs font-medium text-slate-700 mb-1">สงสัยว่ามีอาการหลังสัมผัสสิ่งใดในรอบ 2–4 ชั่วโมงที่ผ่านมา (เลือกได้หลายข้อ):</label>
-            <div class="space-y-1.5">
-              <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-                <input type="checkbox" name="allergySuspectedTriggers" value="food" onchange="handleAllergyTriggerFoodToggle(this)" class="h-4 w-4 rounded flex-shrink-0 text-medical-600 focus:ring-medical-500">
-                <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800">อาหาร เช่น กุ้ง ปู หอย ถั่วลิสง ไข่ นมวัว แป้งสาลี แมลงทอด</span>
-              </label>
-              <div id="allergyTriggerFoodWrap" class="hidden bg-slate-50 border border-slate-200 rounded-xl p-4 mt-2">
-                <input type="text" id="allergyTriggerFoodText" placeholder="ระบุชื่ออาหารที่สงสัย..." class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-1.5 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-medical-500">
-              </div>
+  onSelectForm() {
+    updateAllergyMucosaContext();
+  },
 
-              <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-                <input type="checkbox" name="allergySuspectedTriggers" value="medication" onchange="handleAllergyTriggerMedToggle(this)" class="h-4 w-4 rounded flex-shrink-0 text-medical-600 focus:ring-medical-500">
-                <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800">ยาปฏิชีวนะ หรือยาอื่นๆ เช่น ยาฆ่าเชื้อ ยาแก้ปวด NSAIDs ยาที่เพิ่งเริ่มใหม่</span>
-              </label>
-              <div id="allergyTriggerMedWrap" class="hidden bg-slate-50 border border-slate-200 rounded-xl p-4 mt-2">
-                <input type="text" id="allergyTriggerMedText" placeholder="ระบุชื่อยาที่สงสัย..." class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-1.5 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-medical-500">
-              </div>
+  onActivate() {
+    updateAllergyMucosaContext();
+    handleAllergyOnsetTimeKnownChange();
+    syncAllergyTriggerBranches();
+    handleAllergyPriorAnaphylaxisChange();
+    handleAllergyEpipenUsageChange();
+  },
 
-              <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-                <input type="checkbox" name="allergySuspectedTriggers" value="insect_sting" onchange="handleAllergyTriggerInsectToggle(this)" class="h-4 w-4 rounded flex-shrink-0 text-medical-600 focus:ring-medical-500">
-                <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800">ถูกแมลงหรือสัตว์มีพิษกัดต่อย เช่น ผึ้ง ต่อ แตน มดตะนอย</span>
-              </label>
-              <div id="allergyTriggerInsectWrap" class="hidden bg-slate-50 border border-slate-200 rounded-xl p-4 mt-2">
-                <input type="text" id="allergyTriggerInsectText" placeholder="ระบุชนิดแมลงและตำแหน่งที่โดนต่อย..." class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-1.5 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-medical-500">
-              </div>
+  resetForm() {
+    ['allergyOnsetSpeed', 'allergyOnsetTimeKnown', 'allergyPriorAnaphylaxis', 'allergyEpipenUsage', 'allergyPrehospOralMed'].forEach(n => {
+      setAllergyRadioValue(n, '');
+    });
+    ['allergySuspectedTriggers', 'allergySkinRash', 'allergyMucosaFever', 'allergyAngioedema', 'allergyUpperAirway', 'allergyLowerAirway', 'allergyCirculationShock', 'allergyGiSymptoms', 'allergySpecialMeds', 'allergyPmhSpecific'].forEach(n => {
+      setAllergyCheckboxGroup(n, []);
+    });
+    const unk = document.getElementById('allergyEpipenTimeUnknown');
+    if (unk) unk.checked = false;
+    this.branchIds.forEach(bId => toggleAllergyBranch(bId, false));
+    this.inputIdsToClear.forEach(iId => {
+      const el = document.getElementById(iId);
+      if (el) el.value = '';
+    });
+    const durUnit = document.getElementById('allergyDurationUnit');
+    if (durUnit) durUnit.value = 'minutes';
+  },
 
-              <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-                <input type="checkbox" name="allergySuspectedTriggers" value="radiocontrast_anesthesia" class="h-4 w-4 rounded flex-shrink-0 text-medical-600 focus:ring-medical-500">
-                <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800">การฉีดสารทึบรังสี (CT Scan/X-ray) หรือได้รับยาชา/ยาสลบ</span>
-              </label>
-              <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-                <input type="checkbox" name="allergySuspectedTriggers" value="contact_latex_chemical" class="h-4 w-4 rounded flex-shrink-0 text-medical-600 focus:ring-medical-500">
-                <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800">สัมผัสสิ่งของภายนอก เช่น ถุงมือยางลาเท็กซ์ สารเคมี พืช ดอกไม้ เครื่องสำอาง</span>
-              </label>
-              <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-                <input type="checkbox" name="allergySuspectedTriggers" value="unknown_trigger" class="h-4 w-4 rounded flex-shrink-0 text-medical-600 focus:ring-medical-500">
-                <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800">ไม่ทราบสิ่งกระตุ้นแน่ชัด อยู่ๆ ก็มีอาการขึ้นมาเอง</span>
-              </label>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Card 2: Rash & Soft Tissue Angioedema -->
-      <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
-        <div class="flex items-center space-x-3 mb-4 pb-3 border-b border-slate-100">
-          <div class="bg-medical-100 text-medical-700 p-2 rounded-xl">
-            <i data-lucide="activity" class="w-5 h-5"></i>
-          </div>
-          <div>
-            <h2 class="text-base font-bold text-slate-900">2. อาการทางผิวหนังและเนื้อเยื่อบวม (Skin & Soft Tissue Angioedema)</h2>
-            <p class="text-xs text-slate-500">ตรวจสอบผื่นลมพิษ คัน บวมตา บวมปาก หรือบวมใบหน้า</p>
-          </div>
-        </div>
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label class="block text-xs font-medium text-slate-700 mb-1">ลักษณะผื่นทางผิวหนังที่พบ (เลือกได้หลายข้อ):</label>
-            <div class="space-y-1.5">
-              <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-                <input type="checkbox" name="allergySkinRash" value="urticaria" class="h-4 w-4 rounded flex-shrink-0 text-medical-600 focus:ring-medical-500">
-                <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800">มีผื่นลมพิษนูนหนา สีแดง คันมาก ย้ายที่ไปมาได้</span>
-              </label>
-              <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-                <input type="checkbox" name="allergySkinRash" value="flushing" class="h-4 w-4 rounded flex-shrink-0 text-medical-600 focus:ring-medical-500">
-                <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800">ผิวหนังแดงก่ำทั่วตัว รู้สึกร้อนวูบวาบตามใบหน้าและลำตัว</span>
-              </label>
-              <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-                <input type="checkbox" name="allergySkinRash" value="erythema_maculopapular" class="h-4 w-4 rounded flex-shrink-0 text-medical-600 focus:ring-medical-500">
-                <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800">มีผื่นแดงราบ จุดแดง หรือตุ่มคันเล็กๆ ทั่วไป</span>
-              </label>
-              <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-                <input type="checkbox" name="allergySkinRash" value="blisters_peeling" class="h-4 w-4 rounded flex-shrink-0 text-medical-600 focus:ring-medical-500">
-                <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800">มีตุ่มน้ำพองใส หรือผิวหนังลอกหลุด เจ็บแสบผิว</span>
-              </label>
-              <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-                <input type="checkbox" name="allergySkinRash" value="none_rash" onchange="handleAllergySkinRashNoneToggle(this)" class="h-4 w-4 rounded flex-shrink-0 text-medical-600 focus:ring-medical-500">
-                <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800">ไม่มีผื่นคันตามผิวหนังเลย</span>
-              </label>
-            </div>
-          </div>
-
-          <div>
-            <label class="block text-xs font-medium text-slate-700 mb-1">บริเวณที่มีอาการบวมนูนของเนื้อเยื่อ (Angioedema - เลือกได้หลายข้อ):</label>
-            <div class="space-y-1.5">
-              <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-                <input type="checkbox" name="allergyAngioedema" value="lips" class="h-4 w-4 rounded flex-shrink-0 text-medical-600 focus:ring-medical-500">
-                <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800">ริมฝีปากบวมเจ่อ หรือรู้สึกว่าริมฝีปากหนาขึ้นผิดปกติ</span>
-              </label>
-              <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-                <input type="checkbox" name="allergyAngioedema" value="tongue_palate" class="h-4 w-4 rounded flex-shrink-0 text-medical-600 focus:ring-medical-500">
-                <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800">ลิ้นบวมโตคับปาก ลิ้นคับฟัน หรือรู้สึกเพดานปากบวม</span>
-              </label>
-              <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-                <input type="checkbox" name="allergyAngioedema" value="periorbital_face" class="h-4 w-4 rounded flex-shrink-0 text-medical-600 focus:ring-medical-500">
-                <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800">เปลือกตาบวม ตาปิด ลืมตาไม่ขึ้น หรือคิ้วและใบหน้าบวมตึง</span>
-              </label>
-              <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-                <input type="checkbox" name="allergyAngioedema" value="ears_neck" class="h-4 w-4 rounded flex-shrink-0 text-medical-600 focus:ring-medical-500">
-                <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800">ใบหูบวม ลำคอด้านนอกบวม</span>
-              </label>
-              <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-                <input type="checkbox" name="allergyAngioedema" value="extremities_genitalia" class="h-4 w-4 rounded flex-shrink-0 text-medical-600 focus:ring-medical-500">
-                <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800">มือบวม เท้าบวม หรืออวัยวะเพศบวม</span>
-              </label>
-              <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-                <input type="checkbox" name="allergyAngioedema" value="none_angioedema" onchange="handleAllergyAngioedemaNoneToggle(this)" class="h-4 w-4 rounded flex-shrink-0 text-medical-600 focus:ring-medical-500">
-                <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800">ไม่มีอาการบวมตามใบหน้า ริมฝีปาก หรืออวัยวะใดๆ</span>
-              </label>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Card 3: Airway, Breathing & Circulation Symptoms -->
-      <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
-        <div class="flex items-center space-x-3 mb-4 pb-3 border-b border-slate-100">
-          <div class="bg-medical-100 text-medical-700 p-2 rounded-xl">
-            <i data-lucide="shield-alert" class="w-5 h-5"></i>
-          </div>
-          <div>
-            <h2 class="text-base font-bold text-slate-900">3. สัญญาณเตือนทางเดินหายใจและระบบไหลเวียนโลหิต (Airway, Breathing & Circulation Symptoms)</h2>
-            <p class="text-xs text-slate-500">คัดกรองภาวะแพ้รุนแรง (Anaphylaxis) แน่นคอ หายใจหวีด หรือหน้ามืดเป็นลม</p>
-          </div>
-        </div>
-
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <!-- Upper Airway -->
-          <div>
-            <label class="block text-xs font-medium text-slate-700 mb-1">ทางเดินหายใจส่วนบนและลำคอ:</label>
-            <div class="space-y-1.5">
-              <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-                <input type="checkbox" name="allergyUpperAirway" value="throat_tightness" class="h-4 w-4 rounded flex-shrink-0 text-medical-600 focus:ring-medical-500">
-                <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800">รู้สึกแน่นในลำคอ เหมือนมีก้อนจุกติดคอหอย</span>
-              </label>
-              <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-                <input type="checkbox" name="allergyUpperAirway" value="dysphagia_drooling" class="h-4 w-4 rounded flex-shrink-0 text-medical-600 focus:ring-medical-500">
-                <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800">กลืนลำบาก กลืนน้ำลายไม่ลง หรือมีน้ำลายไหลย้อย</span>
-              </label>
-              <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-                <input type="checkbox" name="allergyUpperAirway" value="voice_hoarseness" class="h-4 w-4 rounded flex-shrink-0 text-medical-600 focus:ring-medical-500">
-                <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800">เสียงแหบเฉียบพลัน หรือพูดเสียงเปลี่ยนไป (อมของร้อน)</span>
-              </label>
-              <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-                <input type="checkbox" name="allergyUpperAirway" value="stridor" class="h-4 w-4 rounded flex-shrink-0 text-medical-600 focus:ring-medical-500">
-                <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800">หายใจมีเสียงฮืด หรือเสียงวี้ดสูงแหลมในลำคอ (Stridor)</span>
-              </label>
-              <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-                <input type="checkbox" name="allergyUpperAirway" value="nasal_congestion" class="h-4 w-4 rounded flex-shrink-0 text-medical-600 focus:ring-medical-500">
-                <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800">แน่นจมูก หายใจทางจมูกลำบาก</span>
-              </label>
-              <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-                <input type="checkbox" name="allergyUpperAirway" value="none_upper_airway" onchange="handleAllergyUpperAirwayNoneToggle(this)" class="h-4 w-4 rounded flex-shrink-0 text-medical-600 focus:ring-medical-500">
-                <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800">ไม่มีอาการทางเดินหายใจส่วนบนเหล่านี้</span>
-              </label>
-            </div>
-          </div>
-
-          <!-- Lower Airway -->
-          <div>
-            <label class="block text-xs font-medium text-slate-700 mb-1">ทางเดินหายใจส่วนล่างและปอด:</label>
-            <div class="space-y-1.5">
-              <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-                <input type="checkbox" name="allergyLowerAirway" value="dyspnea" class="h-4 w-4 rounded flex-shrink-0 text-medical-600 focus:ring-medical-500">
-                <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800">หายใจหอบเหนื่อย หายใจไม่อิ่ม หรือหายใจเร็ว</span>
-              </label>
-              <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-                <input type="checkbox" name="allergyLowerAirway" value="wheezing" class="h-4 w-4 rounded flex-shrink-0 text-medical-600 focus:ring-medical-500">
-                <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800">หายใจมีเสียงหวีดดังวี้ดๆ ออกมาจากในหน้าอก</span>
-              </label>
-              <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-                <input type="checkbox" name="allergyLowerAirway" value="chest_tightness" class="h-4 w-4 rounded flex-shrink-0 text-medical-600 focus:ring-medical-500">
-                <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800">แน่นอึดอัดกลางหน้าอก หายใจเข้าไม่เต็มปอด</span>
-              </label>
-              <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-                <input type="checkbox" name="allergyLowerAirway" value="none_lower_airway" onchange="handleAllergyLowerAirwayNoneToggle(this)" class="h-4 w-4 rounded flex-shrink-0 text-medical-600 focus:ring-medical-500">
-                <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800">ไม่มีอาการทางเดินหายใจส่วนล่างเหล่านี้</span>
-              </label>
-            </div>
-          </div>
-
-          <!-- Circulation & Shock -->
-          <div>
-            <label class="block text-xs font-medium text-slate-700 mb-1">ระบบไหลเวียนโลหิตและภาวะช็อก:</label>
-            <div class="space-y-1.5">
-              <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-                <input type="checkbox" name="allergyCirculationShock" value="presyncope_dizziness" class="h-4 w-4 rounded flex-shrink-0 text-medical-600 focus:ring-medical-500">
-                <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800">หน้ามืด วิงเวียนศีรษะรุนแรง ตาพร่ามัว ทรงตัวไม่อยู่</span>
-              </label>
-              <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-                <input type="checkbox" name="allergyCirculationShock" value="syncope" class="h-4 w-4 rounded flex-shrink-0 text-medical-600 focus:ring-medical-500">
-                <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800">วูบ เป็นลม หมดสติไปชั่วคราว หรือทิ้งตัวลงกับพื้น</span>
-              </label>
-              <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-                <input type="checkbox" name="allergyCirculationShock" value="cold_diaphoresis" class="h-4 w-4 rounded flex-shrink-0 text-medical-600 focus:ring-medical-500">
-                <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800">เหงื่อแตกท่วมตัว ตัวเย็นชืด มือเท้าเย็นจัด หรือซีด</span>
-              </label>
-              <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-                <input type="checkbox" name="allergyCirculationShock" value="none_circulation" onchange="handleAllergyCirculationNoneToggle(this)" class="h-4 w-4 rounded flex-shrink-0 text-medical-600 focus:ring-medical-500">
-                <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800">ไม่มีอาการผิดปกติในระบบไหลเวียนโลหิต</span>
-              </label>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Card 4: Gastrointestinal Symptoms -->
-      <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
-        <div class="flex items-center space-x-3 mb-4 pb-3 border-b border-slate-100">
-          <div class="bg-medical-100 text-medical-700 p-2 rounded-xl">
-            <i data-lucide="utensils" class="w-5 h-5"></i>
-          </div>
-          <div>
-            <h2 class="text-base font-bold text-slate-900">4. อาการในระบบทางเดินอาหาร (Gastrointestinal Symptoms)</h2>
-            <p class="text-xs text-slate-500">ตรวจสอบอาการปวดเกร็งช่องท้อง คลื่นไส้อาเจียน หรือถ่ายเหลว</p>
-          </div>
-        </div>
-
-        <label class="block text-xs font-medium text-slate-700 mb-1">อาการทางระบบทางเดินอาหารที่พบร่วมด้วย (เลือกได้หลายข้อ):</label>
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-          <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-            <input type="checkbox" name="allergyGiSymptoms" value="severe_abd_cramps" class="h-4 w-4 rounded flex-shrink-0 text-medical-600 focus:ring-medical-500">
-            <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800">ปวดเกร็งท้องรุนแรง หรือปวดบิดในช่องท้องมากผิดปกติ</span>
-          </label>
-          <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-            <input type="checkbox" name="allergyGiSymptoms" value="repetitive_vomiting" class="h-4 w-4 rounded flex-shrink-0 text-medical-600 focus:ring-medical-500">
-            <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800">คลื่นไส้ หรืออาเจียนติดต่อกันหลายครั้ง</span>
-          </label>
-          <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-            <input type="checkbox" name="allergyGiSymptoms" value="watery_diarrhea" class="h-4 w-4 rounded flex-shrink-0 text-medical-600 focus:ring-medical-500">
-            <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800">ถ่ายเหลวเป็นน้ำเฉียบพลัน หรือถ่ายบ่อยหลายครั้ง</span>
-          </label>
-          <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-            <input type="checkbox" name="allergyGiSymptoms" value="none_gi" onchange="handleAllergyGiNoneToggle(this)" class="h-4 w-4 rounded flex-shrink-0 text-medical-600 focus:ring-medical-500">
-            <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800">ไม่มีอาการผิดปกติในระบบทางเดินอาหาร</span>
-          </label>
-        </div>
-      </div>
-
-      <!-- Card 5: History, Meds & Prior Care -->
-      <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
-        <div class="flex items-center space-x-3 mb-4 pb-3 border-b border-slate-100">
-          <div class="bg-medical-100 text-medical-700 p-2 rounded-xl">
-            <i data-lucide="file-text" class="w-5 h-5"></i>
-          </div>
-          <div>
-            <h2 class="text-base font-bold text-slate-900">5. ประวัติการแพ้ ยาประจำตัว และการดูแลเบื้องต้น (History, Meds & Prior Care)</h2>
-            <p class="text-xs text-slate-500">ตรวจสอบประวัติแพ้เดิม การใช้ยาแก้แพ้ และการพกยาฉีด EpiPen</p>
-          </div>
-        </div>
-
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label class="block text-xs font-medium text-slate-700 mb-1">ประวัติการแพ้รุนแรงในอดีต (Prior Anaphylaxis):</label>
-            <div class="space-y-1.5">
-              <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-                <input type="radio" name="allergyPriorAnaphylaxis" value="prior_severe_hosp" onchange="handleAllergyPriorAnaphylaxisChange('prior_severe_hosp')" class="h-4 w-4 rounded flex-shrink-0 text-medical-600 focus:ring-medical-500">
-                <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800">เคยมีประวัติแพ้รุนแรง (Anaphylaxis) นอนโรงพยาบาล หรือเคยฉีดยา Adrenaline มาก่อน</span>
-              </label>
-
-              <!-- Epipen Subwrap -->
-              <div id="allergyEpipenWrap" class="hidden bg-slate-50 border border-slate-200 rounded-xl p-4 mt-3 space-y-2">
-                <label class="block text-[11px] font-medium text-slate-700 mb-1">มียาฉีดแก้แพ้พกพา (EpiPen) ประจำตัวหรือไม่:</label>
-                <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-                  <input type="radio" name="allergyEpipenUsage" value="used_prehospital" onchange="handleAllergyEpipenUsageChange('used_prehospital')" class="h-4 w-4 rounded flex-shrink-0 text-medical-600 focus:ring-medical-500">
-                  <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800">มี และได้ฉีดยาไปแล้วก่อนมาโรงพยาบาล</span>
-                </label>
-                <div id="allergyEpipenTimeWrap" class="hidden bg-white border border-slate-200 rounded-xl p-3 mt-2">
-                  <input type="text" id="allergyEpipenTimeText" placeholder="ระบุเวลาที่ฉีด (เช่น 11:30 น.)..." class="w-full bg-white border border-slate-300 rounded-xl px-2.5 py-1 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-medical-500">
-                </div>
-                <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-                  <input type="radio" name="allergyEpipenUsage" value="has_not_used" onchange="handleAllergyEpipenUsageChange('has_not_used')" class="h-4 w-4 rounded flex-shrink-0 text-medical-600 focus:ring-medical-500">
-                  <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800">มี แต่ยังไม่ได้ฉีดยา</span>
-                </label>
-                <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-                  <input type="radio" name="allergyEpipenUsage" value="none_epipen" onchange="handleAllergyEpipenUsageChange('none_epipen')" class="h-4 w-4 rounded flex-shrink-0 text-medical-600 focus:ring-medical-500">
-                  <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800">ไม่มี</span>
-                </label>
-              </div>
-
-              <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-                <input type="radio" name="allergyPriorAnaphylaxis" value="prior_mild_urticaria" onchange="handleAllergyPriorAnaphylaxisChange('prior_mild_urticaria')" class="h-4 w-4 rounded flex-shrink-0 text-medical-600 focus:ring-medical-500">
-                <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800">เคยมีเพียงผื่นลมพิษหรือผื่นคันธรรมดา ไม่เคยแน่นคอหรือช็อก</span>
-              </label>
-              <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-                <input type="radio" name="allergyPriorAnaphylaxis" value="first_time_never" onchange="handleAllergyPriorAnaphylaxisChange('first_time_never')" class="h-4 w-4 rounded flex-shrink-0 text-medical-600 focus:ring-medical-500">
-                <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800">ไม่เคยมีประวัติแพ้อะไรมาก่อน ครั้งนี้เป็นครั้งแรก</span>
-              </label>
-            </div>
-          </div>
-
-          <div>
-            <label class="block text-xs font-medium text-slate-700 mb-1">ประวัติการใช้ยาประจำตัวกลุ่มพิเศษ (สำคัญมาก):</label>
-            <div class="space-y-1.5">
-              <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-                <input type="checkbox" name="allergySpecialMeds" value="ace_inhibitors" class="h-4 w-4 rounded flex-shrink-0 text-medical-600 focus:ring-medical-500">
-                <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800">รับประทานยาลดความดันกลุ่ม ACE inhibitors (เช่น Enalapril, Ramipril, Captopril, Lisinopril)</span>
-              </label>
-              <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-                <input type="checkbox" name="allergySpecialMeds" value="beta_blockers" class="h-4 w-4 rounded flex-shrink-0 text-medical-600 focus:ring-medical-500">
-                <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800">รับประทานยาลดความดันกลุ่ม Beta-blockers (เช่น Atenolol, Propranolol, Carvedilol, Metoprolol)</span>
-              </label>
-              <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-                <input type="checkbox" name="allergySpecialMeds" value="none_special_meds" onchange="handleAllergySpecialMedsNoneToggle(this)" class="h-4 w-4 rounded flex-shrink-0 text-medical-600 focus:ring-medical-500">
-                <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800">ไม่ได้รับประทานยากลุ่มเหล่านี้</span>
-              </label>
-            </div>
-
-            <div class="mt-4 pt-3 border-t border-slate-100">
-              <label class="block text-xs font-medium text-slate-700 mb-1">ประวัติโรคประจำตัวที่สำคัญ:</label>
-              <div class="space-y-1.5">
-                <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-                  <input type="checkbox" name="allergyPmhSpecific" value="asthma" class="h-4 w-4 rounded flex-shrink-0 text-medical-600 focus:ring-medical-500">
-                  <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800">โรคหอบหืด (Asthma)</span>
-                </label>
-                <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-                  <input type="checkbox" name="allergyPmhSpecific" value="cad_cvd" class="h-4 w-4 rounded flex-shrink-0 text-medical-600 focus:ring-medical-500">
-                  <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800">โรคหลอดเลือดหัวใจหรือโรคหัวใจ</span>
-                </label>
-                <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-                  <input type="checkbox" name="allergyPmhSpecific" value="none_pmh_specific" onchange="handleAllergyPmhNoneToggle(this)" class="h-4 w-4 rounded flex-shrink-0 text-medical-600 focus:ring-medical-500">
-                  <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800">ไม่มีโรคประจำตัวเหล่านี้</span>
-                </label>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Card 6: อาการอื่นๆ ที่ต้องการแจ้งเพิ่มเติม -->
-      <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
-        <div class="flex items-center space-x-3 mb-3 pb-2 border-b border-slate-100">
-          <div class="bg-slate-100 text-slate-600 p-2 rounded-xl">
-            <i data-lucide="message-square-plus" class="w-5 h-5"></i>
-          </div>
-          <div>
-            <h2 class="text-base font-bold text-slate-800">6. อาการอื่น ๆ หรือข้อความเพิ่มเติมถึงแพทย์ (Additional Notes)</h2>
-            <p class="text-xs text-slate-500">ระบุอาการอื่นๆ ที่ท่านมีหรือต้องการบอกแพทย์เพิ่มเติม (ถ้ามี)</p>
-          </div>
-        </div>
-        <textarea id="allergy_other_free" rows="2" placeholder="ระบุอาการอื่นๆ เพิ่มเติม (ถ้ามี)..." class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs sm:text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-medical-500"></textarea>
-      </div>
-    </div>
-  `,
-
-  collectIntake: function(ctx) {
-    const _rawDur = parseFloat(document.getElementById('allergyDurationVal')?.value); const durationVal = (!isNaN(_rawDur) && _rawDur > 0) ? _rawDur : null;
+  collectIntake(ctx) {
+    ctx = ctx || {};
+    const _rawDur = parseFloat(document.getElementById('allergyDurationVal')?.value);
+    const durationVal = (!isNaN(_rawDur) && _rawDur > 0) ? _rawDur : null;
     const durationUnit = document.getElementById('allergyDurationUnit')?.value || 'minutes';
 
-    const allergyOnsetSpeed = document.querySelector('input[name="allergyOnsetSpeed"]:checked')?.value || '';
-    const allergyOnsetExactDate = document.getElementById('allergyOnsetExactDate')?.value?.trim() || '';
-    const allergyOnsetExactTime = document.getElementById('allergyOnsetExactTime')?.value?.trim() || '';
+    const allergyOnsetSpeed = getAllergyRadioValue('allergyOnsetSpeed');
+    const allergyOnsetTimeKnown = getAllergyRadioValue('allergyOnsetTimeKnown');
+    const allergyOnsetExactDate = allergyOnsetTimeKnown === 'known' ? (document.getElementById('allergyOnsetExactDate')?.value?.trim() || '') : '';
+    const allergyOnsetExactTime = allergyOnsetTimeKnown === 'known' ? (document.getElementById('allergyOnsetExactTime')?.value?.trim() || '') : '';
 
-    const allergySuspectedTriggers = Array.from(document.querySelectorAll('input[name="allergySuspectedTriggers"]:checked')).map(el => el.value);
-    const allergyTriggerFoodText = document.getElementById('allergyTriggerFoodText')?.value?.trim() || '';
-    const allergyTriggerMedText = document.getElementById('allergyTriggerMedText')?.value?.trim() || '';
-    const allergyTriggerInsectText = document.getElementById('allergyTriggerInsectText')?.value?.trim() || '';
+    const allergySuspectedTriggers = getAllergyCheckedValues('allergySuspectedTriggers');
+    const allergyTriggerFoodText = allergySuspectedTriggers.includes('food') ? (document.getElementById('allergyTriggerFoodText')?.value?.trim() || '') : '';
+    const allergyTriggerMedText = allergySuspectedTriggers.includes('medication') ? (document.getElementById('allergyTriggerMedText')?.value?.trim() || '') : '';
+    const allergyTriggerHerbText = allergySuspectedTriggers.includes('herbal_supplement') ? (document.getElementById('allergyTriggerHerbText')?.value?.trim() || '') : '';
+    const allergyTriggerInsectText = allergySuspectedTriggers.includes('insect_sting') ? (document.getElementById('allergyTriggerInsectText')?.value?.trim() || '') : '';
 
-    const allergySkinRash = Array.from(document.querySelectorAll('input[name="allergySkinRash"]:checked')).map(el => el.value);
-    const allergyAngioedema = Array.from(document.querySelectorAll('input[name="allergyAngioedema"]:checked')).map(el => el.value);
+    const allergySkinRash = getAllergyCheckedValues('allergySkinRash');
+    const needsMucosa = ['blisters_peeling', 'erythema_maculopapular', 'purpura_petechiae'].some(k => allergySkinRash.includes(k));
+    const allergyMucosaFever = needsMucosa ? getAllergyCheckedValues('allergyMucosaFever') : [];
 
-    const allergyUpperAirway = Array.from(document.querySelectorAll('input[name="allergyUpperAirway"]:checked')).map(el => el.value);
-    const allergyLowerAirway = Array.from(document.querySelectorAll('input[name="allergyLowerAirway"]:checked')).map(el => el.value);
-    const allergyCirculationShock = Array.from(document.querySelectorAll('input[name="allergyCirculationShock"]:checked')).map(el => el.value);
-    const allergyGiSymptoms = Array.from(document.querySelectorAll('input[name="allergyGiSymptoms"]:checked')).map(el => el.value);
+    const allergyAngioedema = getAllergyCheckedValues('allergyAngioedema');
+    const allergyUpperAirway = getAllergyCheckedValues('allergyUpperAirway');
+    const allergyLowerAirway = getAllergyCheckedValues('allergyLowerAirway');
+    const allergyCirculationShock = getAllergyCheckedValues('allergyCirculationShock');
+    const allergyGiSymptoms = getAllergyCheckedValues('allergyGiSymptoms');
 
-    const allergyPriorAnaphylaxis = document.querySelector('input[name="allergyPriorAnaphylaxis"]:checked')?.value || '';
-    const allergyEpipenUsage = document.querySelector('input[name="allergyEpipenUsage"]:checked')?.value || '';
-    const allergyEpipenTimeText = document.getElementById('allergyEpipenTimeText')?.value?.trim() || '';
+    const allergyPriorAnaphylaxis = getAllergyRadioValue('allergyPriorAnaphylaxis');
+    const allergyEpipenUsage = allergyPriorAnaphylaxis === 'prior_severe_hosp' ? getAllergyRadioValue('allergyEpipenUsage') : '';
+    const allergyEpipenTimeUnknown = allergyEpipenUsage === 'used_prehospital' && Boolean(document.getElementById('allergyEpipenTimeUnknown')?.checked);
+    const allergyEpipenTimeText = (allergyEpipenUsage === 'used_prehospital' && !allergyEpipenTimeUnknown)
+      ? (document.getElementById('allergyEpipenTimeText')?.value?.trim() || '')
+      : '';
 
-    const allergySpecialMeds = Array.from(document.querySelectorAll('input[name="allergySpecialMeds"]:checked')).map(el => el.value);
-    const allergyPmhSpecific = Array.from(document.querySelectorAll('input[name="allergyPmhSpecific"]:checked')).map(el => el.value);
+    const allergyPrehospOralMed = getAllergyRadioValue('allergyPrehospOralMed');
+    const allergySpecialMeds = getAllergyCheckedValues('allergySpecialMeds');
+    const allergyPmhSpecific = getAllergyCheckedValues('allergyPmhSpecific');
 
-    return {
-      id: ctx.recordId,
-      queue_number: ctx.queueNumber,
-      hn: ctx.randomHn,
-      name: ctx.patientName,
-      age: ctx.patientAge,
-      gender: ctx.gender,
+    const patient = {
+      id: ctx.recordId || `case-${Date.now()}`,
+      queue_number: ctx.queueNumber || 'ER-NEW',
+      hn: ctx.randomHn || '-',
+      name: ctx.patientName || 'ไม่ระบุชื่อ',
+      age: ctx.patientAge !== undefined ? ctx.patientAge : 'ไม่ระบุ',
+      gender: ctx.gender || 'ไม่ระบุ',
       chief_complaint: 'allergy',
       chief_complaint_title: 'ผื่นแพ้เฉียบพลัน / แน่นคอ ตาบวม ปากบวม',
       timestamp: new Date().toISOString(),
-      status: ctx.recordStatus,
+      status: ctx.recordStatus || 'waiting',
       durationVal,
       durationUnit,
-      hospRecordStatus: ctx.hospRecordStatus,
-      underlying: ctx.underlying,
-      drugAllergy: ctx.drugAllergy,
-      currentMeds: ctx.currentMeds,
+      hospRecordStatus: ctx.hospRecordStatus || 'unspecified',
+      underlying: (Array.isArray(ctx.underlying) && ctx.underlying.length > 0) ? ctx.underlying : ((ctx.hospRecordStatus === 'self' || ctx.hospRecordStatus === 'additional') ? ['ปฏิเสธ'] : []),
+      drugAllergy: ctx.drugAllergy || 'ไม่ได้ระบุ',
+      currentMeds: ctx.currentMeds || 'ไม่ได้ระบุ',
       otherSymptomsFree: document.getElementById('allergy_other_free')?.value?.trim() || ctx.otherSymptomsFree || '',
-      doctor_notes: ctx.preservedDoctorNotes,
+      doctor_notes: ctx.preservedDoctorNotes || { additional_hpi: '', physical_exam: '', preliminary_dx: '', plan: '' },
 
       allergyOnsetSpeed,
+      allergyOnsetTimeKnown,
       allergyOnsetExactDate,
       allergyOnsetExactTime,
       allergySuspectedTriggers,
       allergyTriggerFoodText,
       allergyTriggerMedText,
+      allergyTriggerHerbText,
       allergyTriggerInsectText,
       allergySkinRash,
+      allergyMucosaFever,
       allergyAngioedema,
       allergyUpperAirway,
       allergyLowerAirway,
@@ -1080,194 +1076,87 @@ registerCcModule({
       allergyGiSymptoms,
       allergyPriorAnaphylaxis,
       allergyEpipenUsage,
+      allergyEpipenTimeUnknown,
       allergyEpipenTimeText,
+      allergyPrehospOralMed,
       allergySpecialMeds,
       allergyPmhSpecific
     };
+
+    return patient;
   },
 
-  populateForm: function(patient) {
+  populateForm(patient) {
     if (!patient) return;
+    this.resetForm();
 
     const durVal = document.getElementById('allergyDurationVal');
     if (durVal) durVal.value = patient.durationVal || '';
-
     const durUnit = document.getElementById('allergyDurationUnit');
     if (durUnit) durUnit.value = patient.durationUnit || 'minutes';
 
+    setAllergyRadioValue('allergyOnsetSpeed', patient.allergyOnsetSpeed);
+    const timeKnown = patient.allergyOnsetTimeKnown || ((patient.allergyOnsetExactDate || patient.allergyOnsetExactTime) ? 'known' : '');
+    setAllergyRadioValue('allergyOnsetTimeKnown', timeKnown);
+    handleAllergyOnsetTimeKnownChange(timeKnown);
+
     const onDate = document.getElementById('allergyOnsetExactDate');
     if (onDate) onDate.value = patient.allergyOnsetExactDate || '';
-
     const onTime = document.getElementById('allergyOnsetExactTime');
     if (onTime) onTime.value = patient.allergyOnsetExactTime || '';
 
-    if (patient.allergyOnsetSpeed) {
-      const r = document.querySelector(`input[name="allergyOnsetSpeed"][value="${patient.allergyOnsetSpeed}"]`);
-      if (r) r.checked = true;
-    }
+    setAllergyCheckboxGroup('allergySuspectedTriggers', patient.allergySuspectedTriggers);
+    syncAllergyTriggerBranches();
 
-    if (Array.isArray(patient.allergySuspectedTriggers)) {
-      document.querySelectorAll('input[name="allergySuspectedTriggers"]').forEach(cb => {
-        cb.checked = patient.allergySuspectedTriggers.includes(cb.value);
-        if (cb.value === 'food') handleAllergyTriggerFoodToggle(cb);
-        if (cb.value === 'medication') handleAllergyTriggerMedToggle(cb);
-        if (cb.value === 'insect_sting') handleAllergyTriggerInsectToggle(cb);
-      });
-    }
-    const fText = document.getElementById('allergyTriggerFoodText');
-    if (fText) fText.value = patient.allergyTriggerFoodText || '';
-    const mText = document.getElementById('allergyTriggerMedText');
-    if (mText) mText.value = patient.allergyTriggerMedText || '';
-    const iText = document.getElementById('allergyTriggerInsectText');
-    if (iText) iText.value = patient.allergyTriggerInsectText || '';
+    const trigInputs = {
+      allergyTriggerFoodText: patient.allergyTriggerFoodText,
+      allergyTriggerMedText: patient.allergyTriggerMedText,
+      allergyTriggerHerbText: patient.allergyTriggerHerbText,
+      allergyTriggerInsectText: patient.allergyTriggerInsectText
+    };
+    Object.entries(trigInputs).forEach(([id, v]) => {
+      const el = document.getElementById(id);
+      if (el) el.value = v || '';
+    });
 
-    if (Array.isArray(patient.allergySkinRash)) {
-      document.querySelectorAll('input[name="allergySkinRash"]').forEach(cb => {
-        cb.checked = patient.allergySkinRash.includes(cb.value);
-      });
-    }
+    setAllergyCheckboxGroup('allergySkinRash', patient.allergySkinRash);
+    updateAllergyMucosaContext();
+    setAllergyCheckboxGroup('allergyMucosaFever', patient.allergyMucosaFever);
 
-    if (Array.isArray(patient.allergyAngioedema)) {
-      document.querySelectorAll('input[name="allergyAngioedema"]').forEach(cb => {
-        cb.checked = patient.allergyAngioedema.includes(cb.value);
-      });
-    }
+    setAllergyCheckboxGroup('allergyAngioedema', patient.allergyAngioedema);
+    setAllergyCheckboxGroup('allergyUpperAirway', patient.allergyUpperAirway);
+    setAllergyCheckboxGroup('allergyLowerAirway', patient.allergyLowerAirway);
+    setAllergyCheckboxGroup('allergyCirculationShock', patient.allergyCirculationShock);
+    setAllergyCheckboxGroup('allergyGiSymptoms', patient.allergyGiSymptoms);
 
-    if (Array.isArray(patient.allergyUpperAirway)) {
-      document.querySelectorAll('input[name="allergyUpperAirway"]').forEach(cb => {
-        cb.checked = patient.allergyUpperAirway.includes(cb.value);
-      });
-    }
+    setAllergyRadioValue('allergyPriorAnaphylaxis', patient.allergyPriorAnaphylaxis);
+    handleAllergyPriorAnaphylaxisChange(patient.allergyPriorAnaphylaxis);
+    setAllergyRadioValue('allergyEpipenUsage', patient.allergyEpipenUsage);
+    handleAllergyEpipenUsageChange(patient.allergyEpipenUsage);
 
-    if (Array.isArray(patient.allergyLowerAirway)) {
-      document.querySelectorAll('input[name="allergyLowerAirway"]').forEach(cb => {
-        cb.checked = patient.allergyLowerAirway.includes(cb.value);
-      });
-    }
-
-    if (Array.isArray(patient.allergyCirculationShock)) {
-      document.querySelectorAll('input[name="allergyCirculationShock"]').forEach(cb => {
-        cb.checked = patient.allergyCirculationShock.includes(cb.value);
-      });
-    }
-
-    if (Array.isArray(patient.allergyGiSymptoms)) {
-      document.querySelectorAll('input[name="allergyGiSymptoms"]').forEach(cb => {
-        cb.checked = patient.allergyGiSymptoms.includes(cb.value);
-      });
-    }
-
-    if (patient.allergyPriorAnaphylaxis) {
-      const r = document.querySelector(`input[name="allergyPriorAnaphylaxis"][value="${patient.allergyPriorAnaphylaxis}"]`);
-      if (r) {
-        r.checked = true;
-        handleAllergyPriorAnaphylaxisChange(patient.allergyPriorAnaphylaxis);
-      }
-    }
-
-    if (patient.allergyEpipenUsage) {
-      const r = document.querySelector(`input[name="allergyEpipenUsage"][value="${patient.allergyEpipenUsage}"]`);
-      if (r) {
-        r.checked = true;
-        handleAllergyEpipenUsageChange(patient.allergyEpipenUsage);
-      }
-    }
+    const unk = document.getElementById('allergyEpipenTimeUnknown');
+    if (unk) unk.checked = Boolean(patient.allergyEpipenTimeUnknown);
     const epTime = document.getElementById('allergyEpipenTimeText');
-    if (epTime) epTime.value = patient.allergyEpipenTimeText || '';
+    if (epTime) epTime.value = patient.allergyEpipenTimeUnknown ? '' : (patient.allergyEpipenTimeText || '');
 
-    if (Array.isArray(patient.allergySpecialMeds)) {
-      document.querySelectorAll('input[name="allergySpecialMeds"]').forEach(cb => {
-        cb.checked = patient.allergySpecialMeds.includes(cb.value);
-      });
-    }
-
-    if (Array.isArray(patient.allergyPmhSpecific)) {
-      document.querySelectorAll('input[name="allergyPmhSpecific"]').forEach(cb => {
-        cb.checked = patient.allergyPmhSpecific.includes(cb.value);
-      });
-    }
+    setAllergyRadioValue('allergyPrehospOralMed', patient.allergyPrehospOralMed);
+    setAllergyCheckboxGroup('allergySpecialMeds', patient.allergySpecialMeds);
+    setAllergyCheckboxGroup('allergyPmhSpecific', patient.allergyPmhSpecific);
 
     const oText = document.getElementById('allergy_other_free');
     if (oText) oText.value = patient.otherSymptomsFree || '';
   },
 
-  hydrateForm: function(patient) {
+  hydrateForm(patient) {
     this.populateForm(patient);
   },
 
-  isRedFlag: function(patient) {
+  isRedFlag(patient) {
     return evaluateAllergyRedFlags(patient).length > 0;
   },
 
   evaluateRedFlags: evaluateAllergyRedFlags,
   updateOutputs: updateAllergyOutputs,
-
-  generateCds: function(patient, { rfs, ddxList = [], workupList = [], managementList = [] } = {}) {
-    if (!patient) return;
-    const specialMeds = Array.isArray(patient.allergySpecialMeds) ? patient.allergySpecialMeds : [];
-    const pmhSpecific = Array.isArray(patient.allergyPmhSpecific) ? patient.allergyPmhSpecific : [];
-
-    // 1. Differential Diagnoses
-    if (rfs && rfs.some(r => r.key === 'allergy_rf_anaphylaxis_shock')) {
-      ddxList.push('1. 🚨 Anaphylactic Shock / Severe Anaphylaxis (WAO/NIAID criteria met)');
-      ddxList.push('2. Severe Acute Asthma Exacerbation triggered by allergen');
-      ddxList.push('3. Vasovagal Syncope with Urticaria');
-    } else if (rfs && rfs.some(r => r.key === 'allergy_rf_acei_angioedema')) {
-      ddxList.push('1. 🚨 ACE-Inhibitor Induced Angioedema (Bradykinin-mediated)');
-      ddxList.push('2. Hereditary / Acquired Angioedema (C1-INH deficiency)');
-      ddxList.push('3. Histaminergic Angioedema');
-    } else if (rfs && rfs.some(r => r.key === 'allergy_rf_airway_obstruction')) {
-      ddxList.push('1. 🚨 Acute Laryngeal Angioedema / Impending Upper Airway Obstruction');
-      ddxList.push('2. Acute Epiglottitis / Peritonsillar Abscess');
-      ddxList.push('3. Foreign Body Aspiration');
-    } else if (rfs && rfs.some(r => r.key === 'allergy_rf_blistering_mucocutaneous')) {
-      ddxList.push('1. 🚨 Severe Cutaneous Adverse Reaction (Stevens-Johnson Syndrome / TEN)');
-      ddxList.push('2. Staphylococcal Scalded Skin Syndrome (SSSS)');
-      ddxList.push('3. Bullous Pemphigoid');
-    } else {
-      ddxList.push('1. Acute Urticaria (Benign / Histaminergic)');
-      ddxList.push('2. Contact Dermatitis');
-      ddxList.push('3. Viral Exanthem');
-    }
-
-    // 2. Bedside & Rapid Workup
-    workupList.push('Continuous Vital Signs & SpO2 Monitor, 12-lead EKG');
-    if (rfs && rfs.some(r => r.key === 'allergy_rf_anaphylaxis_shock')) {
-      workupList.push('Serum Tryptase (ตรวจวัดภายใน 1-2 ชม. หลังเกิดอาการ เพื่อยืนยัน Mast cell activation)');
-      workupList.push('Stat CBC, Electrolytes, BUN, Cr, Venous Blood Gas / Lactate');
-    }
-    if (rfs && rfs.some(r => r.key === 'allergy_rf_airway_obstruction')) {
-      workupList.push('Fiberoptic Nasopharyngolaryngoscopy (โดย ENT หรือแพทย์ดมยา เพื่อประเมิน Vocal cords / Laryngeal edema)');
-    }
-
-    // 3. Initial Management & Safety Alerts
-    if (rfs && rfs.some(r => r.key === 'allergy_rf_anaphylaxis_shock')) {
-      managementList.push('Adrenaline IM STAT: ให้ Adrenaline (1:1,000) 0.3–0.5 mg IM บริเวณ anterolateral thigh ทันที (เด็ก 0.01 mg/kg สูงสุด 0.3 mg)');
-      managementList.push('Position: ให้นอนราบยกขาสูง (Supine with legs elevated) ห้ามลุกนั่งหรือยืนกะทันหันเด็ดขาด (ป้องกัน Empty Heart Syndrome)');
-      managementList.push('Fluid Resuscitation: IV NSS 1,000–2,000 mL bolus อย่างรวดเร็ว (เด็ก 20 mL/kg)');
-      managementList.push('Oxygen: High-flow O2 Mask with Reservoir Bag 10–15 LPM');
-      managementList.push('Second-line: IV Chlorpheniramine 10 mg + IV Dexamethasone 10 mg หรือ Hydrocortisone 100-200 mg (ให้หลัง Adrenaline เสมอ)');
-    }
-    if (rfs && rfs.some(r => r.key === 'allergy_rf_airway_obstruction')) {
-      managementList.push('Difficult Airway Alert: เตรียม Video Laryngoscope และ Surgical Airway Kit (Cricothyroidotomy) ข้างเตียงทันที');
-      managementList.push('Nebulizer: Adrenaline 1:1,000 (2-5 mL) Nebulize เพื่อลดบวมของกล่องเสียง');
-    }
-    if (rfs && rfs.some(r => r.key === 'allergy_rf_acei_angioedema')) {
-      managementList.push('Discontinue: สั่งหยุดยากลุ่ม ACEi และห้ามใช้ ARBs ตลอดชีวิต');
-      managementList.push('FFP: พิจารณาให้ Fresh Frozen Plasma (FFP 1–2 units) เพื่อให้ Kininase II ช่วยสลาย Bradykinin');
-    }
-    if (rfs && rfs.some(r => r.key === 'allergy_rf_beta_blocker_refractory') || specialMeds.includes('beta_blockers')) {
-      managementList.push('Glucagon: หากดื้อต่อ Adrenaline ให้ IV Glucagon 1–5 mg IV over 5 mins ตามด้วย Infusion 5–15 mcg/min');
-    }
-    if (pmhSpecific.includes('asthma')) {
-      managementList.push('Bronchospasm: พ่น Salbutamol + Ipratropium Nebulizer ร่วมด้วยอย่างต่อเนื่อง');
-    }
-    managementList.push('Observation: เฝ้าระวังอาการใน ER/ICU อย่างน้อย 6–24 ชม. เพื่อป้องกัน Biphasic Anaphylaxis Reaction');
-  },
-
-  appendCdsRecommendations: function(patient, rfs, workupList, managementList) {
-    this.generateCds(patient, { rfs, ddxList: [], workupList, managementList });
-  },
 
   seedPatients: [
     {
@@ -1287,17 +1176,20 @@ registerCcModule({
       underlying: ['หอบหืด (Bronchial Asthma)'],
       drugAllergy: 'ปฏิเสธ',
       currentMeds: 'Budesonide/Formoterol Turbuhaler',
-      otherSymptomsFree: 'ความดันโลหิต 82/48 mmHg ชีพจร 128 ครั้ง/นาที',
+      otherSymptomsFree: 'ความดันโลหิตแรกรับ 82/48 mmHg ชีพจร 128 ครั้ง/นาที',
       doctor_notes: { additional_hpi: '', physical_exam: '', preliminary_dx: '', plan: '' },
 
       allergyOnsetSpeed: 'rapid_within_minutes',
+      allergyOnsetTimeKnown: 'known',
       allergyOnsetExactDate: '26/10/2026',
       allergyOnsetExactTime: '06:30',
       allergySuspectedTriggers: ['food'],
       allergyTriggerFoodText: 'ต้มยำกุ้ง',
       allergyTriggerMedText: '',
+      allergyTriggerHerbText: '',
       allergyTriggerInsectText: '',
       allergySkinRash: ['urticaria', 'flushing'],
+      allergyMucosaFever: [],
       allergyAngioedema: ['lips', 'tongue_palate', 'periorbital_face'],
       allergyUpperAirway: ['throat_tightness', 'voice_hoarseness', 'dysphagia_drooling'],
       allergyLowerAirway: ['dyspnea', 'wheezing', 'chest_tightness'],
@@ -1305,7 +1197,9 @@ registerCcModule({
       allergyGiSymptoms: ['severe_abd_cramps', 'repetitive_vomiting'],
       allergyPriorAnaphylaxis: 'prior_mild_urticaria',
       allergyEpipenUsage: '',
+      allergyEpipenTimeUnknown: false,
       allergyEpipenTimeText: '',
+      allergyPrehospOralMed: 'none_oral_med',
       allergySpecialMeds: ['none_special_meds'],
       allergyPmhSpecific: ['asthma']
     },
@@ -1330,13 +1224,16 @@ registerCcModule({
       doctor_notes: { additional_hpi: '', physical_exam: '', preliminary_dx: '', plan: '' },
 
       allergyOnsetSpeed: 'rapid_within_minutes',
+      allergyOnsetTimeKnown: 'known',
       allergyOnsetExactDate: '26/10/2026',
       allergyOnsetExactTime: '05:45',
       allergySuspectedTriggers: ['medication'],
       allergyTriggerFoodText: '',
       allergyTriggerMedText: 'Enalapril 10 mg ทานมา 6 เดือน',
+      allergyTriggerHerbText: '',
       allergyTriggerInsectText: '',
       allergySkinRash: ['none_rash'],
+      allergyMucosaFever: [],
       allergyAngioedema: ['lips', 'tongue_palate'],
       allergyUpperAirway: ['throat_tightness', 'dysphagia_drooling', 'voice_hoarseness'],
       allergyLowerAirway: ['none_lower_airway'],
@@ -1344,7 +1241,9 @@ registerCcModule({
       allergyGiSymptoms: ['none_gi'],
       allergyPriorAnaphylaxis: 'first_time_never',
       allergyEpipenUsage: '',
+      allergyEpipenTimeUnknown: false,
       allergyEpipenTimeText: '',
+      allergyPrehospOralMed: 'none_oral_med',
       allergySpecialMeds: ['ace_inhibitors'],
       allergyPmhSpecific: ['none_pmh_specific']
     },
@@ -1365,25 +1264,30 @@ registerCcModule({
       underlying: ['หอบหืด (Asthma)'],
       drugAllergy: 'ปฏิเสธ',
       currentMeds: 'Salbutamol MDI prn',
-      otherSymptomsFree: 'โดนแตนต่อยที่ต้นแขนขวา 2 ตัว ลมพิษขึ้นเร็ว แน่นหน้าอก หายใจหวีด',
+      otherSymptomsFree: 'โดนแตนต่อยที่ต้นแขนขวา 2 จุด ลมพิษขึ้นเร็ว แน่นหน้าอก หายใจหวีด ฉีด EpiPen แล้วก่อนมา',
       doctor_notes: { additional_hpi: '', physical_exam: '', preliminary_dx: '', plan: '' },
 
       allergyOnsetSpeed: 'rapid_within_minutes',
+      allergyOnsetTimeKnown: 'known',
       allergyOnsetExactDate: '26/10/2026',
       allergyOnsetExactTime: '08:15',
       allergySuspectedTriggers: ['insect_sting'],
       allergyTriggerFoodText: '',
       allergyTriggerMedText: '',
+      allergyTriggerHerbText: '',
       allergyTriggerInsectText: 'แตนต่อยที่แขนขวา 2 จุด',
       allergySkinRash: ['urticaria', 'flushing'],
+      allergyMucosaFever: [],
       allergyAngioedema: ['none_angioedema'],
       allergyUpperAirway: ['throat_tightness'],
       allergyLowerAirway: ['dyspnea', 'wheezing', 'chest_tightness'],
       allergyCirculationShock: ['none_circulation'],
       allergyGiSymptoms: ['none_gi'],
-      allergyPriorAnaphylaxis: 'first_time_never',
-      allergyEpipenUsage: '',
-      allergyEpipenTimeText: '',
+      allergyPriorAnaphylaxis: 'prior_severe_hosp',
+      allergyEpipenUsage: 'used_prehospital',
+      allergyEpipenTimeUnknown: false,
+      allergyEpipenTimeText: '08:20',
+      allergyPrehospOralMed: 'none_oral_med',
       allergySpecialMeds: ['none_special_meds'],
       allergyPmhSpecific: ['asthma']
     },
@@ -1408,13 +1312,16 @@ registerCcModule({
       doctor_notes: { additional_hpi: '', physical_exam: '', preliminary_dx: '', plan: '' },
 
       allergyOnsetSpeed: 'gradual_throughout_day',
+      allergyOnsetTimeKnown: 'known',
       allergyOnsetExactDate: '26/10/2026',
       allergyOnsetExactTime: '06:15',
       allergySuspectedTriggers: ['food'],
       allergyTriggerFoodText: 'ส้มตำปูม้า',
       allergyTriggerMedText: '',
+      allergyTriggerHerbText: '',
       allergyTriggerInsectText: '',
       allergySkinRash: ['urticaria'],
+      allergyMucosaFever: [],
       allergyAngioedema: ['none_angioedema'],
       allergyUpperAirway: ['none_upper_airway'],
       allergyLowerAirway: ['none_lower_airway'],
@@ -1422,7 +1329,9 @@ registerCcModule({
       allergyGiSymptoms: ['none_gi'],
       allergyPriorAnaphylaxis: 'first_time_never',
       allergyEpipenUsage: '',
+      allergyEpipenTimeUnknown: false,
       allergyEpipenTimeText: '',
+      allergyPrehospOralMed: 'antihistamine_no_improve',
       allergySpecialMeds: ['none_special_meds'],
       allergyPmhSpecific: ['none_pmh_specific']
     }

@@ -243,6 +243,25 @@ function evaluateStrokeFibrinolysisContraindications(patient) {
 
       const positives = [];
       const negatives = [];
+      const anyNeuroMotorSensorySpeechRf = Boolean(
+        patient.stroke_weakness_hemi || patient.stroke_weakness_arm_only || patient.stroke_weakness_leg_only ||
+        patient.stroke_weakness_both_legs || patient.stroke_numbness_hemi ||
+        patient.stroke_pain_neck_radiating || patient.stroke_pain_back_radiating ||
+        patient.stroke_pain_limb_cold_pale || patient.stroke_pain_chest_back_tearing ||
+        patient.stroke_face_droop || patient.stroke_speech_dysarthria ||
+        patient.stroke_speech_expressive_aphasia || patient.stroke_speech_receptive_aphasia ||
+        patient.stroke_has_dysphagia || patient.stroke_vision_monocular ||
+        patient.stroke_vision_hemianopia || patient.stroke_vision_diplopia ||
+        patient.stroke_rf_altered_mental || patient.stroke_rf_severe_headache ||
+        patient.stroke_rf_projectile_vomiting || patient.stroke_rf_seizure ||
+        patient.stroke_rf_ataxia_dizziness || patient.stroke_rf_neck_stiffness
+      );
+      const anyCiChecked = Boolean(
+        patient.stroke_ci_prior_ich || patient.stroke_ci_brain_lesion || patient.stroke_ci_cns_surgery_trauma_3m ||
+        patient.stroke_ci_ischemic_stroke_3m || patient.stroke_ci_active_bleeding || patient.stroke_ci_gi_bleed_malignancy_21d ||
+        patient.stroke_ci_anticoagulant || patient.stroke_ci_major_surgery_trauma_14d ||
+        patient.stroke_ci_recent_mi_3m || patient.stroke_ci_arterial_puncture_7d || patient.stroke_ci_pregnancy
+      );
 
       // 1. Time Window & Onset (Primary descriptors stay in top HPI; not pushed to positives)
 
@@ -267,7 +286,7 @@ function evaluateStrokeFibrinolysisContraindications(patient) {
       if (motorItems.length > 0) {
         const sev = severityMap[patient.strokeWeaknessSeverity] ? ` [${severityMap[patient.strokeWeaknessSeverity]}]` : '';
         positives.push(`${motorItems.join(', ')}${sev}`);
-      } else {
+      } else if (anyNeuroMotorSensorySpeechRf) {
         negatives.push('ไม่มีอาการแขนขาอ่อนแรง (กำลังแขนขาปกติ)');
       }
 
@@ -284,7 +303,7 @@ function evaluateStrokeFibrinolysisContraindications(patient) {
           : '';
         const s = sideMap[patient.strokeNumbnessSide] ? ` [${sideMap[patient.strokeNumbnessSide]}]` : '';
         positives.push(`มีอาการชาครึ่งซีก หรือความรู้สึกที่ใบหน้า/แขน/ขาลดลง${locLabels}${s} 🚩`);
-      } else {
+      } else if (anyNeuroMotorSensorySpeechRf) {
         negatives.push('ไม่มีอาการชาครึ่งซีก');
       }
 
@@ -300,7 +319,7 @@ function evaluateStrokeFibrinolysisContraindications(patient) {
       if (patient.stroke_pain_chest_back_tearing) {
         positives.push('มีอาการเจ็บแน่นหน้าอก ปวดท้องรุนแรง หรือปวดฉีกขาดทะลุกลางหลังรุนแรงร่วมด้วย (Suspected Acute Aortic Dissection 🚩)');
       }
-      if (!patient.stroke_pain_neck_radiating && !patient.stroke_pain_back_radiating && !patient.stroke_pain_limb_cold_pale && !patient.stroke_pain_chest_back_tearing) {
+      if (anyNeuroMotorSensorySpeechRf && !patient.stroke_pain_neck_radiating && !patient.stroke_pain_back_radiating && !patient.stroke_pain_limb_cold_pale && !patient.stroke_pain_chest_back_tearing) {
         negatives.push('ไม่มีอาการปวดร้าวต้นคอ/หลัง, ไม่มีแขนขาซีดเย็น, ไม่มีเจ็บหน้าอก/ปวดท้อง/ปวดทะลุหลัง');
       }
 
@@ -314,7 +333,7 @@ function evaluateStrokeFibrinolysisContraindications(patient) {
           fPattern = ' (หลับตาไม่สนิทและยักคิ้วไม่ขึ้นในข้างที่ปากเบี้ยว — Peripheral CN VII / Bell’s Palsy pattern)';
         }
         positives.push(`มีมุมปากตก ปากเบี้ยว ยิ้มแล้วมุมปากไม่เท่ากัน${fSide}${fPattern}`);
-      } else {
+      } else if (anyNeuroMotorSensorySpeechRf) {
         negatives.push('ไม่มีมุมปากตกหรือปากเบี้ยว');
       }
 
@@ -324,13 +343,13 @@ function evaluateStrokeFibrinolysisContraindications(patient) {
       if (patient.stroke_speech_receptive_aphasia) speechItems.push('ฟังคนอื่นพูดไม่เข้าใจ ตอบไม่ตรงคำถาม (Receptive aphasia) 🚩');
       if (speechItems.length > 0) {
         positives.push(speechItems.join(', '));
-      } else {
+      } else if (anyNeuroMotorSensorySpeechRf) {
         negatives.push('การพูดและการสื่อสารปกติ ไม่พูดอ้อแอ้ ไม่สับสนภาษา');
       }
 
       if (patient.stroke_has_dysphagia) {
         positives.push('มีอาการกลืนลำบาก หรือดื่มน้ำ/ทานอาหารแล้วสำลัก (Dysphagia) 🚩');
-      } else {
+      } else if (anyNeuroMotorSensorySpeechRf) {
         negatives.push('การกลืนปกติ ไม่มีกลืนสำลัก');
       }
 
@@ -340,35 +359,35 @@ function evaluateStrokeFibrinolysisContraindications(patient) {
       if (patient.stroke_vision_diplopia) visionItems.push('มองเห็นภาพซ้อนเป็น 2 ภาพ (Diplopia) 🚩');
       if (visionItems.length > 0) {
         positives.push(visionItems.join(', '));
-      } else {
+      } else if (anyNeuroMotorSensorySpeechRf) {
         negatives.push('การมองเห็นปกติ ไม่มีภาพซ้อนหรือลานสายตามืดครึ่งซีก');
       }
 
       // 5. Card 4 Warning Signs
       if (patient.stroke_rf_altered_mental) positives.push('ซึมลง สับสน เรียกปลุกตื่นยาก หรือหมดสติ (Altered mental status) 🚩');
-      else negatives.push('รู้สึกตัวดี ถามตอบรู้เรื่อง');
+      else if (anyNeuroMotorSensorySpeechRf) negatives.push('รู้สึกตัวดี ถามตอบรู้เรื่อง');
 
       if (patient.stroke_rf_severe_headache) positives.push('ปวดศีรษะรุนแรงเฉียบพลันร่วมด้วย (Severe headache) 🚩');
-      else negatives.push('ไม่มีปวดศีรษะรุนแรงเฉียบพลัน');
+      else if (anyNeuroMotorSensorySpeechRf) negatives.push('ไม่มีปวดศีรษะรุนแรงเฉียบพลัน');
 
       if (patient.stroke_rf_projectile_vomiting) positives.push('คลื่นไส้อาเจียนรุนแรง หรืออาเจียนพุ่ง (Projectile vomiting) 🚩');
-      else negatives.push('ไม่มีอาเจียนพุ่ง');
+      else if (anyNeuroMotorSensorySpeechRf) negatives.push('ไม่มีอาเจียนพุ่ง');
 
       if (patient.stroke_rf_seizure) positives.push('มีอาการชักเกร็ง กระตุก หรือกัดลิ้นร่วมด้วย (Seizure at onset) 🚩');
-      else negatives.push('ไม่มีอาการชักเกร็ง');
+      else if (anyNeuroMotorSensorySpeechRf) negatives.push('ไม่มีอาการชักเกร็ง');
 
       if (patient.stroke_rf_ataxia_dizziness) positives.push('เวียนศีรษะบ้านหมุนรุนแรง ร่วมกับเดินเซมากหรือทรงตัวไม่ได้ (Severe vertigo / Ataxia) 🚩');
-      else negatives.push('ไม่มีเวียนศีรษะบ้านหมุนหรือเดินเซ');
+      else if (anyNeuroMotorSensorySpeechRf) negatives.push('ไม่มีเวียนศีรษะบ้านหมุนหรือเดินเซ');
 
       if (patient.stroke_rf_neck_stiffness) positives.push('คอแข็งเกร็ง ก้มคอไม่ลง หรือมีไข้สูงร่วมด้วย (Neck stiffness / Fever) 🚩');
-      else negatives.push('ไม่มีคอแข็งเกร็งหรือไข้สูง');
+      else if (anyNeuroMotorSensorySpeechRf) negatives.push('ไม่มีคอแข็งเกร็งหรือไข้สูง');
 
       if (patient.otherSymptomsFree) {
         positives.push(`อาการเพิ่มเติมที่ผู้ป่วยระบุ: "${patient.otherSymptomsFree}"`);
       }
 
-      patient.pertinentPositives = positives.length > 0 ? positives : ['ไม่มีอาการร่วมผิดปกติ'];
-      patient.pertinentNegatives = negatives;
+      patient.pertinentPositives = positives.length > 0 ? positives : ['ผู้ป่วยไม่ได้ระบุอาการร่วมเพิ่มเติม'];
+      patient.pertinentNegatives = negatives.length > 0 ? negatives : ['ผู้ป่วยไม่ได้ระบุคำตอบยืนยันในหมวดอาการร่วม'];
 
       const hospLabel = {
         complete: 'มีประวัติกับ รพ.ราชบุรี ครบถ้วน (ดึงข้อมูลเดิมจากระบบ)',
@@ -378,7 +397,14 @@ function evaluateStrokeFibrinolysisContraindications(patient) {
       }[patient.hospRecordStatus] || 'ไม่ได้ระบุ';
 
       const docNotes = patient.doctor_notes || {};
-      const medsText = (!patient.currentMeds || patient.currentMeds === 'ไม่ได้ระบุ' || patient.currentMeds === 'ไม่มี') ? 'ไม่มี' : patient.currentMeds;
+      const medsText = (!patient.currentMeds || patient.currentMeds === 'ไม่ได้ระบุ') ? 'ไม่ได้ระบุ' : patient.currentMeds;
+      const udArr = Array.isArray(patient.underlying) ? patient.underlying.filter(u => u && !u.includes('ปฏิเสธ') && u !== 'ไม่มี' && u !== 'ไม่มีโรคประจำตัว') : [];
+      const udExplicitDeny = Array.isArray(patient.underlying) && patient.underlying.some(u => u && u.includes('ปฏิเสธ'));
+      const udText = udArr.length > 0 ? udArr.join(', ') : ((patient.hospRecordStatus === 'self' || patient.hospRecordStatus === 'additional' || udExplicitDeny) ? 'ปฏิเสธ' : 'ไม่ได้ระบุ');
+      const allergyText = (!patient.drugAllergy || patient.drugAllergy === 'ไม่ได้ระบุ') ? 'ไม่ได้ระบุ' : patient.drugAllergy;
+      const hasTimeWindow = Boolean(patient.durationVal || (patient.strokeOnsetContext && patient.strokeOnsetContext !== 'unspecified'));
+      const timeWindowBadge = hasTimeWindow ? ` (${evalCi.isWithin4_5Hours ? '⚡ ภายใน Golden Period ≤ 4.5 ชม.' : '⏰ เกิน 4.5 ชม.'})` : '';
+      const ciScreened = Boolean(anyCiChecked || anyNeuroMotorSensorySpeechRf || hasTimeWindow);
 
       // A) Rapid Bullet Format for Stroke
       const defaultRapid =
@@ -386,27 +412,27 @@ function evaluateStrokeFibrinolysisContraindications(patient) {
 ปากเบี้ยว อ่อนแรง ชา ข้างใดข้างหนึ่ง พูดไม่ชัด มา ${durationText}
 
 [History of Present Illness (HPI)]
-• ระยะเวลาและกรอบเวลา (Time Window): ${durationText} (${evalCi.isWithin4_5Hours ? '⚡ ภายใน Golden Period ≤ 4.5 ชม.' : '⏰ เกิน 4.5 ชม.'})
-• การเริ่มต้นและเวลาปกติครั้งสุดท้าย (LSN): ${onsetContextMap[patient.strokeOnsetContext] || 'ไม่ระบุ'}
-• การดำเนินของอาการ: ${progressionMap[patient.strokeProgression] || 'ไม่ระบุ'}
+• ระยะเวลาและกรอบเวลา (Time Window): ${durationText}${timeWindowBadge}
+• การเริ่มต้นและเวลาปกติครั้งสุดท้าย (LSN): ${onsetContextMap[patient.strokeOnsetContext] || 'ไม่ได้ระบุ'}
+• การดำเนินของอาการ: ${progressionMap[patient.strokeProgression] || 'ไม่ได้ระบุ'}
 
 • Pertinent Positives:
-${positives.length > 0 ? positives.map(p => `  - ${p}`).join('\n') : '  - ไม่มีอาการร่วมอื่นที่เด่นชัด'}
+${positives.length > 0 ? positives.map(p => `  - ${p}`).join('\n') : '  - ผู้ป่วยไม่ได้ระบุอาการร่วมเพิ่มเติม'}
 
 • Pertinent Negatives:
-${negatives.map(n => `  - ${n}`).join('\n')}
+${patient.pertinentNegatives.map(n => `  - ${n}`).join('\n')}
 
 [IV Fibrinolysis (rt-PA / Tenecteplase) Contraindication Screening]
 • Absolute Contraindications:
-${evalCi.absoluteList.length > 0 ? evalCi.absoluteList.map(c => `  🛑 ${c}`).join('\n') : '  ✓ ไม่พบข้อห้ามเด็ดขาดจากประวัติผู้ป่วย'}
+${evalCi.absoluteList.length > 0 ? evalCi.absoluteList.map(c => `  🛑 ${c}`).join('\n') : (ciScreened ? '  ✓ ไม่พบข้อห้ามเด็ดขาดจากประวัติผู้ป่วย' : '  - ไม่ได้ระบุ (ยังไม่ได้คัดกรองข้อห้าม)')}
 • Relative Contraindications / Warnings:
-${evalCi.relativeList.length > 0 ? evalCi.relativeList.map(c => `  ⚠️ ${c}`).join('\n') : '  ✓ ไม่พบข้อห้ามสัมพัทธ์จากประวัติผู้ป่วย'}
+${evalCi.relativeList.length > 0 ? evalCi.relativeList.map(c => `  ⚠️ ${c}`).join('\n') : (ciScreened ? '  ✓ ไม่พบข้อห้ามสัมพัทธ์จากประวัติผู้ป่วย' : '  - ไม่ได้ระบุ (ยังไม่ได้คัดกรองข้อห้าม)')}
 
 [Past Medical History & Medications]
 • สถานะประวัติ รพ.ราชบุรี: ${hospLabel}
-• โรคประจำตัว (U/D): ${patient.underlying?.length > 0 ? patient.underlying.join(', ') : 'ปฏิเสธ'}
+• โรคประจำตัว (U/D): ${udText}
 • ยาประจำตัว (Current Meds): ${medsText}
-• ประวัติแพ้ยา/แพ้อาหาร (Allergies): ${patient.drugAllergy || 'ปฏิเสธ'}
+• ประวัติแพ้ยา/แพ้อาหาร (Allergies): ${allergyText}
 
 [Emergency Risk Assessment (Red Flags)]
 ${patient.redFlags?.length > 0
@@ -422,14 +448,14 @@ ${patient.redFlags?.length > 0
       // B) Narrative Paragraph Format for Stroke
       const defaultNarrative =
 `ผู้ป่วย [${patient.name}] อายุ ${patient.age || '-'} ปี เพศ ${patient.gender || 'ไม่ระบุ'} มารับการตรวจที่ห้องฉุกเฉิน รพ.ราชบุรี ด้วยอาการปากเบี้ยว อ่อนแรง ชา ข้างใดข้างหนึ่ง พูดไม่ชัด มา ${durationText}
-รายละเอียดเวลาที่เริ่มมีอาการ: ${onsetContextMap[patient.strokeOnsetContext] || 'ไม่ระบุ'} ลักษณะการดำเนินโรค: ${progressionMap[patient.strokeProgression] || 'ไม่ระบุ'}
+รายละเอียดเวลาที่เริ่มมีอาการ: ${onsetContextMap[patient.strokeOnsetContext] || 'ไม่ได้ระบุ'} ลักษณะการดำเนินโรค: ${progressionMap[patient.strokeProgression] || 'ไม่ได้ระบุ'}
 
-อาการร่วมและการซักประวัติตามระบบประสาท: ผู้ป่วยให้ประวัติ ${positives.join(', ')}
-อาการสำคัญที่ปฏิเสธ (Pertinent negatives): ${negatives.join(', ')}
+อาการร่วมและการซักประวัติตามระบบประสาท: ผู้ป่วยให้ประวัติ ${patient.pertinentPositives.join(', ')}
+อาการสำคัญที่ปฏิเสธ (Pertinent negatives): ${patient.pertinentNegatives.join(', ')}
 
-การคัดกรองข้อห้ามการให้ยาสลายลิ่มเลือด (IV Fibrinolysis): ข้อห้ามเด็ดขาดจากประวัติ: ${evalCi.absoluteList.length > 0 ? evalCi.absoluteList.join('; ') : 'ไม่พบ'} | ข้อควรระวังสัมพัทธ์: ${evalCi.relativeList.length > 0 ? evalCi.relativeList.join('; ') : 'ไม่พบ'}
+การคัดกรองข้อห้ามการให้ยาสลายลิ่มเลือด (IV Fibrinolysis): ข้อห้ามเด็ดขาดจากประวัติ: ${evalCi.absoluteList.length > 0 ? evalCi.absoluteList.join('; ') : (ciScreened ? 'ไม่พบ' : 'ไม่ได้คัดกรอง')} | ข้อควรระวังสัมพัทธ์: ${evalCi.relativeList.length > 0 ? evalCi.relativeList.join('; ') : (ciScreened ? 'ไม่พบ' : 'ไม่ได้คัดกรอง')}
 
-ประวัติการเจ็บป่วยในอดีต: [${hospLabel}], โรคประจำตัว: ${patient.underlying?.length > 0 ? patient.underlying.join(', ') : 'ปฏิเสธ'}, ยาประจำตัว: ${medsText}, ประวัติแพ้ยา/แพ้อาหาร: ${patient.drugAllergy || 'ปฏิเสธประวัติแพ้ยา/แพ้อาหาร'}
+ประวัติการเจ็บป่วยในอดีต: [${hospLabel}], โรคประจำตัว: ${udText}, ยาประจำตัว: ${medsText}, ประวัติแพ้ยา/แพ้อาหาร: ${allergyText}
 ${patient.redFlags?.length > 0 ? `\n[🚩 แจ้งเตือนสัญญาณเตือน (Red Flags)]: ตรวจพบอาการ ${patient.redFlags.map(rf => rf.textTh).join(', ')}` : ''}
 
 [บันทึกการตรวจและการประเมินโดยแพทย์]:
@@ -1393,7 +1419,7 @@ registerCcModule({
         stroke_ci_pregnancy,
         otherSymptomsFree,
         hospRecordStatus,
-        underlying: underlying.length > 0 ? underlying: ['ปฏิเสธ'],
+        underlying: underlying.length > 0 ? underlying : ((hospRecordStatus === 'self' || hospRecordStatus === 'additional') ? ['ปฏิเสธ'] : []),
         drugAllergy,
         currentMeds,
         doctor_notes: preservedDoctorNotes

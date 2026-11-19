@@ -961,14 +961,14 @@ registerCcModule({
 
     const neckpainOnsetMode = document.querySelector('input[name="neckpainOnsetMode"]:checked')?.value || '';
 
-    const neckpainRadMaster = document.querySelector('input[name="neckpainRadMaster"]:checked')?.value || 'none';
+    const neckpainRadMaster = document.querySelector('input[name="neckpainRadMaster"]:checked')?.value || '';
     const neckpainRadLoc = neckpainRadMaster === 'yes'
       ? Array.from(document.querySelectorAll('input[name="neckpainRadLoc"]:checked')).map(el => el.value)
       : [];
 
     const neckpainChar = Array.from(document.querySelectorAll('input[name="neckpainChar"]:checked')).map(el => el.value);
 
-    let painScore = 0;
+    let painScore = null;
     if (neckpainPainScoreTouched) {
       const pSlider = document.getElementById('neckpainPainScore');
       if (pSlider) painScore = parseInt(pSlider.value, 10);
@@ -978,7 +978,7 @@ registerCcModule({
     const neckWarningArmMovementParent = !!document.getElementById('neckWarningArmMovementParent')?.checked;
     const neckWarningNeuroHeadParent = !!document.getElementById('neckWarningNeuroHeadParent')?.checked;
 
-    const neckpainTraumaMaster = document.querySelector('input[name="neckpainTraumaMaster"]:checked')?.value || 'no';
+    const neckpainTraumaMaster = document.querySelector('input[name="neckpainTraumaMaster"]:checked')?.value || '';
     const neckpainTraumaTypes = neckpainTraumaMaster === 'yes'
       ? Array.from(document.querySelectorAll('input[name="neckpainTraumaTypes"]:checked')).map(el => el.value)
       : [];
@@ -1375,12 +1375,13 @@ function formatNeckpainChars(patient) {
 }
 
 function formatNeckpainRadiation(patient) {
+  if (!patient.neckpainRadMaster) return 'ไม่ได้ระบุ';
   if (patient.neckpainRadMaster === 'none') return 'ปวดเฉพาะที่ ไม่ร้าวไปไหน';
   const rads = Array.isArray(patient.neckpainRadLoc) ? patient.neckpainRadLoc : [];
   if (rads.length === 0) return 'มีปวดร้าว (ไม่ได้ระบุตำแหน่ง)';
   const map = {
     rad_arm_fingers: 'ร้าวลงแขน ข้อศอก หรือปลายนิ้วมือ (Radiculopathy)',
-    rad_head_occiput: 'ร้าวขึ้นศีรษะ ท้ายทอย หรือขมับ',
+    rad_head_occiput: 'ร้าวขึ้นศีษะ ท้ายทอย หรือขมับ',
     rad_jaw_chest: 'ร้าวไปขากรรไกร คอหอย หรือหน้าอก (ACS/Aortic risk)',
     rad_interscapular_tearing: 'ร้าวทะลุหลังไประหว่างสะบักสองข้าง'
   };
@@ -1389,7 +1390,7 @@ function formatNeckpainRadiation(patient) {
 
 function formatNeckpainErgonomics(patient) {
   const ergos = Array.isArray(patient.neckpainErgonomics) ? patient.neckpainErgonomics : [];
-  if (ergos.length === 0) return 'ไม่มีพฤติกรรมกระตุ้นชัดเจน';
+  if (ergos.length === 0) return 'ไม่ได้ระบุ';
   const map = {
     office_tech_neck: 'นั่งทำงานหน้าจอคอมฯ หรือก้มดูจอนาน',
     awkward_twist_strain: 'บิดตัวหรือออกแรงผิดท่าก่อนมีอาการ',
@@ -1464,33 +1465,35 @@ function renderNeckpainRapidHpi(patient) {
     posList.push(patient.otherSymptomsFree);
   }
 
-  // Negatives
-  if (!warnSigns.includes('hand_clumsy_weak') && !warnSigns.includes('arm_weakness_abduction')) {
-    negList.push('แขนและมือไม่อ่อนแรง ติดกระดุมได้ปกติ (No motor deficit)');
-  }
-  if (!warnSigns.includes('arm_numbness_fingers')) {
-    negList.push('ไม่มีอาการชาตามแขนหรือปลายนิ้ว (No sensory deficit)');
-  }
-  if (!warnSigns.includes('gait_ataxia_spastic')) {
-    negList.push('เดินได้ปกติ ขาไม่แข็งกระตุก ไม่เดินเซ (No spastic gait)');
-  }
-  if (!warnSigns.includes('nuchal_rigidity_headache') && !warnSigns.includes('diplopia_ptosis_horner') && !warnSigns.includes('facial_numb_speech')) {
-    negList.push('ปฏิเสธคอแข็งก้มไม่ลง ภาพซ้อน หนังตาตก หรือปากเบี้ยว (No dissection/stroke signs)');
-  }
-  if (!warnSigns.includes('fever_chills')) {
-    negList.push('ปฏิเสธไข้หนาวสั่น');
-  }
-  if (!warnSigns.includes('dysphagia_stridor')) {
-    negList.push('กลืนได้ปกติ หายใจไม่มีเสียงหวีด (No airway compromise)');
-  }
-  if (!warnSigns.includes('chest_dyspnea_sweat')) {
-    negList.push('ปฏิเสธแน่นหน้าอก หายใจหอบเหนื่อย หรือเหงื่อแตกตัวเย็น');
-  }
-  if (!warnSigns.includes('local_mass_wound_pus')) {
-    negList.push('ไม่มีก้อนบวม แผล ตุ่มหนอง หรือฝีบริเวณคอบ่า');
-  }
-  if (!warnSigns.includes('cancer_weight_loss')) {
-    negList.push('ปฏิเสธประวัติมะเร็งเดิม และน้ำหนักไม่ลดฮวบ');
+  // Negatives (เฉพาะเมื่อมีการคัดกรองหมวดอาการเตือนหรือระบุประวัติอุบัติเหตุ)
+  if (warnSigns.length > 0) {
+    if (!warnSigns.includes('hand_clumsy_weak') && !warnSigns.includes('arm_weakness_abduction')) {
+      negList.push('แขนและมือไม่อ่อนแรง ติดกระดุมได้ปกติ (No motor deficit)');
+    }
+    if (!warnSigns.includes('arm_numbness_fingers')) {
+      negList.push('ไม่มีอาการชาตามแขนหรือปลายนิ้ว (No sensory deficit)');
+    }
+    if (!warnSigns.includes('gait_ataxia_spastic')) {
+      negList.push('เดินได้ปกติ ขาไม่แข็งกระตุก ไม่เดินเซ (No spastic gait)');
+    }
+    if (!warnSigns.includes('nuchal_rigidity_headache') && !warnSigns.includes('diplopia_ptosis_horner') && !warnSigns.includes('facial_numb_speech')) {
+      negList.push('ปฏิเสธคอแข็งก้มไม่ลง ภาพซ้อน หนังตาตก หรือปากเบี้ยว (No dissection/stroke signs)');
+    }
+    if (!warnSigns.includes('fever_chills')) {
+      negList.push('ปฏิเสธไข้หนาวสั่น');
+    }
+    if (!warnSigns.includes('dysphagia_stridor')) {
+      negList.push('กลืนได้ปกติ หายใจไม่มีเสียงหวีด (No airway compromise)');
+    }
+    if (!warnSigns.includes('chest_dyspnea_sweat')) {
+      negList.push('ปฏิเสธแน่นหน้าอก หายใจหอบเหนื่อย หรือเหงื่อแตกตัวเย็น');
+    }
+    if (!warnSigns.includes('local_mass_wound_pus')) {
+      negList.push('ไม่มีก้อนบวม แผล ตุ่มหนอง หรือฝีบริเวณคอบ่า');
+    }
+    if (!warnSigns.includes('cancer_weight_loss')) {
+      negList.push('ปฏิเสธประวัติมะเร็งเดิม และน้ำหนักไม่ลดฮวบ');
+    }
   }
   if (patient.neckpainTraumaMaster === 'no') {
     negList.push('ปฏิเสธประวัติอุบัติเหตุหรือแรงกระแทกนำมาก่อน');
@@ -1503,14 +1506,19 @@ function renderNeckpainRapidHpi(patient) {
     unspecified: 'ไม่ได้ระบุ'
   }[patient.hospRecordStatus] || 'ไม่ได้ระบุ';
 
-  let udDisplay = 'ปฏิเสธ';
-  if (patient.underlying && patient.underlying.length > 0) {
-    const filteredUd = (Array.isArray(patient.underlying) ? patient.underlying : [patient.underlying])
-      .filter(u => u && !u.includes('ปฏิเสธ') && u !== 'ไม่มี' && u !== 'ไม่มีโรคประจำตัว');
-    if (filteredUd.length > 0) udDisplay = filteredUd.join(', ');
-  }
-  const allergyDisplay = (!patient.drugAllergy || patient.drugAllergy.includes('ปฏิเสธ') || patient.drugAllergy === 'ไม่มี') ? 'ปฏิเสธ' : patient.drugAllergy;
-  const medsText = (!patient.currentMeds || patient.currentMeds === 'ไม่ได้ระบุ' || patient.currentMeds === 'ไม่มี') ? 'ไม่มี' : patient.currentMeds;
+  const udArr = Array.isArray(patient.underlying) ? patient.underlying : (patient.underlying ? [patient.underlying] : []);
+  const filteredUd = udArr.filter(u => u && !u.includes('ปฏิเสธ') && u !== 'ไม่มี' && u !== 'ไม่มีโรคประจำตัว' && u !== 'ไม่ได้ระบุ');
+  const hasExplicitUdDeny = udArr.some(u => u && (u.includes('ปฏิเสธ') || u === 'ไม่มี' || u === 'ไม่มีโรคประจำตัว'));
+  const udDisplay = filteredUd.length > 0
+    ? filteredUd.join(', ')
+    : ((hasExplicitUdDeny || patient.hospRecordStatus === 'self' || patient.hospRecordStatus === 'additional') ? 'ปฏิเสธ' : 'ไม่ได้ระบุ');
+
+  const allergyDisplay = (!patient.drugAllergy || patient.drugAllergy === 'ไม่ได้ระบุ')
+    ? 'ไม่ได้ระบุ'
+    : ((patient.drugAllergy.includes('ปฏิเสธ') || patient.drugAllergy === 'ไม่มี') ? 'ปฏิเสธ' : patient.drugAllergy);
+  const medsText = (!patient.currentMeds || patient.currentMeds === 'ไม่ได้ระบุ')
+    ? 'ไม่ได้ระบุ'
+    : (patient.currentMeds === 'ไม่มี' ? 'ไม่มี' : patient.currentMeds);
   const docNotes = patient.doctor_notes || {};
   const redFlags = evaluateNeckpainRedFlags(patient);
 
@@ -1528,10 +1536,10 @@ function renderNeckpainRapidHpi(patient) {
 • ระดับความเจ็บปวด (Pain Score): ${pScore}
 
 • Pertinent Positives:
-${posList.length > 0 ? posList.map(p => `  - ${p}`).join('\n') : '  - ไม่มีอาการร่วมอื่นที่เด่นชัด'}
+${posList.length > 0 ? posList.map(p => `  - ${p}`).join('\n') : '  - ผู้ป่วยไม่ได้ระบุอาการร่วมเพิ่มเติม'}
 
 • Pertinent Negatives:
-${negList.map(n => `  - ${n}`).join('\n')}
+${negList.length > 0 ? negList.map(n => `  - ${n}`).join('\n') : '  - ผู้ป่วยไม่ได้ระบุคำตอบยืนยันในหมวดอาการร่วม'}
 
 [Past Medical History & Medications]
 • สถานะประวัติ รพ.ราชบุรี: ${hospLabel}
@@ -1562,11 +1570,12 @@ function renderNeckpainNarrative(patient) {
   const locStr = formatNeckpainLocations(patient);
   const charStr = formatNeckpainChars(patient);
   const radStr = formatNeckpainRadiation(patient);
-  const pScore = (typeof patient.painScore === 'number' && patient.painScore > 0) ? `${patient.painScore}/10` : 'ไม่ได้ระบุ';
+  const pScore = (typeof patient.painScore === 'number') ? `${patient.painScore}/10 คะแนน` : 'ไม่ได้ระบุ';
 
   const warnSigns = Array.isArray(patient.neckpainWarningSigns) ? patient.neckpainWarningSigns : [];
+  const genderLabel = (patient.gender && patient.gender !== 'ไม่ระบุ') ? patient.gender : '';
 
-  let note = `ผู้ป่วย${patient.gender || ''} อายุ ${patient.age || 'ไม่ระบุ'} ปี มารับการตรวจที่ห้องฉุกเฉินด้วยอาการปวดต้นคอ/บ่า/หลังช่วงบน เป็นมา ${durStr} ก่อนมาโรงพยาบาล ตำแหน่งปวดบริเวณ${locStr} ลักษณะปวดเป็นแบบ${charStr} ${radStr} ระดับความเจ็บปวดประเมินได้ ${pScore} คะแนน`;
+  let note = `ผู้ป่วย${genderLabel} อายุ ${patient.age || 'ไม่ระบุ'} ปี มารับการตรวจที่ห้องฉุกเฉินด้วยอาการปวดต้นคอ/บ่า/หลังช่วงบน เป็นมา ${durStr} ก่อนมาโรงพยาบาล ตำแหน่งปวดบริเวณ${locStr} ลักษณะปวดเป็นแบบ${charStr} ${radStr} ระดับความเจ็บปวดประเมินได้ ${pScore}`;
 
   if (warnSigns.length > 0) {
     const warnTexts = [];
@@ -1584,8 +1593,8 @@ function renderNeckpainNarrative(patient) {
     if (warnSigns.includes('local_mass_wound_pus')) warnTexts.push('มีก้อน แผล หนอง ผื่น หรือฝีบริเวณคอบ่า');
     if (warnSigns.includes('cancer_weight_loss')) warnTexts.push('น้ำหนักลดลงฮวบผิดปกติ');
     note += ` ร่วมกับมีอาการสำคัญ: ${warnTexts.join(', ')}`;
-  } else {
-    note += ' ผู้ป่วยปฏิเสธอาการมืออ่อนแรง ชาตามแขน เดินเซ คอแข็งก้มไม่ลง ภาพซ้อน กลืนลำบาก และไม่มีไข้หนาวสั่น';
+  } else if (patient.neckpainTraumaMaster === 'no') {
+    note += ' ผู้ป่วยปฏิเสธประวัติอุบัติเหตุหรือแรงกระแทกนำมาก่อน';
   }
 
   if (patient.neckpainTraumaMaster === 'yes') {
@@ -1619,7 +1628,7 @@ function updateNeckpainOutputs(rec) {
   if (posMatch) {
     rec.pertinentPositives = posMatch[1].trim().split('\n').map(l => l.replace(/^[-*\s]+/, '').trim());
   } else {
-    rec.pertinentPositives = ['ไม่มีอาการร่วมผิดปกติ'];
+    rec.pertinentPositives = ['ผู้ป่วยไม่ได้ระบุอาการร่วมเพิ่มเติม'];
   }
 
   const negMatch = rapidText.match(/• Pertinent Negatives:\n((?:\s*-[^\n]+\n?)+)/);
@@ -1656,7 +1665,7 @@ function updateNeckpainOutputs(rec) {
       ergonomics: rec.neckpainErgoFactors || [],
       pain_score: rec.painScore !== null && rec.painScore !== undefined ? rec.painScore : null,
       warning_signs: Array.isArray(rec.neckpainWarningSigns) ? rec.neckpainWarningSigns : [],
-      trauma_master: rec.neckpainTraumaMaster || 'no',
+      trauma_master: rec.neckpainTraumaMaster || null,
       trauma_types: Array.isArray(rec.neckpainTraumaTypes) ? rec.neckpainTraumaTypes : [],
       other_symptoms_free: rec.otherSymptomsFree || ''
     },

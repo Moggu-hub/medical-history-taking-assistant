@@ -342,11 +342,11 @@ function updateDysuriaOutputs(patient) {
     positives.push(patient.otherSymptomsFree);
   }
 
-  patient.pertinentPositives = positives.length > 0 ? positives : ['ไม่มีอาการร่วมผิดปกติ'];
-  patient.pertinentNegatives = negatives;
+  patient.pertinentPositives = positives.length > 0 ? positives : ['ผู้ป่วยไม่ได้ระบุอาการร่วมเพิ่มเติม'];
+  patient.pertinentNegatives = negatives.length > 0 ? negatives : ['ผู้ป่วยไม่ได้ระบุคำตอบยืนยันในหมวดอาการร่วม'];
 
   const docNotes = patient.doctor_notes || {};
-  const medsText = (!patient.currentMeds || patient.currentMeds === 'ไม่ได้ระบุ' || patient.currentMeds === 'ไม่มี') ? 'ไม่มี' : patient.currentMeds;
+  const medsText = (!patient.currentMeds || patient.currentMeds === 'ไม่ได้ระบุ') ? 'ไม่ได้ระบุ' : patient.currentMeds;
   const hospLabel = {
     complete: 'มีประวัติกับ รพ.ราชบุรี ครบถ้วน (ดึงข้อมูลเดิมจากระบบ)',
     additional: 'มีประวัติกับ รพ.ราชบุรี และขอให้ข้อมูลเพิ่มเติม',
@@ -354,13 +354,16 @@ function updateDysuriaOutputs(patient) {
     unspecified: 'ไม่ได้ระบุ'
   }[patient.hospRecordStatus] || 'ไม่ได้ระบุ';
 
-  let udDisplay = 'ปฏิเสธ';
+  const udExplicitDeny = Array.isArray(patient.underlying) && patient.underlying.some(u => u && u.includes('ปฏิเสธ'));
+  let udDisplay = (patient.hospRecordStatus === 'self' || patient.hospRecordStatus === 'additional' || udExplicitDeny) ? 'ปฏิเสธ' : 'ไม่ได้ระบุ';
   if (patient.underlying && patient.underlying.length > 0) {
     const filteredUd = (Array.isArray(patient.underlying) ? patient.underlying : [patient.underlying])
       .filter(u => u && !u.includes('ปฏิเสธ') && u !== 'ไม่มี' && u !== 'ไม่มีโรคประจำตัว');
     if (filteredUd.length > 0) udDisplay = filteredUd.join(', ');
   }
-  const allergyDisplay = (!patient.drugAllergy || patient.drugAllergy.includes('ปฏิเสธ') || patient.drugAllergy === 'ไม่มี') ? 'ปฏิเสธ' : patient.drugAllergy;
+  const allergyDisplay = (!patient.drugAllergy || patient.drugAllergy === 'ไม่ได้ระบุ')
+    ? 'ไม่ได้ระบุ'
+    : ((patient.drugAllergy.includes('ปฏิเสธ') || patient.drugAllergy === 'ไม่มี') ? 'ปฏิเสธ' : patient.drugAllergy);
 
   // Build Rapid Note (Standardized: Primary descriptor at top, details in Pertinent without category prefixes)
   const defaultRapid =
@@ -371,10 +374,10 @@ function updateDysuriaOutputs(patient) {
 • จังหวะที่ปัสสาวะแสบขัด: ${timingMap[timing] || 'ไม่ได้ระบุ'}${patient.painScore !== null && patient.painScore !== undefined ? ` (Pain Score: ${patient.painScore}/10)` : ''}
 
 • Pertinent Positives:
-${positives.length > 0 ? positives.map(p => `  - ${p}`).join('\n') : '  - ไม่มีอาการร่วมอื่นที่เด่นชัด'}
+${positives.length > 0 ? positives.map(p => `  - ${p}`).join('\n') : '  - ผู้ป่วยไม่ได้ระบุอาการร่วมเพิ่มเติม'}
 
 • Pertinent Negatives:
-${negatives.map(n => `  - ${n}`).join('\n')}
+${patient.pertinentNegatives.map(n => `  - ${n}`).join('\n')}
 
 [Past Medical History & Medications]
 • สถานะประวัติ รพ.ราชบุรี: ${hospLabel}
@@ -394,34 +397,34 @@ ${redFlags.length > 0
 • แผนการรักษา (Plan/Orders): ${docNotes.plan || '-'}`;
 
   // Build Narrative Note
-  let narrative = `ผู้ป่วย${patient.gender || ''}ไทย อายุ ${patient.age || '-'} ปี มารับการตรวจที่ห้องฉุกเฉินด้วยอาการปัสสาวะแสบขัด เป็นมา ${durationStr} ก่อนมาโรงพยาบาล `;
-  narrative += `ผู้ป่วยให้ประวัติลักษณะการแสบขัดคือ${timingMap[timing] || 'มีอาการแสบขัดเวลาปัสสาวะ'} `;
+  let narrative = `ผู้ป่วย${patient.gender && patient.gender !== 'ไม่ระบุ' ? patient.gender : ''} อายุ ${patient.age || '-'} ปี มารับการตรวจที่ห้องฉุกเฉินด้วยอาการปัสสาวะแสบขัด เป็นมา ${durationStr} ก่อนมาโรงพยาบาล `;
+  narrative += `ผู้ป่วยให้ประวัติลักษณะการแสบขัดคือ${timingMap[timing] || 'ไม่ได้ระบุจังหวะแสบขัด'} `;
   if (patient.painScore !== null && patient.painScore !== undefined) {
     narrative += `ประเมินระดับความปวดแสบได้ ${patient.painScore}/10 คะแนน `;
   }
 
   if (luts.length > 0 && !luts.includes('dysuria_luts_none')) {
     narrative += `ร่วมกับมีอาการผิดปกติในการขับถ่ายปัสสาวะ ได้แก่ ${luts.map(k => lutsMap[k]).filter(Boolean).join(', ')} `;
-  } else {
+  } else if (luts.includes('dysuria_luts_none')) {
     narrative += `ไม่มีอาการปัสสาวะบ่อยหรือกลั้นไม่อยู่ ลำปัสสาวะพุ่งดีตามปกติ `;
   }
 
   if (urineChars.length > 0 && !urineChars.includes('urine_normal_clear')) {
     narrative += `สังเกตเห็นน้ำปัสสาวะมีลักษณะ${urineChars.map(k => urineMap[k]).filter(Boolean).join(', ')} `;
-  } else {
+  } else if (urineChars.includes('urine_normal_clear')) {
     narrative += `น้ำปัสสาวะใสสีเหลืองปกติ ไม่มีเลือดหรือตะกอนปน `;
   }
 
   if (systemicSigns.length > 0 && !systemicSigns.includes('dysuria_rf_systemic_none')) {
     narrative += `มีอาการร่วมทางร่างกาย ได้แก่ ${systemicSigns.map(k => systemicMap[k]).filter(Boolean).join(', ')} `;
-  } else {
+  } else if (systemicSigns.includes('dysuria_rf_systemic_none')) {
     narrative += `ปฏิเสธไข้ ปฏิเสธหนาวสั่น ไม่มีอาการปวดบั้นเอวด้านหลังหรือสะเทือนเจ็บสีข้าง ไม่มีคลื่นไส้อาเจียน และไม่มีอาการหน้ามืดวิงเวียน `;
   }
 
   if (patient.gender === 'ชาย' || patient.gender === 'Male') {
     if (maleSigns.length > 0 && !maleSigns.includes('male_none')) {
       narrative += `\nข้อมูลเฉพาะเพศชาย: ${maleSigns.map(k => maleMap[k]).filter(Boolean).join(', ')} `;
-    } else {
+    } else if (maleSigns.includes('male_none')) {
       narrative += `\nปฏิเสธหนองหรือมูกไหลจากปลายท่อปัสสาวะ ลูกอัณฑะไม่บวมเจ็บ `;
     }
   } else if (patient.gender === 'หญิง' || patient.gender === 'Female') {
@@ -431,7 +434,7 @@ ${redFlags.length > 0
     }
     if (femaleSigns.length > 0 && !femaleSigns.includes('female_none')) {
       narrative += `มีอาการทางนรีเวชร่วมด้วย ได้แก่ ${femaleSigns.map(k => femaleMap[k]).filter(Boolean).join(', ')} `;
-    } else {
+    } else if (femaleSigns.includes('female_none')) {
       narrative += `ปฏิเสธตกขาวผิดปกติหรือมีกลิ่นเหม็น ปฏิเสธอาการปวดหน่วงลึกในอุ้งเชิงกราน `;
     }
   }

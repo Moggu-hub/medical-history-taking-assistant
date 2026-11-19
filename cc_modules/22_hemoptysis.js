@@ -390,21 +390,23 @@ function renderHemoptysisRapidHpi(patient) {
     posList.push(patient.otherSymptomsFree);
   }
 
-  // Negatives evaluation
+  // Negatives evaluation (เฉพาะข้อที่ผู้ป่วยระบุยืนยัน)
   if (patient.hemoPreCoughMaster === 'no') negList.push('ไม่มีอาการไอนำมาก่อนหน้า (เพิ่งเริ่มไอและมีเลือดออกทันที)');
   if (patient.hemoActiveStatus === 'status_stopped_completely') negList.push('เลือดหยุดไหลสนิทแล้ว (No active bleeding)');
   if (patient.hemoDyspnea === 'dyspnea_none') negList.push('ปฏิเสธหายใจหอบเหนื่อย หายใจปกติ');
   if (patient.hemoChestPainMaster === 'no') negList.push('ปฏิเสธอาการเจ็บหน้าอกทุกรูปแบบ');
-  if (!warnSigns.includes('warn_choking_airway_threat')) negList.push('ปฏิเสธไอสำลักหรือรู้สึกมีก้อนเลือดขวางทางเดินหายใจ');
-  if (!warnSigns.includes('warn_fainting_syncope') && !warnSigns.includes('warn_profuse_sweat_cold_shock')) {
-    negList.push('ปฏิเสธหน้ามืด วูบ เป็นลม และไม่มีเหงื่อแตกตัวเย็น');
+  if (warnSigns.length > 0) {
+    if (!warnSigns.includes('warn_choking_airway_threat')) negList.push('ปฏิเสธไอสำลักหรือรู้สึกมีก้อนเลือดขวางทางเดินหายใจ');
+    if (!warnSigns.includes('warn_fainting_syncope') && !warnSigns.includes('warn_profuse_sweat_cold_shock')) {
+      negList.push('ปฏิเสธหน้ามืด วูบ เป็นลม และไม่มีเหงื่อแตกตัวเย็น');
+    }
+    if (!warnSigns.includes('warn_unilateral_leg_swelling')) negList.push('ขาไม่อ่อนแรง ขาไม่บวมโตข้างเดียว ไม่ปวดน่อง (No DVT signs)');
+    if (!warnSigns.includes('warn_high_fever_chills') && !warnSigns.includes('warn_fever_afternoon_night_sweat')) {
+      negList.push('ปฏิเสธไข้หนาวสั่น และไม่มีไข้ต่ำเหงื่อออกตอนกลางคืน');
+    }
+    if (!warnSigns.includes('warn_unintentional_weight_loss')) negList.push('น้ำหนักตัวไม่ลดฮวบ เบื่ออาหารปฏิเสธ');
+    if (!warnSigns.includes('warn_hoarseness_weeks')) negList.push('ปฏิเสธเสียงแหบ');
   }
-  if (!warnSigns.includes('warn_unilateral_leg_swelling')) negList.push('ขาไม่อ่อนแรง ขาไม่บวมโตข้างเดียว ไม่ปวดน่อง (No DVT signs)');
-  if (!warnSigns.includes('warn_high_fever_chills') && !warnSigns.includes('warn_fever_afternoon_night_sweat')) {
-    negList.push('ปฏิเสธไข้หนาวสั่น และไม่มีไข้ต่ำเหงื่อออกตอนกลางคืน');
-  }
-  if (!warnSigns.includes('warn_unintentional_weight_loss')) negList.push('น้ำหนักตัวไม่ลดฮวบ เบื่ออาหารปฏิเสธ');
-  if (!warnSigns.includes('warn_hoarseness_weeks')) negList.push('ปฏิเสธเสียงแหบ');
   if (pastPulm.includes('pulm_none')) negList.push('ปฏิเสธโรคประจำตัวทางปอดและหัวใจ');
   if (meds.includes('meds_none')) negList.push('ปฏิเสธยาต้านการแข็งตัวของเลือดและยาต้านเกล็ดเลือด');
 
@@ -415,14 +417,19 @@ function renderHemoptysisRapidHpi(patient) {
     unspecified: 'ไม่ได้ระบุ'
   }[patient.hospRecordStatus] || 'ไม่ได้ระบุ';
 
-  let udDisplay = 'ปฏิเสธ';
-  if (patient.underlying && patient.underlying.length > 0) {
-    const filteredUd = (Array.isArray(patient.underlying) ? patient.underlying : [patient.underlying])
-      .filter(u => u && !u.includes('ปฏิเสธ') && u !== 'ไม่มี' && u !== 'ไม่มีโรคประจำตัว');
-    if (filteredUd.length > 0) udDisplay = filteredUd.join(', ');
-  }
-  const allergyDisplay = (!patient.drugAllergy || patient.drugAllergy.includes('ปฏิเสธ') || patient.drugAllergy === 'ไม่มี') ? 'ปฏิเสธ' : patient.drugAllergy;
-  const medsText = (!patient.currentMeds || patient.currentMeds === 'ไม่ได้ระบุ' || patient.currentMeds === 'ไม่มี') ? 'ไม่มี' : patient.currentMeds;
+  const udArr = Array.isArray(patient.underlying) ? patient.underlying : (patient.underlying ? [patient.underlying] : []);
+  const filteredUd = udArr.filter(u => u && !u.includes('ปฏิเสธ') && u !== 'ไม่มี' && u !== 'ไม่มีโรคประจำตัว' && u !== 'ไม่ได้ระบุ');
+  const hasExplicitUdDeny = udArr.some(u => u && (u.includes('ปฏิเสธ') || u === 'ไม่มี' || u === 'ไม่มีโรคประจำตัว'));
+  const udDisplay = filteredUd.length > 0
+    ? filteredUd.join(', ')
+    : ((hasExplicitUdDeny || patient.hospRecordStatus === 'self' || patient.hospRecordStatus === 'additional') ? 'ปฏิเสธ' : 'ไม่ได้ระบุ');
+
+  const allergyDisplay = (!patient.drugAllergy || patient.drugAllergy === 'ไม่ได้ระบุ')
+    ? 'ไม่ได้ระบุ'
+    : ((patient.drugAllergy.includes('ปฏิเสธ') || patient.drugAllergy === 'ไม่มี') ? 'ปฏิเสธ' : patient.drugAllergy);
+  const medsText = (!patient.currentMeds || patient.currentMeds === 'ไม่ได้ระบุ')
+    ? 'ไม่ได้ระบุ'
+    : (patient.currentMeds === 'ไม่มี' ? 'ไม่มี' : patient.currentMeds);
   const docNotes = patient.doctor_notes || {};
   const redFlags = evaluateHemoptysisRedFlags(patient);
 
@@ -434,20 +441,20 @@ function renderHemoptysisRapidHpi(patient) {
 • ระยะเวลาที่มีอาการ: ${durVal ? `ไอเป็นเลือดมา ${durationStr}` : 'ไม่ระบุ'} (สถานะ: ${formatHemoActiveStatus(patient)}, ความถี่: ${formatHemoFrequency(patient)})
 • ลักษณะของเลือด: ${formatHemoBloodChar(patient)}
 • ปริมาณเลือดในครั้งที่ออกมากที่สุด: ${formatHemoBloodVolume(patient)}
-• ประวัติไอนำมาก่อน: ${patient.hemoPreCoughMaster === 'yes' ? `มีไอนำมาก่อน ${patient.hemoPreCoughDurVal || ''} ${durUnitMap[patient.hemoPreCoughDurUnit] || 'วัน'} (เสมหะเดิม: ${formatHemoSputum(patient)})` : 'ไม่มีไอนำมาก่อนหน้า'}
+• ประวัติไอนำมาก่อน: ${patient.hemoPreCoughMaster === 'yes' ? `มีไอนำมาก่อน ${patient.hemoPreCoughDurVal || ''} ${durUnitMap[patient.hemoPreCoughDurUnit] || 'วัน'} (เสมหะเดิม: ${formatHemoSputum(patient)})` : (patient.hemoPreCoughMaster === 'no' ? 'ไม่มีไอนำมาก่อนหน้า' : 'ไม่ได้ระบุ')}
 • อาการเหนื่อยหอบ: ${formatHemoDyspnea(patient)}
 • อาการเจ็บหน้าอก: ${formatHemoChestPain(patient)}
 
 • Pertinent Positives:
-${posList.length > 0 ? posList.map(p => `  - ${p}`).join('\n') : '  - ไม่มีอาการร่วมอื่นที่เด่นชัด'}
+${posList.length > 0 ? posList.map(p => `  - ${p}`).join('\n') : '  - ผู้ป่วยไม่ได้ระบุอาการร่วมเพิ่มเติม'}
 
 • Pertinent Negatives:
-${negList.map(n => `  - ${n}`).join('\n')}
+${negList.length > 0 ? negList.map(n => `  - ${n}`).join('\n') : '  - ผู้ป่วยไม่ได้ระบุคำตอบยืนยันในหมวดอาการร่วม'}
 
 [Past Medical History & Medications]
 • สถานะประวัติ รพ.ราชบุรี: ${hospLabel}
 • โรคประจำตัว (U/D): ${udDisplay}
-• ประวัติโรคปอดเดิม: ${pastPulm.length > 0 && !pastPulm.includes('pulm_none') ? pastPulm.join(', ') : 'ปฏิเสธ'}
+• ประวัติโรคปอดเดิม: ${pastPulm.length > 0 && !pastPulm.includes('pulm_none') ? pastPulm.join(', ') : (pastPulm.includes('pulm_none') ? 'ปฏิเสธ' : 'ไม่ได้ระบุ')}
 • ยาประจำตัว (Current Meds): ${medsText}
 • ประวัติแพ้ยา/แพ้อาหาร (Allergies): ${allergyDisplay}
 
@@ -481,7 +488,8 @@ function renderHemoptysisNarrative(patient) {
 
   const warnSigns = Array.isArray(patient.hemoWarningSigns) ? patient.hemoWarningSigns : [];
 
-  let note = `ผู้ป่วย${patient.gender || ''} อายุ ${patient.age || 'ไม่ระบุ'} ปี มารับการตรวจที่ห้องฉุกเฉินด้วยอาการไอเป็นเลือด เป็นมา ${durStr} ก่อนมาโรงพยาบาล ลักษณะเลือดที่ไอออกมาคือ${charStr} ปริมาณในครั้งที่ออกมากที่สุดคือ${volStr} มีความถี่คือ${freqStr} และสถานะปัจจุบัน${activeStr} การหายใจประเมินได้ว่า${dyspneaStr} และ${chestPainStr}`;
+  const genderLabel = (patient.gender && patient.gender !== 'ไม่ระบุ') ? patient.gender : '';
+  let note = `ผู้ป่วย${genderLabel} อายุ ${patient.age || 'ไม่ระบุ'} ปี มารับการตรวจที่ห้องฉุกเฉินด้วยอาการไอเป็นเลือด เป็นมา ${durStr} ก่อนมาโรงพยาบาล ลักษณะเลือดที่ไอออกมาคือ${charStr} ปริมาณในครั้งที่ออกมากที่สุดคือ${volStr} มีความถี่คือ${freqStr} และสถานะปัจจุบัน${activeStr} การหายใจประเมินได้ว่า${dyspneaStr} และ${chestPainStr}`;
 
   if (warnSigns.length > 0) {
     const warnTexts = [];
@@ -493,9 +501,7 @@ function renderHemoptysisNarrative(patient) {
     if (warnSigns.includes('warn_high_fever_chills')) warnTexts.push('มีไข้สูงหนาวสั่น');
     if (warnSigns.includes('warn_fever_afternoon_night_sweat')) warnTexts.push('มีไข้ต่ำบ่ายเหงื่อแตกกลางคืน');
     if (warnSigns.includes('warn_unintentional_weight_loss')) warnTexts.push('น้ำหนักตัวลดลงฮวบผิดปกติ');
-    note += ` ร่วมกับมีอาการเตือนสำคัญ: ${warnTexts.join(', ')}`;
-  } else {
-    note += ' ผู้ป่วยปฏิเสธอาการสำลักเลือด หายใจติดขัด ปฏิเสธหน้ามืดวูบ ขาไม่บวมโตข้างเดียว และไม่มีไข้หนาวสั่น';
+    if (warnTexts.length > 0) note += ` ร่วมกับมีอาการเตือนสำคัญ: ${warnTexts.join(', ')}`;
   }
 
   return note;
@@ -520,7 +526,7 @@ function updateHemoptysisOutputs(rec) {
   if (posMatch) {
     rec.pertinentPositives = posMatch[1].trim().split('\n').map(l => l.replace(/^[-*\s]+/, '').trim());
   } else {
-    rec.pertinentPositives = ['ไม่มีอาการร่วมผิดปกติ'];
+    rec.pertinentPositives = ['ผู้ป่วยไม่ได้ระบุอาการร่วมเพิ่มเติม'];
   }
 
   const negMatch = rapidText.match(/• Pertinent Negatives:\n((?:\s*-[^\n]+\n?)+)/);
@@ -569,7 +575,7 @@ function updateHemoptysisOutputs(rec) {
       warning_signs: Array.isArray(rec.hemoWarningSigns) ? rec.hemoWarningSigns : [],
       past_pulmonary_cardiac: Array.isArray(rec.hemoPastPulmonary) ? rec.hemoPastPulmonary : [],
       smoking: {
-        status: rec.hemoSmokingStatus || 'smoking_never',
+        status: rec.hemoSmokingStatus || null,
         years: rec.hemoSmokingYears || null,
         packs_per_day: rec.hemoSmokingPacks || null
       },
@@ -1340,16 +1346,16 @@ const hemoptysisModule = {
     const hemoBloodVolume = getRadio('hemoBloodVolume');
     const hemoEpisodeCount = getRadio('hemoEpisodeCount');
     const hemoActiveStatus = getRadio('hemoActiveStatus');
-    const hemoPreCoughMaster = getRadio('hemoPreCoughMaster') || 'no';
+    const hemoPreCoughMaster = getRadio('hemoPreCoughMaster') || '';
     const hemoPreCoughDurVal = parseInt(document.getElementById('hemoPreCoughDurVal')?.value, 10) || null;
     const hemoPreCoughDurUnit = document.getElementById('hemoPreCoughDurUnit')?.value || 'days';
     const hemoPriorSputum = getRadio('hemoPriorSputum');
     const hemoDyspnea = getRadio('hemoDyspnea');
-    const hemoChestPainMaster = getRadio('hemoChestPainMaster') || 'no';
+    const hemoChestPainMaster = getRadio('hemoChestPainMaster') || '';
     const hemoChestPainType = getChecks('hemoChestPainType');
     const hemoWarningSigns = getChecks('hemoWarningSigns');
     const hemoPastPulmonary = getChecks('hemoPastPulmonary');
-    const hemoSmokingStatus = getRadio('hemoSmokingStatus') || 'smoking_never';
+    const hemoSmokingStatus = getRadio('hemoSmokingStatus') || '';
     const hemoSmokingYears = parseInt(document.getElementById('hemoSmokingYears')?.value, 10) || null;
     const hemoSmokingPacks = parseFloat(document.getElementById('hemoSmokingPacks')?.value) || null;
     const hemoBleedingMeds = getChecks('hemoBleedingMeds');
