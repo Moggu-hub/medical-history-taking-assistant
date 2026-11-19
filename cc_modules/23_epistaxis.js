@@ -240,17 +240,19 @@ function renderEpistaxisRapidHpi(patient) {
     posList.push(patient.otherSymptomsFree);
   }
 
-  // Negatives evaluation
+  // Negatives evaluation (เฉพาะข้อที่ผู้ป่วยระบุยืนยัน)
   if (patient.epistaxisActiveStatus === 'stopped') negList.push('เลือดหยุดไหลแล้วก่อนมาถึง (Bleeding stopped)');
-  if (!direction.includes('dripping_throat')) negList.push('ปฏิเสธประวัติเลือดไหลรินลงคอ');
-  if (!direction.includes('vomited_blood_clots')) negList.push('ปฏิเสธการไอหรืออาเจียนเป็นเลือด');
-  if (!cranialSigns.includes('severe_headache')) negList.push('ปฏิเสธอาการปวดศีรษะรุนแรง ตาพร่ามัว หรือแน่นหน้าอก');
-  if (!patient.epistaxisTrauma) negList.push('ปฏิเสธประวัติอุบัติเหตุกระแทกใบหน้าหรือศีรษะ');
-  if (!warnSigns.includes('warn_choking_swallow') && !warnSigns.includes('warn_stridor_airway_tight')) negList.push('ปฏิเสธการสำลักเลือด หายใจติดขัด หรือแน่นคอ');
-  if (!warnSigns.includes('warn_dizziness_presyncope') && !warnSigns.includes('warn_profuse_sweat_cold_shock')) negList.push('ปฏิเสธหน้ามืด วูบ เป็นลม และไม่มีเหงื่อแตกตัวเย็น');
-  if (!warnSigns.includes('warn_petechiae_purpura') && !warnSigns.includes('warn_mucosal_or_melena')) negList.push('ไม่มีจุดเลือดออก จ้ำเลือดตามตัว เลือดออกตามไรฟัน หรือถ่ายดำ');
-  if (!warnSigns.includes('warn_cervical_lymph_node') && !warnSigns.includes('warn_unilateral_obstruction') && !warnSigns.includes('warn_unilateral_tinnitus')) negList.push('คลำไม่พบก้อนที่คอ ไม่มีคัดจมูกหรือหูอื้อข้างเดียว');
-  if (!meds.includes('anticoagulant_warfarin') && !meds.includes('antiplatelet_aspirin')) negList.push('ปฏิเสธยาต้านการแข็งตัวของเลือดและยาต้านเกล็ดเลือด');
+  if (direction.length > 0) {
+    if (!direction.includes('dripping_throat')) negList.push('ปฏิเสธประวัติเลือดไหลรินลงคอ');
+    if (!direction.includes('vomited_blood_clots')) negList.push('ปฏิเสธการไอหรืออาเจียนเป็นเลือด');
+  }
+  if (warnSigns.length > 0) {
+    if (!warnSigns.includes('warn_choking_swallow') && !warnSigns.includes('warn_stridor_airway_tight')) negList.push('ปฏิเสธการสำลักเลือด หายใจติดขัด หรือแน่นคอ');
+    if (!warnSigns.includes('warn_dizziness_presyncope') && !warnSigns.includes('warn_profuse_sweat_cold_shock')) negList.push('ปฏิเสธหน้ามืด วูบ เป็นลม และไม่มีเหงื่อแตกตัวเย็น');
+    if (!warnSigns.includes('warn_petechiae_purpura') && !warnSigns.includes('warn_mucosal_or_melena')) negList.push('ไม่มีจุดเลือดออก จ้ำเลือดตามตัว เลือดออกตามไรฟัน หรือถ่ายดำ');
+    if (!warnSigns.includes('warn_cervical_lymph_node') && !warnSigns.includes('warn_unilateral_obstruction') && !warnSigns.includes('warn_unilateral_tinnitus')) negList.push('คลำไม่พบก้อนที่คอ ไม่มีคัดจมูกหรือหูอื้อข้างเดียว');
+  }
+  if (meds.includes('none')) negList.push('ปฏิเสธยาต้านการแข็งตัวของเลือดและยาต้านเกล็ดเลือด');
 
   const hospLabel = {
     complete: 'มีประวัติกับ รพ.ราชบุรี ครบถ้วน (ดึงข้อมูลเดิมจากระบบ)',
@@ -259,14 +261,19 @@ function renderEpistaxisRapidHpi(patient) {
     unspecified: 'ไม่ได้ระบุ'
   }[patient.hospRecordStatus] || 'ไม่ได้ระบุ';
 
-  let udDisplay = 'ปฏิเสธ';
-  if (patient.underlying && patient.underlying.length > 0) {
-    const filteredUd = (Array.isArray(patient.underlying) ? patient.underlying : [patient.underlying])
-      .filter(u => u && !u.includes('ปฏิเสธ') && u !== 'ไม่มี' && u !== 'ไม่มีโรคประจำตัว');
-    if (filteredUd.length > 0) udDisplay = filteredUd.join(', ');
-  }
-  const allergyDisplay = (!patient.drugAllergy || patient.drugAllergy.includes('ปฏิเสธ') || patient.drugAllergy === 'ไม่มี') ? 'ปฏิเสธ' : patient.drugAllergy;
-  const medsText = (!patient.currentMeds || patient.currentMeds === 'ไม่ได้ระบุ' || patient.currentMeds === 'ไม่มี') ? 'ไม่มี' : patient.currentMeds;
+  const udArr = Array.isArray(patient.underlying) ? patient.underlying : (patient.underlying ? [patient.underlying] : []);
+  const filteredUd = udArr.filter(u => u && !u.includes('ปฏิเสธ') && u !== 'ไม่มี' && u !== 'ไม่มีโรคประจำตัว' && u !== 'ไม่ได้ระบุ');
+  const hasExplicitUdDeny = udArr.some(u => u && (u.includes('ปฏิเสธ') || u === 'ไม่มี' || u === 'ไม่มีโรคประจำตัว'));
+  const udDisplay = filteredUd.length > 0
+    ? filteredUd.join(', ')
+    : ((hasExplicitUdDeny || patient.hospRecordStatus === 'self' || patient.hospRecordStatus === 'additional') ? 'ปฏิเสธ' : 'ไม่ได้ระบุ');
+
+  const allergyDisplay = (!patient.drugAllergy || patient.drugAllergy === 'ไม่ได้ระบุ')
+    ? 'ไม่ได้ระบุ'
+    : ((patient.drugAllergy.includes('ปฏิเสธ') || patient.drugAllergy === 'ไม่มี') ? 'ปฏิเสธ' : patient.drugAllergy);
+  const medsText = (!patient.currentMeds || patient.currentMeds === 'ไม่ได้ระบุ')
+    ? 'ไม่ได้ระบุ'
+    : (patient.currentMeds === 'ไม่มี' ? 'ไม่มี' : patient.currentMeds);
   const docNotes = patient.doctor_notes || {};
   const redFlags = evaluateEpistaxisRedFlags(patient);
 
@@ -278,13 +285,13 @@ function renderEpistaxisRapidHpi(patient) {
 • ระยะเวลาที่มีอาการ: ${durVal ? `เลือดกำเดาไหลมา ${durationStr}` : 'ไม่ระบุ'} (ตำแหน่ง: ${formatEpistaxisSide(patient)}, สถานะ: ${formatEpistaxisActiveStatus(patient)})
 • ประวัติความรุนแรงและการเป็นซ้ำ: ${formatEpistaxisRecurrence(patient)}
 • ปริมาณเลือดที่ออก: ${formatEpistaxisVolume(patient)}
-• การตอบสนองต่อการบีบปีกจมูก: ${direction.includes('failed_compression') ? 'บีบปีกจมูกแน่น 15-20 นาทีแล้วไม่หยุด (Failed compression) 🚩' : 'เลือดหยุดได้ด้วยการบีบจมูก หรือยังไม่ได้ลองบีบต่อเนื่อง'}
+• การตอบสนองต่อการบีบปีกจมูก: ${direction.includes('failed_compression') ? 'บีบปีกจมูกแน่น 15-20 นาทีแล้วไม่หยุด (Failed compression) 🚩' : (patient.epistaxisActiveStatus === 'stopped' ? 'เลือดหยุดไหลแล้วก่อนมาถึง' : 'ไม่ได้ระบุ')}
 
 • Pertinent Positives:
-${posList.length > 0 ? posList.map(p => `  - ${p}`).join('\n') : '  - ไม่มีอาการร่วมอื่นที่เด่นชัด'}
+${posList.length > 0 ? posList.map(p => `  - ${p}`).join('\n') : '  - ผู้ป่วยไม่ได้ระบุอาการร่วมเพิ่มเติม'}
 
 • Pertinent Negatives:
-${negList.map(n => `  - ${n}`).join('\n')}
+${negList.length > 0 ? negList.map(n => `  - ${n}`).join('\n') : '  - ผู้ป่วยไม่ได้ระบุคำตอบยืนยันในหมวดอาการร่วม'}
 
 [Past Medical History & Medications]
 • สถานะประวัติ รพ.ราชบุรี: ${hospLabel}
@@ -321,7 +328,8 @@ function renderEpistaxisNarrative(patient) {
   const warnSigns = Array.isArray(patient.epistaxisWarningSigns) ? patient.epistaxisWarningSigns : [];
   const direction = Array.isArray(patient.epistaxisDirection) ? patient.epistaxisDirection : [];
 
-  let note = `ผู้ป่วย${patient.gender || ''} อายุ ${patient.age || 'ไม่ระบุ'} ปี มารับการตรวจที่ห้องฉุกเฉินด้วยอาการเลือดกำเดาไหล เป็นมา ${durStr} ก่อนมาโรงพยาบาล ตำแหน่งที่เลือดออกคือ${sideStr} สถานะปัจจุบัน${activeStr} ประวัติความรุนแรง${recurStr} ปริมาณเลือดที่ออกคือ${volStr}`;
+  const genderLabel = (patient.gender && patient.gender !== 'ไม่ระบุ') ? patient.gender : '';
+  let note = `ผู้ป่วย${genderLabel} อายุ ${patient.age || 'ไม่ระบุ'} ปี มารับการตรวจที่ห้องฉุกเฉินด้วยอาการเลือดกำเดาไหล เป็นมา ${durStr} ก่อนมาโรงพยาบาล ตำแหน่งที่เลือดออกคือ${sideStr} สถานะปัจจุบัน${activeStr} ประวัติความรุนแรง${recurStr} ปริมาณเลือดที่ออกคือ${volStr}`;
 
   if (direction.includes('dripping_throat')) {
     note += ' มีประวัติเลือดไหลรินลงคออย่างต่อเนื่องต้องคอยกลืนเลือดตลอดเวลา';
@@ -345,9 +353,7 @@ function renderEpistaxisNarrative(patient) {
     if (warnSigns.includes('warn_profuse_sweat_cold_shock')) warnTexts.push('เหงื่อแตกตัวเย็นใจสั่น');
     if (warnSigns.includes('warn_petechiae_purpura')) warnTexts.push('มีจุดเลือดออกตามตัว');
     if (warnSigns.includes('warn_cervical_lymph_node')) warnTexts.push('คลำได้ก้อนที่ลำคอ');
-    note += ` ร่วมกับมีอาการเตือนสำคัญ: ${warnTexts.join(', ')}`;
-  } else {
-    note += ' ผู้ป่วยปฏิเสธอาการสำลักเลือด หายใจติดขัด ปฏิเสธหน้ามืดวูบ และไม่มีจุดเลือดออกตามตัว';
+    if (warnTexts.length > 0) note += ` ร่วมกับมีอาการเตือนสำคัญ: ${warnTexts.join(', ')}`;
   }
 
   return note;
@@ -372,7 +378,7 @@ function updateEpistaxisOutputs(rec) {
   if (posMatch) {
     rec.pertinentPositives = posMatch[1].trim().split('\n').map(l => l.replace(/^[-*\s]+/, '').trim());
   } else {
-    rec.pertinentPositives = ['ไม่มีอาการร่วมผิดปกติ'];
+    rec.pertinentPositives = ['ผู้ป่วยไม่ได้ระบุอาการร่วมเพิ่มเติม'];
   }
 
   const negMatch = rapidText.match(/• Pertinent Negatives:\n((?:\s*-[^\n]+\n?)+)/);
@@ -524,7 +530,7 @@ const epistaxisModule = {
 
   formHtml: `
     <div id="cc-epistaxis-section" class="hidden space-y-6">
-
+      <div data-cc-top-banner="epistaxis"><div class="flex flex-col gap-4">
       <!-- คำแนะนำการปฐมพยาบาลเบื้องต้นอย่างถูกวิธี (Triage First-Aid Guidance Banner) -->
       <div class="bg-amber-50 border border-amber-200 rounded-2xl p-4 sm:p-5 flex items-start gap-3.5 shadow-xs">
         <div class="bg-amber-100 text-amber-800 p-2.5 rounded-xl flex-shrink-0 mt-0.5">
@@ -539,6 +545,7 @@ const epistaxisModule = {
           </p>
         </div>
       </div>
+      </div></div>
 
       <!-- CARD 1: ข้อมูลอาการเริ่มต้นและลักษณะการไหล -->
       <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">

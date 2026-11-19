@@ -330,25 +330,28 @@ function renderFallRapidHpi(patient) {
 
   if (sysSigns.includes('dizziness_presyncope') || sysSigns.includes('palpitation_cold_sweat')) positives.push('มีอาการหน้ามืด ใจสั่น เหงื่อแตกตัวเย็น (ภาวะช็อก)');
 
+  if (sysSigns.includes('no_systemic_signs')) negatives.push('ไม่มีอาการหน้ามืด วูบ หรือภาวะช็อก');
   if (patient.otherSymptomsFree && String(patient.otherSymptomsFree).trim()) positives.push(`ข้อมูลเพิ่มเติมจากผู้ป่วย: ${String(patient.otherSymptomsFree).trim()}`);
-  if (positives.length === 0) positives.push('ไม่มีอาการบาดเจ็บรุนแรงที่ระบุเพิ่มเติม');
-  if (negatives.length === 0) negatives.push('ไม่มีอาการทางสมองหรือภาวะช็อก');
+  if (positives.length === 0) positives.push('ผู้ป่วยไม่ได้ระบุอาการร่วมเพิ่มเติม');
+  if (negatives.length === 0) negatives.push('ผู้ป่วยไม่ได้ระบุคำตอบยืนยันในหมวดอาการร่วม');
 
   let pScoreStr = 'ไม่ได้ระบุ';
   if (patient.painScore !== null && patient.painScore !== undefined) {
     pScoreStr = `${patient.painScore}/10`;
   }
 
-  const udDisplay = (patient.underlying && patient.underlying.length > 0)
-    ? (Array.isArray(patient.underlying) ? patient.underlying : [patient.underlying])
-        .filter(u => u && !u.includes('ปฏิเสธ') && u !== 'ไม่มี').join(', ') || 'ปฏิเสธ'
-    : 'ปฏิเสธ';
-  const allergyDisplay = (!patient.drugAllergy || patient.drugAllergy.includes('ปฏิเสธ') || patient.drugAllergy === 'ไม่มี')
-    ? 'ปฏิเสธ'
-    : patient.drugAllergy;
-  const medsText = (!patient.currentMeds || patient.currentMeds === 'ไม่ได้ระบุ' || patient.currentMeds === 'ไม่มี')
-    ? 'ไม่มี'
-    : patient.currentMeds;
+  const udArr = Array.isArray(patient.underlying) ? patient.underlying : (patient.underlying ? [patient.underlying] : []);
+  const filteredUd = udArr.filter(u => u && !u.includes('ปฏิเสธ') && u !== 'ไม่มี' && u !== 'ไม่มีโรคประจำตัว' && u !== 'ไม่ได้ระบุ');
+  const hasExplicitUdDeny = udArr.some(u => u && (u.includes('ปฏิเสธ') || u === 'ไม่มี' || u === 'ไม่มีโรคประจำตัว'));
+  const udDisplay = filteredUd.length > 0
+    ? filteredUd.join(', ')
+    : ((hasExplicitUdDeny || patient.hospRecordStatus === 'self' || patient.hospRecordStatus === 'additional') ? 'ปฏิเสธ' : 'ไม่ได้ระบุ');
+  const allergyDisplay = (!patient.drugAllergy || patient.drugAllergy === 'ไม่ได้ระบุ')
+    ? 'ไม่ได้ระบุ'
+    : ((patient.drugAllergy.includes('ปฏิเสธ') || patient.drugAllergy === 'ไม่มี') ? 'ปฏิเสธ' : patient.drugAllergy);
+  const medsText = (!patient.currentMeds || patient.currentMeds === 'ไม่ได้ระบุ')
+    ? 'ไม่ได้ระบุ'
+    : (patient.currentMeds === 'ไม่มี' ? 'ไม่มี' : patient.currentMeds);
   const docNotes = patient.doctor_notes || {};
 
   const tMap = {
@@ -359,9 +362,9 @@ function renderFallRapidHpi(patient) {
     never_or_unsure: 'ไม่เคยฉีด หรือจำประวัติไม่ได้',
     unknown_or_never: 'ไม่เคยฉีด หรือจำประวัติไม่ได้'
   };
-  const pregMap = { not_pregnant: 'ไม่ได้ตั้งครรภ์ / ประจำเดือนมาปกติ', suspected_or_missed: 'ขาดประจำเดือน / สงสัยอาจตั้งครรภ์', confirmed_pregnant: 'ยืนยันกำลังตั้งครรภ์', menopause_or_hysterectomy: 'วัยหมดประจำเดือน / ผ่าตัดมดลูกแล้ว', unknown: 'ไม่ทราบ' };
+  const pregMap = { not_pregnant: 'ไม่ได้ตั้งครรภ์ / ประจำเดือนมาปกติ', suspected_or_missed: 'ขาดประจำเดือน / สงสัยอาจตั้งครรภ์', confirmed_pregnant: 'ยืนยันกำลังตั้งครรภ์', menopause_or_hysterectomy: 'วัยหมดประจำเดือน / ผ่าตัดมดลูกแล้ว', unknown: 'ไม่ทราบสถานะการตั้งครรภ์' };
   const tetText = patient.fallTetanusHx ? `\n• ประวัติวัคซีนบาดทะยัก: ${tMap[patient.fallTetanusHx] || patient.fallTetanusHx}` : '';
-  const femText = (isFallFemalePatient(patient) && (patient.fallLmpDate || patient.fallPregnancyStatus)) ? `\n• ประวัติสตรี: LMP ${patient.fallLmpDate || 'ไม่ระบุ'} (${pregMap[patient.fallPregnancyStatus] || 'ไม่ระบุสถานะ'})` : '';
+  const femText = (isFallFemalePatient(patient) && (patient.fallLmpDate || patient.fallPregnancyStatus)) ? `\n• ประวัติสตรี: LMP ${patient.fallLmpDate || 'ไม่ระบุ'} (${pregMap[patient.fallPregnancyStatus] || 'ไม่ได้ระบุ'})` : '';
   const rfText = rfs.length > 0
     ? `🚩 ตรวจพบสัญญาณเตือนฉุกเฉิน (${rfs.length} รายการ):\n${rfs.map(r => `  * [${r.level}] ${r.title}`).join('\n')}`
     : '✓ ไม่พบสัญญาณเตือนวิกฤต ESI 1-2 ในขณะคัดกรอง (Low-Risk Blunt/Fall Trauma)';
@@ -422,8 +425,8 @@ function renderFallNarrative(patient) {
   }
 
   if (isFallFemalePatient(patient) && (patient.fallLmpDate || patient.fallPregnancyStatus)) {
-    const pregMap = { not_pregnant: 'ไม่ได้ตั้งครรภ์ / ประจำเดือนมาปกติ', suspected_or_missed: 'ขาดประจำเดือน / สงสัยอาจตั้งครรภ์', confirmed_pregnant: 'ยืนยันกำลังตั้งครรภ์', menopause_or_hysterectomy: 'วัยหมดประจำเดือน / ผ่าตัดมดลูกแล้ว', unknown: 'ไม่ทราบ' };
-    text += `ประวัติสตรี: LMP ${patient.fallLmpDate || 'ไม่ระบุ'} (${pregMap[patient.fallPregnancyStatus] || 'ไม่ระบุสถานะ'}) `;
+    const pregMap = { not_pregnant: 'ไม่ได้ตั้งครรภ์ / ประจำเดือนมาปกติ', suspected_or_missed: 'ขาดประจำเดือน / สงสัยอาจตั้งครรภ์', confirmed_pregnant: 'ยืนยันกำลังตั้งครรภ์', menopause_or_hysterectomy: 'วัยหมดประจำเดือน / ผ่าตัดมดลูกแล้ว', unknown: 'ไม่ทราบสถานะการตั้งครรภ์' };
+    text += `ประวัติสตรี: LMP ${patient.fallLmpDate || 'ไม่ระบุ'} (${pregMap[patient.fallPregnancyStatus] || 'ไม่ได้ระบุ'}) `;
   }
   if (patient.otherSymptomsFree) {
     text += `ข้อมูลเพิ่มเติม: ${patient.otherSymptomsFree}`;
@@ -450,7 +453,7 @@ function updateFallOutputs(rec) {
   if (posMatch) {
     rec.pertinentPositives = posMatch[1].trim().split('\n').map(l => l.replace(/^[-*\s]+/, '').trim());
   } else {
-    rec.pertinentPositives = ['ไม่มีอาการบาดเจ็บรุนแรงเฉพาะจุด'];
+    rec.pertinentPositives = ['ผู้ป่วยไม่ได้ระบุอาการร่วมเพิ่มเติม'];
   }
 
   const negMatch = rapidText.match(/• Pertinent Negatives:\n((?:\s*-[^\n]+\n?)+)/);
@@ -583,7 +586,7 @@ function toggleFallFemaleSection(forceShow) {
   sec.classList.toggle('hidden', !show);
   if (!show) {
     const lmp = document.getElementById('fallLmpDate'); if (lmp) lmp.value = '';
-    const preg = document.getElementById('fallPregnancyStatus'); if (preg) preg.value = 'not_pregnant';
+    const preg = document.getElementById('fallPregnancyStatus'); if (preg) preg.value = '';
   }
 }
 function checkAndDisplayFallLmp(patient) {
@@ -635,6 +638,7 @@ function renderFallDigits(id, label) {
 // --- FORM HTML TEMPLATE ---
 const FALL_TRAUMA_FORM_HTML = `
 <div id="cc-fall-trauma-section" class="hidden space-y-6">
+  <div data-cc-top-banner="fall_trauma"><div class="flex flex-col gap-4">
   <!-- 💡 ส่วนต้น: ข้อแนะนำการปฏิบัติตัวเบื้องต้นระหว่างรอตรวจ -->
   <div class="bg-amber-50 border border-amber-200 rounded-2xl p-4 text-xs sm:text-sm text-amber-900 shadow-sm flex items-start space-x-3">
     <div class="text-amber-600 mt-0.5 flex-shrink-0">
@@ -651,6 +655,7 @@ const FALL_TRAUMA_FORM_HTML = `
       </ul>
     </div>
   </div>
+  </div></div>
 
   <!-- CARD 1: ข้อมูลเหตุการณ์ กลไกการบาดเจ็บ และอาการนำก่อนเกิดเหตุ -->
   <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
@@ -1316,6 +1321,7 @@ const FALL_TRAUMA_FORM_HTML = `
         <div>
           <label class="block text-[11px] font-semibold text-slate-700 mb-1">สถานะการตั้งครรภ์:</label>
           <select id="fallPregnancyStatus" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-800 font-medium focus:outline-none focus:ring-2 focus:ring-medical-500">
+            <option value="">-- ไม่ระบุ --</option>
             <option value="not_pregnant">ไม่ได้ตั้งครรภ์ / ประจำเดือนมาปกติ</option>
             <option value="suspected_or_missed">ขาดประจำเดือน / สงสัยอาจตั้งครรภ์</option>
             <option value="confirmed_pregnant">ยืนยันกำลังตั้งครรภ์</option>
@@ -1459,7 +1465,7 @@ const fallTraumaModule = {
     const titleSelVal = document.getElementById('patientTitleSelect')?.value || '';
     const isFemale = ctx.gender ? isFallFemalePatient(ctx) : (titleSelVal ? /นาง|น\.ส\.|ด\.ญ\.|\(หญิง\)|Mrs|Miss|Ms/i.test(titleSelVal) : isFallFemalePatient(ctx));
     const fallLmpDate = isFemale ? (document.getElementById('fallLmpDate')?.value?.trim() || '') : '';
-    const fallPregnancyStatus = isFemale ? (document.getElementById('fallPregnancyStatus')?.value || 'not_pregnant') : '';
+    const fallPregnancyStatus = isFemale ? (document.getElementById('fallPregnancyStatus')?.value || '') : '';
     const otherSymptomsFree = document.getElementById('fall_trauma_other_free')?.value?.trim() || ctx.otherSymptomsFree || '';
 
     const rec = {
@@ -1736,7 +1742,7 @@ const fallTraumaModule = {
     checkAndDisplayFallLmp(data);
     if (isFallFemalePatient(data)) {
       const lmpEl = document.getElementById('fallLmpDate'); if (lmpEl) lmpEl.value = data.fallLmpDate || '';
-      const pregEl = document.getElementById('fallPregnancyStatus'); if (pregEl) pregEl.value = data.fallPregnancyStatus || 'not_pregnant';
+      const pregEl = document.getElementById('fallPregnancyStatus'); if (pregEl) pregEl.value = data.fallPregnancyStatus || '';
     }
     const otherFreeEl = document.getElementById('fall_trauma_other_free');
     if (otherFreeEl) otherFreeEl.value = data.otherSymptomsFree || '';
@@ -1764,7 +1770,7 @@ const fallTraumaModule = {
       if (el) el.classList.add('hidden');
     });
 
-    const pregEl = document.getElementById('fallPregnancyStatus'); if (pregEl) pregEl.value = 'not_pregnant';
+    const pregEl = document.getElementById('fallPregnancyStatus'); if (pregEl) pregEl.value = '';
     document.querySelectorAll('#cc-fall-trauma-section input[type="radio"], #cc-fall-trauma-section input[type="checkbox"]').forEach(i => { i.checked = false; });
   },
 

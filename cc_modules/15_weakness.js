@@ -208,20 +208,21 @@ function updateWeaknessOutputs(patient) {
     onsetExactStr = ` (ระบุเวลาเริ่ม: ${patient.weaknessOnsetExactDate || '-'} ${patient.weaknessOnsetExactTime || '-'})`;
   }
 
-  let baselineTh = 'ช่วยเหลือตัวเองได้ปกติ';
+  let baselineTh = 'ไม่ได้ระบุ';
   if (patient.weaknessBaselineFunctional === 'needs_assistance') baselineTh = 'เดิมเดินได้แต่ต้องมีคนช่วยพยุง/ใช้อุปกรณ์ช่วยเดิน';
   else if (patient.weaknessBaselineFunctional === 'wheelchair_bound') baselineTh = 'เดิมนั่งได้บนเตียง/รถเข็น แต่เดินไม่ได้';
   else if (patient.weaknessBaselineFunctional === 'bedbound') baselineTh = 'เดิมเป็นผู้ป่วยนอนติดเตียงอยู่แล้ว (Bed-bound)';
   else if (patient.weaknessBaselineFunctional === 'independent') baselineTh = 'เดิมเดินได้ปกติและช่วยเหลือตัวเองได้ดี';
 
-  let currentTh = 'ทำกิจวัตรได้เองแต่อ่อนเพลีย';
+  let currentTh = 'ไม่ได้ระบุ';
   if (patient.weaknessCurrentFunctional === 'fatigued_mobile') currentTh = 'พอลุกเดินได้เอง แต่อ่อนเพลียเหนื่อยล้ากว่าเดิม';
   else if (patient.weaknessCurrentFunctional === 'needs_assistance') currentTh = 'เดินไม่ค่อยไหว ขาสั่น ต้องมีคนช่วยพยุงตลอดเวลา';
   else if (patient.weaknessCurrentFunctional === 'bedbound') currentTh = 'ลุกไม่ไหว เดินไม่ได้ ต้องนอนบนเตียงตลอดเวลา';
   else if (patient.weaknessCurrentFunctional === 'unresponsive') currentTh = 'ซึมลงมาก ปลุกไม่ค่อยตื่น หรือไม่ตอบสนอง';
 
-  let foodTh = 'ทานได้ปกติ';
-  if (patient.weaknessFoodIntake === 'none') foodTh = 'กินอาหารไม่ได้เลยแม้แต่คำเดียว ไม่ยอมกลืนอาหารเลย';
+  let foodTh = 'ไม่ได้ระบุ';
+  if (patient.weaknessFoodIntake === 'normal') foodTh = 'ทานได้ปกติ';
+  else if (patient.weaknessFoodIntake === 'none') foodTh = 'กินอาหารไม่ได้เลยแม้แต่คำเดียว ไม่ยอมกลืนอาหารเลย';
   else if (patient.weaknessFoodIntake === 'reduced') {
     if (patient.weaknessFoodSubLevel === 'reduced_mild') foodTh = 'เบื่ออาหารแต่ทานได้ใกล้เคียงเดิม (> 75%)';
     else if (patient.weaknessFoodSubLevel === 'reduced_moderate') foodTh = 'ทานได้ประมาณครึ่งหนึ่งของมื้อปกติ (~50%)';
@@ -229,16 +230,18 @@ function updateWeaknessOutputs(patient) {
     else foodTh = 'เบื่ออาหาร ทานได้น้อยลง';
   }
 
-  let drinkTh = 'ดื่มน้ำได้ตามปกติ';
-  if (patient.weaknessDrinkStatus === 'minimal_dry') drinkTh = 'ดื่มน้ำได้น้อยมาก ปากแห้ง คอแห้ง ลิ้นแตกแห้ง';
+  let drinkTh = 'ไม่ได้ระบุ';
+  if (patient.weaknessDrinkStatus === 'normal') drinkTh = 'ดื่มน้ำได้ตามปกติ';
+  else if (patient.weaknessDrinkStatus === 'minimal_dry') drinkTh = 'ดื่มน้ำได้น้อยมาก ปากแห้ง คอแห้ง ลิ้นแตกแห้ง';
   else if (patient.weaknessDrinkStatus === 'none_or_vomit') drinkTh = 'ดื่มน้ำไม่ได้เลย จิบแล้วสำลักหรืออาเจียนออกหมด';
 
-  let urineTh = 'ปริมาณปกติ';
-  if (patient.weaknessUrineOutput === 'oliguria_dark') urineTh = 'ปัสสาวะออกน้อยมากผิดปกติ สีเหลืองเข้มจัด';
+  let urineTh = 'ไม่ได้ระบุ';
+  if (patient.weaknessUrineOutput === 'normal') urineTh = 'ปริมาณปกติ';
+  else if (patient.weaknessUrineOutput === 'oliguria_dark') urineTh = 'ปัสสาวะออกน้อยมากผิดปกติ สีเหลืองเข้มจัด';
   else if (patient.weaknessUrineOutput === 'anuria_gte8h') urineTh = 'ไม่มีปัสสาวะออกเลย นานเกิน 8–12 ชั่วโมง';
   else if (patient.weaknessUrineOutput === 'unnoticed') urineTh = 'ไม่ได้สังเกต';
 
-  let neuroTh = 'ไม่มีอาการอ่อนแรงเฉพาะที่';
+  let neuroTh = 'ไม่ได้ระบุ';
   if (patient.weaknessFocalNeuro === 'unilateral_weakness') neuroTh = 'แขนหรือขาข้างใดข้างหนึ่งยกไม่ขึ้น ปากเบี้ยว พูดไม่ชัด (Focal Neurologic Deficit / Stroke Mimic)';
   else if (patient.weaknessFocalNeuro === 'generalized_symmetric') neuroTh = 'แขนขาไม่มีแรงทั้งสองข้างเท่าๆ กัน ปฏิเสธปากเบี้ยว ปฏิเสธชาครึ่งซีก (Symmetric Weakness)';
   else if (patient.weaknessFocalNeuro === 'ascending_paralysis') neuroTh = 'อ่อนแรงเริ่มจากปลายเท้าไล่ขึ้นมาที่มือและลำตัวอย่างรวดเร็ว (Ascending Paralysis / GBS suspect)';
@@ -259,7 +262,7 @@ function updateWeaknessOutputs(patient) {
 
   const steroidTh = patient.weaknessSteroidHistory === 'steroid_withdrawal'
     ? 'มีประวัติรับประทานยาชุด/ยาหม้อ/ยาสมุนไพรลูกกลอน/สเตียรอยด์แก้ปวดเมื่อย แล้วเพิ่งหยุดยาไป (High Risk Adrenal Crisis)'
-    : 'ปฏิเสธประวัติการใช้ยาสเตียรอยด์และยาลูกกลอน';
+    : (patient.weaknessSteroidHistory === 'none_steroid' ? 'ปฏิเสธประวัติการใช้ยาสเตียรอยด์และยาลูกกลอน' : 'ไม่ได้ระบุ');
 
   const medsThs = [];
   if (medsList.includes('diabetic_meds')) medsThs.push('ยารักษาโรคเบาหวาน (Sulfonylurea/Insulin - Risk of Hypoglycemia)');
@@ -270,23 +273,24 @@ function updateWeaknessOutputs(patient) {
   // Calculate Pertinent Positives and Negatives for Patient Review & Core Summary
   const positives = [];
   const negatives = [];
+  const warningAnswered = warningSigns.length > 0;
 
   // Warning signs
   if (warningSigns.includes('altered_mental')) positives.push('ซึมลงมาก ปลุกตื่นยาก สับสน 🚩');
-  else negatives.push('ปฏิเสธซึมลงสับสน');
+  else if (warningAnswered) negatives.push('ปฏิเสธซึมลงสับสน');
 
   if (warningSigns.includes('tachypnea')) positives.push('หายใจหอบเร็ว/หายใจเหนื่อยลึก 🚩');
-  else negatives.push('ปฏิเสธหายใจหอบเร็ว');
+  else if (warningAnswered) negatives.push('ปฏิเสธหายใจหอบเร็ว');
 
   if (warningSigns.includes('syncope_orthostasis')) positives.push('หน้ามืด วูบหมดสติขณะลุกยืน 🚩');
-  else negatives.push('ปฏิเสธหน้ามืดหรือวูบหมดสติ');
+  else if (warningAnswered) negatives.push('ปฏิเสธหน้ามืดหรือวูบหมดสติ');
 
   if (warningSigns.includes('cold_diaphoresis')) positives.push('เหงื่อแตกท่วมตัว มือเท้าเย็นจัด 🚩');
-  else negatives.push('ไม่มีเหงื่อแตกตัวเย็นชืด');
+  else if (warningAnswered) negatives.push('ไม่มีเหงื่อแตกตัวเย็นชืด');
 
   if (warningSigns.includes('fever_hypothermia')) positives.push('ไข้สูง หรือตัวเย็นจัด 🚩');
   if (warningSigns.includes('chest_tightness')) positives.push('แน่นอึดอัดกลางหน้าอก 🚩');
-  else negatives.push('ปฏิเสธแน่นหน้าอก');
+  else if (warningAnswered) negatives.push('ปฏิเสธแน่นหน้าอก');
 
   // Focal neuro
   if (patient.weaknessFocalNeuro === 'unilateral_weakness') {
@@ -295,7 +299,8 @@ function updateWeaknessOutputs(patient) {
     positives.push('แขนขาอ่อนแรงไล่จากล่างขึ้นบน 🚩');
   } else if (patient.weaknessFocalNeuro === 'generalized_symmetric') {
     positives.push('แขนขาไม่มีแรงทั้งสองข้างเท่ากัน');
-  } else {
+    negatives.push('ไม่มีแขนขาอ่อนแรงครึ่งซีก ปากไม่เบี้ยว');
+  } else if (patient.weaknessFocalNeuro === 'no_motor_weakness') {
     negatives.push('ไม่มีแขนขาอ่อนแรงครึ่งซีก ปากไม่เบี้ยว');
   }
 
@@ -318,11 +323,18 @@ function updateWeaknessOutputs(patient) {
     positives.push(patient.otherSymptomsFree);
   }
 
-  patient.pertinentPositives = positives.length > 0 ? positives : ['ไม่มีอาการร่วมผิดปกติ'];
-  patient.pertinentNegatives = negatives;
+  patient.pertinentPositives = positives.length > 0 ? positives : ['ผู้ป่วยไม่ได้ระบุอาการร่วมเพิ่มเติม'];
+  patient.pertinentNegatives = negatives.length > 0 ? negatives : ['ผู้ป่วยไม่ได้ระบุคำตอบยืนยันในหมวดอาการร่วม'];
 
   const docNotes = patient.doctor_notes || {};
-  const medsText = (!patient.currentMeds || patient.currentMeds === 'ไม่ได้ระบุ' || patient.currentMeds === 'ไม่มี') ? 'ไม่มี' : patient.currentMeds;
+  const medsText = (!patient.currentMeds || patient.currentMeds === 'ไม่ได้ระบุ') ? 'ไม่ได้ระบุ' : patient.currentMeds;
+  const udList = Array.isArray(patient.underlying) ? patient.underlying.filter(Boolean) : [];
+  const udText = udList.length > 0
+    ? udList.join(', ')
+    : ((patient.hospRecordStatus === 'self' || patient.hospRecordStatus === 'additional') ? 'ปฏิเสธ' : 'ไม่ได้ระบุ');
+  const riskMedsText = medsThs.length > 0
+    ? medsThs.join(', ')
+    : (medsList.includes('none_meds') ? 'ไม่มีกลุ่มยาเสี่ยงสูง' : 'ไม่ได้ระบุ');
   const hospLabel = {
     complete: 'มีประวัติกับ รพ.ราชบุรี ครบถ้วน (ดึงข้อมูลเดิมจากระบบ)',
     additional: 'มีประวัติกับ รพ.ราชบุรี และขอให้ข้อมูลเพิ่มเติม',
@@ -341,18 +353,18 @@ function updateWeaknessOutputs(patient) {
 • การรับประทานอาหารและน้ำ: อาหาร (${foodTh}), น้ำ (${drinkTh}), ปัสสาวะ (${urineTh})
 
 • Pertinent Positives:
-${positives.length > 0 ? positives.map(p => `  - ${p}`).join('\n') : '  - ไม่มีอาการร่วมอื่นที่เด่นชัด'}
+${positives.length > 0 ? positives.map(p => `  - ${p}`).join('\n') : '  - ผู้ป่วยไม่ได้ระบุอาการร่วมเพิ่มเติม'}
 
 • Pertinent Negatives:
-${negatives.map(n => `  - ${n}`).join('\n')}
+${patient.pertinentNegatives.map(n => `  - ${n}`).join('\n')}
 
 [Past Medical History & Medications]
 • สถานะประวัติ รพ.ราชบุรี: ${hospLabel}
 • ประวัติการใช้ยาสเตียรอยด์/ยาลูกกลอน: ${steroidTh}
-• ยาประจำตัวกลุ่มเสี่ยงสูง: ${medsThs.length > 0 ? medsThs.join(', ') : 'ไม่มีกลุ่มยาเสี่ยงสูง'}
-• โรคประจำตัว (U/D): ${patient.underlying?.length > 0 ? patient.underlying.join(', ') : 'ปฏิเสธ'}
+• ยาประจำตัวกลุ่มเสี่ยงสูง: ${riskMedsText}
+• โรคประจำตัว (U/D): ${udText}
 • ยาประจำตัว (Current Meds): ${medsText}
-• ประวัติแพ้ยา/แพ้อาหาร (Allergies): ${patient.drugAllergy || 'ปฏิเสธ'}
+• ประวัติแพ้ยา/แพ้อาหาร (Allergies): ${patient.drugAllergy || 'ไม่ได้ระบุ'}
 
 [Emergency Risk Assessment (Red Flags)]
 ${rfs.length > 0
@@ -366,21 +378,23 @@ ${rfs.length > 0
 • แผนการรักษา (Plan/Orders): ${docNotes.plan || '-'}`;
 
   // 2. NARRATIVE NOTE
-  let narrative = `ผู้ป่วย${patient.gender || ''} อายุ ${patient.age || '-'} ปี `;
-  if (Array.isArray(patient.underlying) && patient.underlying.length > 0) {
-    narrative += `มีโรคประจำตัวได้แก่ ${patient.underlying.join(', ')} `;
-  } else {
+  let narrative = `ผู้ป่วย${patient.gender && patient.gender !== 'ไม่ระบุ' ? patient.gender : ''} อายุ ${patient.age || '-'} ปี `;
+  if (udList.length > 0) {
+    narrative += `มีโรคประจำตัวได้แก่ ${udList.join(', ')} `;
+  } else if (patient.hospRecordStatus === 'self' || patient.hospRecordStatus === 'additional') {
     narrative += `ไม่มีโรคประจำตัว `;
+  } else {
+    narrative += `ไม่ได้ระบุประวัติโรคประจำตัว `;
   }
   narrative += `มารับบริการที่ห้องฉุกเฉินด้วยอาการอ่อนเพลีย กินไม่ได้ หรือไม่มีแรง ระยะเวลาประมาณ ${durationStr} ก่อนมาโรงพยาบาล `;
   narrative += `รูปแบบการเริ่มมีอาการ: ${onsetTh}${onsetExactStr} `;
 
-  narrative += `การเปลี่ยนแปลงของความสามารถทางกายภาพ: ${baselineTh} ปัจจุบันเปลี่ยนเป็น ${currentTh} `;
+  narrative += `ความสามารถทางกายภาพเดิม: ${baselineTh} ปัจจุบัน: ${currentTh} `;
   narrative += `ด้านการรับประทานอาหาร: ${foodTh} ด้านการดื่มน้ำ: ${drinkTh} และการขับถ่ายปัสสาวะ: ${urineTh} `;
 
   if (warnThs.length > 0) {
     narrative += `ผู้ป่วยมีอาการเตือนอันตรายร่วม ได้แก่ ${warnThs.join(', ')} `;
-  } else {
+  } else if (warningAnswered) {
     narrative += `ปฏิเสธอาการซึม สับสน หายใจหอบเหนื่อย หน้ามืดเป็นลม หรือเหงื่อแตกตัวเย็น `;
   }
 
@@ -401,8 +415,8 @@ ${rfs.length > 0
   }
 
   narrative += `ประวัติด้านยา: ${steroidTh} `;
-  if (patient.currentMeds) {
-    narrative += `ยาเดิมประจำตัว: ${patient.currentMeds} `;
+  if (medsText !== 'ไม่ได้ระบุ') {
+    narrative += `ยาเดิมประจำตัว: ${medsText} `;
   }
   if (patient.weaknessCustomSubstanceCheck === 'has_custom_substance' && patient.weaknessCustomSubstanceText) {
     narrative += `ประวัติสารหรือยาที่สงสัย: ${patient.weaknessCustomSubstanceText} `;

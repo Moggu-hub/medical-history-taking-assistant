@@ -337,29 +337,22 @@ function renderPsychiatricRapidHpi(patient) {
     posList.push(patient.otherSymptomsFree);
   }
 
-  // Negatives evaluation
-  if (!harmRisks.includes('weapon_possession') && !behaviors.includes('weapon_possession')) {
-    negList.push('ไม่มีอาวุธในครอบครอง');
+  // Negatives evaluation (เฉพาะหมวดที่มีการระบุคำตอบยืนยัน)
+  if (harmRisks.length > 0) {
+    if (!harmRisks.includes('weapon_possession') && !behaviors.includes('weapon_possession')) {
+      negList.push('ไม่มีอาวุธในครอบครอง');
+    }
+    if (!harmRisks.includes('physical_assault_others')) {
+      negList.push('ไม่มีประวัติทำร้ายร่างกายผู้อื่นในครั้งนี้');
+    }
+    if (harmRisks.includes('no_harm_threat') || (!harmRisks.includes('threat_self_harm') && !harmRisks.includes('threat_harm_others'))) {
+      negList.push('ปฏิเสธความคิดทำร้ายตนเอง และปฏิเสธความคิดทำร้ายผู้อื่น');
+    }
   }
-  if (!harmRisks.includes('physical_assault_others')) {
-    negList.push('ไม่มีประวัติทำร้ายร่างกายผู้อื่นในครั้งนี้');
-  }
-  if (!harmRisks.includes('threat_self_harm') && !harmRisks.includes('threat_harm_others')) {
-    negList.push('ปฏิเสธความคิดทำร้ายตนเอง และปฏิเสธความคิดทำร้ายผู้อื่น');
-  }
-  if (hallucinations.length === 0) {
-    negList.push('ไม่มีอาการประสาทหลอน ได้ยินเสียงแว่ว หรือมองเห็นภาพหลอน');
-  }
-  if (delusions.length === 0) {
-    negList.push('ไม่มีความคิดหลงผิด หรือหวาดระแวงปองร้าย');
-  }
-  if (substances.length === 0) {
-    negList.push('ปฏิเสธประวัติการใช้สารเสพติด ยาบ้า กัญชา และปฏิเสธการถอนสุรา');
-  }
-  if (!organicSigns.includes('high_fever_hyperthermia') && !organicSigns.includes('head_trauma_fall') && !organicSigns.includes('seizure_tongue_bite')) {
+  if (organicSigns.length > 0 && !organicSigns.includes('high_fever_hyperthermia') && !organicSigns.includes('head_trauma_fall') && !organicSigns.includes('seizure_tongue_bite')) {
     negList.push('ปฏิเสธไข้สูง, ปฏิเสธอุบัติเหตุศีรษะ และปฏิเสธประวัติชักเกร็งนำมาก่อน');
   }
-  if (!pastViolence.includes('history_violence_assault') && !pastViolence.includes('past_suicide_attempt')) {
+  if (pastViolence.length > 0 && !pastViolence.includes('history_violence_assault') && !pastViolence.includes('past_suicide_attempt')) {
     negList.push('ไม่มีประวัติความรุนแรงหรือพยายามฆ่าตัวตายในอดีต');
   }
 
@@ -370,14 +363,19 @@ function renderPsychiatricRapidHpi(patient) {
     unspecified: 'ไม่ได้ระบุ'
   }[patient.hospRecordStatus] || 'ไม่ได้ระบุ';
 
-  let udDisplay = 'ปฏิเสธ';
-  if (patient.underlying && patient.underlying.length > 0) {
-    const filteredUd = (Array.isArray(patient.underlying) ? patient.underlying : [patient.underlying])
-      .filter(u => u && !u.includes('ปฏิเสธ') && u !== 'ไม่มี' && u !== 'ไม่มีโรคประจำตัว');
-    if (filteredUd.length > 0) udDisplay = filteredUd.join(', ');
-  }
-  const allergyDisplay = (!patient.drugAllergy || patient.drugAllergy.includes('ปฏิเสธ') || patient.drugAllergy === 'ไม่มี') ? 'ปฏิเสธ' : patient.drugAllergy;
-  const medsText = (!patient.currentMeds || patient.currentMeds === 'ไม่ได้ระบุ' || patient.currentMeds === 'ไม่มี') ? 'ไม่มี' : patient.currentMeds;
+  const udArr = Array.isArray(patient.underlying) ? patient.underlying : (patient.underlying ? [patient.underlying] : []);
+  const filteredUd = udArr.filter(u => u && !u.includes('ปฏิเสธ') && u !== 'ไม่มี' && u !== 'ไม่มีโรคประจำตัว' && u !== 'ไม่ได้ระบุ');
+  const hasExplicitUdDeny = udArr.some(u => u && (u.includes('ปฏิเสธ') || u === 'ไม่มี' || u === 'ไม่มีโรคประจำตัว'));
+  const udDisplay = filteredUd.length > 0
+    ? filteredUd.join(', ')
+    : ((hasExplicitUdDeny || patient.hospRecordStatus === 'self' || patient.hospRecordStatus === 'additional') ? 'ปฏิเสธ' : 'ไม่ได้ระบุ');
+
+  const allergyDisplay = (!patient.drugAllergy || patient.drugAllergy === 'ไม่ได้ระบุ')
+    ? 'ไม่ได้ระบุ'
+    : ((patient.drugAllergy.includes('ปฏิเสธ') || patient.drugAllergy === 'ไม่มี') ? 'ปฏิเสธ' : patient.drugAllergy);
+  const medsText = (!patient.currentMeds || patient.currentMeds === 'ไม่ได้ระบุ')
+    ? 'ไม่ได้ระบุ'
+    : (patient.currentMeds === 'ไม่มี' ? 'ไม่มี' : patient.currentMeds);
   const docNotes = patient.doctor_notes || {};
   const redFlags = evaluatePsychiatricRedFlags(patient);
 
@@ -390,13 +388,13 @@ function renderPsychiatricRapidHpi(patient) {
 • ระดับอาการและสถานะเดิมก่อนกำเริบ: ${formatPsychBaselineStatus(patient)}
 • การรับประทานยาจิตเวช: ${formatPsychCompliance(patient)}
 • พฤติกรรมและความรุนแรงที่ตรวจพบในขณะนี้: ${behaviorsTh || 'ไม่ได้ระบุ'}
-• ความเสี่ยงต่อการทำร้ายตนเองหรือผู้อื่น: ${harmRisksTh || 'ปฏิเสธความคิดทำร้ายตนเองหรือผู้อื่น'}
+• ความเสี่ยงต่อการทำร้ายตนเองหรือผู้อื่น: ${harmRisksTh || 'ไม่ได้ระบุ'}
 
 • Pertinent Positives:
-${posList.length > 0 ? posList.map(p => `  - ${p}`).join('\n') : '  - ไม่มีพฤติกรรมก้าวร้าวรุนแรง'}
+${posList.length > 0 ? posList.map(p => `  - ${p}`).join('\n') : '  - ผู้ป่วยไม่ได้ระบุอาการร่วมเพิ่มเติม'}
 
 • Pertinent Negatives:
-${negList.map(n => `  - ${n}`).join('\n')}
+${negList.length > 0 ? negList.map(n => `  - ${n}`).join('\n') : '  - ผู้ป่วยไม่ได้ระบุคำตอบยืนยันในหมวดอาการร่วม'}
 
 [Past Medical History & Medications]
 • สถานะประวัติ รพ.ราชบุรี: ${hospLabel}
@@ -429,7 +427,8 @@ function renderPsychiatricNarrative(patient) {
   const baselineStr = formatPsychBaselineStatus(patient);
   const compStr = formatPsychCompliance(patient);
 
-  let note = `ผู้ป่วย${patient.gender || ''} อายุ ${patient.age || 'ไม่ระบุ'} ปี มารับการตรวจที่ห้องฉุกเฉินด้วยอาการเอะอะโวยวาย / อาการทางจิตเวชฉุกเฉิน เริ่มมีอาการหรือกำเริบขึ้นมา ${durStr} ก่อนมารพ. ผู้ให้ข้อมูลคือ${informantStr} ประวัติสถานะเดิมก่อนกำเริบคือ${baselineStr} ประวัติการรับประทานยาจิตเวชคือ${compStr}`;
+  const genderLabel = (patient.gender && patient.gender !== 'ไม่ระบุ') ? patient.gender : '';
+  let note = `ผู้ป่วย${genderLabel} อายุ ${patient.age || 'ไม่ระบุ'} ปี มารับการตรวจที่ห้องฉุกเฉินด้วยอาการเอะอะโวยวาย / อาการทางจิตเวชฉุกเฉิน เริ่มมีอาการหรือกำเริบขึ้นมา ${durStr} ก่อนมารพ. ผู้ให้ข้อมูลคือ${informantStr} ประวัติสถานะเดิมก่อนกำเริบคือ${baselineStr} ประวัติการรับประทานยาจิตเวชคือ${compStr}`;
 
   const behaviors = Array.isArray(patient.psychBehaviors) ? patient.psychBehaviors : [];
   const harmRisks = Array.isArray(patient.psychHarmRisks) ? patient.psychHarmRisks : [];
@@ -455,8 +454,8 @@ function renderPsychiatricNarrative(patient) {
 
   if (syms.length > 0) {
     note += ` ร่วมกับมีอาการสำคัญ: ${syms.join(', ')}`;
-  } else {
-    note += ' ผู้ป่วยไม่มีอาวุธ ปฏิเสธความคิดทำร้ายตนเองหรือผู้อื่น และไม่มีอาการชักหรือไข้สูงนำมาก่อน';
+  } else if (harmRisks.includes('no_harm_threat')) {
+    note += ' ผู้ป่วยปฏิเสธการครอบครองอาวุธและการทำร้ายตนเองหรือผู้อื่น';
   }
 
   if (patient.psychSubstanceDetail) {
@@ -485,7 +484,7 @@ function updatePsychiatricOutputs(rec) {
   if (posMatch) {
     rec.pertinentPositives = posMatch[1].trim().split('\n').map(l => l.replace(/^[-*\s]+/, '').trim());
   } else {
-    rec.pertinentPositives = ['ไม่มีพฤติกรรมก้าวร้าวรุนแรง'];
+    rec.pertinentPositives = ['ผู้ป่วยไม่ได้ระบุอาการร่วมเพิ่มเติม'];
   }
 
   const negMatch = rapidText.match(/• Pertinent Negatives:\n((?:\s*-[^\n]+\n?)+)/);

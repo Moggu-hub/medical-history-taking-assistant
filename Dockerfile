@@ -1,11 +1,12 @@
-FROM node:20-alpine
+FROM node:24-alpine
 
 WORKDIR /app
 
-# Copy application files (zero external npm dependencies needed)
+COPY package.json ./
+RUN npm install --omit=dev --no-audit --no-fund || true
+
 COPY . .
 
-# Ensure persistent data directory exists
 RUN mkdir -p /app/data
 
 ENV PORT=3001

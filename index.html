@@ -386,9 +386,22 @@
             class="w-full bg-white border border-slate-300 rounded-xl pl-10 pr-4 py-2 text-xs sm:text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-medical-500 shadow-sm">
         </div>
 
-        <!-- 23 Chief Complaints Grid -->
-        <div id="ccGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          <!-- Dynamically populated below -->
+        <!-- Adult Chief Complaints Grid -->
+        <div id="ccGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3"></div>
+
+        <!-- Pediatric Chief Complaints Zone -->
+        <div id="pediatricCcSection" class="mt-8 pt-6 border-t-2 border-dashed border-sky-200">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
+            <div class="flex items-center space-x-2">
+              <span class="bg-sky-100 text-sky-700 p-1.5 rounded-lg inline-flex"><i data-lucide="baby" class="w-4 h-4"></i></span>
+              <div>
+                <h2 class="text-sm sm:text-base font-bold text-slate-900">กลุ่มอาการเฉพาะผู้ป่วยเด็ก (Pediatric Chief Complaints)</h2>
+                <p class="text-[11px] text-slate-500">ชุดคำถามปรับเปลี่ยนอัตโนมัติตามช่วงอายุที่ระบุ (ปี / เดือน / วัน)</p>
+              </div>
+            </div>
+            <span class="text-[10px] font-semibold text-sky-700 bg-sky-50 border border-sky-200 px-2.5 py-1 rounded-full self-start sm:self-auto">กรอกอายุก่อนเริ่มซักประวัติ</span>
+          </div>
+          <div id="pediatricCcGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3"></div>
         </div>
 
         <div class="mt-8 text-center bg-slate-50 border border-slate-200 rounded-2xl p-4 text-xs text-slate-500">
@@ -454,6 +467,22 @@
         </button>
       </div>
 
+      <!-- TOP BANNERS ZONE: แบรนเนอร์แจ้งเตือนจุดคัดกรอง / ย้าย CC และข้อแนะนำเบื้องต้น (ขึ้นต้นก่อนข้อมูลผู้ป่วยเบื้องต้น) -->
+      <div id="ccTopBannersWrapper" class="hidden mb-6">
+        <div class="flex flex-col gap-4">
+          <div id="adultToPediatricRedirectBanner" class="hidden p-3.5 bg-amber-50 border border-amber-300 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs text-amber-900">
+            <div class="flex items-start sm:items-center space-x-2.5">
+              <i data-lucide="baby" class="w-4 h-4 text-amber-600 shrink-0 mt-0.5 sm:mt-0"></i>
+              <span id="adultToPediatricRedirectText" class="leading-relaxed">กรณีผู้ป่วยเด็ก โปรดใช้แบบประเมินเฉพาะผู้ป่วยเด็ก</span>
+            </div>
+            <button type="button" id="adultToPediatricSwitchBtn" onclick="switchBetweenAdultAndPediatricCc()" class="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-semibold text-[11px] shrink-0 transition cursor-pointer self-end sm:self-auto">สลับไปแบบประเมินเด็ก</button>
+          </div>
+          <div id="ccTopBannersContainer" class="hidden">
+            <div id="ccTopBannersInner" class="flex flex-col gap-4"></div>
+          </div>
+        </div>
+      </div>
+
       <form id="intakeForm" onsubmit="handlePatientSubmit(event)" novalidate class="space-y-6">
 
         <!-- CARD 0: ข้อมูลทั่วไปของผู้ป่วย (ชื่อ-นามสกุล, อายุ, เพศ) -->
@@ -480,22 +509,46 @@
                 <option value="ด.ญ. (Miss)">ด.ญ. (Miss)</option>
               </select>
             </div>
-            <div class="sm:col-span-6">
+            <div class="sm:col-span-5">
               <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">ชื่อ-นามสกุล <span class="text-rose-500">*</span></label>
               <input type="text" id="patientNameInput" placeholder="เช่น สมคิด สุขเกษม" 
                 class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-medical-500 focus:bg-white placeholder:text-slate-400">
             </div>
-            <div class="sm:col-span-3">
-              <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">อายุ (ปี) <span class="text-rose-500">*</span></label>
-              <input type="number" id="patientAgeInput" min="1" max="120" placeholder="เช่น 45" oninput="checkSeizurePediatricAgeGuidance()" 
-                class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-medical-500 focus:bg-white placeholder:text-slate-400">
+            <div class="sm:col-span-4">
+              <label id="patientAgeLabel" class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">อายุ (ปี) <span class="text-rose-500">*</span></label>
+              <div class="flex items-center space-x-2">
+                <input type="number" id="patientAgeInput" min="0" max="365" step="any" placeholder="เช่น 45" oninput="handlePatientAgeChange()" 
+                  class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 text-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-medical-500 focus:bg-white placeholder:text-slate-400">
+                <select id="patientAgeUnitSelect" onchange="handlePatientAgeChange()" class="hidden bg-slate-50 border border-slate-300 rounded-xl px-2.5 py-2.5 text-slate-800 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-medical-500 focus:bg-white shrink-0">
+                  <option value="years" selected>ปี</option>
+                  <option value="months">เดือน</option>
+                  <option value="days">วัน</option>
+                </select>
+              </div>
+            </div>
+            <div id="pediatricWeightWrap" class="hidden sm:col-span-4">
+              <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">น้ำหนักตัวเด็ก (กก.)</label>
+              <input type="number" id="patientWeightKgInput" min="0.5" max="150" step="0.1" placeholder="เช่น 12.5"
+                class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 text-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-medical-500 focus:bg-white placeholder:text-slate-400">
             </div>
           </div>
         </div>
 
-        <!-- ================================================================= -->
-        <!-- MODULAR CHIEF COMPLAINT QUESTIONNAIRES CONTAINER (cc_modules/)    -->
-        <!-- ================================================================= -->
+        <div id="pediatricAgeGateBanner" class="hidden p-4 bg-sky-50 border-2 border-sky-300 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-sky-900">
+          <div class="flex items-start space-x-2.5">
+            <i data-lucide="calendar-clock" class="w-5 h-5 text-sky-600 shrink-0 mt-0.5"></i>
+            <div>
+              <h3 id="pediatricAgeGateTitle" class="font-bold text-sm">กรุณาระบุอายุผู้ป่วยเด็กด้านบนก่อนเริ่มซักประวัติ</h3>
+              <p id="pediatricAgeGateDesc" class="text-[11px] mt-0.5 leading-relaxed">ระบบจะปรับชุดคำถามให้ตรงกับช่วงอายุโดยอัตโนมัติ (เลือกหน่วย ปี / เดือน / วัน)</p>
+            </div>
+          </div>
+          <div class="flex items-center space-x-2 self-end sm:self-auto shrink-0">
+            <button type="button" id="pediatricAgeFocusBtn" onclick="focusPatientAgeInput()" class="px-3 py-1.5 bg-sky-600 hover:bg-sky-700 text-white rounded-xl font-semibold text-[11px] transition cursor-pointer">กรอกอายุผู้ป่วย</button>
+            <button type="button" id="pediatricSwitchToAdultBtn" onclick="switchBetweenAdultAndPediatricCc()" class="hidden px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-semibold text-[11px] transition cursor-pointer">สลับไปแบบประเมินผู้ใหญ่</button>
+          </div>
+        </div>
+
+        <!-- MODULAR CHIEF COMPLAINT QUESTIONNAIRES CONTAINER -->
         <div id="ccQuestionnairesContainer" class="space-y-6"></div>
 
         <!-- CARD 3: หมวดประวัติสุขภาพและยาประจำตัว -->
@@ -552,46 +605,32 @@
             <!-- ส่วนกรอกข้อมูลสุขภาพเพิ่มเติม: จะแสดงเมื่อเลือกกลุ่ม 2 หรือ 3 -->
             <div id="pmhDetailsSection" class="hidden space-y-4 pt-2 border-t border-slate-100">
 
-              <!-- โรคประจำตัว -->
               <div>
-                <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">โรคประจำตัวที่มี (เลือกได้หลายข้อ)</label>
-                <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-2">
-                  <label class="selectable-card flex items-center p-2.5 rounded-lg text-xs cursor-pointer">
-                    <input type="checkbox" id="ud_dm" class="rounded text-medical-600 h-3.5 w-3.5">
-                    <span class="ml-2 font-medium">เบาหวาน (DM)</span>
+                <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+                  <label class="text-xs font-semibold text-slate-700 uppercase tracking-wider">โรคประจำตัวที่มี (เลือกได้หลายข้อ)</label>
+                  <label class="selectable-card inline-flex items-center px-2.5 py-1 rounded-lg border border-slate-200 hover:border-medical-300 bg-slate-50 cursor-pointer transition flex-shrink-0">
+                    <input type="checkbox" id="ud_none" onchange="handleUdNoneToggle(this.checked)" class="text-medical-600 focus:ring-medical-500 h-3.5 w-3.5 rounded flex-shrink-0">
+                    <span class="ml-3 text-[11px] font-medium text-slate-700 whitespace-nowrap">ไม่มีโรคประจำตัว</span>
                   </label>
-                  <label class="selectable-card flex items-center p-2.5 rounded-lg text-xs cursor-pointer">
-                    <input type="checkbox" id="ud_ht" class="rounded text-medical-600 h-3.5 w-3.5">
-                    <span class="ml-2 font-medium">ความดันสูง (HT)</span>
-                  </label>
-                  <label class="selectable-card flex items-center p-2.5 rounded-lg text-xs cursor-pointer">
-                    <input type="checkbox" id="ud_dlp" class="rounded text-medical-600 h-3.5 w-3.5">
-                    <span class="ml-2 font-medium">ไขมันในเลือดสูง (DLP)</span>
-                  </label>
-                  <label class="selectable-card flex items-center p-2.5 rounded-lg text-xs cursor-pointer">
-                    <input type="checkbox" id="ud_cad" onchange="toggleBranch('ud_cad_detail_wrap', this.checked)" class="rounded text-medical-600 h-3.5 w-3.5">
-                    <span class="ml-2 font-medium">หลอดเลือดหัวใจ (CAD)</span>
-                  </label>
-                  <label class="selectable-card flex items-center p-2.5 rounded-lg text-xs cursor-pointer">
-                    <input type="checkbox" id="ud_stroke" class="rounded text-medical-600 h-3.5 w-3.5">
-                    <span class="ml-2 font-medium">หลอดเลือดสมอง (Stroke)</span>
-                  </label>
-                  <label class="selectable-card flex items-center p-2.5 rounded-lg text-xs cursor-pointer">
-                    <input type="checkbox" id="ud_ckd" class="rounded text-medical-600 h-3.5 w-3.5">
-                    <span class="ml-2 font-medium">ไตเรื้อรัง (CKD)</span>
-                  </label>
-                  <label class="selectable-card flex items-center p-2.5 rounded-lg text-xs cursor-pointer">
-                    <input type="checkbox" id="ud_asthma" onchange="handleAsthmaCopdToggle()" class="rounded text-medical-600 h-3.5 w-3.5">
-                    <span class="ml-2 font-medium">หอบหืด (Asthma)</span>
-                  </label>
-                  <label class="selectable-card flex items-center p-2.5 rounded-lg text-xs cursor-pointer">
-                    <input type="checkbox" id="ud_copd" onchange="handleAsthmaCopdToggle()" class="rounded text-medical-600 h-3.5 w-3.5">
-                    <span class="ml-2 font-medium">ถุงลมโป่งพอง (COPD)</span>
-                  </label>
-                  <label class="selectable-card flex items-center p-2.5 rounded-lg text-xs cursor-pointer">
-                    <input type="checkbox" id="ud_cancer" onchange="toggleBranch('cancer_type_wrap', this.checked)" class="rounded text-medical-600 h-3.5 w-3.5">
-                    <span class="ml-2 font-medium">มะเร็ง (Cancer)</span>
-                  </label>
+                </div>
+                <div id="adultUnderlyingGroup" class="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-2">
+                  <label class="selectable-card flex items-center p-2.5 rounded-lg text-xs cursor-pointer"><input type="checkbox" id="ud_dm" onchange="handleUdItemChange()" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 font-medium">เบาหวาน (DM)</span></label>
+                  <label class="selectable-card flex items-center p-2.5 rounded-lg text-xs cursor-pointer"><input type="checkbox" id="ud_ht" onchange="handleUdItemChange()" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 font-medium">ความดันสูง (HT)</span></label>
+                  <label class="selectable-card flex items-center p-2.5 rounded-lg text-xs cursor-pointer"><input type="checkbox" id="ud_dlp" onchange="handleUdItemChange()" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 font-medium">ไขมันในเลือดสูง (DLP)</span></label>
+                  <label class="selectable-card flex items-center p-2.5 rounded-lg text-xs cursor-pointer"><input type="checkbox" id="ud_cad" onchange="toggleBranch('ud_cad_detail_wrap', this.checked); handleUdItemChange()" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 font-medium">หลอดเลือดหัวใจ (CAD)</span></label>
+                  <label class="selectable-card flex items-center p-2.5 rounded-lg text-xs cursor-pointer"><input type="checkbox" id="ud_stroke" onchange="handleUdItemChange()" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 font-medium">หลอดเลือดสมอง (Stroke)</span></label>
+                  <label class="selectable-card flex items-center p-2.5 rounded-lg text-xs cursor-pointer"><input type="checkbox" id="ud_ckd" onchange="handleUdItemChange()" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 font-medium">ไตเรื้อรัง (CKD)</span></label>
+                  <label class="selectable-card flex items-center p-2.5 rounded-lg text-xs cursor-pointer"><input type="checkbox" id="ud_asthma" onchange="handleAsthmaCopdToggle(); handleUdItemChange()" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 font-medium">หอบหืด (Asthma)</span></label>
+                  <label class="selectable-card flex items-center p-2.5 rounded-lg text-xs cursor-pointer"><input type="checkbox" id="ud_copd" onchange="handleAsthmaCopdToggle(); handleUdItemChange()" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 font-medium">ถุงลมโป่งพอง (COPD)</span></label>
+                  <label class="selectable-card flex items-center p-2.5 rounded-lg text-xs cursor-pointer"><input type="checkbox" id="ud_cancer" onchange="toggleBranch('cancer_type_wrap', this.checked); handleUdItemChange()" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 font-medium">มะเร็ง (Cancer)</span></label>
+                </div>
+                <div id="pediatricUnderlyingGroup" class="hidden grid grid-cols-2 sm:grid-cols-3 gap-2 mb-2">
+                  <label class="selectable-card flex items-center p-2.5 rounded-lg text-xs cursor-pointer"><input type="checkbox" id="ud_ped_preterm" onchange="handleUdItemChange()" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 font-medium">คลอดก่อนกำหนด / น้ำหนักแรกเกิดน้อย</span></label>
+                  <label class="selectable-card flex items-center p-2.5 rounded-lg text-xs cursor-pointer"><input type="checkbox" id="ud_ped_chd" onchange="handleUdItemChange()" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 font-medium">โรคหัวใจแต่กำเนิด (CHD)</span></label>
+                  <label class="selectable-card flex items-center p-2.5 rounded-lg text-xs cursor-pointer"><input type="checkbox" id="ud_ped_asthma" onchange="handleUdItemChange()" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 font-medium">หอบหืด / ภูมิแพ้ทางเดินหายใจ</span></label>
+                  <label class="selectable-card flex items-center p-2.5 rounded-lg text-xs cursor-pointer"><input type="checkbox" id="ud_ped_epilepsy" onchange="handleUdItemChange()" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 font-medium">โรคลมชัก / เคยชักจากไข้สูง</span></label>
+                  <label class="selectable-card flex items-center p-2.5 rounded-lg text-xs cursor-pointer"><input type="checkbox" id="ud_ped_g6pd" onchange="handleUdItemChange()" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 font-medium">พร่องเอนไซม์ G6PD (แพ้ถั่ว/ยา)</span></label>
+                  <label class="selectable-card flex items-center p-2.5 rounded-lg text-xs cursor-pointer"><input type="checkbox" id="ud_ped_thal" onchange="handleUdItemChange()" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 font-medium">โรคเลือด / ธาลัสซีเมีย</span></label>
                 </div>
 
                 
@@ -672,7 +711,7 @@
                 </div>
 
                 <!-- โรคประจำตัวอื่นๆ -->
-                <input type="text" id="ud_other" placeholder="โรคประจำตัวอื่นๆ (ถ้ามี เช่น ตับแข็ง, ไทรอยด์, SLE)" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2 text-xs text-slate-800 placeholder:text-slate-400">
+                <input type="text" id="ud_other" oninput="handleUdItemChange()" placeholder="โรคประจำตัวอื่นๆ (ถ้ามี เช่น ตับแข็ง, ไทรอยด์, SLE)" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2 text-xs text-slate-800 placeholder:text-slate-400">
               </div>
 
               <!-- ข้อ 4: ประวัติการแพ้ยา/แพ้อาหาร (ไม่เลือก default ล่วงหน้า) -->
@@ -693,16 +732,22 @@
                 </div>
               </div>
 
-              <!-- ยาประจำตัว (ลบ default 'ไม่มี' ออก ใช้ placeholder แทน + เพิ่ม checkbox ไม่ทราบชื่อ) -->
+              <!-- ยาประจำตัว -->
               <div>
                 <div class="flex flex-wrap items-center justify-between gap-2 mb-1.5">
                   <label for="currentMeds" class="block text-xs font-semibold text-slate-700 uppercase tracking-wider">ยาที่รับประทานประจำในปัจจุบัน</label>
-                  <label class="selectable-card inline-flex items-center px-2.5 py-1 rounded-lg cursor-pointer bg-slate-50 border border-slate-200 hover:border-medical-400 transition">
-                    <input type="checkbox" id="currentMedsUnknown" onchange="handleCurrentMedsUnknownToggle(this.checked)" class="text-medical-600 focus:ring-medical-500 h-3.5 w-3.5 rounded">
-                    <span class="ml-1.5 text-xs font-semibold text-slate-700">ไม่ทราบชื่อ</span>
-                  </label>
+                  <div class="flex flex-wrap items-center gap-1.5">
+                    <label class="selectable-card inline-flex items-center px-2.5 py-1 rounded-lg cursor-pointer bg-slate-50 border border-slate-200 hover:border-medical-300 transition flex-shrink-0">
+                      <input type="checkbox" id="currentMedsNone" onchange="handleCurrentMedsNoneToggle(this.checked)" class="text-medical-600 focus:ring-medical-500 h-3.5 w-3.5 rounded flex-shrink-0">
+                      <span class="ml-3 text-[11px] font-medium text-slate-700 whitespace-nowrap">ไม่มียาประจำ</span>
+                    </label>
+                    <label class="selectable-card inline-flex items-center px-2.5 py-1 rounded-lg cursor-pointer bg-slate-50 border border-slate-200 hover:border-medical-300 transition flex-shrink-0">
+                      <input type="checkbox" id="currentMedsUnknown" onchange="handleCurrentMedsUnknownToggle(this.checked)" class="text-medical-600 focus:ring-medical-500 h-3.5 w-3.5 rounded flex-shrink-0">
+                      <span class="ml-3 text-[11px] font-medium text-slate-700 whitespace-nowrap">ไม่ทราบชื่อ</span>
+                    </label>
+                  </div>
                 </div>
-                <input type="text" id="currentMeds" placeholder="เช่น Amlodipine 5mg, ยาเบาหวาน หรือระบุ 'ไม่มี'" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2 text-xs text-slate-800 font-medium placeholder:text-slate-400">
+                <input type="text" id="currentMeds" oninput="handleCurrentMedsInputChange(this.value)" placeholder="เช่น Amlodipine 5mg, ยาเบาหวาน หรือระบุ 'ไม่มี'" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2 text-xs text-slate-800 font-medium placeholder:text-slate-400">
               </div>
 
             </div>
@@ -779,10 +824,10 @@
                 <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
                 <span>เปลี่ยนอาการสำคัญหลัก (Change CC)</span>
               </button>
-              <button type="button" onclick="simulateNewQrQueuePass()"
-                class="w-full bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 font-medium py-2.5 px-4 rounded-xl text-xs transition flex items-center justify-center space-x-1.5">
-                <i data-lucide="qr-code" class="w-3.5 h-3.5"></i>
-                <span>จำลองสแกน QR ผู้ป่วยรายถัดไป</span>
+              <button type="button" id="patientStatusFeedbackBtn" onclick="openUserFeedbackModal('patient_status')"
+                class="w-full bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 font-medium py-2.5 px-4 rounded-xl text-xs transition flex items-center justify-center space-x-1.5 cursor-pointer">
+                <i data-lucide="message-square-plus" class="w-3.5 h-3.5"></i>
+                <span>แจ้งปัญหา / ส่งคำแนะนำระบบ</span>
               </button>
             </div>
           </div>
@@ -1059,7 +1104,7 @@
                 </div>
 
                 <div class="bg-slate-900/90 rounded-lg p-2.5 text-[11px] text-slate-400 border border-slate-700/50 mt-2">
-                  <strong class="text-slate-300">ข้อควรระวังทางคลินิก:</strong> หากตรวจพบ SBP > 180 mmHg หรือ DBP > 110 mmHg หรือมีประวัติ PDE-5 inhibitor (เช่น Viagra) ภายใน 24-48 ชม. ให้แพทย์ระงับการสั่งใช้ยาจนกว่าจะประเมินซ้ำ
+                  <strong class="text-slate-300">ข้อควรระวังทางคลินิก:</strong> หากสงสัย RV Infarction หรือมีประวัติ PDE-5 inhibitor (เช่น Viagra) ภายใน 24-48 ชม. ให้แพทย์ระงับการสั่งใช้ยาจนกว่าจะประเมินซ้ำ
                 </div>
               </div>
             </div>
@@ -1943,6 +1988,6 @@
   <script src="cc_modules/32_poisoning.js"></script>
   <script src="cc_modules/33_self_harm.js"></script>
   <script src="core_engine.js"></script>
-  <script src="sync_manager.js"></script>
+  <script src="pmh_controls.js"></script><script src="storage_adapter.js"></script><script src="feedback_module.js"></script><script src="sync_manager.js"></script>
 </body>
 </html>

@@ -360,13 +360,13 @@ function updateUrinaryRetentionOutputs(patient) {
   neuroSigns.forEach(key => {
     if (key !== 'urinary_rf_neuro_none' && neuroMap[key]) positives.push(`${neuroMap[key]} 🚩`);
   });
-  if (neuroSigns.length === 0 || neuroSigns.includes('urinary_rf_neuro_none')) negatives.push('ปฏิเสธชาบริเวณก้น แขนขาไม่อ่อนแรง กลั้นอุจจาระได้ปกติ');
+  if (neuroSigns.includes('urinary_rf_neuro_none')) negatives.push('ปฏิเสธชาบริเวณก้น แขนขาไม่อ่อนแรง กลั้นอุจจาระได้ปกติ');
 
   // 4. Systemic & Sepsis
   systemicSigns.forEach(key => {
     if (key !== 'urinary_rf_systemic_none' && systemicMap[key]) positives.push(`${systemicMap[key]} 🚩`);
   });
-  if (systemicSigns.length === 0 || systemicSigns.includes('urinary_rf_systemic_none')) negatives.push('ปฏิเสธไข้หนาวสั่น ไม่ปวดบั้นเอว');
+  if (systemicSigns.includes('urinary_rf_systemic_none')) negatives.push('ปฏิเสธไข้หนาวสั่น ไม่ปวดบั้นเอว');
 
   // 5. Trauma
   trauma.forEach(key => {
@@ -377,7 +377,7 @@ function updateUrinaryRetentionOutputs(patient) {
   // 6. Catheter Status
   if (patient.urinaryCatheterStatus && patient.urinaryCatheterStatus !== 'catheter_none') {
     positives.push(catheterMap[patient.urinaryCatheterStatus] || patient.urinaryCatheterStatus);
-  } else {
+  } else if (patient.urinaryCatheterStatus === 'catheter_none') {
     negatives.push('ไม่ได้คาสายสวนปัสสาวะเดิม');
   }
 
@@ -397,14 +397,14 @@ function updateUrinaryRetentionOutputs(patient) {
   }
 
   // CRITICAL: Assign pertinent positives & negatives to patient object for patient status view rendering
-  patient.pertinentPositives = positives.length > 0 ? positives : ['ไม่มีอาการร่วมผิดปกติ'];
-  patient.pertinentNegatives = negatives;
+  patient.pertinentPositives = positives.length > 0 ? positives : ['ผู้ป่วยไม่ได้ระบุอาการร่วมเพิ่มเติม'];
+  patient.pertinentNegatives = negatives.length > 0 ? negatives : ['ผู้ป่วยไม่ได้ระบุคำตอบยืนยันในหมวดอาการร่วม'];
 
   const redFlags = evaluateUrinaryRetentionRedFlags(patient);
   patient.redFlags = redFlags;
 
   const docNotes = patient.doctor_notes || {};
-  const medsText = (!patient.currentMeds || patient.currentMeds === 'ไม่ได้ระบุ' || patient.currentMeds === 'ไม่มี') ? 'ไม่มี' : patient.currentMeds;
+  const medsText = (!patient.currentMeds || patient.currentMeds === 'ไม่ได้ระบุ') ? 'ไม่ได้ระบุ' : patient.currentMeds;
   const hospLabel = {
     complete: 'มีประวัติกับ รพ.ราชบุรี ครบถ้วน (ดึงข้อมูลเดิมจากระบบ)',
     additional: 'มีประวัติกับ รพ.ราชบุรี และขอให้ข้อมูลเพิ่มเติม',
@@ -412,13 +412,22 @@ function updateUrinaryRetentionOutputs(patient) {
     unspecified: 'ไม่ได้ระบุ'
   }[patient.hospRecordStatus] || 'ไม่ได้ระบุ';
 
-  let udDisplay = 'ปฏิเสธ';
+  const udExplicitDeny = Array.isArray(patient.underlying) && patient.underlying.some(u => u && u.includes('ปฏิเสธ'));
+  let udDisplay = (patient.hospRecordStatus === 'self' || patient.hospRecordStatus === 'additional' || udExplicitDeny) ? 'ปฏิเสธ' : 'ไม่ได้ระบุ';
   if (patient.underlying && patient.underlying.length > 0) {
     const filteredUd = (Array.isArray(patient.underlying) ? patient.underlying : [patient.underlying])
       .filter(u => u && !u.includes('ปฏิเสธ') && u !== 'ไม่มี' && u !== 'ไม่มีโรคประจำตัว');
     if (filteredUd.length > 0) udDisplay = filteredUd.join(', ');
   }
-  const allergyDisplay = (!patient.drugAllergy || patient.drugAllergy.includes('ปฏิเสธ') || patient.drugAllergy === 'ไม่มี') ? 'ปฏิเสธ' : patient.drugAllergy;
+  const allergyDisplay = (!patient.drugAllergy || patient.drugAllergy === 'ไม่ได้ระบุ')
+    ? 'ไม่ได้ระบุ'
+    : ((patient.drugAllergy.includes('ปฏิเสธ') || patient.drugAllergy === 'ไม่มี') ? 'ปฏิเสธ' : patient.drugAllergy);
+  const uroPmhText = pmhUrology.length > 0 && !pmhUrology.includes('pmh_urology_none')
+    ? pmhUrology.map(k => pmhUrologyMap[k]).filter(Boolean).join(', ')
+    : (pmhUrology.includes('pmh_urology_none') ? 'ปฏิเสธ' : 'ไม่ได้ระบุ');
+  const uroMedsText = meds.length > 0 && !meds.includes('med_none')
+    ? meds.map(k => medsMap[k]).filter(Boolean).join(', ')
+    : (meds.includes('med_none') ? 'ปฏิเสธ' : 'ไม่ได้ระบุ');
 
   // Build Rapid Note (Standardized: Primary descriptor at top, details in Pertinent without category prefixes)
   const defaultRapid =
@@ -426,18 +435,18 @@ function updateUrinaryRetentionOutputs(patient) {
 ปัสสาวะไม่ออก / เล็ดราด / กะปริดกะปรอย มา ${durationText}
 
 [History of Present Illness (HPI)]
-• ลักษณะอาการ: ${sensationMap[patient.urinarySensation] || 'ไม่ระบุ'}${patient.painScore !== null && patient.painScore !== undefined ? ` (Pain Score: ${patient.painScore}/10)` : ''}
+• ลักษณะอาการ: ${sensationMap[patient.urinarySensation] || 'ไม่ได้ระบุ'}${patient.painScore !== null && patient.painScore !== undefined ? ` (Pain Score: ${patient.painScore}/10)` : ''}
 
 • Pertinent Positives:
-${positives.length > 0 ? positives.map(p => `  - ${p}`).join('\n') : '  - ไม่มีอาการร่วมอื่นที่เด่นชัด'}
+${positives.length > 0 ? positives.map(p => `  - ${p}`).join('\n') : '  - ผู้ป่วยไม่ได้ระบุอาการร่วมเพิ่มเติม'}
 
 • Pertinent Negatives:
-${negatives.map(n => `  - ${n}`).join('\n')}
+${patient.pertinentNegatives.map(n => `  - ${n}`).join('\n')}
 
 [Past Medical History & Medications]
 • สถานะประวัติ รพ.ราชบุรี: ${hospLabel}
-• โรคระบบทางเดินปัสสาวะเดิม: ${pmhUrology.length > 0 && !pmhUrology.includes('pmh_urology_none') ? pmhUrology.map(k => pmhUrologyMap[k]).filter(Boolean).join(', ') : 'ปฏิเสธ'}
-• ยา/สารกระตุ้นก่อนเกิดอาการ: ${meds.length > 0 && !meds.includes('med_none') ? meds.map(k => medsMap[k]).filter(Boolean).join(', ') : 'ปฏิเสธ'}
+• โรคระบบทางเดินปัสสาวะเดิม: ${uroPmhText}
+• ยา/สารกระตุ้นก่อนเกิดอาการ: ${uroMedsText}
 • โรคประจำตัว (U/D): ${udDisplay}
 • ยาประจำตัว (Current Meds): ${medsText}
 • ประวัติแพ้ยา/แพ้อาหาร (Allergies): ${allergyDisplay}
@@ -455,51 +464,51 @@ ${redFlags.length > 0
 
   // Build Narrative Note
   let narrative = `ผู้ป่วย [${patient.name || '-'}] อายุ ${patient.age || '-'} ปี เพศ ${patient.gender || 'ไม่ระบุ'} มารับการตรวจที่ห้องฉุกเฉิน รพ.ราชบุรี ด้วยอาการปัสสาวะไม่ออก / เล็ดราด / กะปริดกะปรอย เป็นมา ${durationText} ก่อนมาโรงพยาบาล `;
-  narrative += `โดยให้ประวัติลักษณะการขับถ่ายว่า [${sensationMap[patient.urinarySensation] || 'ปัสสาวะไม่ออก'}] `;
+  narrative += `โดยให้ประวัติลักษณะการขับถ่ายว่า [${sensationMap[patient.urinarySensation] || 'ไม่ได้ระบุ'}] `;
   if (patient.painScore !== null && patient.painScore !== undefined) {
     narrative += `ประเมินระดับความปวดแน่นบริเวณท้องน้อยได้ ${patient.painScore}/10 คะแนน `;
   }
 
   if (luts.length > 0 && !luts.includes('luts_none_acute')) {
     narrative += `ประวัติการขับถ่ายเดิมก่อนหน้านี้พบว่ามีอาการ: ${luts.map(k => lutsMap[k]).filter(Boolean).join(', ')} `;
-  } else {
+  } else if (luts.includes('luts_none_acute')) {
     narrative += `ก่อนหน้านี้ขับถ่ายปัสสาวะได้เป็นปกติมาโดยตลอด ไม่มีอาการปัสสาวะลำบากนำมาก่อน `;
   }
 
   if (urineChars.length > 0 && !urineChars.includes('urine_none_normal')) {
     narrative += `สังเกตเห็นสิ่งผิดปกติในน้ำปัสสาวะ ได้แก่: ${urineChars.map(k => urineCharMap[k]).filter(Boolean).join(', ')} `;
-  } else {
+  } else if (urineChars.includes('urine_none_normal')) {
     narrative += `ปฏิเสธปัสสาวะเป็นเลือด ไม่มีหนองหรือตะกอนขุ่น `;
   }
 
   if (neuroSigns.length > 0 && !neuroSigns.includes('urinary_rf_neuro_none')) {
     narrative += `\nสัญญาณเตือนทางระบบประสาทไขสันหลัง: ตรวจพบอาการ [${neuroSigns.map(k => neuroMap[k]).filter(Boolean).join(', ')}] `;
-  } else {
+  } else if (neuroSigns.includes('urinary_rf_neuro_none')) {
     narrative += `\nปฏิเสธอาการชาบริเวณก้น แก้มก้น หรือรอบรูทวาร (Negative saddle anesthesia), แขนขาไม่อ่อนแรง, สามารถควบคุมการขับถ่ายอุจจาระได้ตามปกติ `;
   }
 
   if (systemicSigns.length > 0 && !systemicSigns.includes('urinary_rf_systemic_none')) {
     narrative += `อาการร่วมทางระบบร่างกาย: ตรวจพบ [${systemicSigns.map(k => systemicMap[k]).filter(Boolean).join(', ')}] `;
-  } else {
-    narrative += `ปฏิเสธไข้หนาวสั่นสั่นสะท้าน ไม่มีอาการปวดบั้นเอว `;
+  } else if (systemicSigns.includes('urinary_rf_systemic_none')) {
+    narrative += `ปฏิเสธไข้หนาวสั่น ไม่มีอาการปวดบั้นเอว `;
   }
 
   if (meds.length > 0 && !meds.includes('med_none')) {
     narrative += `\nประวัติยาและสิ่งกระตุ้นก่อนเกิดอาการ: มีประวัติ [${meds.map(k => medsMap[k]).filter(Boolean).join(', ')}] `;
-  } else {
+  } else if (meds.includes('med_none')) {
     narrative += `\nปฏิเสธการรับประทานยาแก้หวัดลดน้ำมูก ยานอนหลับ หรือสารเสพติด/แอลกอฮอล์ `;
   }
 
   if (trauma.length > 0 && !trauma.includes('trauma_none')) {
     narrative += `\nประวัติอุบัติเหตุ: ตรวจพบ [${trauma.map(k => traumaMap[k]).filter(Boolean).join(', ')}] `;
-  } else {
+  } else if (trauma.includes('trauma_none')) {
     narrative += `ปฏิเสธประวัติอุบัติเหตุกระแทกเชิงกรานหรือบริเวณหว่างขา ไม่มีเลือดสดซึมที่รูเปิดท่อปัสสาวะ `;
   }
 
-  narrative += `\nสถานะสายสวนปัสสาวะ: ${catheterMap[patient.urinaryCatheterStatus] || 'ไม่ได้คาสายสวนปัสสาวะ'} `;
+  narrative += `\nสถานะสายสวนปัสสาวะ: ${catheterMap[patient.urinaryCatheterStatus] || 'ไม่ได้ระบุ'} `;
   if (pmhUrology.length > 0 && !pmhUrology.includes('pmh_urology_none')) {
     narrative += `ประวัติโรคระบบทางเดินปัสสาวะเดิม: ${pmhUrology.map(k => pmhUrologyMap[k]).filter(Boolean).join(', ')} `;
-  } else {
+  } else if (pmhUrology.includes('pmh_urology_none')) {
     narrative += `ปฏิเสธประวัติโรคระบบทางเดินปัสสาวะเดิม `;
   }
 
@@ -826,7 +835,7 @@ registerCcModule({
   // --- Form HTML Template (Zero Default Bias, Neutral Patient Phrasing) ---
   formHtml: `
     <div id="urinaryRetentionQuestionnaireSection" class="hidden space-y-6">
-
+      <div data-cc-top-banner="urinary_retention"><div class="flex flex-col gap-4">
       <!-- Triage Advisory Banner -->
       <div class="p-4 bg-amber-50 border-l-4 border-amber-500 rounded-2xl flex items-start space-x-3">
         <i data-lucide="alert-triangle" class="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0"></i>
@@ -834,6 +843,7 @@ registerCcModule({
           <strong class="font-bold">ข้อความแจ้งเตือนจุดคัดกรอง:</strong> หากผู้ป่วยมีอาการ <strong>ปัสสาวะไม่ออก</strong> ร่วมกับ <strong>มีอาการชาบริเวณก้น/หว่างขา (Saddle anesthesia)</strong> หรือ <strong>ขาอ่อนแรงทั้งสองข้าง</strong> ถือเป็น <strong>ภาวะฉุกเฉินวิกฤต ให้แจ้งพยาบาลคัดกรองเพื่อส่งตรวจห้องฉุกเฉินทันที</strong>
         </div>
       </div>
+      </div></div>
 
       <!-- CARD 1: ระยะเวลา ความรู้สึกปวดตึง และคะแนนความปวด (Duration & Pain Score) -->
       <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">

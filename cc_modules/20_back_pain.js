@@ -1036,7 +1036,7 @@ registerCcModule({
 
     const backpainOnsetMode = document.querySelector('input[name="backpainOnsetMode"]:checked')?.value || '';
 
-    const backpainRadMaster = document.querySelector('input[name="backpainRadMaster"]:checked')?.value || 'none';
+    const backpainRadMaster = document.querySelector('input[name="backpainRadMaster"]:checked')?.value || '';
     const backpainRadLoc = backpainRadMaster === 'yes'
       ? Array.from(document.querySelectorAll('input[name="backpainRadLoc"]:checked')).map(el => el.value)
       : [];
@@ -1044,7 +1044,7 @@ registerCcModule({
     const backpainChar = Array.from(document.querySelectorAll('input[name="backpainChar"]:checked')).map(el => el.value);
     const backpainBehavior = Array.from(document.querySelectorAll('input[name="backpainBehavior"]:checked')).map(el => el.value);
 
-    let painScore = 0;
+    let painScore = null;
     if (backpainPainScoreTouched) {
       const pSlider = document.getElementById('backpainPainScore');
       if (pSlider) painScore = parseInt(pSlider.value, 10);
@@ -1054,7 +1054,7 @@ registerCcModule({
     const backpainWarningNeuroParent = !!document.getElementById('backpainWarningNeuroParent')?.checked;
     const backpainWarningExcretoryParent = !!document.getElementById('backpainWarningExcretoryParent')?.checked;
 
-    const backpainTraumaMaster = document.querySelector('input[name="backpainTraumaMaster"]:checked')?.value || 'no';
+    const backpainTraumaMaster = document.querySelector('input[name="backpainTraumaMaster"]:checked')?.value || '';
     const backpainTraumaTypes = backpainTraumaMaster === 'yes'
       ? Array.from(document.querySelectorAll('input[name="backpainTraumaTypes"]:checked')).map(el => el.value)
       : [];
@@ -1459,6 +1459,7 @@ function formatBackpainChars(patient) {
 }
 
 function formatBackpainRadiation(patient) {
+  if (!patient.backpainRadMaster) return 'ไม่ได้ระบุ';
   if (patient.backpainRadMaster === 'none') return 'ปวดเฉพาะที่หลัง ไม่ร้าวไปไหน';
   const rads = Array.isArray(patient.backpainRadLoc) ? patient.backpainRadLoc : [];
   if (rads.length === 0) return 'มีปวดร้าว (ไม่ได้ระบุตำแหน่ง)';
@@ -1473,7 +1474,7 @@ function formatBackpainRadiation(patient) {
 
 function formatBackpainBehavior(patient) {
   const behs = Array.isArray(patient.backpainBehavior) ? patient.backpainBehavior : [];
-  if (behs.length === 0) return 'ไม่มีพฤติกรรมกระตุ้นชัดเจน';
+  if (behs.length === 0) return 'ไม่ได้ระบุ';
   const map = {
     worse_cough_strain: 'ปวดมากขึ้นเมื่อไอ จาม หรือเบ่ง',
     worse_night_supine: 'ปวดมากตอนกลางคืน นอนพักไม่ทุเลา'
@@ -1551,23 +1552,25 @@ function renderBackpainRapidHpi(patient) {
     posList.push(patient.otherSymptomsFree);
   }
 
-  // Negatives
-  if (!warnSigns.includes('saddle_anesthesia')) negList.push('ปฏิเสธชาบริเวณก้น/หว่างขา (No saddle anesthesia)');
-  if (!warnSigns.includes('urinary_retention') && !warnSigns.includes('bowel_incontinence')) {
-    negList.push('ปฏิเสธปัสสาวะไม่ออก หรือกลั้นอุจจาระไม่ได้ (No bowel/bladder dysfunction)');
+  // Negatives (เฉพาะเมื่อมีการคัดกรองหมวดอาการเตือน ปัจจัยเสี่ยง หรืออุบัติเหตุ)
+  if (warnSigns.length > 0) {
+    if (!warnSigns.includes('saddle_anesthesia')) negList.push('ปฏิเสธชาบริเวณก้น/หว่างขา (No saddle anesthesia)');
+    if (!warnSigns.includes('urinary_retention') && !warnSigns.includes('bowel_incontinence')) {
+      negList.push('ปฏิเสธปัสสาวะไม่ออก หรือกลั้นอุจจาระไม่ได้ (No bowel/bladder dysfunction)');
+    }
+    if (!warnSigns.includes('leg_weakness_both') && !warnSigns.includes('foot_drop_single')) {
+      negList.push('ขาไม่อ่อนแรงทั้งสองข้าง ปลายเท้าไม่ตก');
+    }
+    if (!warnSigns.includes('ischemic_limb_pain') && !warnSigns.includes('ischemic_limb_numbness')) {
+      negList.push('ปฏิเสธปวดรุนแรงเหมือนระเบิดหรือชาหมดความรู้สึกที่ขา/เท้า (No acute limb ischemia signs)');
+    }
+    if (!warnSigns.includes('dysuria_hematuria') && !warnSigns.includes('gravel_sand_urine')) {
+      negList.push('ปฏิเสธปัสสาวะแสบขัด เลือดปน หรือปนตะกอนกรวดทราย');
+    }
+    if (!warnSigns.includes('fever_chills')) negList.push('ปฏิเสธไข้หนาวสั่น');
+    if (!warnSigns.includes('syncope_hypotension')) negList.push('ปฏิเสธหน้ามืดหรือวูบหมดสติ');
   }
-  if (!warnSigns.includes('leg_weakness_both') && !warnSigns.includes('foot_drop_single')) {
-    negList.push('ขาไม่อ่อนแรงทั้งสองข้าง ปลายเท้าไม่ตก');
-  }
-  if (!warnSigns.includes('ischemic_limb_pain') && !warnSigns.includes('ischemic_limb_numbness')) {
-    negList.push('ปฏิเสธปวดรุนแรงเหมือนระเบิดหรือชาหมดความรู้สึกที่ขา/เท้า (No acute limb ischemia signs)');
-  }
-  if (!warnSigns.includes('dysuria_hematuria') && !warnSigns.includes('gravel_sand_urine')) {
-    negList.push('ปฏิเสธปัสสาวะแสบขัด เลือดปน หรือปนตะกอนกรวดทราย');
-  }
-  if (!warnSigns.includes('fever_chills')) negList.push('ปฏิเสธไข้หนาวสั่น');
-  if (!warnSigns.includes('syncope_hypotension')) negList.push('ปฏิเสธหน้ามืดหรือวูบหมดสติ');
-  if (!risks.includes('known_cancer') && !warnSigns.includes('weight_loss_anorexia')) {
+  if ((risks.includes('risks_none') || risks.length > 0 || warnSigns.length > 0) && !risks.includes('known_cancer') && !warnSigns.includes('weight_loss_anorexia')) {
     negList.push('ปฏิเสธประวัติมะเร็งเดิม และน้ำหนักไม่ลดฮวบ');
   }
   if (patient.backpainTraumaMaster === 'no') {
@@ -1581,14 +1584,19 @@ function renderBackpainRapidHpi(patient) {
     unspecified: 'ไม่ได้ระบุ'
   }[patient.hospRecordStatus] || 'ไม่ได้ระบุ';
 
-  let udDisplay = 'ปฏิเสธ';
-  if (patient.underlying && patient.underlying.length > 0) {
-    const filteredUd = (Array.isArray(patient.underlying) ? patient.underlying : [patient.underlying])
-      .filter(u => u && !u.includes('ปฏิเสธ') && u !== 'ไม่มี' && u !== 'ไม่มีโรคประจำตัว');
-    if (filteredUd.length > 0) udDisplay = filteredUd.join(', ');
-  }
-  const allergyDisplay = (!patient.drugAllergy || patient.drugAllergy.includes('ปฏิเสธ') || patient.drugAllergy === 'ไม่มี') ? 'ปฏิเสธ' : patient.drugAllergy;
-  const medsText = (!patient.currentMeds || patient.currentMeds === 'ไม่ได้ระบุ' || patient.currentMeds === 'ไม่มี') ? 'ไม่มี' : patient.currentMeds;
+  const udArr = Array.isArray(patient.underlying) ? patient.underlying : (patient.underlying ? [patient.underlying] : []);
+  const filteredUd = udArr.filter(u => u && !u.includes('ปฏิเสธ') && u !== 'ไม่มี' && u !== 'ไม่มีโรคประจำตัว' && u !== 'ไม่ได้ระบุ');
+  const hasExplicitUdDeny = udArr.some(u => u && (u.includes('ปฏิเสธ') || u === 'ไม่มี' || u === 'ไม่มีโรคประจำตัว'));
+  const udDisplay = filteredUd.length > 0
+    ? filteredUd.join(', ')
+    : ((hasExplicitUdDeny || patient.hospRecordStatus === 'self' || patient.hospRecordStatus === 'additional') ? 'ปฏิเสธ' : 'ไม่ได้ระบุ');
+
+  const allergyDisplay = (!patient.drugAllergy || patient.drugAllergy === 'ไม่ได้ระบุ')
+    ? 'ไม่ได้ระบุ'
+    : ((patient.drugAllergy.includes('ปฏิเสธ') || patient.drugAllergy === 'ไม่มี') ? 'ปฏิเสธ' : patient.drugAllergy);
+  const medsText = (!patient.currentMeds || patient.currentMeds === 'ไม่ได้ระบุ')
+    ? 'ไม่ได้ระบุ'
+    : (patient.currentMeds === 'ไม่มี' ? 'ไม่มี' : patient.currentMeds);
   const docNotes = patient.doctor_notes || {};
   const redFlags = evaluateBackpainRedFlags(patient);
 
@@ -1606,10 +1614,10 @@ function renderBackpainRapidHpi(patient) {
 • ระดับความเจ็บปวด (Pain Score): ${pScore}
 
 • Pertinent Positives:
-${posList.length > 0 ? posList.map(p => `  - ${p}`).join('\n') : '  - ไม่มีอาการร่วมอื่นที่เด่นชัด'}
+${posList.length > 0 ? posList.map(p => `  - ${p}`).join('\n') : '  - ผู้ป่วยไม่ได้ระบุอาการร่วมเพิ่มเติม'}
 
 • Pertinent Negatives:
-${negList.map(n => `  - ${n}`).join('\n')}
+${negList.length > 0 ? negList.map(n => `  - ${n}`).join('\n') : '  - ผู้ป่วยไม่ได้ระบุคำตอบยืนยันในหมวดอาการร่วม'}
 
 [Past Medical History & Medications]
 • สถานะประวัติ รพ.ราชบุรี: ${hospLabel}
@@ -1640,11 +1648,11 @@ function renderBackpainNarrative(patient) {
   const locStr = formatBackpainLocations(patient);
   const charStr = formatBackpainChars(patient);
   const radStr = formatBackpainRadiation(patient);
-  const pScore = (typeof patient.painScore === 'number' && patient.painScore > 0) ? `${patient.painScore}/10` : 'ไม่ได้ระบุ';
-
+  const pScore = (typeof patient.painScore === 'number') ? `${patient.painScore}/10 คะแนน` : 'ไม่ได้ระบุ';
   const warnSigns = Array.isArray(patient.backpainWarningSigns) ? patient.backpainWarningSigns : [];
+  const genderLabel = (patient.gender && patient.gender !== 'ไม่ระบุ') ? patient.gender : '';
 
-  let note = `ผู้ป่วย${patient.gender || ''} อายุ ${patient.age || 'ไม่ระบุ'} ปี มารับการตรวจที่ห้องฉุกเฉินด้วยอาการปวดหลัง เป็นมา ${durStr} ก่อนมาโรงพยาบาล ตำแหน่งปวดบริเวณ${locStr} ลักษณะปวดเป็นแบบ${charStr} ${radStr} ระดับความเจ็บปวดประเมินได้ ${pScore} คะแนน`;
+  let note = `ผู้ป่วย${genderLabel} อายุ ${patient.age || 'ไม่ระบุ'} ปี มารับการตรวจที่ห้องฉุกเฉินด้วยอาการปวดหลัง เป็นมา ${durStr} ก่อนมาโรงพยาบาล ตำแหน่งปวดบริเวณ${locStr} ลักษณะปวดเป็นแบบ${charStr} ${radStr} ระดับความเจ็บปวดประเมินได้ ${pScore}`;
 
   if (warnSigns.length > 0) {
     const warnTexts = [];
@@ -1663,8 +1671,8 @@ function renderBackpainNarrative(patient) {
     if (warnSigns.includes('pulsatile_abd_mass')) warnTexts.push('คลำได้ก้อนเต้นในท้อง');
     if (warnSigns.includes('weight_loss_anorexia')) warnTexts.push('น้ำหนักลดลงฮวบผิดปกติ');
     note += ` ร่วมกับมีอาการสำคัญ: ${warnTexts.join(', ')}`;
-  } else {
-    note += ' ผู้ป่วยปฏิเสธอาการชาบริเวณก้นหรือหว่างขา (No saddle anesthesia) การขับถ่ายปัสสาวะและอุจจาระปกติ ขาทั้งสองข้างไม่อ่อนแรง ไม่มีความรู้สึกขาขาดเลือดเฉียบพลัน และไม่มีไข้หนาวสั่น';
+  } else if (patient.backpainTraumaMaster === 'no') {
+    note += ' ผู้ป่วยปฏิเสธประวัติอุบัติเหตุหรือหัตถการนำมาก่อน';
   }
 
   if (patient.backpainTraumaMaster === 'yes') {
@@ -1699,7 +1707,7 @@ function updateBackpainOutputs(rec) {
   if (posMatch) {
     rec.pertinentPositives = posMatch[1].trim().split('\n').map(l => l.replace(/^[-*\s]+/, '').trim());
   } else {
-    rec.pertinentPositives = ['ไม่มีอาการร่วมผิดปกติ'];
+    rec.pertinentPositives = ['ผู้ป่วยไม่ได้ระบุอาการร่วมเพิ่มเติม'];
   }
 
   const negMatch = rapidText.match(/• Pertinent Negatives:\n((?:\s*-[^\n]+\n?)+)/);
@@ -1736,7 +1744,7 @@ function updateBackpainOutputs(rec) {
       behavior: rec.backpainBehavior || [],
       pain_score: rec.painScore !== null && rec.painScore !== undefined ? rec.painScore : null,
       warning_signs: Array.isArray(rec.backpainWarningSigns) ? rec.backpainWarningSigns : [],
-      trauma_master: rec.backpainTraumaMaster || 'no',
+      trauma_master: rec.backpainTraumaMaster || null,
       trauma_types: Array.isArray(rec.backpainTraumaTypes) ? rec.backpainTraumaTypes : [],
       other_symptoms_free: rec.otherSymptomsFree || ''
     },

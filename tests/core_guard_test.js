@@ -1408,6 +1408,117 @@ assert(
     'CC 06_headache uses correct Thai spelling "ไม่คลื่นไส้นำมาก่อน" with zero typos'
   );
 
+  // Test H: Phase 1 Pediatric CC Infrastructure (Landing Zone, Age Units/Weight, PMH, Age-Gate, Redirects)
+  sandbox.renderChiefComplaints();
+  const adultGridHtml = elementsById.get('ccGrid')?.innerHTML || '';
+  const pedGridHtml = elementsById.get('pediatricCcGrid')?.innerHTML || '';
+  const pedSectionEl = elementsById.get('pediatricCcSection');
+  const EXPECTED_PED_IDS = [
+    'pediatric_head_injury', 'pediatric_fever', 'pediatric_dyspnea',
+    'pediatric_abdpain', 'pediatric_vomiting', 'pediatric_seizure',
+    'pediatric_lethargy', 'pediatric_gi_bleed', 'pediatric_chest_syncope'
+  ];
+  assert(
+    EXPECTED_PED_IDS.every(pid => !adultGridHtml.includes(pid) && pedGridHtml.includes(pid)) &&
+    pedSectionEl && !pedSectionEl.classList.contains('hidden'),
+    'Landing zone isolates all 9 Pediatric CCs exclusively into #pediatricCcGrid (#pediatricCcSection)'
+  );
+  const headBoundToAdult = vm.runInContext(
+    "Boolean(ADULT_TO_PEDIATRIC_CC_MAP && Object.values(ADULT_TO_PEDIATRIC_CC_MAP).some(v => v.targetCc === 'pediatric_head_injury'))",
+    sandbox
+  );
+  const adultMapKeysCount = vm.runInContext('Object.keys(ADULT_TO_PEDIATRIC_CC_MAP || {}).length', sandbox);
+  assert(
+    !headBoundToAdult && adultMapKeysCount === 11,
+    'ADULT_TO_PEDIATRIC_CC_MAP binds 11 Adult medical CCs without binding pediatric_head_injury'
+  );
+
+  const testAgeInput = elementsById.get('patientAgeInput');
+  const testAgeUnit = elementsById.get('patientAgeUnitSelect');
+  const testWeightWrap = elementsById.get('pediatricWeightWrap');
+  const testAdultUd = elementsById.get('adultUnderlyingGroup');
+  const testPedUd = elementsById.get('pediatricUnderlyingGroup');
+  const testRedirect = elementsById.get('adultToPediatricRedirectBanner');
+  const testGate = elementsById.get('pediatricAgeGateBanner');
+  const testGateTitle = elementsById.get('pediatricAgeGateTitle');
+  const testSwitchAdult = elementsById.get('pediatricSwitchToAdultBtn');
+  const testQContainer = elementsById.get('ccQuestionnairesContainer');
+
+  sandbox.setPatientFormChiefComplaint('fever');
+  assert(
+    testRedirect && !testRedirect.classList.contains('hidden') &&
+    testGate && testGate.classList.contains('hidden') &&
+    testAgeUnit && testAgeUnit.classList.contains('hidden') &&
+    testWeightWrap && testWeightWrap.classList.contains('hidden') &&
+    testAdultUd && !testAdultUd.classList.contains('hidden') &&
+    testPedUd && testPedUd.classList.contains('hidden'),
+    'Adult mapped CC (fever) displays redirect banner and keeps Card 0/Card 3 in Adult mode'
+  );
+  if (testAgeInput) testAgeInput.value = '3';
+  sandbox.handlePatientAgeChange();
+  assert(testRedirect && testRedirect.classList.contains('ring-2'), 'Adult mapped CC highlights redirect banner when age < maxAgeYears');
+
+  sandbox.setPatientFormChiefComplaint('headache');
+  assert(testRedirect && testRedirect.classList.contains('hidden'), 'Unmapped Adult CC (headache) hides #adultToPediatricRedirectBanner');
+  sandbox.setPatientFormChiefComplaint('fall_trauma');
+  assert(testRedirect && testRedirect.classList.contains('hidden'), 'Trauma CC (fall_trauma) keeps #adultToPediatricRedirectBanner hidden');
+
+  // Switch into Pediatric CC mode (via currentPatientFormCC simulation prior to module 34-42 rollout)
+  if (testAgeInput) testAgeInput.value = '';
+  if (testAgeUnit) testAgeUnit.value = 'years';
+  vm.runInContext("currentPatientFormCC = 'pediatric_fever'; updatePediatricFormModeUi();", sandbox);
+  assert(
+    testAgeUnit && !testAgeUnit.classList.contains('hidden') &&
+    testWeightWrap && !testWeightWrap.classList.contains('hidden') &&
+    testAdultUd && testAdultUd.classList.contains('hidden') &&
+    testPedUd && !testPedUd.classList.contains('hidden') &&
+    testGate && !testGate.classList.contains('hidden') &&
+    testQContainer && testQContainer.classList.contains('hidden'),
+    'Pediatric CC reveals age unit & weight, swaps PMH to pediatric, and locks questions until age is entered'
+  );
+
+  if (testAgeInput) testAgeInput.value = '2';
+  if (testAgeUnit) testAgeUnit.value = 'months';
+  sandbox.handlePatientAgeChange();
+  assert(
+    testQContainer && !testQContainer.classList.contains('hidden') &&
+    testGateTitle && testGateTitle.textContent.includes('< 3 เดือน'),
+    'Pediatric Fever at 2 months unlocks questions and detects "< 3 เดือน" bracket'
+  );
+
+  if (testAgeInput) testAgeInput.value = '3';
+  if (testAgeUnit) testAgeUnit.value = 'years';
+  sandbox.handlePatientAgeChange();
+  assert(
+    testQContainer && !testQContainer.classList.contains('hidden') &&
+    testGateTitle && testGateTitle.textContent.includes('3 เดือน – 5 ปี'),
+    'Pediatric Fever at 3 years unlocks questions and detects "3 เดือน – 5 ปี" bracket'
+  );
+
+  if (testAgeInput) testAgeInput.value = '6';
+  if (testAgeUnit) testAgeUnit.value = 'years';
+  sandbox.handlePatientAgeChange();
+  assert(
+    testQContainer && testQContainer.classList.contains('hidden') &&
+    testSwitchAdult && !testSwitchAdult.classList.contains('hidden') &&
+    testGateTitle && testGateTitle.textContent.includes('< 5 ปี'),
+    'Pediatric Fever at 6 years (>= maxAgeYears) re-locks questions and reveals Adult switch button'
+  );
+
+  const neoBracket = sandbox.resolvePediatricAgeBracket('pediatric_seizure', 14, 'days');
+  const abdBracket = sandbox.resolvePediatricAgeBracket('pediatric_abdpain', 2, 'years');
+  assert(
+    neoBracket?.status === 'valid' && neoBracket?.bracket?.id === 'lt_1m' &&
+    abdBracket?.status === 'valid' && abdBracket?.bracket?.id === '3m_to_3y',
+    'resolvePediatricAgeBracket converts days/months/years accurately across Pediatric brackets'
+  );
+
+  // Clean restore
+  if (testAgeInput) testAgeInput.value = '';
+  if (testAgeUnit) testAgeUnit.value = 'years';
+  sandbox.setPatientFormChiefComplaint('abdpain');
+  sandbox.handlePatientAgeChange();
+
   console.log('\n====================================================================');
   if (failures === 0) {
     console.log('🎉 ALL 4 MANDATORY CORE GUARD TDD DIMENSIONS PASSED (0 FAILURES)!');

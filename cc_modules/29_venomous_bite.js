@@ -38,7 +38,7 @@ function toggleVenomFemaleSection(isFemale) {
     const lmpEl = document.getElementById('venomLmpDate');
     const pregEl = document.getElementById('venomPregnancyStatus');
     if (lmpEl) lmpEl.value = '';
-    if (pregEl) pregEl.selectedIndex = 0;
+    if (pregEl) { pregEl.selectedIndex = 0; pregEl.value = ''; }
   }
 }
 
@@ -308,7 +308,7 @@ function updateVenomOutputs(rec) {
   if (posMatch) {
     rec.pertinentPositives = posMatch[1].trim().split('\n').map(l => l.replace(/^[-*\s]+/, '').trim());
   } else {
-    rec.pertinentPositives = ['ปวดบวมเฉพาะจุดตรงที่ถูกกัดต่อย'];
+    rec.pertinentPositives = ['ผู้ป่วยไม่ได้ระบุอาการร่วมเพิ่มเติม'];
   }
 
   const negMatch = rapidText.match(/• Pertinent Negatives:\n((?:\s*-[^\n]+\n?)+)/);
@@ -478,7 +478,7 @@ function renderVenomRapidHpi(patient) {
     const sMap = { not_removed: 'ยังไม่ได้เอาออก', already_removed: 'เอาออกแล้ว' };
     if (patient.venomStingerStatus) localSigns.push(`สถานะเหล็กใน/เงี่ยง: ${sMap[patient.venomStingerStatus] || patient.venomStingerStatus}`);
   }
-  const localStr = localSigns.length > 0 ? localSigns.join(', ') : 'ไม่มีอาการแผลเฉพาะที่ชัดเจน';
+  const localStr = localSigns.length > 0 ? localSigns.join(', ') : 'ไม่ได้ระบุ';
 
   // Systemic Positives / Negatives
   const allergySigns = Array.isArray(patient.venomSystemicAllergySigns) ? patient.venomSystemicAllergySigns : [];
@@ -517,11 +517,11 @@ function renderVenomRapidHpi(patient) {
     suspected_or_missed: 'ขาดประจำเดือน / สงสัยอาจตั้งครรภ์',
     confirmed_pregnant: 'ยืนยันกำลังตั้งครรภ์',
     menopause_or_hysterectomy: 'วัยหมดประจำเดือน / ผ่าตัดมดลูกแล้ว',
-    unknown: 'ไม่ทราบ'
+    unknown: 'ไม่ทราบสถานะการตั้งครรภ์'
   };
   let femStr = '';
   if (isVenomFemalePatient(patient) && (patient.venomLmpDate || patient.venomPregnancyStatus)) {
-    femStr = `LMP ${patient.venomLmpDate || 'ไม่ระบุ'} (${pregMap[patient.venomPregnancyStatus] || 'ไม่ระบุสถานะ'})`;
+    femStr = `LMP ${patient.venomLmpDate || 'ไม่ระบุ'} (${pregMap[patient.venomPregnancyStatus] || 'ไม่ได้ระบุ'})`;
   }
 
   const tetanusMap = {
@@ -534,10 +534,31 @@ function renderVenomRapidHpi(patient) {
   };
   const tetanusStr = tetanusMap[patient.venomTetanusHx] || 'ไม่ได้ระบุ';
 
-  let priorAllergyStr = 'ไม่เคยมีประวัติแพ้มาก่อน';
-  if (patient.venomPriorAllergyHx === 'has_prior_allergy') {
+  let priorAllergyStr = 'ไม่ได้ระบุ';
+  if (patient.venomPriorAllergyHx === 'no_prior_allergy') {
+    priorAllergyStr = 'ไม่เคยมีประวัติแพ้มาก่อน';
+  } else if (patient.venomPriorAllergyHx === 'has_prior_allergy') {
     priorAllergyStr = `เคยมีอาการแพ้มาก่อน${patient.venomPriorAllergyDetail ? ` (${patient.venomPriorAllergyDetail.trim()})` : ''}`;
   }
+
+  const hospLabel = {
+    complete: 'มีประวัติกับ รพ.ราชบุรี ครบถ้วน (ดึงข้อมูลเดิมจากระบบ)',
+    additional: 'มีประวัติกับ รพ.ราชบุรี และขอให้ข้อมูลเพิ่มเติม',
+    self: 'ขอให้ข้อมูลด้วยตนเองทั้งหมด',
+    unspecified: 'ไม่ได้ระบุ'
+  }[patient.hospRecordStatus] || 'ไม่ได้ระบุ';
+  const udArr = Array.isArray(patient.underlying) ? patient.underlying : (patient.underlying ? [patient.underlying] : []);
+  const filteredUd = udArr.filter(u => u && !u.includes('ปฏิเสธ') && u !== 'ไม่มี' && u !== 'ไม่มีโรคประจำตัว' && u !== 'ไม่ได้ระบุ');
+  const hasExplicitUdDeny = udArr.some(u => u && (u.includes('ปฏิเสธ') || u === 'ไม่มี' || u === 'ไม่มีโรคประจำตัว'));
+  const udDisplay = filteredUd.length > 0
+    ? filteredUd.join(', ')
+    : ((hasExplicitUdDeny || patient.hospRecordStatus === 'self' || patient.hospRecordStatus === 'additional') ? 'ปฏิเสธ' : 'ไม่ได้ระบุ');
+  const allergyDisplay = (!patient.drugAllergy || patient.drugAllergy === 'ไม่ได้ระบุ')
+    ? 'ไม่ได้ระบุ'
+    : ((patient.drugAllergy.includes('ปฏิเสธ') || patient.drugAllergy === 'ไม่มี') ? 'ปฏิเสธ' : patient.drugAllergy);
+  const medsDisplay = (!patient.currentMeds || patient.currentMeds === 'ไม่ได้ระบุ')
+    ? 'ไม่ได้ระบุ'
+    : (patient.currentMeds === 'ไม่มี' ? 'ไม่มี' : patient.currentMeds);
 
   return `[Chief Complaint (CC)]
 แมลง / งู / สัตว์มีพิษกัดต่อย เป็นมา ${durStr}
@@ -550,17 +571,17 @@ function renderVenomRapidHpi(patient) {
 • ระดับความปวด (Pain Score): ${pScore}
 
 • Pertinent Positives:
-${positives.length > 0 ? positives.map(p => `  - ${p}`).join('\n') : '  - ปวดบวมเฉพาะที่ตรงจุดที่ถูกกัด/ต่อย'}
+${positives.length > 0 ? positives.map(p => `  - ${p}`).join('\n') : '  - ผู้ป่วยไม่ได้ระบุอาการร่วมเพิ่มเติม'}
 
 • Pertinent Negatives:
-${negatives.length > 0 ? negatives.map(n => `  - ${n}`).join('\n') : '  - ปฏิเสธอาการแน่นคอ หายใจลำบาก หรือเลือดออกผิดปกติ'}
+${negatives.length > 0 ? negatives.map(n => `  - ${n}`).join('\n') : '  - ผู้ป่วยไม่ได้ระบุคำตอบยืนยันในหมวดอาการร่วม'}
 
 [Past Medical History & Immunization Profile]
-• สถานะประวัติ รพ.ราชบุรี: ${patient.hospRecordStatus === 'complete' ? 'มีประวัติครบถ้วน' : (patient.hospRecordStatus === 'additional' ? 'มีประวัติเดิมและขอเพิ่ม' : 'ให้ข้อมูลใหม่ทั้งหมด')}
+• สถานะประวัติ รพ.ราชบุรี: ${hospLabel}
 • ประวัติแพ้พิษแมลง/สัตว์มีพิษในอดีต: ${priorAllergyStr}
 • ประวัติวัคซีนบาดทะยัก: ${tetanusStr}${femStr ? `\n• ประวัติสตรี: ${femStr}` : ''}
-• โรคประจำตัว (U/D): ${Array.isArray(patient.underlying) && patient.underlying.length > 0 ? patient.underlying.join(', ') : 'ปฏิเสธ'}
-• ยาประจำตัว: ${patient.currentMeds || 'ไม่มี'} | แพ้ยา: ${patient.drugAllergy || 'ปฏิเสธ'}`;
+• โรคประจำตัว (U/D): ${udDisplay}
+• ยาประจำตัว: ${medsDisplay} | แพ้ยา: ${allergyDisplay}`;
 }
 
 function renderVenomNarrativeHpi(patient) {
@@ -588,10 +609,10 @@ function renderVenomNarrativeHpi(patient) {
     suspected_or_missed: 'ขาดประจำเดือน / สงสัยอาจตั้งครรภ์',
     confirmed_pregnant: 'ยืนยันกำลังตั้งครรภ์',
     menopause_or_hysterectomy: 'วัยหมดประจำเดือน / ผ่าตัดมดลูกแล้ว',
-    unknown: 'ไม่ทราบ'
+    unknown: 'ไม่ทราบสถานะการตั้งครรภ์'
   };
   if (isVenomFemalePatient(patient) && (patient.venomLmpDate || patient.venomPregnancyStatus)) {
-    text += ` ประวัติสตรี: LMP ${patient.venomLmpDate || 'ไม่ระบุ'} (${pregMap[patient.venomPregnancyStatus] || 'ไม่ระบุสถานะ'})`;
+    text += ` ประวัติสตรี: LMP ${patient.venomLmpDate || 'ไม่ระบุ'} (${pregMap[patient.venomPregnancyStatus] || 'ไม่ได้ระบุ'})`;
   }
   if (patient.otherSymptomsFree && String(patient.otherSymptomsFree).trim()) {
     text += ` ข้อมูลเพิ่มเติม: ${String(patient.otherSymptomsFree).trim()}`;
@@ -678,7 +699,7 @@ function generateVenomCds(patient, ctx) {
 // --- FORM HTML TEMPLATE ---
 const VENOMOUS_BITE_FORM_HTML = `
 <div id="cc-venomous-bite-section" class="space-y-6">
-
+  <div data-cc-top-banner="venomous_bite"><div class="flex flex-col gap-4">
   <!-- First-Aid Guidance Banner -->
   <div class="bg-amber-50 border border-amber-300 rounded-2xl p-4 text-xs sm:text-sm text-amber-900 flex items-start space-x-3 shadow-xs">
     <i data-lucide="alert-circle" class="w-5 h-5 text-amber-600 shrink-0 mt-0.5"></i>
@@ -691,6 +712,7 @@ const VENOMOUS_BITE_FORM_HTML = `
       </ol>
     </div>
   </div>
+  </div></div>
 
   <!-- CARD 1: ชนิดสัตว์มีพิษ ลักษณะเหตุการณ์ และการปฐมพยาบาลเบื้องต้น -->
   <div class="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-xs space-y-5">
@@ -1269,6 +1291,7 @@ const VENOMOUS_BITE_FORM_HTML = `
         <div class="min-w-0">
           <span class="block text-xs font-semibold text-slate-700 mb-1">สถานะการตั้งครรภ์:</span>
           <select id="venomPregnancyStatus" class="w-full min-w-0 text-xs sm:text-sm border-slate-300 rounded-lg p-2 focus:ring-medical-500 focus:border-medical-500 bg-white">
+            <option value="">-- ไม่ระบุ --</option>
             <option value="not_pregnant">ไม่ได้ตั้งครรภ์ / ประจำเดือนมาปกติ</option>
             <option value="suspected_or_missed">ขาดประจำเดือน / สงสัยอาจตั้งครรภ์</option>
             <option value="confirmed_pregnant">ได้รับการยืนยันว่ากำลังตั้งครรภ์</option>
@@ -1475,7 +1498,7 @@ const venomousBiteModule = {
       })(),
       ...(isVenomFemaleCtx(ctx) ? {
         venomLmpDate: getText('venomLmpDate'),
-        venomPregnancyStatus: document.getElementById('venomPregnancyStatus')?.value || 'not_pregnant'
+        venomPregnancyStatus: document.getElementById('venomPregnancyStatus')?.value || ''
       } : {})
     };
 
@@ -1617,7 +1640,7 @@ const venomousBiteModule = {
     if (isFem) {
       setText('venomLmpDate', patient.venomLmpDate || '');
       const pregEl = document.getElementById('venomPregnancyStatus');
-      if (pregEl && patient.venomPregnancyStatus) pregEl.value = patient.venomPregnancyStatus;
+      if (pregEl) pregEl.value = patient.venomPregnancyStatus || '';
     }
     checkAndDisplayVenomLmp(patient);
 
@@ -1682,6 +1705,8 @@ const venomousBiteModule = {
     sec.querySelectorAll('input[type="radio"]').forEach(rb => { rb.checked = false; });
     sec.querySelectorAll('input[type="text"], textarea').forEach(ti => { ti.value = ''; });
     sec.querySelectorAll('select').forEach(sel => { sel.selectedIndex = 0; });
+    const pregEl = document.getElementById('venomPregnancyStatus');
+    if (pregEl) pregEl.value = '';
     sec.querySelectorAll('input[type="number"]').forEach(ni => { ni.value = ''; });
 
     ['venomDurationVal', 'venomSnakeDetailFree', 'venomOtherCreatureDetail', 'venomOtherLocationDetail', 'venomPriorAllergyDetail'].forEach(id => {

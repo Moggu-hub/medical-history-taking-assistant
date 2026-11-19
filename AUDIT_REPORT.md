@@ -1,6 +1,6 @@
 # 🕵️‍♂️ รายงานการตรวจสอบคุณภาพโค้ดและสถาปัตยกรรม (AUTOMATED & AI AUDIT REPORT)
 
-- **วันที่ตรวจสอบ:** `14/11/2026` เวลา `19:23` น. (24-Hour Format)
+- **วันที่ตรวจสอบ:** `19/11/2026` เวลา `23:00` น. (24-Hour Format)
 - **สถานะภาพรวม (Overall Verdict):** **✅ PASS (ผ่านการตรวจสอบครบทุกมิติ)**
 - **จำนวนหัวข้อที่ผ่าน (Passed Checks):** 9 รายการ
 - **จำนวนคำเตือน (Warnings):** 0 รายการ
@@ -12,54 +12,54 @@
 
 | ไฟล์ (File Path) | จำนวนบรรทัด (Lines) | เพดานสูงสุด (Max Limit) | สถานะ (Status) |
 | :--- | :---: | :---: | :---: |
-| `index.html` | 1,949 | 2,000 | ✅ ปกติ (Safe) |
-| `clinical_knowledge_core.js` | 907 | 1,000 | ✅ ปกติ (Safe) |
+| `index.html` | 1,994 | 2,000 | ✅ ปกติ (Safe) |
+| `clinical_knowledge_core.js` | 995 | 1,000 | ✅ ปกติ (Safe) |
 | `ai_consultant_core.js` | 886 | 1,000 | ✅ ปกติ (Safe) |
-| `core_engine.js` | 2,297 | 3,200 | ✅ ปกติ (Safe) |
-| `cc_modules/01_abdpain.js` | 1,251 | 2,000 | ✅ ปกติ (Safe) |
-| `cc_modules/02_chestpain.js` | 1,346 | 2,000 | ✅ ปกติ (Safe) |
-| `cc_modules/03_dyspnea.js` | 1,062 | 2,000 | ✅ ปกติ (Safe) |
-| `cc_modules/04_fever.js` | 1,055 | 2,000 | ✅ ปกติ (Safe) |
-| `cc_modules/05_dizziness.js` | 1,116 | 2,000 | ✅ ปกติ (Safe) |
-| `cc_modules/06_headache.js` | 1,323 | 2,000 | ✅ ปกติ (Safe) |
-| `cc_modules/07_stroke_deficit.js` | 1,628 | 2,000 | ✅ ปกติ (Safe) |
-| `cc_modules/08_seizure.js` | 1,619 | 2,000 | ✅ ปกติ (Safe) |
-| `cc_modules/09_syncope.js` | 1,548 | 2,000 | ✅ ปกติ (Safe) |
-| `cc_modules/10_altered_mental.js` | 1,737 | 2,000 | ✅ ปกติ (Safe) |
-| `cc_modules/11_vomiting.js` | 1,756 | 2,000 | ✅ ปกติ (Safe) |
-| `cc_modules/12_diarrhea.js` | 1,746 | 2,000 | ✅ ปกติ (Safe) |
-| `cc_modules/13_gi_bleed.js` | 1,941 | 2,000 | ✅ ปกติ (Safe) |
-| `cc_modules/14_palpitation.js` | 1,351 | 2,000 | ✅ ปกติ (Safe) |
-| `cc_modules/15_weakness.js` | 1,369 | 2,000 | ✅ ปกติ (Safe) |
-| `cc_modules/16_allergy.js` | 1,431 | 2,000 | ✅ ปกติ (Safe) |
-| `cc_modules/17_urinary_retention.js` | 1,419 | 2,000 | ✅ ปกติ (Safe) |
-| `cc_modules/18_dysuria.js` | 1,255 | 2,000 | ✅ ปกติ (Safe) |
-| `cc_modules/19_hematuria.js` | 1,661 | 2,000 | ✅ ปกติ (Safe) |
-| `cc_modules/20_back_pain.js` | 1,757 | 2,000 | ✅ ปกติ (Safe) |
-| `cc_modules/21_neck_shoulder_pain.js` | 1,677 | 2,000 | ✅ ปกติ (Safe) |
-| `cc_modules/22_hemoptysis.js` | 1,687 | 2,000 | ✅ ปกติ (Safe) |
-| `cc_modules/23_epistaxis.js` | 1,318 | 2,000 | ✅ ปกติ (Safe) |
-| `cc_modules/24_hypertension.js` | 1,539 | 2,000 | ✅ ปกติ (Safe) |
-| `cc_modules/25_psychiatric_emergency.js` | 1,609 | 2,000 | ✅ ปกติ (Safe) |
-| `cc_modules/26_laceration_bleeding.js` | 1,906 | 2,000 | ✅ ปกติ (Safe) |
-| `cc_modules/27_fall_trauma.js` | 1,900 | 2,000 | ✅ ปกติ (Safe) |
-| `cc_modules/28_animal_bite.js` | 1,921 | 2,000 | ✅ ปกติ (Safe) |
-| `cc_modules/29_venomous_bite.js` | 1,844 | 2,000 | ✅ ปกติ (Safe) |
-| `cc_modules/30_physical_assault.js` | 1,658 | 2,000 | ✅ ปกติ (Safe) |
+| `core_engine.js` | 2,588 | 3,200 | ✅ ปกติ (Safe) |
+| `cc_modules/01_abdpain.js` | 1,892 | 2,000 | ✅ ปกติ (Safe) |
+| `cc_modules/02_chestpain.js` | 1,930 | 2,000 | ✅ ปกติ (Safe) |
+| `cc_modules/03_dyspnea.js` | 1,800 | 2,000 | ✅ ปกติ (Safe) |
+| `cc_modules/04_fever.js` | 1,842 | 2,000 | ✅ ปกติ (Safe) |
+| `cc_modules/05_dizziness.js` | 1,120 | 2,000 | ✅ ปกติ (Safe) |
+| `cc_modules/06_headache.js` | 1,700 | 2,000 | ✅ ปกติ (Safe) |
+| `cc_modules/07_stroke_deficit.js` | 1,654 | 2,000 | ✅ ปกติ (Safe) |
+| `cc_modules/08_seizure.js` | 1,903 | 2,000 | ✅ ปกติ (Safe) |
+| `cc_modules/09_syncope.js` | 1,713 | 2,000 | ✅ ปกติ (Safe) |
+| `cc_modules/10_altered_mental.js` | 1,749 | 2,000 | ✅ ปกติ (Safe) |
+| `cc_modules/11_vomiting.js` | 1,766 | 2,000 | ✅ ปกติ (Safe) |
+| `cc_modules/12_diarrhea.js` | 1,764 | 2,000 | ✅ ปกติ (Safe) |
+| `cc_modules/13_gi_bleed.js` | 1,949 | 2,000 | ✅ ปกติ (Safe) |
+| `cc_modules/14_palpitation.js` | 1,355 | 2,000 | ✅ ปกติ (Safe) |
+| `cc_modules/15_weakness.js` | 1,383 | 2,000 | ✅ ปกติ (Safe) |
+| `cc_modules/16_allergy.js` | 1,340 | 2,000 | ✅ ปกติ (Safe) |
+| `cc_modules/17_urinary_retention.js` | 1,429 | 2,000 | ✅ ปกติ (Safe) |
+| `cc_modules/18_dysuria.js` | 1,258 | 2,000 | ✅ ปกติ (Safe) |
+| `cc_modules/19_hematuria.js` | 1,669 | 2,000 | ✅ ปกติ (Safe) |
+| `cc_modules/20_back_pain.js` | 1,765 | 2,000 | ✅ ปกติ (Safe) |
+| `cc_modules/21_neck_shoulder_pain.js` | 1,686 | 2,000 | ✅ ปกติ (Safe) |
+| `cc_modules/22_hemoptysis.js` | 1,693 | 2,000 | ✅ ปกติ (Safe) |
+| `cc_modules/23_epistaxis.js` | 1,325 | 2,000 | ✅ ปกติ (Safe) |
+| `cc_modules/24_hypertension.js` | 1,550 | 2,000 | ✅ ปกติ (Safe) |
+| `cc_modules/25_psychiatric_emergency.js` | 1,608 | 2,000 | ✅ ปกติ (Safe) |
+| `cc_modules/26_laceration_bleeding.js` | 1,915 | 2,000 | ✅ ปกติ (Safe) |
+| `cc_modules/27_fall_trauma.js` | 1,906 | 2,000 | ✅ ปกติ (Safe) |
+| `cc_modules/28_animal_bite.js` | 1,942 | 2,000 | ✅ ปกติ (Safe) |
+| `cc_modules/29_venomous_bite.js` | 1,869 | 2,000 | ✅ ปกติ (Safe) |
+| `cc_modules/30_physical_assault.js` | 1,681 | 2,000 | ✅ ปกติ (Safe) |
 | `cc_modules/31_traffic_accident.js` | 1,956 | 2,000 | ✅ ปกติ (Safe) |
-| `cc_modules/32_poisoning.js` | 1,990 | 2,000 | ✅ ปกติ (Safe) |
-| `cc_modules/33_self_harm.js` | 1,927 | 2,000 | ✅ ปกติ (Safe) |
+| `cc_modules/32_poisoning.js` | 1,989 | 2,000 | ✅ ปกติ (Safe) |
+| `cc_modules/33_self_harm.js` | 1,953 | 2,000 | ✅ ปกติ (Safe) |
 
 ---
 
 ## 2. สรุปรายการที่ตรวจผ่าน (Passed Verification Checks)
 
-- ✅ index.html: 1949 บรรทัด (อยู่ในเกณฑ์ปลอดภัย <= 2000 บรรทัด)
-- ✅ clinical_knowledge_core.js: 907 บรรทัด (อยู่ในเกณฑ์ปลอดภัย <= 1000 บรรทัด)
+- ✅ index.html: 1994 บรรทัด (อยู่ในเกณฑ์ปลอดภัย <= 2000 บรรทัด)
+- ✅ clinical_knowledge_core.js: 995 บรรทัด (อยู่ในเกณฑ์ปลอดภัย <= 1000 บรรทัด)
 - ✅ ai_consultant_core.js: 886 บรรทัด (อยู่ในเกณฑ์ปลอดภัย <= 1000 บรรทัด)
-- ✅ core_engine.js: 2297 บรรทัด (อยู่ในเกณฑ์ปลอดภัย <= 3200 บรรทัด)
-- ✅ Core System Freeze: core_engine.js ไม่ถูกแก้ไขนับจากจุดเซฟ 'v2.80-doctor-addendum-open' (SHA-256 ตรงกัน 100%)
-- ✅ Core System Freeze: ai_consultant_core.js ไม่ถูกแก้ไขนับจากจุดเซฟ 'v2.80-doctor-addendum-open' (SHA-256 ตรงกัน 100%)
+- ✅ core_engine.js: 2588 บรรทัด (อยู่ในเกณฑ์ปลอดภัย <= 3200 บรรทัด)
+- ✅ Core System Freeze: core_engine.js ไม่ถูกแก้ไขนับจากจุดเซฟ 'v2.82-perf-optimization' (SHA-256 ตรงกัน 100%)
+- ✅ Core System Freeze: ai_consultant_core.js ไม่ถูกแก้ไขนับจากจุดเซฟ 'v2.82-perf-optimization' (SHA-256 ตรงกัน 100%)
 - ✅ พบไฟล์โมดูลรายอาการใน cc_modules/ จำนวน 33 โมดูล
 - ✅ ทุกโมดูลใน cc_modules/ ผ่านเกณฑ์โครงสร้าง Lifecycle Hooks, ความปลอดภัย UI คนไข้ และมาตรฐานวันที่ dd/mm/yyyy + เวลา 24 ชั่วโมง HH:mm
 - ✅ ชุดทดสอบ Mandatory 4-Dimension Core Guard TDD (tests/core_guard_test.js) ผ่านครบ 100% ทั้ง 4 มิติ!
@@ -89,12 +89,12 @@
 ✅ PASS: Universal Date descriptor converts ISO '2026-10-26' -> '26/10/2026' (dd/mm/yyyy)
 ✅ PASS: Universal Time descriptor converts '3:30 PM' -> '15:30' (24-hour HH:mm)
 
-=== มิติที่ (ง): DOCTOR UI RENDER, JSON SCHEMA & RED FLAGS (ALL 125 SEED CASES) ===
-✅ PASS: Seed database has all 125 clinical cases across 33 Chief Complaints (found 125)
-✅ PASS: All 125 seed cases render Rapid Note (including Addendum), Narrative Note & JSON Schema on Doctor Dashboard with 0 errors
-✅ PASS: All 125 seed cases evaluate Red Flags cleanly with 0 errors (Zero Built-in CDS dependency)
-✅ PASS: Zero Date/Time format violations across all 125 seed cases
-✅ PASS: Zero De-duplication, Clean Negative Syntax & Score Offloading violations across all 125 seed cases
+=== มิติที่ (ง): DOCTOR UI RENDER, JSON SCHEMA & RED FLAGS (ALL 130 SEED CASES) ===
+✅ PASS: Seed database has all 130 clinical cases across 33 Chief Complaints (found 130)
+✅ PASS: All 130 seed cases render Rapid Note (including Addendum), Narrative Note & JSON Schema on Doctor Dashboard with 0 errors
+✅ PASS: All 130 seed cases evaluate Red Flags cleanly with 0 errors (Zero Built-in CDS dependency)
+✅ PASS: Zero Date/Time format violations across all 130 seed cases
+✅ PASS: Zero De-duplication, Clean Negative Syntax & Score Offloading violations across all 130 seed cases
 
 === มิติที่ (ข): SAVE PERSISTENCE CHECK (PATIENT SUBMIT -> STATE & LOCALSTORAGE -> STATUS VIEW) ===
 ✅ PASS: Save Persistence verified across all 33 active Chief Complaints (State + localStorage + #patientStatusView)
@@ -112,7 +112,7 @@
 ✅ PASS: Empty patient submission records age='ไม่ระบุ' and durationVal=null instead of fake defaults (got age=ไม่ระบุ, durationVal=null)
 ✅ PASS: Empty patient submission displays "ไม่ระบุ" in Doctor Rapid Note without fabricated age or duration
 ✅ PASS: Built-in CDS execution helper (generateBuiltInCdsAnalysis) is cleanly deprecated from runtime
-✅ PASS: PDPA Shield & Audit 100% compliant: Zero leaks across all 125 patients (leaks: 0)
+✅ PASS: PDPA Shield & Audit 100% compliant: Zero leaks across all 130 patients (leaks: 0)
 ✅ PASS: Default System Instruction enforces [Provisional & Differential Diagnosis], ICD-10, External Cause & 2.1/2.2/2.3 ER Order structure
 ✅ PASS: parseAiConsultantResponse enforces [Provisional & Differential Diagnosis] header cleanly and isolates DDx
 ✅ PASS: normalizeDxOutputHeader avoids duplicating [Provisional & Differential Diagnosis] when already present
@@ -261,8 +261,6 @@
 ✅ PASS: Module weakness is dynamically registered in CC_REGISTRY
 ✅ PASS: Module allergy has valid non-empty doctorCcBadgeHtml
 ✅ PASS: Module allergy is dynamically registered in CC_REGISTRY
-✅ PASS: Module allergy has valid non-empty doctorCcBadgeHtml
-✅ PASS: Module allergy is dynamically registered in CC_REGISTRY
 ✅ PASS: Module urinary_retention has valid non-empty doctorCcBadgeHtml
 ✅ PASS: Module urinary_retention is dynamically registered in CC_REGISTRY
 ✅ PASS: Module dysuria has valid non-empty doctorCcBadgeHtml
@@ -323,6 +321,17 @@
 ✅ PASS: toggleDoctorAddendumSection(false) collapses Doctor Addendum box cleanly
 ✅ PASS: toggleDoctorAddendumSection(true) expands Doctor Addendum box cleanly
 ✅ PASS: CC 06_headache uses correct Thai spelling "ไม่คลื่นไส้นำมาก่อน" with zero typos
+✅ PASS: Landing zone isolates all 9 Pediatric CCs exclusively into #pediatricCcGrid (#pediatricCcSection)
+✅ PASS: ADULT_TO_PEDIATRIC_CC_MAP binds 11 Adult medical CCs without binding pediatric_head_injury
+✅ PASS: Adult mapped CC (fever) displays redirect banner and keeps Card 0/Card 3 in Adult mode
+✅ PASS: Adult mapped CC highlights redirect banner when age < maxAgeYears
+✅ PASS: Unmapped Adult CC (headache) hides #adultToPediatricRedirectBanner
+✅ PASS: Trauma CC (fall_trauma) keeps #adultToPediatricRedirectBanner hidden
+✅ PASS: Pediatric CC reveals age unit & weight, swaps PMH to pediatric, and locks questions until age is entered
+✅ PASS: Pediatric Fever at 2 months unlocks questions and detects "< 3 เดือน" bracket
+✅ PASS: Pediatric Fever at 3 years unlocks questions and detects "3 เดือน – 5 ปี" bracket
+✅ PASS: Pediatric Fever at 6 years (>= maxAgeYears) re-locks questions and reveals Adult switch button
+✅ PASS: resolvePediatricAgeBracket converts days/months/years accurately across Pediatric brackets
 
 ====================================================================
 🎉 ALL 4 MANDATORY CORE GUARD TDD DIMENSIONS PASSED (0 FAILURES)!

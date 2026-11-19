@@ -70,7 +70,7 @@ function toggleTrafficFemaleSection(isFemale) {
     const lmpEl = document.getElementById('trafficLmpDate');
     const pregEl = document.getElementById('trafficPregnancyStatus');
     if (lmpEl) lmpEl.value = '';
-    if (pregEl) pregEl.selectedIndex = 0;
+    if (pregEl) { pregEl.selectedIndex = 0; pregEl.value = ''; }
   }
 }
 
@@ -164,7 +164,7 @@ function fmtTrafficSideAndInjury(sides, injuries) {
 function formatTrafficMechanism(patient) {
   const role = patient.trafficVehicleRole;
   if (role === 'motorcycle') {
-    const roleTxt = patient.trafficMotoRole === 'passenger' ? 'ผู้ซ้อนท้าย จยย.' : 'ผู้ขับขี่ จยย.';
+    const roleTxt = patient.trafficMotoRole === 'passenger' ? 'ผู้ซ้อนท้าย จยย.' : (patient.trafficMotoRole === 'driver' ? 'ผู้ขับขี่ จยย.' : 'ผู้ประสบเหตุ จยย.');
     const helmetMap = { helmet_kept: 'สวมหมวกกันน็อก (ไม่หลุด)', helmet_ejected_damaged: 'สวมหมวกแต่วิบหลุด/แตก', no_helmet: 'ไม่ได้สวมหมวกกันน็อก' };
     const helmetTxt = helmetMap[patient.trafficMotoHelmet] || '';
     const mechs = Array.isArray(patient.trafficMotoMechs) ? patient.trafficMotoMechs : [];
@@ -215,14 +215,14 @@ function formatTrafficMechanism(patient) {
     return `คนเดินเท้าถูกชน (คู่กรณี: ${pedVTxt})${mechNames.length > 0 ? ' • ' + mechNames.join(', ') : ''}`;
   }
   if (role === 'bicycle_scooter') {
-    const beltTxt = patient.trafficBikeHelmet === 'helmet_worn' ? 'สวมหมวกกันน็อก' : 'ไม่สวมหมวกกันน็อก';
+    const beltTxt = patient.trafficBikeHelmet === 'helmet_worn' ? 'สวมหมวกกันน็อก' : (patient.trafficBikeHelmet === 'no_helmet' ? 'ไม่สวมหมวกกันน็อก' : '');
     const mechs = Array.isArray(patient.trafficBikeMechs) ? patient.trafficBikeMechs : [];
     const mechNames = [];
     if (mechs.includes('fall_alone')) mechNames.push('ล้มเอง');
     if (mechs.includes('hit_by_motorcycle')) mechNames.push('ถูก จยย. ชน');
     if (mechs.includes('hit_by_car_truck')) mechNames.push('ถูกรถยนต์/บรรทุกชน');
     if (mechs.includes('thrown_or_run_over')) mechNames.push('กระเด็นตกแรง/ถูกทับ');
-    return `ปั่นจักรยาน/สกู๊ตเตอร์ • ${beltTxt}${mechNames.length > 0 ? ' • ' + mechNames.join(', ') : ''}`;
+    return `ปั่นจักรยาน/สกู๊ตเตอร์${beltTxt ? ' • ' + beltTxt : ''}${mechNames.length > 0 ? ' • ' + mechNames.join(', ') : ''}`;
   }
   if (role === 'other_vehicle') {
     const vTxt = patient.trafficOtherVehicleTypeDetail || 'ยานพาหนะอื่นๆ';
@@ -495,10 +495,10 @@ function renderTrafficRapidHpi(patient) {
   if (prodromes.includes('prodrome_alcohol_drugs')) positives.push('มีประวัติดื่มแอลกอฮอล์หรือทานยาที่ทำให้ง่วงก่อนเกิดเหตุ');
   if (prodromes.includes('prodrome_none')) negatives.push('ไม่มีอาการผิดปกตินำมาก่อน และไม่ได้ดื่มแอลกอฮอล์');
 
-  if (headSigns.length === 0 && !patient.trafficParentHeadFace) negatives.push('ไม่มีการบาดเจ็บที่ศีรษะ ไม่สลบ ไม่ปวดศีรษะและไม่อาเจียน');
-  if (neckSigns.length === 0 && !patient.trafficParentNeck) negatives.push('ไม่ปวดตึงต้นคอ และไม่มีแขนขาชาอ่อนแรง');
-  if (chestSigns.length === 0 && !patient.trafficParentChest) negatives.push('ไม่เจ็บแน่นหน้าอก และหายใจไม่อิ่ม');
-  if (abdSigns.length === 0 && !patient.trafficParentAbdomen) negatives.push('ไม่ปวดท้อง และปัสสาวะไม่มีเลือดปน');
+  if (patient.trafficParentHeadFace && !headSigns.includes('loc_amnesia') && !headSigns.includes('severe_headache_vomiting')) negatives.push('ไม่มีอาการสลบ ไม่ปวดศีรษะและไม่อาเจียน');
+  if (patient.trafficParentNeck && !neckSigns.includes('cspine_severe_pain_stiff') && !neckSigns.includes('radiculopathy_weakness_numbness')) negatives.push('ไม่ปวดตึงต้นคอ และไม่มีแขนขาชาอ่อนแรง');
+  if (patient.trafficParentChest && !chestSigns.includes('chest_dyspnea_tightness')) negatives.push('ไม่เจ็บแน่นหน้าอก และไม่หายใจไม่อิ่ม');
+  if (patient.trafficParentAbdomen && !abdSigns.includes('peritonitis_seatbelt_sign') && !abdSigns.includes('hematuria_anuria')) negatives.push('ไม่ปวดท้อง และปัสสาวะไม่มีเลือดปน');
 
   if (patient.otherSymptomsFree && String(patient.otherSymptomsFree).trim()) {
     positives.push(`ข้อมูลเพิ่มเติมจากผู้ป่วย: ${String(patient.otherSymptomsFree).trim()}`);
@@ -512,7 +512,7 @@ function renderTrafficRapidHpi(patient) {
     suspected_or_missed: 'ขาดประจำเดือน / สงสัยอาจตั้งครรภ์',
     confirmed_pregnant: 'ยืนยันกำลังตั้งครรภ์',
     menopause_or_hysterectomy: 'วัยหมดประจำเดือน / ผ่าตัดมดลูกแล้ว',
-    unknown: 'ไม่ทราบ'
+    unknown: 'ไม่ทราบสถานะการตั้งครรภ์'
   };
   const legacyLmpMap = {
     exact_date: `ระบุวันแรกของรอบล่าสุด: ${patient.trafficLmpExactDate || 'ไม่ระบุ'}`,
@@ -525,7 +525,7 @@ function renderTrafficRapidHpi(patient) {
   const isFemalePatient = isTrafficFemalePatient(patient);
   let femStr = '';
   if (isFemalePatient && (patient.trafficLmpDate || patient.trafficPregnancyStatus)) {
-    femStr = `LMP ${patient.trafficLmpDate || 'ไม่ระบุ'} (${pregMap[patient.trafficPregnancyStatus] || 'ไม่ระบุสถานะ'})`;
+    femStr = `LMP ${patient.trafficLmpDate || 'ไม่ระบุ'} (${pregMap[patient.trafficPregnancyStatus] || 'ไม่ได้ระบุ'})`;
   } else if (isFemalePatient && patient.trafficLmpStatus) {
     femStr = legacyLmpMap[patient.trafficLmpStatus] || '';
   }
@@ -572,12 +572,8 @@ function renderTrafficRapidHpi(patient) {
     hpi += `\n• ประวัติสตรี: ${femStr}`;
   }
 
-  if (positives.length > 0) {
-    hpi += `\n\n• Pertinent Positives:\n  - ${positives.join('\n  - ')}`;
-  }
-  if (negatives.length > 0) {
-    hpi += `\n\n• Pertinent Negatives:\n  - ${negatives.join('\n  - ')}`;
-  }
+  hpi += `\n\n• Pertinent Positives:\n  - ${positives.length > 0 ? positives.join('\n  - ') : 'ผู้ป่วยไม่ได้ระบุอาการร่วมเพิ่มเติม'}`;
+  hpi += `\n\n• Pertinent Negatives:\n  - ${negatives.length > 0 ? negatives.join('\n  - ') : 'ผู้ป่วยไม่ได้ระบุคำตอบยืนยันในหมวดอาการร่วม'}`;
 
   return hpi;
 }
@@ -600,7 +596,7 @@ function updateTrafficOutputs(rec) {
   if (posMatch) {
     rec.pertinentPositives = posMatch[1].trim().split('\n').map(l => l.replace(/^[-*\s]+/, '').trim());
   } else {
-    rec.pertinentPositives = ['มีรอยฟกช้ำหรือบาดแผลจากอุบัติเหตุจราจร'];
+    rec.pertinentPositives = ['ผู้ป่วยไม่ได้ระบุอาการร่วมเพิ่มเติม'];
   }
 
   const negMatch = rapidText.match(/• Pertinent Negatives:\n((?:\s*-[^\n]+\n?)+)/);
@@ -625,7 +621,7 @@ function renderTrafficDigits(prefix, label) {
 // --- QUESTIONNAIRE FORM HTML ---
 const TRAFFIC_ACCIDENT_FORM_HTML = `
 <div id="cc-traffic-accident-section" class="space-y-6">
-
+  <div data-cc-top-banner="traffic_accident"><div class="flex flex-col gap-4">
   <!-- First-Aid Guidance Banner -->
   <div class="bg-amber-50 border-l-4 border-amber-500 p-3 sm:p-4 rounded-r-xl shadow-sm">
     <div class="flex items-start">
@@ -639,6 +635,7 @@ const TRAFFIC_ACCIDENT_FORM_HTML = `
       </div>
     </div>
   </div>
+  </div></div>
 
   <!-- CARD 1: ข้อมูลเวลาเกิดเหตุ ยานพาหนะ และความรุนแรง -->
   <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-6 space-y-5">
@@ -1409,6 +1406,7 @@ const TRAFFIC_ACCIDENT_FORM_HTML = `
         <div class="min-w-0">
           <span class="block text-xs font-semibold text-slate-700 mb-1">สถานะการตั้งครรภ์:</span>
           <select id="trafficPregnancyStatus" class="w-full min-w-0 text-xs sm:text-sm border-slate-300 rounded-lg p-2 focus:ring-medical-500 focus:border-medical-500 bg-white">
+            <option value="">-- ไม่ระบุ --</option>
             <option value="not_pregnant">ไม่ได้ตั้งครรภ์ / ประจำเดือนมาปกติ</option>
             <option value="suspected_or_missed">ขาดประจำเดือน / สงสัยอาจตั้งครรภ์</option>
             <option value="confirmed_pregnant">ได้รับการยืนยันว่ากำลังตั้งครรภ์</option>
@@ -1587,7 +1585,7 @@ const trafficAccidentModule = {
       // Female LMP & Pregnancy (C-AP13 Male Guard)
       ...(isTrafficFemalePatient(ctx) ? {
         trafficLmpDate: getText('trafficLmpDate'),
-        trafficPregnancyStatus: document.getElementById('trafficPregnancyStatus')?.value || 'not_pregnant'
+        trafficPregnancyStatus: document.getElementById('trafficPregnancyStatus')?.value || ''
       } : {}),
 
       // Tetanus & NPO
@@ -1700,7 +1698,7 @@ const trafficAccidentModule = {
         const pregEl = document.getElementById('trafficPregnancyStatus');
         if (pregEl) {
           const legacyStatusMap = { missed_period: 'suspected_or_missed', pregnant: 'confirmed_pregnant', menopause_hysterectomy: 'menopause_or_hysterectomy' };
-          pregEl.value = patient.trafficPregnancyStatus || legacyStatusMap[patient.trafficLmpStatus] || 'not_pregnant';
+          pregEl.value = patient.trafficPregnancyStatus || legacyStatusMap[patient.trafficLmpStatus] || '';
         }
       }
     }
@@ -1751,6 +1749,8 @@ const trafficAccidentModule = {
     sec.querySelectorAll('input[type="number"]').forEach(ni => { ni.value = ''; });
 
     sec.querySelectorAll('select').forEach(el => { el.selectedIndex = 0; });
+    const pregEl = document.getElementById('trafficPregnancyStatus');
+    if (pregEl) pregEl.value = '';
 
     const hiddenContainers = [
       'trafficBranchMotorcycle', 'trafficMotoOpponentContainer', 'trafficBranchCarTruck', 'trafficCarOpponentContainer',

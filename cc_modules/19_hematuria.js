@@ -947,7 +947,7 @@ registerCcModule({
 
     const hematuriaHasPain = Boolean(document.getElementById('hematuriaHasPain')?.checked);
     let hematuriaPainType = '';
-    let painScore = 0;
+    let painScore = null;
     if (hematuriaHasPain) {
       hematuriaPainType = document.querySelector('input[name="hematuriaPainType"]:checked')?.value || '';
       if (hematuriaPainScoreTouched) {
@@ -1303,9 +1303,14 @@ function updateHematuriaOutputs(patient) {
   };
   const painText = painMap[patient.hematuriaPainType] || 'ไม่ระบุ';
 
+  const hpiAnswered = Boolean(
+    patient.hematuriaColor || patient.hematuriaTiming || patient.hematuriaPainType ||
+    patient.hematuriaClotMaster === 'clot_master_yes' || patient.hematuriaObsMaster === 'obs_master_yes'
+  );
+
   // Clots
   const clotTypes = Array.isArray(patient.hematuriaClotTypes) ? patient.hematuriaClotTypes : [];
-  let clotSummary = 'ไม่มีลิ่มเลือด';
+  let clotSummary = hpiAnswered ? 'ไม่มีลิ่มเลือด' : 'ไม่ได้ระบุเรื่องลิ่มเลือด';
   if (patient.hematuriaClotMaster === 'clot_master_yes') {
     const cParts = [];
     if (clotTypes.includes('clot_small_specks')) cParts.push('ลิ่มเลือดเป็นขุย/เส้นเล็ก');
@@ -1316,7 +1321,7 @@ function updateHematuriaOutputs(patient) {
 
   // Voiding Obstruction
   const obsTypes = Array.isArray(patient.hematuriaObsTypes) ? patient.hematuriaObsTypes : [];
-  let obsSummary = 'การขับถ่ายปัสสาวะพุ่งออกดีตามปกติ ไม่สะดุด';
+  let obsSummary = hpiAnswered ? 'การขับถ่ายปัสสาวะพุ่งออกดีตามปกติ ไม่สะดุด' : 'ไม่ได้ระบุปัญหาการขับถ่าย';
   if (patient.hematuriaObsMaster === 'obs_master_yes') {
     const oParts = [];
     if (obsTypes.includes('obs_unable_to_void')) oParts.push('ปัสสาวะไม่ออกเลย ปวดเบ่งตึงท้องน้อยรุนแรง (Acute Clot Retention)');
@@ -1342,7 +1347,7 @@ function updateHematuriaOutputs(patient) {
     if (clotTypes.includes('clot_vermiform_string')) positives.push('มีลิ่มเลือดเส้นยาวคล้ายไส้เดือน (Ureteral clot cast)');
     if (clotTypes.includes('clot_small_specks')) positives.push('มีลิ่มเลือดปนเป็นขุยหรือเส้นเล็กๆ');
     if (clotTypes.length === 0) positives.push('มีลิ่มเลือดปนในปัสสาวะ');
-  } else {
+  } else if (hpiAnswered) {
     negatives.push('ไม่มีลิ่มเลือดปนในปัสสาวะ');
   }
 
@@ -1352,7 +1357,7 @@ function updateHematuriaOutputs(patient) {
     if (obsTypes.includes('obs_interrupted_stream')) positives.push('ลำปัสสาวะสะดุดหยุดไหลกะทันหัน');
     if (obsTypes.includes('obs_straining_dribbling')) positives.push('ต้องออกแรงเบ่งมาก ปัสสาวะออกทีละหยด');
     if (obsTypes.length === 0) positives.push('มีปัญหาปัสสาวะขัดข้องหรือสะดุด');
-  } else {
+  } else if (hpiAnswered) {
     negatives.push('ปัสสาวะพุ่งออกดีตามปกติ ไม่สะดุด');
   }
 
@@ -1383,7 +1388,7 @@ function updateHematuriaOutputs(patient) {
     if (trauma.includes('hist_blood_at_meatus')) positives.push('มีเลือดสดหยดออกมาจากปลายท่อทางเดินปัสสาวะ (Blood at meatus) 🚩');
     if (trauma.includes('hist_recent_catheter')) positives.push('เพิ่งได้รับการใส่ คาสายสวน หรือดึงกระชากสายสวนปัสสาวะ');
     if (trauma.includes('hist_recent_urologic_op')) positives.push('เพิ่งได้รับการผ่าตัด ส่องกล้อง หรือเจาะตรวจชิ้นเนื้อทางเดินปัสสาวะ');
-  } else {
+  } else if (patient.hematuriaTraumaMaster === 'trauma_master_no') {
     negatives.push('ปฏิเสธประวัติอุบัติเหตุ บาดเจ็บ หรือหัตถการทางเดินปัสสาวะ');
   }
 
@@ -1413,11 +1418,11 @@ function updateHematuriaOutputs(patient) {
 
   if (patient.otherSymptomsFree) positives.push(patient.otherSymptomsFree);
 
-  patient.pertinentPositives = positives.length > 0 ? positives : ['ไม่มีอาการร่วมผิดปกติ'];
-  patient.pertinentNegatives = negatives;
+  patient.pertinentPositives = positives.length > 0 ? positives : ['ผู้ป่วยไม่ได้ระบุอาการร่วมเพิ่มเติม'];
+  patient.pertinentNegatives = negatives.length > 0 ? negatives : ['ผู้ป่วยไม่ได้ระบุคำตอบยืนยันในหมวดอาการร่วม'];
 
   const docNotes = patient.doctor_notes || {};
-  const medsText = (!patient.currentMeds || patient.currentMeds === 'ไม่ได้ระบุ' || patient.currentMeds === 'ไม่มี') ? 'ไม่มี' : patient.currentMeds;
+  const medsText = (!patient.currentMeds || patient.currentMeds === 'ไม่ได้ระบุ') ? 'ไม่ได้ระบุ' : patient.currentMeds;
   const hospLabel = {
     complete: 'มีประวัติกับ รพ.ราชบุรี ครบถ้วน (ดึงข้อมูลเดิมจากระบบ)',
     additional: 'มีประวัติกับ รพ.ราชบุรี และขอให้ข้อมูลเพิ่มเติม',
@@ -1425,13 +1430,16 @@ function updateHematuriaOutputs(patient) {
     unspecified: 'ไม่ได้ระบุ'
   }[patient.hospRecordStatus] || 'ไม่ได้ระบุ';
 
-  let udDisplay = 'ปฏิเสธ';
+  const udExplicitDeny = Array.isArray(patient.underlying) && patient.underlying.some(u => u && u.includes('ปฏิเสธ'));
+  let udDisplay = (patient.hospRecordStatus === 'self' || patient.hospRecordStatus === 'additional' || udExplicitDeny) ? 'ปฏิเสธ' : 'ไม่ได้ระบุ';
   if (patient.underlying && patient.underlying.length > 0) {
     const filteredUd = (Array.isArray(patient.underlying) ? patient.underlying : [patient.underlying])
       .filter(u => u && !u.includes('ปฏิเสธ') && u !== 'ไม่มี' && u !== 'ไม่มีโรคประจำตัว');
     if (filteredUd.length > 0) udDisplay = filteredUd.join(', ');
   }
-  const allergyDisplay = (!patient.drugAllergy || patient.drugAllergy.includes('ปฏิเสธ') || patient.drugAllergy === 'ไม่มี') ? 'ปฏิเสธ' : patient.drugAllergy;
+  const allergyDisplay = (!patient.drugAllergy || patient.drugAllergy === 'ไม่ได้ระบุ')
+    ? 'ไม่ได้ระบุ'
+    : ((patient.drugAllergy.includes('ปฏิเสธ') || patient.drugAllergy === 'ไม่มี') ? 'ปฏิเสธ' : patient.drugAllergy);
 
   const defaultRapid =
 `[Chief Complaint (CC)]
@@ -1443,10 +1451,10 @@ function updateHematuriaOutputs(patient) {
 • ลักษณะการปวด: ${painText}${patient.painScore !== null && patient.painScore !== undefined ? ` (Pain Score: ${patient.painScore}/10)` : ''}
 
 • Pertinent Positives:
-${positives.length > 0 ? positives.map(p => `  - ${p}`).join('\n') : '  - ไม่มีอาการร่วมอื่นที่เด่นชัด'}
+${positives.length > 0 ? positives.map(p => `  - ${p}`).join('\n') : '  - ผู้ป่วยไม่ได้ระบุอาการร่วมเพิ่มเติม'}
 
 • Pertinent Negatives:
-${negatives.map(n => `  - ${n}`).join('\n')}
+${patient.pertinentNegatives.map(n => `  - ${n}`).join('\n')}
 
 [Past Medical History & Medications]
 • สถานะประวัติ รพ.ราชบุรี: ${hospLabel}
@@ -1465,18 +1473,18 @@ ${redFlags.length > 0
 • การวินิจฉัยเบื้องต้น (Impression): ${docNotes.preliminary_dx || '-'}
 • แผนการรักษา (Plan/Orders): ${docNotes.plan || '-'}`;
 
-  let narrative = `ผู้ป่วย${patient.gender || ''}ไทย อายุ ${patient.age || '-'} ปี มารับการตรวจที่ห้องฉุกเฉินด้วยอาการปัสสาวะเป็นเลือด เป็นมา ${durationStr} ก่อนมาโรงพยาบาล `;
+  let narrative = `ผู้ป่วย${patient.gender && patient.gender !== 'ไม่ระบุ' ? patient.gender : ''} อายุ ${patient.age || '-'} ปี มารับการตรวจที่ห้องฉุกเฉินด้วยอาการปัสสาวะเป็นเลือด เป็นมา ${durationStr} ก่อนมาโรงพยาบาล `;
   narrative += `สังเกตเห็นน้ำปัสสาวะมีลักษณะ${colorText} ${timingText} `;
   narrative += `${clotSummary} ${obsSummary} `;
   if (patient.hematuriaPainType === 'pain_painless') {
     narrative += `ไม่มีอาการปวดบั้นเอวหรือท้องน้อยแต่อย่างใด `;
-  } else {
+  } else if (patient.hematuriaPainType) {
     narrative += `มีอาการ${painText}${patient.painScore !== null && patient.painScore !== undefined ? ` ประเมินความปวดได้ ${patient.painScore}/10 คะแนน` : ''} `;
   }
 
   if (systemic.length > 0 && !systemic.includes('rf_systemic_none')) {
     narrative += `ร่วมกับมีอาการทางร่างกาย ได้แก่ ${positives.filter(p => p.includes('ไข้') || p.includes('หน้ามืด') || p.includes('บวม') || p.includes('ซีด') || p.includes('น้ำหนัก')).join(', ')} `;
-  } else {
+  } else if (systemic.includes('rf_systemic_none')) {
     narrative += `ปฏิเสธไข้หนาวสั่น ปฏิเสธหน้ามืดวิงเวียน ไม่มีหน้าบวมหรือขาบวม `;
   }
 

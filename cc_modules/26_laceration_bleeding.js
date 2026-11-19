@@ -372,16 +372,16 @@ function renderLacerationRapidHpi(patient) {
 
   if (patient.otherSymptomsFree) posList.push(patient.otherSymptomsFree);
 
-  // Negatives Evaluation
+  // Negatives Evaluation (เฉพาะหมวดที่มีการคัดกรองหรือระบุคำตอบยืนยัน)
   if (patient.lacBleedingStatus === 'stopped') negList.push('เลือดหยุดไหลแล้ว ไม่มีเลือดพุ่งหรือซึมต่อเนื่อง');
-  if (!contaminants.includes('foreign_body_retained')) negList.push('ไม่มีวัตถุปักคาหรือหักคาในบาดแผล');
-  if (!headSigns.includes('loss_of_consciousness') && !headSigns.includes('severe_headache_vomit')) negList.push('ไม่มีอาการสลบ หมดสติ หรืออาเจียน');
-  if (!chestSigns.includes('dyspnea_pleuritic_pain') && !chestSigns.includes('sucking_chest_wound')) negList.push('ไม่มีอาการแน่นหน้าอก หายใจลำบาก หรือลมดูดออกทางแผล');
-  if (!abdomenSigns.includes('severe_abd_pain_rigid') && !abdomenSigns.includes('evisceration_internal_organ')) negList.push('ไม่มีปวดเกร็งหน้าท้อง และไม่มีอวัยวะภายในโผล่');
-  if (!upperExtSigns.includes('tendon_deficit_hand') && !lowerExtSigns.includes('tendon_bone_deficit_leg')) negList.push('ไม่มีอาการงอหรือเหยียดข้อนิ้วไม่ได้ (ยังขยับได้ปกติ)');
-  if (!upperExtSigns.includes('nerve_numbness_hand') && !lowerExtSigns.includes('nerve_numbness_foot')) negList.push('ไม่มีอาการชา หรือสูญเสียความรู้สึกที่ปลายมือปลายเท้า');
-  if (!upperExtSigns.includes('vascular_cold_pale_hand') && !lowerExtSigns.includes('vascular_cold_pale_foot')) negList.push('ปลายมือปลายเท้าไม่ซีด ไม่เย็น คลำชีพจรส่วนปลายได้ดี');
-  if (!systemicSigns.includes('dizziness_presyncope') && !systemicSigns.includes('palpitation_cold_sweat')) negList.push('ไม่มีอาการหน้ามืด วูบ เหงื่อแตกตัวเย็น หรือสัญญาณภาวะช็อก');
+  if (contaminants.length > 0 && !contaminants.includes('foreign_body_retained')) negList.push('ไม่มีวัตถุปักคาหรือหักคาในบาดแผล');
+  if (patient.lacParentHeadFace && !headSigns.includes('loss_of_consciousness') && !headSigns.includes('severe_headache_vomit')) negList.push('ไม่มีอาการสลบ หมดสติ หรืออาเจียน');
+  if (patient.lacParentChest && !chestSigns.includes('dyspnea_pleuritic_pain') && !chestSigns.includes('sucking_chest_wound')) negList.push('ไม่มีอาการแน่นหน้าอก หายใจลำบาก หรือลมดูดออกทางแผล');
+  if (patient.lacParentAbdomen && !abdomenSigns.includes('severe_abd_pain_rigid') && !abdomenSigns.includes('evisceration_internal_organ')) negList.push('ไม่มีปวดเกร็งหน้าท้อง และไม่มีอวัยวะภายในโผล่');
+  if ((patient.lacParentUpperExtremity || patient.lacParentLowerExtremity) && !upperExtSigns.includes('tendon_deficit_hand') && !lowerExtSigns.includes('tendon_bone_deficit_leg')) negList.push('ไม่มีอาการงอหรือเหยียดข้อนิ้วไม่ได้ (ยังขยับได้ปกติ)');
+  if ((patient.lacParentUpperExtremity || patient.lacParentLowerExtremity) && !upperExtSigns.includes('nerve_numbness_hand') && !lowerExtSigns.includes('nerve_numbness_foot')) negList.push('ไม่มีอาการชา หรือสูญเสียความรู้สึกที่ปลายมือปลายเท้า');
+  if ((patient.lacParentUpperExtremity || patient.lacParentLowerExtremity) && !upperExtSigns.includes('vascular_cold_pale_hand') && !lowerExtSigns.includes('vascular_cold_pale_foot')) negList.push('ปลายมือปลายเท้าไม่ซีด ไม่เย็น คลำชีพจรส่วนปลายได้ดี');
+  if (systemicSigns.includes('no_systemic_signs') || (systemicSigns.length > 0 && !systemicSigns.includes('dizziness_presyncope') && !systemicSigns.includes('palpitation_cold_sweat'))) negList.push('ไม่มีอาการหน้ามืด วูบ เหงื่อแตกตัวเย็น หรือสัญญาณภาวะช็อก');
 
   const hospLabel = {
     complete: 'มีประวัติกับ รพ.ราชบุรี ครบถ้วน (ดึงข้อมูลเดิมจากระบบ)',
@@ -390,14 +390,19 @@ function renderLacerationRapidHpi(patient) {
     unspecified: 'ไม่ได้ระบุ'
   }[patient.hospRecordStatus] || 'ไม่ได้ระบุ';
 
-  let udDisplay = 'ปฏิเสธ';
-  if (patient.underlying && patient.underlying.length > 0) {
-    const filteredUd = (Array.isArray(patient.underlying) ? patient.underlying : [patient.underlying])
-      .filter(u => u && !u.includes('ปฏิเสธ') && u !== 'ไม่มี' && u !== 'ไม่มีโรคประจำตัว');
-    if (filteredUd.length > 0) udDisplay = filteredUd.join(', ');
-  }
-  const allergyDisplay = (!patient.drugAllergy || patient.drugAllergy.includes('ปฏิเสธ') || patient.drugAllergy === 'ไม่มี') ? 'ปฏิเสธ' : patient.drugAllergy;
-  const medsText = (!patient.currentMeds || patient.currentMeds === 'ไม่ได้ระบุ' || patient.currentMeds === 'ไม่มี') ? 'ไม่มี' : patient.currentMeds;
+  const udArr = Array.isArray(patient.underlying) ? patient.underlying : (patient.underlying ? [patient.underlying] : []);
+  const filteredUd = udArr.filter(u => u && !u.includes('ปฏิเสธ') && u !== 'ไม่มี' && u !== 'ไม่มีโรคประจำตัว' && u !== 'ไม่ได้ระบุ');
+  const hasExplicitUdDeny = udArr.some(u => u && (u.includes('ปฏิเสธ') || u === 'ไม่มี' || u === 'ไม่มีโรคประจำตัว'));
+  const udDisplay = filteredUd.length > 0
+    ? filteredUd.join(', ')
+    : ((hasExplicitUdDeny || patient.hospRecordStatus === 'self' || patient.hospRecordStatus === 'additional') ? 'ปฏิเสธ' : 'ไม่ได้ระบุ');
+
+  const allergyDisplay = (!patient.drugAllergy || patient.drugAllergy === 'ไม่ได้ระบุ')
+    ? 'ไม่ได้ระบุ'
+    : ((patient.drugAllergy.includes('ปฏิเสธ') || patient.drugAllergy === 'ไม่มี') ? 'ปฏิเสธ' : patient.drugAllergy);
+  const medsText = (!patient.currentMeds || patient.currentMeds === 'ไม่ได้ระบุ')
+    ? 'ไม่ได้ระบุ'
+    : (patient.currentMeds === 'ไม่มี' ? 'ไม่มี' : patient.currentMeds);
   const docNotes = patient.doctor_notes || {};
   const redFlags = evaluateLacerationRedFlags(patient);
 
@@ -414,17 +419,17 @@ function renderLacerationRapidHpi(patient) {
 • ระดับความปวดบริเวณแผล (Pain Score): ${painScoreStr}
 
 • Pertinent Positives:
-${posList.length > 0 ? posList.map(p => `  - ${p}`).join('\n') : '  - ไม่มีอาการบาดเจ็บรุนแรงเฉพาะจุด'}
+${posList.length > 0 ? posList.map(p => `  - ${p}`).join('\n') : '  - ผู้ป่วยไม่ได้ระบุอาการร่วมเพิ่มเติม'}
 
 • Pertinent Negatives:
-${negList.map(n => `  - ${n}`).join('\n')}
+${negList.length > 0 ? negList.map(n => `  - ${n}`).join('\n') : '  - ผู้ป่วยไม่ได้ระบุคำตอบยืนยันในหมวดอาการร่วม'}
 
 [Past Medical History & Medications]
 • สถานะประวัติ รพ.ราชบุรี: ${hospLabel}
 • ประวัติวัคซีนบาดทะยัก: ${formatLacTetanus(patient)}
 • ประวัติยาละลายลิ่มเลือด/เลือดหยุดยาก: ${formatLacAntithrombotic(patient)}${(() => {
-    const pregMap = { not_pregnant: 'ไม่ได้ตั้งครรภ์ / ประจำเดือนมาปกติ', suspected_or_missed: 'ขาดประจำเดือน / สงสัยอาจตั้งครรภ์', confirmed_pregnant: 'ยืนยันกำลังตั้งครรภ์', menopause_or_hysterectomy: 'วัยหมดประจำเดือน / ผ่าตัดมดลูกแล้ว', unknown: 'ไม่ทราบ' };
-    return (isLacFemalePatient(patient) && (patient.lacLmpDate || patient.lacPregnancyStatus)) ? `\n• ประวัติสตรี: LMP ${patient.lacLmpDate || 'ไม่ระบุ'} (${pregMap[patient.lacPregnancyStatus] || 'ไม่ระบุสถานะ'})` : '';
+    const pregMap = { not_pregnant: 'ไม่ได้ตั้งครรภ์ / ประจำเดือนมาปกติ', suspected_or_missed: 'ขาดประจำเดือน / สงสัยอาจตั้งครรภ์', confirmed_pregnant: 'ยืนยันกำลังตั้งครรภ์', menopause_or_hysterectomy: 'วัยหมดประจำเดือน / ผ่าตัดมดลูกแล้ว', unknown: 'ไม่ทราบสถานะการตั้งครรภ์' };
+    return (isLacFemalePatient(patient) && (patient.lacLmpDate || patient.lacPregnancyStatus)) ? `\n• ประวัติสตรี: LMP ${patient.lacLmpDate || 'ไม่ระบุ'} (${pregMap[patient.lacPregnancyStatus] || 'ไม่ได้ระบุ'})` : '';
   })()}
 • โรคประจำตัว (U/D): ${udDisplay}
 • ยาประจำตัว (Current Meds): ${medsText}
@@ -457,7 +462,8 @@ function renderLacerationNarrative(patient) {
   const contStr = formatLacContaminants(patient);
   const tetStr = formatLacTetanus(patient);
 
-  let note = `ผู้ป่วย${patient.gender || ''} อายุ ${patient.age || 'ไม่ระบุ'} ปี มารับการตรวจที่ห้องฉุกเฉินด้วยบาดแผลฉีกขาด / มีเลือดออก สาเหตุเกิดจาก${causeStr} เป็นมาประมาณ ${durStr} ก่อนมารพ. ตรวจพบตำแหน่งบาดเจ็บและชนิดการบาดเจ็บ: ${anatStr} สถานะเลือดออกคือ${bleedStr} สภาพแผลคือ${contStr}`;
+  const genderLabel = (patient.gender && patient.gender !== 'ไม่ระบุ') ? patient.gender : '';
+  let note = `ผู้ป่วย${genderLabel} อายุ ${patient.age || 'ไม่ระบุ'} ปี มารับการตรวจที่ห้องฉุกเฉินด้วยบาดแผลฉีกขาด / มีเลือดออก สาเหตุเกิดจาก${causeStr} เป็นมาประมาณ ${durStr} ก่อนมารพ. ตรวจพบตำแหน่งบาดเจ็บและชนิดการบาดเจ็บ: ${anatStr} สถานะเลือดออกคือ${bleedStr} สภาพแผลคือ${contStr}`;
 
   const headSigns = Array.isArray(patient.lacHeadSigns) ? patient.lacHeadSigns : [];
   const upperExtSigns = Array.isArray(patient.lacUpperExtSigns) ? patient.lacUpperExtSigns : [];
@@ -474,14 +480,14 @@ function renderLacerationNarrative(patient) {
 
   if (syms.length > 0) {
     note += ` ร่วมกับมีอาการสำคัญ: ${syms.join(', ')}`;
-  } else {
-    note += ' ผู้ป่วยไม่มีอาการหน้ามืดเป็นลม ปลายมือปลายเท้าไม่ชา ยังขยับนิ้วได้ปกติ';
+  } else if (systemicSigns.includes('no_systemic_signs')) {
+    note += ' ผู้ป่วยไม่มีอาการหน้ามืดเป็นลมหรือภาวะช็อก';
   }
 
   note += ` ประวัติวัคซีนบาดทะยัก: ${tetStr}`;
   if (isLacFemalePatient(patient) && (patient.lacLmpDate || patient.lacPregnancyStatus)) {
-    const pregMap = { not_pregnant: 'ไม่ได้ตั้งครรภ์ / ประจำเดือนมาปกติ', suspected_or_missed: 'ขาดประจำเดือน / สงสัยอาจตั้งครรภ์', confirmed_pregnant: 'ยืนยันกำลังตั้งครรภ์', menopause_or_hysterectomy: 'วัยหมดประจำเดือน / ผ่าตัดมดลูกแล้ว', unknown: 'ไม่ทราบ' };
-    note += ` ประวัติสตรี: LMP ${patient.lacLmpDate || 'ไม่ระบุ'} (${pregMap[patient.lacPregnancyStatus] || 'ไม่ระบุสถานะ'})`;
+    const pregMap = { not_pregnant: 'ไม่ได้ตั้งครรภ์ / ประจำเดือนมาปกติ', suspected_or_missed: 'ขาดประจำเดือน / สงสัยอาจตั้งครรภ์', confirmed_pregnant: 'ยืนยันกำลังตั้งครรภ์', menopause_or_hysterectomy: 'วัยหมดประจำเดือน / ผ่าตัดมดลูกแล้ว', unknown: 'ไม่ทราบสถานะการตั้งครรภ์' };
+    note += ` ประวัติสตรี: LMP ${patient.lacLmpDate || 'ไม่ระบุ'} (${pregMap[patient.lacPregnancyStatus] || 'ไม่ได้ระบุ'})`;
   }
   return note;
 }
@@ -505,7 +511,7 @@ function updateLacerationOutputs(rec) {
   if (posMatch) {
     rec.pertinentPositives = posMatch[1].trim().split('\n').map(l => l.replace(/^[-*\s]+/, '').trim());
   } else {
-    rec.pertinentPositives = ['ไม่มีอาการบาดเจ็บรุนแรงเฉพาะจุด'];
+    rec.pertinentPositives = ['ผู้ป่วยไม่ได้ระบุอาการร่วมเพิ่มเติม'];
   }
 
   const negMatch = rapidText.match(/• Pertinent Negatives:\n((?:\s*-[^\n]+\n?)+)/);
@@ -651,7 +657,7 @@ function toggleLacFemaleSection(forceShow) {
   sec.classList.toggle('hidden', !show);
   if (!show) {
     const lmp = document.getElementById('lacLmpDate'); if (lmp) lmp.value = '';
-    const preg = document.getElementById('lacPregnancyStatus'); if (preg) preg.value = 'not_pregnant';
+    const preg = document.getElementById('lacPregnancyStatus'); if (preg) preg.value = '';
   }
 }
 function checkAndDisplayLacLmp(patient) {
@@ -703,6 +709,7 @@ function renderLacDigits(id, label) {
 // --- Patient Form HTML Template ---
 const LACERATION_FORM_HTML = `
 <div id="cc-laceration-bleeding-section" class="hidden space-y-6">
+  <div data-cc-top-banner="laceration_bleeding"><div class="flex flex-col gap-4">
   <!-- 💡 ส่วนต้น: ข้อแนะนำการปฐมพยาบาลเบื้องต้นระหว่างรอตรวจ -->
   <div class="bg-amber-50 border border-amber-200 rounded-2xl p-4 text-xs sm:text-sm text-amber-900 shadow-sm flex items-start space-x-3">
     <div class="text-amber-600 mt-0.5 flex-shrink-0">
@@ -718,6 +725,7 @@ const LACERATION_FORM_HTML = `
       </ul>
     </div>
   </div>
+  </div></div>
 
   <!-- CARD 1: ข้อมูลเหตุการณ์ สาเหตุของบาดแผล และสถานะเลือดออก -->
   <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
@@ -1345,6 +1353,7 @@ const LACERATION_FORM_HTML = `
         <div>
           <label class="block text-[11px] font-semibold text-slate-700 mb-1">สถานะการตั้งครรภ์:</label>
           <select id="lacPregnancyStatus" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-800 font-medium focus:outline-none focus:ring-2 focus:ring-medical-500">
+            <option value="">-- ไม่ระบุ --</option>
             <option value="not_pregnant">ไม่ได้ตั้งครรภ์ / ประจำเดือนมาปกติ</option>
             <option value="suspected_or_missed">ขาดประจำเดือน / สงสัยอาจตั้งครรภ์</option>
             <option value="confirmed_pregnant">ยืนยันกำลังตั้งครรภ์</option>
@@ -1480,7 +1489,7 @@ const lacerationBleedingModule = {
     const titleSelVal = document.getElementById('patientTitleSelect')?.value || '';
     const isFemale = ctx.gender ? isLacFemalePatient(ctx) : (titleSelVal ? /นาง|น\.ส\.|ด\.ญ\.|\(หญิง\)|Mrs|Miss|Ms/i.test(titleSelVal) : isLacFemalePatient(ctx));
     const lacLmpDate = isFemale ? (document.getElementById('lacLmpDate')?.value?.trim() || '') : '';
-    const lacPregnancyStatus = isFemale ? (document.getElementById('lacPregnancyStatus')?.value || 'not_pregnant') : '';
+    const lacPregnancyStatus = isFemale ? (document.getElementById('lacPregnancyStatus')?.value || '') : '';
     const otherSymptomsFree = document.getElementById('laceration_bleeding_other_free')?.value?.trim() || ctx.otherSymptomsFree || '';
 
     const rec = {
@@ -1751,7 +1760,7 @@ const lacerationBleedingModule = {
     checkAndDisplayLacLmp(data);
     if (isLacFemalePatient(data)) {
       const lmpEl = document.getElementById('lacLmpDate'); if (lmpEl) lmpEl.value = data.lacLmpDate || '';
-      const pregEl = document.getElementById('lacPregnancyStatus'); if (pregEl) pregEl.value = data.lacPregnancyStatus || 'not_pregnant';
+      const pregEl = document.getElementById('lacPregnancyStatus'); if (pregEl) pregEl.value = data.lacPregnancyStatus || '';
     }
     const otherFreeEl = document.getElementById('laceration_bleeding_other_free');
     if (otherFreeEl) otherFreeEl.value = data.otherSymptomsFree || '';
@@ -1775,7 +1784,7 @@ const lacerationBleedingModule = {
       'lacLowerExtSubGroup', 'lacLegThighSidesContainer', 'lacLegKneeShinSidesContainer', 'lacLegAnkleFootSidesContainer', 'lacLegToesSidesContainer', 'lacOtherSubGroup', 'lacFemaleSection'
     ].forEach(id => { const el = document.getElementById(id); if (el) el.classList.add('hidden'); });
 
-    const pregEl = document.getElementById('lacPregnancyStatus'); if (pregEl) pregEl.value = 'not_pregnant';
+    const pregEl = document.getElementById('lacPregnancyStatus'); if (pregEl) pregEl.value = '';
     document.querySelectorAll('#cc-laceration-bleeding-section input[type="radio"], #cc-laceration-bleeding-section input[type="checkbox"]').forEach(i => { i.checked = false; });
   },
 

@@ -87,7 +87,7 @@ function handleDizzinessDiarrheaChange() {
         seconds_to_1m: 'เป็นวูบสั้นๆ ไม่กี่วินาทีถึง 1 นาที แล้วทุเลาลง (Seconds to < 1 min - สงสัย BPPV)',
         minutes_to_hours: 'เป็นครั้งละหลายนาที หรือนาน 2 - 3 ชั่วโมง (Minutes to hours - สงสัย Meniere / TIA / Migraine)',
         continuous_days: 'เวียนต่อเนื่องตลอดเวลาหลายชั่วโมง หรือติดต่อกันหลายวันไม่หยุด (Continuous hours to days - สงสัย Neuritis / Posterior Circulation Stroke 🚩)',
-        unspecified: 'ไม่แน่ชัด / เป็นตลอดเวลาแต่ความรุนแรงไม่เท่ากัน'
+        unspecified: 'ไม่แน่ชัด / เวียนเป็นช่วงความรุนแรงไม่เท่ากัน'
       };
 
       // Triggers
@@ -99,58 +99,58 @@ function handleDizzinessDiarrheaChange() {
       if (patient.dizziness_trig_spontaneous) triggers.push('เกิดขึ้นเองเฉยๆ ขณะอยู่นิ่งๆ โดยไม่มีสิ่งกระตุ้น');
       if (patient.dizziness_trig_stress_fatigue) triggers.push('อดนอน พักผ่อนน้อย หรือเครียด');
       if (patient.dizziness_trig_other) triggers.push(`อื่นๆ: ${patient.dizziness_trig_other}`);
-      const triggersText = triggers.length > 0 ? triggers.join(', ') : 'ไม่มีสิ่งกระตุ้นจำเพาะ / เกิดขึ้นเอง';
+      const triggersText = triggers.length > 0 ? triggers.join(', ') : 'ไม่ได้ระบุ';
 
       const positives = [];
       const negatives = [];
-
-      // Core Sensation, Episode & Triggers (Primary descriptors stay in top HPI; not pushed to positives)
-      if (triggers.length === 0) {
-        negatives.push('ไม่มีท่าทางหรือสิ่งกระตุ้นชัดเจน');
-      }
+      const anyCentralRf = Boolean(patient.dizziness_rf_weakness_numb || patient.dizziness_rf_facial_speech || patient.dizziness_rf_diplopia_vision || patient.dizziness_rf_ataxia_walk || patient.dizziness_rf_dysphagia || patient.dizziness_rf_headache);
+      const anyHemoRf = Boolean(patient.dizziness_rf_syncope || patient.dizziness_rf_chestpain_palp || patient.dizziness_rf_gi_bleed);
+      const anyEarSx = Boolean(patient.dizziness_ear_tinnitus || patient.dizziness_ear_hearing_loss || patient.dizziness_ear_fullness_pain || patient.dizziness_ear_recent_uri);
+      const anyGiSx = Boolean(patient.dizziness_has_nausea_vomit || patient.dizziness_has_abdcramps_diarrhea || patient.dizziness_has_photophobia_migraine);
+      const anySxGroupAnswered = anyCentralRf || anyHemoRf || anyEarSx || anyGiSx;
 
       // Central Red Flags (Stroke / Cerebellar)
       if (patient.dizziness_rf_weakness_numb) positives.push('มีอาการแขนขาอ่อนแรง หรือชาครึ่งซีก 🚩');
-      else negatives.push('ไม่มีแขนขาอ่อนแรงหรือชาครึ่งซีก');
+      else if (anySxGroupAnswered) negatives.push('ไม่มีแขนขาอ่อนแรงหรือชาครึ่งซีก');
 
       if (patient.dizziness_rf_facial_speech) positives.push('มีมุมปากตก ปากเบี้ยว ยิ้มไม่เท่ากัน หรือพูดไม่ชัด 🚩');
-      else negatives.push('ไม่มีปากเบี้ยวหรือพูดไม่ชัด');
+      else if (anySxGroupAnswered) negatives.push('ไม่มีปากเบี้ยวหรือพูดไม่ชัด');
 
       if (patient.dizziness_rf_diplopia_vision) positives.push('มองเห็นภาพซ้อน หรือตามัวเฉียบพลัน 🚩');
-      else negatives.push('การมองเห็นปกติ ไม่มีภาพซ้อน');
+      else if (anySxGroupAnswered) negatives.push('การมองเห็นปกติ ไม่มีภาพซ้อน');
 
       if (patient.dizziness_rf_ataxia_walk) positives.push('เดินเซมาก ทรงตัวไม่ได้ ปล่อยมือยืนไม่ได้ หรือล้มไปข้างใดข้างหนึ่ง 🚩');
-      else negatives.push('ไม่มีเดินเซรุนแรง สามารถทรงตัวได้');
+      else if (anySxGroupAnswered) negatives.push('ไม่มีเดินเซรุนแรง สามารถทรงตัวได้');
 
       if (patient.dizziness_rf_dysphagia) positives.push('มีอาการกลืนลำบาก หรือกลืนสำลัก 🚩');
-      else negatives.push('ไม่มีกลืนลำบากหรือสำลัก');
+      else if (anySxGroupAnswered) negatives.push('ไม่มีกลืนลำบากหรือสำลัก');
 
       if (patient.dizziness_rf_headache) positives.push('มีอาการปวดศีรษะรุนแรงเฉียบพลัน หรือปวดร้าวท้ายทอย/ต้นคอ 🚩');
-      else negatives.push('ไม่มีปวดศีรษะรุนแรงหรือปวดท้ายทอย');
+      else if (anySxGroupAnswered) negatives.push('ไม่มีปวดศีรษะรุนแรงหรือปวดท้ายทอย');
 
       // Hemodynamic Red Flags
       if (patient.dizziness_rf_syncope) positives.push('มีอาการวูบ หมดสติ หรือหมดความรู้สึกตัวไปชั่วขณะ 🚩');
-      else negatives.push('ไม่มีวูบหมดสติ');
+      else if (anySxGroupAnswered) negatives.push('ไม่มีวูบหมดสติ');
 
       if (patient.dizziness_rf_chestpain_palp) positives.push('มีอาการเจ็บแน่นหน้าอก หรือใจสั่นเต้นผิดจังหวะ 🚩');
-      else negatives.push('ไม่มีเจ็บแน่นหน้าอกหรือใจสั่น');
+      else if (anySxGroupAnswered) negatives.push('ไม่มีเจ็บแน่นหน้าอกหรือใจสั่น');
 
       if (patient.dizziness_rf_gi_bleed) positives.push('มีประวัติถ่ายดำ ถ่ายเป็นเลือด หรืออาเจียนเป็นเลือด/สีกาแฟ 🚩');
-      else negatives.push('ไม่มีถ่ายดำหรืออาเจียนเป็นเลือด');
+      else if (anySxGroupAnswered) negatives.push('ไม่มีถ่ายดำหรืออาเจียนเป็นเลือด');
 
       // Auditory / Ear symptoms
       const sideMap = { left: 'ข้างซ้าย', right: 'ข้างขวา', both: 'ทั้งสองข้าง', unspecified: 'ไม่ระบุข้าง', none: '' };
       if (patient.dizziness_ear_tinnitus) {
         const side = patient.dizzinessTinnitusSide ? ` [${sideMap[patient.dizzinessTinnitusSide] || patient.dizzinessTinnitusSide}]` : '';
         positives.push(`มีเสียงวิ้งๆ อื้อๆ ในหู (Tinnitus)${side}`);
-      } else {
+      } else if (anySxGroupAnswered) {
         negatives.push('ไม่มีเสียงวิ้งหรืออื้อในหู');
       }
 
       if (patient.dizziness_ear_hearing_loss) {
         const side = patient.dizzinessHearingLossSide ? ` [${sideMap[patient.dizzinessHearingLossSide] || patient.dizzinessHearingLossSide}]` : '';
         positives.push(`การได้ยินลดลง หรือหูตึงเฉียบพลัน (Acute hearing loss)${side} 🚩`);
-      } else {
+      } else if (anySxGroupAnswered) {
         negatives.push('การได้ยินปกติ ไม่มีหูอื้อตึงเฉียบพลัน');
       }
 
@@ -173,7 +173,7 @@ function handleDizzinessDiarrheaChange() {
         } else {
           positives.push('มีอาการคลื่นไส้เด่นชัด (แต่ไม่อาเจียน)');
         }
-      } else {
+      } else if (anySxGroupAnswered) {
         negatives.push('ไม่มีอาการคลื่นไส้หรืออาเจียน');
       }
 
@@ -184,7 +184,7 @@ function handleDizzinessDiarrheaChange() {
         };
         const stools = (patient.dizzinessDiarrheaStools || []).map(s => stoolMap[s] || s).join(', ');
         positives.push(`มีอาการปวดมวนท้อง หรือถ่ายเหลว/ท้องเสีย [จำนวน ${patient.dizzinessDiarrheaFreq || 1} ครั้ง${stools ? `, ลักษณะ: ${stools}` : ''}]`);
-      } else {
+      } else if (anySxGroupAnswered) {
         negatives.push('ไม่มีปวดมวนท้องหรือถ่ายเหลว');
       }
 
@@ -194,8 +194,8 @@ function handleDizzinessDiarrheaChange() {
         positives.push(`อาการเพิ่มเติมที่ผู้ป่วยระบุ: "${patient.otherSymptomsFree}"`);
       }
 
-      patient.pertinentPositives = positives.length > 0 ? positives : ['ไม่มีอาการร่วมผิดปกติ'];
-      patient.pertinentNegatives = negatives;
+      patient.pertinentPositives = positives.length > 0 ? positives : ['ผู้ป่วยไม่ได้ระบุอาการร่วมเพิ่มเติม'];
+      patient.pertinentNegatives = negatives.length > 0 ? negatives : ['ผู้ป่วยไม่ได้ระบุคำตอบยืนยันในหมวดอาการร่วม'];
 
       const hospLabel = {
         complete: 'มีประวัติกับ รพ.ราชบุรี ครบถ้วน (ดึงข้อมูลเดิมจากระบบ)',
@@ -205,7 +205,11 @@ function handleDizzinessDiarrheaChange() {
       }[patient.hospRecordStatus] || 'ไม่ได้ระบุ';
 
       const docNotes = patient.doctor_notes || {};
-      const medsText = (!patient.currentMeds || patient.currentMeds === 'ไม่ได้ระบุ' || patient.currentMeds === 'ไม่มี') ? 'ไม่มี' : patient.currentMeds;
+      const medsText = (!patient.currentMeds || patient.currentMeds === 'ไม่ได้ระบุ') ? 'ไม่ได้ระบุ' : patient.currentMeds;
+      const udArr = Array.isArray(patient.underlying) ? patient.underlying.filter(u => u && !u.includes('ปฏิเสธ') && u !== 'ไม่มี' && u !== 'ไม่มีโรคประจำตัว') : [];
+      const udExplicitDeny = Array.isArray(patient.underlying) && patient.underlying.some(u => u && u.includes('ปฏิเสธ'));
+      const udText = udArr.length > 0 ? udArr.join(', ') : ((patient.hospRecordStatus === 'self' || patient.hospRecordStatus === 'additional' || udExplicitDeny) ? 'ปฏิเสธ' : 'ไม่ได้ระบุ');
+      const allergyText = (!patient.drugAllergy || patient.drugAllergy === 'ไม่ได้ระบุ') ? 'ไม่ได้ระบุ' : patient.drugAllergy;
 
       // A) Rapid Bullet Format for Dizziness
       const defaultRapid = 
@@ -213,22 +217,22 @@ function handleDizzinessDiarrheaChange() {
 เวียนศีรษะ / บ้านหมุนมา ${durationText}
 
 [History of Present Illness (HPI)]
-• การเริ่มต้นและระยะเวลา: ${durationText}, ${onsetMap[patient.dizzinessOnsetMode] || 'ไม่ระบุ'}
-• ลักษณะอาการเวียน: ${sensationMap[patient.dizzinessSensation] || 'ไม่ระบุ'}
-• ระยะเวลาที่มีอาการต่อรอบ: ${episodeMap[patient.dizzinessEpisodeDuration] || 'ไม่ระบุ'}
+• การเริ่มต้นและระยะเวลา: ${durationText}, ${onsetMap[patient.dizzinessOnsetMode] || 'ไม่ได้ระบุ'}
+• ลักษณะอาการเวียน: ${sensationMap[patient.dizzinessSensation] || 'ไม่ได้ระบุ'}
+• ระยะเวลาที่มีอาการต่อรอบ: ${episodeMap[patient.dizzinessEpisodeDuration] || 'ไม่ได้ระบุ'}
 • ปัจจัยกระตุ้นและท่าทาง: ${triggersText}
 
 • Pertinent Positives:
-${positives.length > 0 ? positives.map(p => `  - ${p}`).join('\n') : '  - ไม่มีอาการร่วมอื่นที่เด่นชัด'}
+${positives.length > 0 ? positives.map(p => `  - ${p}`).join('\n') : '  - ผู้ป่วยไม่ได้ระบุอาการร่วมเพิ่มเติม'}
 
 • Pertinent Negatives:
-${negatives.map(n => `  - ${n}`).join('\n')}
+${patient.pertinentNegatives.map(n => `  - ${n}`).join('\n')}
 
 [Past Medical History & Medications]
 • สถานะประวัติ รพ.ราชบุรี: ${hospLabel}
-• โรคประจำตัว (U/D): ${patient.underlying?.length > 0 ? patient.underlying.join(', ') : 'ปฏิเสธ'}
+• โรคประจำตัว (U/D): ${udText}
 • ยาประจำตัว (Current Meds): ${medsText}
-• ประวัติแพ้ยา/แพ้อาหาร (Allergies): ${patient.drugAllergy || 'ปฏิเสธ'}
+• ประวัติแพ้ยา/แพ้อาหาร (Allergies): ${allergyText}
 
 [Emergency Risk Assessment (Red Flags)]
 ${patient.redFlags?.length > 0
@@ -244,12 +248,12 @@ ${patient.redFlags?.length > 0
       // B) Narrative Paragraph Format for Dizziness
       const defaultNarrative = 
 `ผู้ป่วย [${patient.name}] อายุ ${patient.age || '-'} ปี เพศ ${patient.gender || 'ไม่ระบุ'} มารับการตรวจที่ห้องฉุกเฉิน รพ.ราชบุรี ด้วยอาการเวียนศีรษะ / บ้านหมุนมา ${durationText}
-การเริ่มมีอาการ: ${onsetMap[patient.dizzinessOnsetMode] || 'ไม่ระบุ'} ลักษณะความรู้สึกเวียน: ${sensationMap[patient.dizzinessSensation] || 'ไม่ระบุ'} ระยะเวลาในแต่ละครั้ง: ${episodeMap[patient.dizzinessEpisodeDuration] || 'ไม่ระบุ'} ปัจจัยกระตุ้น: ${triggersText}
+การเริ่มมีอาการ: ${onsetMap[patient.dizzinessOnsetMode] || 'ไม่ได้ระบุ'} ลักษณะความรู้สึกเวียน: ${sensationMap[patient.dizzinessSensation] || 'ไม่ได้ระบุ'} ระยะเวลาในแต่ละครั้ง: ${episodeMap[patient.dizzinessEpisodeDuration] || 'ไม่ได้ระบุ'} ปัจจัยกระตุ้น: ${triggersText}
 
-อาการร่วมและการซักประวัติตามระบบ: ผู้ป่วยให้ประวัติ ${positives.join(', ')}
-อาการสำคัญที่ปฏิเสธ (Pertinent negatives): ${negatives.join(', ')}
+อาการร่วมและการซักประวัติตามระบบ: ผู้ป่วยให้ประวัติ ${patient.pertinentPositives.join(', ')}
+อาการสำคัญที่ปฏิเสธ (Pertinent negatives): ${patient.pertinentNegatives.join(', ')}
 
-ประวัติการเจ็บป่วยในอดีต: [${hospLabel}], โรคประจำตัว: ${patient.underlying?.length > 0 ? patient.underlying.join(', ') : 'ปฏิเสธ'}, ยาประจำตัว: ${medsText}, ประวัติแพ้ยา/แพ้อาหาร: ${patient.drugAllergy || 'ปฏิเสธประวัติแพ้ยา/แพ้อาหาร'}
+ประวัติการเจ็บป่วยในอดีต: [${hospLabel}], โรคประจำตัว: ${udText}, ยาประจำตัว: ${medsText}, ประวัติแพ้ยา/แพ้อาหาร: ${allergyText}
 ${patient.redFlags?.length > 0 ? `\n[🚩 แจ้งเตือนสัญญาณวิกฤต (Red Flags)]: ตรวจพบอาการ ${patient.redFlags.map(rf => rf.textTh).join(', ')}` : ''}
 
 [บันทึกการตรวจและการประเมินโดยแพทย์]:
@@ -888,7 +892,7 @@ registerCcModule({
       const durationUnit = document.getElementById('dizzinessDurationUnit')?.value || 'hours';
       const dizzinessOnsetMode = document.querySelector('input[name="dizzinessOnsetMode"]:checked')?.value || 'unspecified';
       const dizzinessSensation = document.querySelector('input[name="dizzinessSensation"]:checked')?.value || 'unspecified';
-      const dizzinessEpisodeDuration = document.querySelector('input[name="dizzinessEpisodeDuration"]:checked')?.value || 'unspecified';
+      const dizzinessEpisodeDuration = document.querySelector('input[name="dizzinessEpisodeDuration"]:checked')?.value || '';
 
       // Triggers
       const dizziness_trig_head_motion = document.getElementById('dizziness_trig_head_motion')?.checked || false;
@@ -985,7 +989,7 @@ registerCcModule({
         dizziness_has_photophobia_migraine,
         otherSymptomsFree,
         hospRecordStatus,
-        underlying: underlying.length > 0 ? underlying: ['ปฏิเสธ'],
+        underlying: underlying.length > 0 ? underlying : ((hospRecordStatus === 'self' || hospRecordStatus === 'additional') ? ['ปฏิเสธ'] : []),
         drugAllergy,
         currentMeds,
         doctor_notes: preservedDoctorNotes

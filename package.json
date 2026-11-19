@@ -1,0 +1,20 @@
+{
+  "name": "ratchaburi-er-history-assistant",
+  "version": "2.82.0",
+  "description": "Ratchaburi Hospital ER Intelligent History Taking & Dual-Engine REST API",
+  "main": "server/api_server.js",
+  "engines": {
+    "node": ">=22.5.0"
+  },
+  "scripts": {
+    "start": "node server/api_server.js",
+    "serve:lan": "node scripts/serve.js",
+    "test:core": "node tests/core_guard_test.js",
+    "test:responsive": "node tests/responsive_guard_test.js",
+    "test:backend": "node tests/feedback_and_backend_test.js",
+    "audit": "node scripts/audit.js"
+  },
+  "optionalDependencies": {
+    "pg": "^8.13.1"
+  }
+}

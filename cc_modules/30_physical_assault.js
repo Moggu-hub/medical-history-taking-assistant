@@ -38,7 +38,7 @@ function toggleAssaultFemaleSection(isFemale) {
     const lmpEl = document.getElementById('assaultLmpDate');
     const pregEl = document.getElementById('assaultPregnancyStatus');
     if (lmpEl) lmpEl.value = '';
-    if (pregEl) pregEl.selectedIndex = 0;
+    if (pregEl) { pregEl.selectedIndex = 0; pregEl.value = ''; }
   }
 }
 
@@ -296,7 +296,7 @@ function updateAssaultOutputs(rec) {
   if (posMatch) {
     rec.pertinentPositives = posMatch[1].trim().split('\n').map(l => l.replace(/^[-*\s]+/, '').trim());
   } else {
-    rec.pertinentPositives = ['มีรอยฟกช้ำหรือบาดแผลจากการถูกทำร้ายร่างกาย'];
+    rec.pertinentPositives = ['ผู้ป่วยไม่ได้ระบุอาการร่วมเพิ่มเติม'];
   }
 
   const negMatch = rapidText.match(/• Pertinent Negatives:\n((?:\s*-[^\n]+\n?)+)/);
@@ -477,10 +477,10 @@ function renderAssaultRapidHpi(patient) {
   if (sysSigns.includes('suspected_drugged_intoxicated')) positives.push('มึนงงสะลึมสะลือผิดปกติ สงสัยถูกวางยา/มอมยา');
   if (sysSigns.includes('no_systemic_signs')) negatives.push('ไม่มีอาการหน้ามืด ใจสั่น ตัวเย็น หรือมึนงงสะลึมสะลือ');
 
-  if (headSigns.length === 0 && !patient.assaultParentHeadFace) negatives.push('ไม่มีการบาดเจ็บที่ศีรษะ ไม่สลบ ไม่ปวดศีรษะและไม่อาเจียน');
-  if (neckSigns.length === 0 && !patient.assaultParentNeck) negatives.push('ไม่ได้ถูกบีบคอ ไม่มีเสียงแหบหรือกลืนลำบาก');
-  if (chestSigns.length === 0 && !patient.assaultParentChest) negatives.push('ไม่เจ็บแน่นหน้าอก และหายใจเหนื่อยหอบ');
-  if (abdSigns.length === 0 && !patient.assaultParentAbdomen) negatives.push('ไม่ปวดท้อง และปัสสาวะไม่มีเลือดปน');
+  if (patient.assaultParentHeadFace && !headSigns.includes('loc_amnesia') && !headSigns.includes('severe_headache_vomiting')) negatives.push('ไม่มีอาการสลบ ไม่ปวดศีรษะและไม่อาเจียน');
+  if (patient.assaultParentNeck && !neckSigns.includes('strangulation_dysphonia_dysphagia')) negatives.push('ไม่มีเสียงแหบหรือกลืนลำบาก');
+  if (patient.assaultParentChest && !chestSigns.includes('dyspnea_chest_tightness')) negatives.push('ไม่เจ็บแน่นหน้าอก และไม่หายใจเหนื่อยหอบ');
+  if (patient.assaultParentAbdomen && !abdSigns.includes('severe_abd_pain_distension') && !abdSigns.includes('hematuria_anuria')) negatives.push('ไม่ปวดท้อง และปัสสาวะไม่มีเลือดปน');
 
   const pScore = patient.painScore !== null && patient.painScore !== undefined ? `${patient.painScore}/10` : 'ไม่ได้ระบุ';
   const osccMap = {
@@ -507,11 +507,11 @@ function renderAssaultRapidHpi(patient) {
     suspected_or_missed: 'ขาดประจำเดือน / สงสัยอาจตั้งครรภ์',
     confirmed_pregnant: 'ยืนยันกำลังตั้งครรภ์',
     menopause_or_hysterectomy: 'วัยหมดประจำเดือน / ผ่าตัดมดลูกแล้ว',
-    unknown: 'ไม่ทราบ'
+    unknown: 'ไม่ทราบสถานะการตั้งครรภ์'
   };
   let femStr = '';
   if (isAssaultFemalePatient(patient) && (patient.assaultLmpDate || patient.assaultPregnancyStatus)) {
-    femStr = `LMP ${patient.assaultLmpDate || 'ไม่ระบุ'} (${pregMap[patient.assaultPregnancyStatus] || 'ไม่ระบุสถานะ'})`;
+    femStr = `LMP ${patient.assaultLmpDate || 'ไม่ระบุ'} (${pregMap[patient.assaultPregnancyStatus] || 'ไม่ได้ระบุ'})`;
   }
 
   const tetanusMap = {
@@ -524,6 +524,25 @@ function renderAssaultRapidHpi(patient) {
   };
   const tetanusStr = tetanusMap[patient.assaultTetanusHx] || 'ไม่ได้ระบุ';
 
+  const hospLabel = {
+    complete: 'มีประวัติกับ รพ.ราชบุรี ครบถ้วน (ดึงข้อมูลเดิมจากระบบ)',
+    additional: 'มีประวัติกับ รพ.ราชบุรี และขอให้ข้อมูลเพิ่มเติม',
+    self: 'ขอให้ข้อมูลด้วยตนเองทั้งหมด',
+    unspecified: 'ไม่ได้ระบุ'
+  }[patient.hospRecordStatus] || 'ไม่ได้ระบุ';
+  const udArr = Array.isArray(patient.underlying) ? patient.underlying : (patient.underlying ? [patient.underlying] : []);
+  const filteredUd = udArr.filter(u => u && !u.includes('ปฏิเสธ') && u !== 'ไม่มี' && u !== 'ไม่มีโรคประจำตัว' && u !== 'ไม่ได้ระบุ');
+  const hasExplicitUdDeny = udArr.some(u => u && (u.includes('ปฏิเสธ') || u === 'ไม่มี' || u === 'ไม่มีโรคประจำตัว'));
+  const udDisplay = filteredUd.length > 0
+    ? filteredUd.join(', ')
+    : ((hasExplicitUdDeny || patient.hospRecordStatus === 'self' || patient.hospRecordStatus === 'additional') ? 'ปฏิเสธ' : 'ไม่ได้ระบุ');
+  const allergyDisplay = (!patient.drugAllergy || patient.drugAllergy === 'ไม่ได้ระบุ')
+    ? 'ไม่ได้ระบุ'
+    : ((patient.drugAllergy.includes('ปฏิเสธ') || patient.drugAllergy === 'ไม่มี') ? 'ปฏิเสธ' : patient.drugAllergy);
+  const medsDisplay = (!patient.currentMeds || patient.currentMeds === 'ไม่ได้ระบุ')
+    ? 'ไม่ได้ระบุ'
+    : (patient.currentMeds === 'ไม่มี' ? 'ไม่มี' : patient.currentMeds);
+
   return `[Chief Complaint (CC)]
 ถูกทำร้ายร่างกาย เป็นมา ${durStr}
 
@@ -534,18 +553,18 @@ function renderAssaultRapidHpi(patient) {
 • ระดับความปวด (Pain Score): ${pScore}
 
 • Pertinent Positives:
-${positives.length > 0 ? positives.map(p => `  - ${p}`).join('\n') : '  - มีอาการปวดบวมฟกช้ำเฉพาะจุดที่ถูกทำร้าย'}
+${positives.length > 0 ? positives.map(p => `  - ${p}`).join('\n') : '  - ผู้ป่วยไม่ได้ระบุอาการร่วมเพิ่มเติม'}
 
 • Pertinent Negatives:
-${negatives.length > 0 ? negatives.map(n => `  - ${n}`).join('\n') : '  - ปฏิเสธอาการสลบ แน่นคอ เจ็บหน้าอก หรือปวดท้องรุนแรง'}
+${negatives.length > 0 ? negatives.map(n => `  - ${n}`).join('\n') : '  - ผู้ป่วยไม่ได้ระบุคำตอบยืนยันในหมวดอาการร่วม'}
 
 [Past Medical History & Medico-Legal Care Profile]
-• สถานะประวัติ รพ.ราชบุรี: ${patient.hospRecordStatus === 'complete' ? 'มีประวัติครบถ้วน' : (patient.hospRecordStatus === 'additional' ? 'มีประวัติเดิมและขอเพิ่ม' : 'ให้ข้อมูลใหม่ทั้งหมด')}
+• สถานะประวัติ รพ.ราชบุรี: ${hospLabel}
 • การคัดกรองศูนย์พึ่งได้ (OSCC) / ความรุนแรง: ${osccStr}
 • ประวัติยาละลายลิ่มเลือด/โรคเลือดออกง่าย: ${anticoagStr}
 • ประวัติวัคซีนบาดทะยัก: ${tetanusStr}${femStr ? `\n• ประวัติสตรี: ${femStr}` : ''}
-• โรคประจำตัว (U/D): ${Array.isArray(patient.underlying) && patient.underlying.length > 0 ? patient.underlying.join(', ') : 'ปฏิเสธ'}
-• ยาประจำตัว: ${patient.currentMeds || 'ไม่มี'} | แพ้ยา: ${patient.drugAllergy || 'ปฏิเสธ'}`;
+• โรคประจำตัว (U/D): ${udDisplay}
+• ยาประจำตัว: ${medsDisplay} | แพ้ยา: ${allergyDisplay}`;
 }
 
 function renderAssaultNarrativeHpi(patient) {
@@ -575,10 +594,10 @@ function renderAssaultNarrativeHpi(patient) {
     suspected_or_missed: 'ขาดประจำเดือน / สงสัยอาจตั้งครรภ์',
     confirmed_pregnant: 'ยืนยันกำลังตั้งครรภ์',
     menopause_or_hysterectomy: 'วัยหมดประจำเดือน / ผ่าตัดมดลูกแล้ว',
-    unknown: 'ไม่ทราบ'
+    unknown: 'ไม่ทราบสถานะการตั้งครรภ์'
   };
   if (isAssaultFemalePatient(patient) && (patient.assaultLmpDate || patient.assaultPregnancyStatus)) {
-    text += ` ประวัติสตรี: LMP ${patient.assaultLmpDate || 'ไม่ระบุ'} (${pregMap[patient.assaultPregnancyStatus] || 'ไม่ระบุสถานะ'})`;
+    text += ` ประวัติสตรี: LMP ${patient.assaultLmpDate || 'ไม่ระบุ'} (${pregMap[patient.assaultPregnancyStatus] || 'ไม่ได้ระบุ'})`;
   }
   if (patient.otherSymptomsFree && String(patient.otherSymptomsFree).trim()) {
     text += ` ข้อมูลเพิ่มเติม: ${String(patient.otherSymptomsFree).trim()}`;
@@ -664,7 +683,7 @@ function generateAssaultCds(patient, ctx) {
 // --- FORM HTML TEMPLATE ---
 const PHYSICAL_ASSAULT_FORM_HTML = `
 <div id="cc-physical-assault-section" class="space-y-6">
-
+  <div data-cc-top-banner="physical_assault"><div class="flex flex-col gap-4">
   <!-- First-Aid Guidance Banner -->
   <div class="bg-amber-50 border border-amber-300 rounded-2xl p-4 text-xs sm:text-sm text-amber-900 flex items-start space-x-3 shadow-xs">
     <i data-lucide="shield-alert" class="w-5 h-5 text-amber-600 shrink-0 mt-0.5"></i>
@@ -677,6 +696,7 @@ const PHYSICAL_ASSAULT_FORM_HTML = `
       </ol>
     </div>
   </div>
+  </div></div>
 
   <!-- CARD 1: ข้อมูลเหตุการณ์ กลไกการถูกทำร้าย และสถานะเลือดออก -->
   <div class="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-xs space-y-5">
@@ -1105,6 +1125,7 @@ const PHYSICAL_ASSAULT_FORM_HTML = `
         <div class="min-w-0">
           <span class="block text-xs font-semibold text-slate-700 mb-1">สถานะการตั้งครรภ์:</span>
           <select id="assaultPregnancyStatus" class="w-full min-w-0 text-xs sm:text-sm border-slate-300 rounded-lg p-2 focus:ring-medical-500 focus:border-medical-500 bg-white">
+            <option value="">-- ไม่ระบุ --</option>
             <option value="not_pregnant">ไม่ได้ตั้งครรภ์ / ประจำเดือนมาปกติ</option>
             <option value="suspected_or_missed">ขาดประจำเดือน / สงสัยอาจตั้งครรภ์</option>
             <option value="confirmed_pregnant">ได้รับการยืนยันว่ากำลังตั้งครรภ์</option>
@@ -1306,7 +1327,7 @@ const physicalAssaultModule = {
       })(),
       ...(isAssaultFemaleCtx(ctx) ? {
         assaultLmpDate: getText('assaultLmpDate'),
-        assaultPregnancyStatus: document.getElementById('assaultPregnancyStatus')?.value || 'not_pregnant'
+        assaultPregnancyStatus: document.getElementById('assaultPregnancyStatus')?.value || ''
       } : {})
     };
 
@@ -1443,7 +1464,7 @@ const physicalAssaultModule = {
     if (isFem) {
       setText('assaultLmpDate', patient.assaultLmpDate || '');
       const pregEl = document.getElementById('assaultPregnancyStatus');
-      if (pregEl && patient.assaultPregnancyStatus) pregEl.value = patient.assaultPregnancyStatus;
+      if (pregEl) pregEl.value = patient.assaultPregnancyStatus || '';
     }
     checkAndDisplayAssaultLmp(patient);
 
@@ -1507,6 +1528,8 @@ const physicalAssaultModule = {
     sec.querySelectorAll('input[type="radio"]').forEach(rb => { rb.checked = false; });
     sec.querySelectorAll('input[type="text"], textarea').forEach(ti => { ti.value = ''; });
     sec.querySelectorAll('select').forEach(sel => { sel.selectedIndex = 0; });
+    const pregEl = document.getElementById('assaultPregnancyStatus');
+    if (pregEl) pregEl.value = '';
     sec.querySelectorAll('input[type="number"]').forEach(ni => { ni.value = ''; });
 
     ['assaultDurationVal', 'assaultBluntDetail', 'assaultSharpDetail', 'assaultChemicalDetail', 'assaultOtherMechDetail', 'assaultOtherLocationDetail'].forEach(id => {

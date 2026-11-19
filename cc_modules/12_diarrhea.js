@@ -304,9 +304,11 @@ function updateDiarrheaOutputs(patient) {
     constant_severe: 'ปวดท้องรุนแรงมากตลอดเวลา ขยับตัวแล้วเจ็บสะเทือน ไม่ทุเลาลง 🚩'
   };
 
-  const dehyList = (patient.diarrheaDehydrationSigns || []).map(k => dehyMap[k] || k);
-  const systemicList = (patient.diarrheaSystemicSigns || []).map(k => systemicMap[k] || k);
-  const foodList = (patient.diarrheaFoodRisks || []).map(k => foodRiskMap[k] || k);
+  const dehyRaw = Array.isArray(patient.diarrheaDehydrationSigns) ? patient.diarrheaDehydrationSigns : [];
+  const dehyList = dehyRaw.filter(k => k !== 'none_dehydration').map(k => dehyMap[k] || k);
+  const systemicList = (patient.diarrheaSystemicSigns || []).filter(k => k !== 'none_systemic').map(k => systemicMap[k] || k);
+  const foodRaw = Array.isArray(patient.diarrheaFoodRisks) ? patient.diarrheaFoodRisks : [];
+  const foodList = foodRaw.filter(k => k !== 'none_food_risk').map(k => foodRiskMap[k] || k);
 
   const redFlags = evaluateDiarrheaRedFlags(patient);
   patient.redFlags = redFlags;
@@ -326,11 +328,17 @@ function updateDiarrheaOutputs(patient) {
   }[patient.hospRecordStatus] || 'ไม่ได้ระบุ';
 
   const docNotes = patient.doctor_notes || {};
-  const medsText = (!patient.currentMeds || patient.currentMeds === 'ไม่ได้ระบุ' || patient.currentMeds === 'ไม่มี') ? 'ไม่มี' : patient.currentMeds;
+  const medsText = (!patient.currentMeds || patient.currentMeds === 'ไม่ได้ระบุ') ? 'ไม่ได้ระบุ' : patient.currentMeds;
+  const udArr = Array.isArray(patient.underlying) ? patient.underlying.filter(u => u && !u.includes('ปฏิเสธ') && u !== 'ไม่มี' && u !== 'ไม่มีโรคประจำตัว') : [];
+  const udExplicitDeny = Array.isArray(patient.underlying) && patient.underlying.some(u => u && u.includes('ปฏิเสธ'));
+  const udText = udArr.length > 0 ? udArr.join(', ') : ((patient.hospRecordStatus === 'self' || patient.hospRecordStatus === 'additional' || udExplicitDeny) ? 'ปฏิเสธ' : 'ไม่ได้ระบุ');
+  const allergyText = (!patient.drugAllergy || patient.drugAllergy === 'ไม่ได้ระบุ') ? 'ไม่ได้ระบุ' : patient.drugAllergy;
 
   // 1) All Pertinent Positives for Patient Queue Card & Summary
   const positives = [];
-  positives.push(`ถ่ายเหลว: ${stoolCharMap[patient.diarrheaStoolConsistency] || 'ถ่ายเหลว'} (${freqMap[patient.diarrheaFrequency24h] || 'ไม่ระบุความถี่'})`);
+  if (patient.diarrheaStoolConsistency && patient.diarrheaStoolConsistency !== 'unspecified') {
+    positives.push(`ถ่ายเหลว: ${stoolCharMap[patient.diarrheaStoolConsistency] || 'ถ่ายเหลว'} (${freqMap[patient.diarrheaFrequency24h] || 'ไม่ระบุความถี่'})`);
+  }
   if (patient.diarrheaHasAbdpain === 'yes') {
     positives.push(`ปวดท้อง: ${abdpainCharMap[patient.diarrheaAbdpainChar] || 'ไม่ระบุลักษณะ'} ตำแหน่ง [${abdpainLocMap[patient.diarrheaAbdpainLoc] || 'ไม่ระบุ'}]`);
   }
@@ -366,61 +374,67 @@ function updateDiarrheaOutputs(patient) {
   if (patient.diarrheaTravel) {
     positives.push(`มีประวัติเดินทางต่างถิ่น (${patient.diarrheaTravelDetails || 'มีประวัติเดินทาง'})`);
   }
+  const diarrheaLmpMap = {
+    regular_lmp_exact: `ประจำเดือนมาปกติ (LMP: ${patient.diarrheaLmpDate || 'ไม่ระบุ'})`,
+    missed_period: '🚩 ขาดประจำเดือน / สงสัยตั้งครรภ์',
+    irregular_unsure: 'ประจำเดือนมาไม่สม่ำเสมอ',
+    menopause_hysterectomy: 'หมดประจำเดือนแล้ว / ผ่าตัดมดลูกแล้ว'
+  };
   if (patient.gender === 'หญิง' && patient.diarrheaLmpStatus) {
-    const lmpMap = {
-      regular_lmp_exact: `ประจำเดือนมาปกติ (LMP: ${patient.diarrheaLmpDate || 'ไม่ระบุ'})`,
-      missed_period: '🚩 ขาดประจำเดือน / สงสัยตั้งครรภ์',
-      irregular_unsure: 'ประจำเดือนมาไม่สม่ำเสมอ',
-      menopause_hysterectomy: 'หมดประจำเดือนแล้ว / ผ่าตัดมดลูกแล้ว'
-    };
-    positives.push(lmpMap[patient.diarrheaLmpStatus] || patient.diarrheaLmpStatus);
+    positives.push(diarrheaLmpMap[patient.diarrheaLmpStatus] || 'ไม่ได้ระบุสถานะประจำเดือน');
   }
   if (patient.otherSymptomsFree) {
     positives.push(patient.otherSymptomsFree);
   }
 
-  // 2) Pertinent Negatives (Concise rule-outs, non-contradictory)
+  // 2) Pertinent Negatives (Concise rule-outs, strictly non-fabricated)
   const negatives = [];
-  if (patient.diarrheaStoolConsistency !== 'mucous_bloody' && patient.diarrheaStoolConsistency !== 'black_tarry_melena') {
+  const stoolAnswered = Boolean(patient.diarrheaStoolConsistency && patient.diarrheaStoolConsistency !== 'unspecified');
+  const giAssocAnswered = Boolean(patient.diarrheaHasAbdpain === 'yes' || patient.diarrheaHasAbdpain === 'no' || patient.diarrheaNausea || patient.diarrheaVomit || patient.diarrheaBloating || patient.diarrheaAnusBurning);
+  if (stoolAnswered && patient.diarrheaStoolConsistency !== 'mucous_bloody' && patient.diarrheaStoolConsistency !== 'black_tarry_melena') {
     negatives.push('ปฏิเสธการถ่ายเป็นมูกเลือดสดและถ่ายดำยางมะตอย');
   }
-  if (patient.diarrheaHasAbdpain !== 'yes') {
+  if (patient.diarrheaHasAbdpain === 'no') {
     negatives.push('ปฏิเสธอาการปวดท้องรุนแรง');
   }
-  if (!patient.diarrheaNausea && !patient.diarrheaVomit) {
+  if (giAssocAnswered && !patient.diarrheaNausea && !patient.diarrheaVomit) {
     negatives.push('ไม่มีคลื่นไส้อาเจียน');
-  } else if (!patient.diarrheaVomit) {
+  } else if (giAssocAnswered && !patient.diarrheaVomit) {
     negatives.push('ไม่มีอาการอาเจียน');
   }
-  if (patient.diarrheaOralTolerance !== 'oral_intolerant') {
+  if (patient.diarrheaOralTolerance === 'oral_tolerated') {
     negatives.push('ดื่มน้ำและจิบเกลือแร่ (ORS) ได้ ไม่สำลัก');
   }
 
   const dehySigns = patient.diarrheaDehydrationSigns || [];
-  if (!dehySigns.includes('postural_dizziness') && !dehySigns.includes('syncope_blackout') && !dehySigns.includes('cold_clammy_extremities')) {
-    negatives.push('ไม่มีอาการหน้ามืด วูบหมดสติ หรือมือเท้าเย็น');
-  }
-  if (!dehySigns.includes('oliguria_anuria_6h')) {
-    negatives.push('ปัสสาวะออกปกติ ไม่อ่อนเพลียรุนแรง');
+  if (dehySigns.length > 0) {
+    if (!dehySigns.includes('postural_dizziness') && !dehySigns.includes('syncope_blackout') && !dehySigns.includes('cold_clammy_extremities')) {
+      negatives.push('ไม่มีอาการหน้ามืด วูบหมดสติ หรือมือเท้าเย็น');
+    }
+    if (!dehySigns.includes('oliguria_anuria_6h')) {
+      negatives.push('ปัสสาวะออกปกติ ไม่อ่อนเพลียรุนแรง');
+    }
   }
 
   const sysSigns = patient.diarrheaSystemicSigns || [];
-  if (!sysSigns.includes('fever_chills') && !sysSigns.includes('tachypnea_dyspnea') && !sysSigns.includes('lethargy_confusion')) {
-    negatives.push('ปฏิเสธไข้หนาวสั่น หายใจหอบเหนื่อย หรือซึมลง');
-  } else {
-    if (!sysSigns.includes('fever_chills')) negatives.push('ปฏิเสธไข้หนาวสั่น');
-    if (!sysSigns.includes('tachypnea_dyspnea')) negatives.push('ไม่มีอาการหายใจหอบเหนื่อย');
-  }
-  if (!sysSigns.includes('lethargy_confusion')) {
-    negatives.push('รู้สึกตัวดี ถามตอบรู้เรื่อง ช่วยเหลือตัวเองได้');
+  if (sysSigns.length > 0) {
+    if (!sysSigns.includes('fever_chills') && !sysSigns.includes('tachypnea_dyspnea') && !sysSigns.includes('lethargy_confusion')) {
+      negatives.push('ปฏิเสธไข้หนาวสั่น หายใจหอบเหนื่อย หรือซึมลง');
+    } else {
+      if (!sysSigns.includes('fever_chills')) negatives.push('ปฏิเสธไข้หนาวสั่น');
+      if (!sysSigns.includes('tachypnea_dyspnea')) negatives.push('ไม่มีอาการหายใจหอบเหนื่อย');
+    }
+    if (!sysSigns.includes('lethargy_confusion')) {
+      negatives.push('รู้สึกตัวดี ถามตอบรู้เรื่อง ช่วยเหลือตัวเองได้');
+    }
   }
 
-  if (patient.diarrheaRecentAbx !== 'recent_abx_yes') {
+  if (patient.diarrheaRecentAbx === 'recent_abx_no') {
     negatives.push('ปฏิเสธประวัติใช้ยาปฏิชีวนะในช่วง 1-3 เดือนก่อนหน้า');
   }
 
-  patient.pertinentPositives = positives;
-  patient.pertinentNegatives = negatives;
+  patient.pertinentPositives = positives.length > 0 ? positives : ['ผู้ป่วยไม่ได้ระบุอาการร่วมเพิ่มเติม'];
+  patient.pertinentNegatives = negatives.length > 0 ? negatives : ['ผู้ป่วยไม่ได้ระบุคำตอบยืนยันในหมวดอาการร่วม'];
 
   // 3) Rapid Bullet Positives (Strictly non-redundant with top HPI lines)
   const rapidPositives = [];
@@ -457,20 +471,14 @@ function updateDiarrheaOutputs(patient) {
     rapidPositives.push(`มีประวัติเดินทางต่างถิ่น: ${patient.diarrheaTravelDetails || 'มีประวัติเดินทาง'}`);
   }
   if (patient.gender === 'หญิง' && patient.diarrheaLmpStatus) {
-    const lmpMap = {
-      regular_lmp_exact: `ประจำเดือนมาปกติ (LMP: ${patient.diarrheaLmpDate || 'ไม่ระบุ'})`,
-      missed_period: '🚩 ขาดประจำเดือน / สงสัยตั้งครรภ์',
-      irregular_unsure: 'ประจำเดือนมาไม่สม่ำเสมอ',
-      menopause_hysterectomy: 'หมดประจำเดือนแล้ว / ผ่าตัดมดลูกแล้ว'
-    };
-    rapidPositives.push(`ข้อมูลสตรี: ${lmpMap[patient.diarrheaLmpStatus] || patient.diarrheaLmpStatus}`);
+    rapidPositives.push(`ข้อมูลสตรี: ${diarrheaLmpMap[patient.diarrheaLmpStatus] || 'ไม่ได้ระบุสถานะประจำเดือน'}`);
   }
   if (patient.otherSymptomsFree) {
     rapidPositives.push(`อาการอื่นๆ: ${patient.otherSymptomsFree}`);
   }
 
-  patient.pertinentPositives = rapidPositives.length > 0 ? rapidPositives : ['ไม่มีอาการร่วมผิดปกติ'];
-  patient.pertinentNegatives = negatives;
+  patient.pertinentPositives = rapidPositives.length > 0 ? rapidPositives : (positives.length > 0 ? positives : ['ผู้ป่วยไม่ได้ระบุอาการร่วมเพิ่มเติม']);
+  patient.pertinentNegatives = negatives.length > 0 ? negatives : ['ผู้ป่วยไม่ได้ระบุคำตอบยืนยันในหมวดอาการร่วม'];
 
   // A) Rapid Bullet Format (Standardized Clinical Hierarchy)
   const defaultRapid =
@@ -478,21 +486,21 @@ function updateDiarrheaOutputs(patient) {
 ถ่ายเหลว / ถ่ายเป็นน้ำ (Acute Diarrhea) มา ${durationText}
 
 [History of Present Illness (HPI)]
-• ลักษณะอุจจาระ: ${stoolCharMap[patient.diarrheaStoolConsistency] || 'ไม่ระบุ'}
-• การเริ่มต้นและความถี่: ${onsetMap[patient.diarrheaOnsetMode] || 'ไม่ระบุ'}, ความถี่ในรอบ 24 ชม.: ${freqMap[patient.diarrheaFrequency24h] || 'ไม่ระบุ'}
-• ปริมาณต่อครั้ง: ${volMap[patient.diarrheaVolumePerTime] || 'ไม่ระบุ'}
+• ลักษณะอุจจาระ: ${stoolCharMap[patient.diarrheaStoolConsistency] || 'ไม่ได้ระบุ'}
+• การเริ่มต้นและความถี่: ${onsetMap[patient.diarrheaOnsetMode] || 'ไม่ได้ระบุ'}, ความถี่ในรอบ 24 ชม.: ${freqMap[patient.diarrheaFrequency24h] || 'ไม่ได้ระบุ'}
+• ปริมาณต่อครั้ง: ${volMap[patient.diarrheaVolumePerTime] || 'ไม่ได้ระบุ'}
 ${patient.diarrheaHasAbdpain === 'yes' ? `• อาการปวดท้อง: ${abdpainCharMap[patient.diarrheaAbdpainChar] || 'ปวดท้อง'} ตำแหน่ง [${abdpainLocMap[patient.diarrheaAbdpainLoc] || 'ไม่ระบุ'}]\n` : ''}
 • Pertinent Positives:
-${rapidPositives.length > 0 ? rapidPositives.map(p => `  - ${p}`).join('\n') : '  - ไม่มีอาการร่วมอื่นที่เด่นชัด'}
+${rapidPositives.length > 0 ? rapidPositives.map(p => `  - ${p}`).join('\n') : '  - ผู้ป่วยไม่ได้ระบุอาการร่วมเพิ่มเติม'}
 
 • Pertinent Negatives:
-${negatives.map(n => `  - ${n}`).join('\n')}
+${patient.pertinentNegatives.map(n => `  - ${n}`).join('\n')}
 
 [Past Medical History & Medications]
 • สถานะประวัติ รพ.ราชบุรี: ${hospLabel}
-• โรคประจำตัว (U/D): ${(patient.underlying && patient.underlying.length > 0) ? patient.underlying.join(', ') : 'ปฏิเสธ'}
+• โรคประจำตัว (U/D): ${udText}
 • ยาประจำตัว (Current Meds): ${medsText}
-• ประวัติแพ้ยา/แพ้อาหาร (Allergies): ${patient.drugAllergy || 'ปฏิเสธ'}
+• ประวัติแพ้ยา/แพ้อาหาร (Allergies): ${allergyText}
 
 [Emergency Risk Assessment (Red Flags)]
 ${redFlags.length > 0
@@ -506,16 +514,25 @@ ${redFlags.length > 0
 • แผนการรักษา (Plan/Orders): ${docNotes.plan || '-'}`;
 
   // B) Narrative Paragraph Format
+  const abdpainNarr = patient.diarrheaHasAbdpain === 'yes'
+    ? `มีอาการปวดท้องลักษณะ ${abdpainCharMap[patient.diarrheaAbdpainChar] || ''} บริเวณ ${abdpainLocMap[patient.diarrheaAbdpainLoc] || ''}`
+    : (patient.diarrheaHasAbdpain === 'no' ? 'ไม่มีอาการปวดท้องรุนแรง' : 'ไม่ได้ระบุอาการปวดท้อง');
+  const foodNarr = foodList.length > 0
+    ? `มีประวัติรับประทาน ${foodList.join(', ')}`
+    : (foodRaw.includes('none_food_risk') ? 'ปฏิเสธอาหารเสี่ยงชัดเจน' : 'ไม่ได้ระบุประวัติอาหารเสี่ยง');
+  const abxNarr = patient.diarrheaRecentAbx === 'recent_abx_yes'
+    ? `มีประวัติได้รับยาปฏิชีวนะ (${patient.diarrheaAbxDetails || 'ใน 1-3 เดือน'})`
+    : (patient.diarrheaRecentAbx === 'recent_abx_no' ? 'ปฏิเสธประวัติใช้ยาปฏิชีวนะ' : '');
   const defaultNarrative =
-`ผู้ป่วย${patient.gender || ''} อายุ ${patient.age || 'ไม่ระบุ'} ปี มารับการตรวจที่ห้องฉุกเฉิน รพ.ราชบุรี ด้วยอาการถ่ายเหลว / ถ่ายเป็นน้ำ (Acute Diarrhea) มา ${durationText}
-ประวัติการเจ็บป่วยปัจจุบัน: ผู้ป่วยมีอาการ${onsetMap[patient.diarrheaOnsetMode] || 'ถ่ายเหลว'} ความถี่ในรอบ 24 ชม. ประมาณ ${freqMap[patient.diarrheaFrequency24h] || 'ไม่ระบุ'} ปริมาณต่อครั้ง [${volMap[patient.diarrheaVolumePerTime] || 'ไม่ระบุ'}] อุจจาระมีลักษณะเด่นคือ [${stoolCharMap[patient.diarrheaStoolConsistency] || 'ไม่ระบุ'}] ${patient.diarrheaHasAbdpain === 'yes' ? `มีอาการปวดท้องลักษณะ ${abdpainCharMap[patient.diarrheaAbdpainChar] || ''} บริเวณ ${abdpainLocMap[patient.diarrheaAbdpainLoc] || ''}` : 'ไม่มีอาการปวดท้องรุนแรง'}
+`ผู้ป่วย${patient.gender && patient.gender !== 'ไม่ระบุ' ? patient.gender : ''} อายุ ${patient.age || 'ไม่ระบุ'} ปี มารับการตรวจที่ห้องฉุกเฉิน รพ.ราชบุรี ด้วยอาการถ่ายเหลว / ถ่ายเป็นน้ำ (Acute Diarrhea) มา ${durationText}
+ประวัติการเจ็บป่วยปัจจุบัน: ผู้ป่วยมีอาการ${onsetMap[patient.diarrheaOnsetMode] || 'ไม่ได้ระบุ'} ความถี่ในรอบ 24 ชม. ประมาณ ${freqMap[patient.diarrheaFrequency24h] || 'ไม่ได้ระบุ'} ปริมาณต่อครั้ง [${volMap[patient.diarrheaVolumePerTime] || 'ไม่ได้ระบุ'}] อุจจาระมีลักษณะเด่นคือ [${stoolCharMap[patient.diarrheaStoolConsistency] || 'ไม่ได้ระบุ'}] ${abdpainNarr}
 
-อาการร่วมที่พบ (Pertinent Positives): ${rapidPositives.length > 0 ? rapidPositives.join(', ') : 'ไม่มีอาการร่วมอื่นที่เด่นชัด'}
-อาการปฏิเสธสำคัญ (Pertinent Negatives): ${negatives.join(', ')}
+อาการร่วมที่พบ (Pertinent Positives): ${rapidPositives.length > 0 ? rapidPositives.join(', ') : 'ผู้ป่วยไม่ได้ระบุอาการร่วมเพิ่มเติม'}
+อาการปฏิเสธสำคัญ (Pertinent Negatives): ${patient.pertinentNegatives.join(', ')}
 
-ประวัติระบาดวิทยา อาหาร และยา: ${foodList.length > 0 ? `มีประวัติรับประทาน ${foodList.join(', ')}` : 'ปฏิเสธอาหารเสี่ยงชัดเจน'} ${patient.diarrheaSharedMeal === 'outbreak_multiple' ? `(มีผู้ร่วมรับประทานอาหารป่วยด้วย: ${patient.diarrheaOutbreakDetails || 'หลายราย'})` : ''} ${patient.diarrheaRecentAbx === 'recent_abx_yes' ? `มีประวัติได้รับยาปฏิชีวนะ (${patient.diarrheaAbxDetails || 'ใน 1-3 เดือน'})` : 'ปฏิเสธประวัติใช้ยาปฏิชีวนะ'} ${patient.gender === 'หญิง' && patient.diarrheaLmpStatus ? `ข้อมูลประจำเดือน: ${patient.diarrheaLmpStatus === 'regular_lmp_exact' ? (patient.diarrheaLmpDate || 'ปกติ') : patient.diarrheaLmpStatus}` : ''}
+ประวัติระบาดวิทยา อาหาร และยา: ${foodNarr} ${patient.diarrheaSharedMeal === 'outbreak_multiple' ? `(มีผู้ร่วมรับประทานอาหารป่วยด้วย: ${patient.diarrheaOutbreakDetails || 'หลายราย'})` : ''} ${abxNarr} ${patient.gender === 'หญิง' && patient.diarrheaLmpStatus ? `ข้อมูลประจำเดือน: ${diarrheaLmpMap[patient.diarrheaLmpStatus] || 'ไม่ได้ระบุสถานะประจำเดือน'}` : ''}
 
-ประวัติอดีตและยาประจำตัว: สถานะประวัติ [${hospLabel}], โรคประจำตัว: ${(patient.underlying && patient.underlying.length > 0) ? patient.underlying.join(', ') : 'ปฏิเสธโรคประจำตัว'}, ประวัติแพ้ยา/แพ้อาหาร: ${patient.drugAllergy || 'ปฏิเสธ'}, ยาที่ใช้ประจำ: ${medsText}
+ประวัติอดีตและยาประจำตัว: สถานะประวัติ [${hospLabel}], โรคประจำตัว: ${udText}, ประวัติแพ้ยา/แพ้อาหาร: ${allergyText}, ยาที่ใช้ประจำ: ${medsText}
 ${redFlags.length > 0 ? `\n[🚩 แจ้งเตือนสัญญาณวิกฤต]: ตรวจพบอาการ ${redFlags.map(rf => rf.textTh).join(', ')}` : ''}
 
 [บันทึกการตรวจและการประเมินโดยแพทย์]:
@@ -668,7 +685,7 @@ registerCcModule({
   },
   formHtml: `
     <div id="diarrheaQuestionnaireSection" class="hidden space-y-6">
-
+      <div data-cc-top-banner="diarrhea"><div class="flex flex-col gap-4">
       <!-- Triage Advisory Banner -->
       <div class="p-3.5 bg-amber-50 border border-amber-200 rounded-2xl flex items-start space-x-3 shadow-sm">
         <i data-lucide="alert-triangle" class="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5"></i>
@@ -678,6 +695,7 @@ registerCcModule({
           <span class="underline font-bold text-amber-950">&lt;อาเจียนเป็นเลือด / ถ่ายดำ / ถ่ายเป็นเลือดสด&gt;</span> เพื่อรับการประเมินภาวะเลือดออกในทางเดินอาหารเฉียบพลัน
         </div>
       </div>
+      </div></div>
 
       <!-- CARD 1: วันที่และเวลาที่เริ่มมีอาการ (Onset & Duration) -->
       <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
@@ -1233,7 +1251,7 @@ registerCcModule({
     const diarrheaStoolConsistency = document.querySelector('input[name="diarrheaStoolConsistency"]:checked')?.value || 'unspecified';
     const diarrheaStoolOtherText = document.getElementById('diarrheaStoolOtherText')?.value?.trim() || '';
 
-    const diarrheaHasAbdpain = document.querySelector('input[name="diarrheaHasAbdpain"]:checked')?.value || 'no';
+    const diarrheaHasAbdpain = document.querySelector('input[name="diarrheaHasAbdpain"]:checked')?.value || 'unspecified';
     const diarrheaAbdpainChar = document.querySelector('input[name="diarrheaAbdpainChar"]:checked')?.value || '';
     const diarrheaAbdpainLoc = document.querySelector('input[name="diarrheaAbdpainLoc"]:checked')?.value || '';
 
@@ -1248,7 +1266,7 @@ registerCcModule({
 
     const diarrheaDehydrationSigns = [];
     document.querySelectorAll('input[name="diarrheaDehydrationSigns"]:checked').forEach(cb => {
-      if (cb.value !== 'none_dehydration') diarrheaDehydrationSigns.push(cb.value);
+      diarrheaDehydrationSigns.push(cb.value);
     });
 
     const diarrheaSystemicSigns = [];
@@ -1258,13 +1276,13 @@ registerCcModule({
 
     const diarrheaFoodRisks = [];
     document.querySelectorAll('input[name="diarrheaFoodRisks"]:checked').forEach(cb => {
-      if (cb.value !== 'none_food_risk') diarrheaFoodRisks.push(cb.value);
+      diarrheaFoodRisks.push(cb.value);
     });
 
-    const diarrheaSharedMeal = document.querySelector('input[name="diarrheaSharedMeal"]:checked')?.value || 'alone_unknown';
+    const diarrheaSharedMeal = document.querySelector('input[name="diarrheaSharedMeal"]:checked')?.value || '';
     const diarrheaOutbreakDetails = document.getElementById('diarrheaOutbreakDetails')?.value?.trim() || '';
 
-    const diarrheaRecentAbx = document.querySelector('input[name="diarrheaRecentAbx"]:checked')?.value || 'recent_abx_no';
+    const diarrheaRecentAbx = document.querySelector('input[name="diarrheaRecentAbx"]:checked')?.value || 'unspecified';
     const diarrheaAbxDetails = document.getElementById('diarrheaAbxDetails')?.value?.trim() || '';
 
     const diarrheaTravel = Boolean(document.getElementById('diarrhea_travel_cb')?.checked);

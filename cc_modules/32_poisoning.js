@@ -443,7 +443,7 @@ registerCcModule({
   // -----------------------------------------------------------------------
   formHtml: `
     <div id="ccPoisoningSection" class="space-y-6">
-
+      <div data-cc-top-banner="poisoning"><div class="flex flex-col gap-4">
       <!-- First-Aid Guidance Banner (ส่วนต้น) -->
       <div class="bg-teal-50 border border-teal-200 rounded-2xl p-4 sm:p-5 text-teal-900 shadow-2xs space-y-2">
         <div class="flex items-center space-x-2 text-teal-800 font-bold text-sm">
@@ -457,7 +457,7 @@ registerCcModule({
           <li><strong>อาการที่ต้องรีบแจ้งพยาบาลทันที:</strong> ง่วงซึมลง หายใจลำบาก กลืนน้ำลายไม่ได้ เสียงแหบ น้ำลายฟูมปาก ชักเกร็ง ตามัว หรือหน้ามืดคล้ายจะเป็นลม</li>
         </ul>
       </div>
-
+      </div></div>
       <!-- CARD 1: ช่วงเวลา ช่องทาง และรายการยา/สารพิษ -->
       <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 space-y-5">
         <div class="flex items-center space-x-3 mb-2">
@@ -1312,10 +1312,10 @@ registerCcModule({
       chief_complaint_title: 'ได้รับสารพิษ / กินยาเกินขนาด',
       timestamp: new Date().toISOString(),
       status: recordStatus || 'waiting',
-      hospRecordStatus: hospRecordStatus || 'complete',
+      hospRecordStatus: hospRecordStatus || 'unspecified',
       underlying: underlying || [],
-      drugAllergy: drugAllergy || 'ปฏิเสธ',
-      currentMeds: currentMeds || 'ไม่มี',
+      drugAllergy: drugAllergy || 'ไม่ได้ระบุ',
+      currentMeds: currentMeds || 'ไม่ได้ระบุ',
       otherSymptomsFree: document.getElementById('poisoning_other_free')?.value?.trim() || otherSymptomsFree || '',
       doctor_notes: preservedDoctorNotes || { additional_hpi: '', physical_exam: '', preliminary_dx: '', plan: '' }
     };
@@ -1730,14 +1730,13 @@ registerCcModule({
     const positives = [];
     const negatives = [];
 
-    Object.keys(symDict).forEach(k => {
-      if (k === 'asymptomatic') return;
-      if (syms.includes(k)) {
-        positives.push(symDict[k]);
-      } else {
-        negatives.push(`ปฏิเสธ${symDict[k]}`);
-      }
-    });
+    if (syms.length > 0) {
+      Object.keys(symDict).forEach(k => {
+        if (k === 'asymptomatic') return;
+        if (syms.includes(k)) positives.push(symDict[k]);
+        else negatives.push(`ปฏิเสธ${symDict[k]}`);
+      });
+    }
 
     if (syms.includes('asymptomatic')) {
       positives.push('ยังไม่มีอาการผิดปกติใดๆ ในขณะนี้');
@@ -1747,7 +1746,7 @@ registerCcModule({
     }
 
     // Set pertinentPositives for Patient Status View
-    p.pertinentPositives = positives.length > 0 ? positives : ['ได้รับสารพิษ/ยาเกินขนาด (ยังไม่มีอาการผิดปกติชัดเจน)'];
+    p.pertinentPositives = positives.length > 0 ? positives : ['ผู้ป่วยไม่ได้ระบุอาการร่วมเพิ่มเติม'];
 
     // Pain Score & Alcohol & Female LMP/Pregnancy
     const painStr = p.poisoningPainScoreVal !== null && p.poisoningPainScoreVal !== undefined
@@ -1757,15 +1756,15 @@ registerCcModule({
       ? `มีดื่มแอลกอฮอล์ร่วม (${p.poisoningAlcoholDetail || 'ไม่ระบุรายละเอียด'})`
       : p.poisoningAlcoholUsed === 'no' ? 'ปฏิเสธการดื่มแอลกอฮอล์' : 'ไม่ได้ระบุ';
     const isFemalePatient = p.gender === 'หญิง' || (typeof p.patientTitle === 'string' && isPoisoningPatientFemale(p.patientTitle));
-    const femaleText = p.poisoningPregnancyStatus === 'pregnant'
-      ? `กำลังตั้งครรภ์ (${p.poisoningPregnancyWeeks || '-'} สัปดาห์)`
-      : p.poisoningPregnancyStatus === 'uncertain'
-        ? 'ไม่แน่ใจว่าตั้งครรภ์'
-        : p.poisoningPregnancyStatus === 'not_pregnant'
-          ? 'ปฏิเสธการตั้งครรภ์'
-          : 'ไม่ได้ระบุ';
+    const fMap = { pregnant: `กำลังตั้งครรภ์ (${p.poisoningPregnancyWeeks || '-'} สัปดาห์)`, uncertain: 'ไม่แน่ใจว่าตั้งครรภ์', not_pregnant: 'ปฏิเสธการตั้งครรภ์' };
+    const femaleText = fMap[p.poisoningPregnancyStatus] || 'ไม่ได้ระบุ';
     const femaleLine = isFemalePatient ? `\n• ประวัติสตรี: LMP ${p.poisoningLmpDate || 'ไม่ระบุ'}, ตั้งครรภ์: ${femaleText}` : '';
-    const medsText = (!p.currentMeds || p.currentMeds === 'ไม่ได้ระบุ' || p.currentMeds === 'ไม่มี') ? 'ไม่มี' : p.currentMeds;
+    const udArr = Array.isArray(p.underlying) ? p.underlying : (p.underlying ? [p.underlying] : []);
+    const udFilt = udArr.filter(u => u && !u.includes('ปฏิเสธ') && u !== 'ไม่มี' && u !== 'ไม่มีโรคประจำตัว' && u !== 'ไม่ได้ระบุ');
+    const udDeny = udArr.some(u => u && (u.includes('ปฏิเสธ') || u === 'ไม่มี' || u === 'ไม่มีโรคประจำตัว'));
+    const udText = udFilt.length > 0 ? udFilt.join(', ') : ((udDeny || p.hospRecordStatus === 'self' || p.hospRecordStatus === 'additional') ? 'ปฏิเสธ' : 'ไม่ได้ระบุ');
+    const medsText = (!p.currentMeds || p.currentMeds === 'ไม่ได้ระบุ') ? 'ไม่ได้ระบุ' : (p.currentMeds === 'ไม่มี' ? 'ไม่มี' : p.currentMeds);
+    const allergyText = (!p.drugAllergy || p.drugAllergy === 'ไม่ได้ระบุ') ? 'ไม่ได้ระบุ' : ((p.drugAllergy.includes('ปฏิเสธ') || p.drugAllergy === 'ไม่มี') ? 'ปฏิเสธ' : p.drugAllergy);
     const effectiveRfs = (Array.isArray(p.redFlags) && p.redFlags.length > 0) ? p.redFlags : this.evaluateRedFlags(p);
     const docNotes = p.doctor_notes || {};
 
@@ -1774,7 +1773,7 @@ registerCcModule({
 ได้รับสารพิษ / กินยาเกินขนาด เป็นมาประมาณ ${durStr}
 
 [History of Present Illness (HPI)]
-ผู้ป่วย [${p.name || 'ไม่ระบุชื่อ'}] ${p.gender || 'ไม่ระบุเพศ'} อายุ ${p.age !== undefined && p.age !== null ? p.age + ' ปี' : 'ไม่ระบุอายุ'} มา รพ. ด้วยอาการได้รับสารพิษหรือกินยาเกินขนาด เป็นมาประมาณ ${durStr}
+ผู้ป่วย [${p.name || 'ไม่ระบุชื่อ'}] ${(p.gender && p.gender !== 'ไม่ระบุ') ? p.gender + ' ' : ''}อายุ ${p.age && p.age !== 'ไม่ระบุ' ? p.age + ' ปี' : 'ไม่ระบุ'} มา รพ. ด้วยอาการได้รับสารพิษหรือกินยาเกินขนาด เป็นมาประมาณ ${durStr}
 • ผู้ให้ข้อมูล: ${informantText}
 • ลำดับเวลาที่ได้รับสาร: ${timelineText}
 • ช่องทางที่ได้รับสาร: ${routeText}
@@ -1789,16 +1788,16 @@ registerCcModule({
 • NPO Time: ${p.poisoningNpoTime ? p.poisoningNpoTime + ' น. (' + (p.poisoningNpoLastMeal || 'ไม่ระบุอาหาร') + ')' : 'ไม่ระบุ'}${femaleLine}
 
 • Pertinent Positives:
-${positives.length > 0 ? positives.map(s => `  - ${s}`).join('\n') : '  - ยังไม่มีอาการผิดปกติชัดเจนในขณะนี้'}
+${positives.length > 0 ? positives.map(s => `  - ${s}`).join('\n') : '  - ผู้ป่วยไม่ได้ระบุอาการร่วมเพิ่มเติม'}
 
 • Pertinent Negatives:
-${negatives.slice(0, 10).map(s => `  - ${s}`).join('\n')}
+${negatives.length > 0 ? negatives.slice(0, 10).map(s => `  - ${s}`).join('\n') : '  - ผู้ป่วยไม่ได้ระบุคำตอบยืนยันในหมวดอาการร่วม'}
 
 [Past Medical History & Medications]
 • สถานะประวัติ รพ.ราชบุรี: ${hospLabel}
-• โรคประจำตัว (U/D): ${(p.underlying && p.underlying.length > 0) ? p.underlying.join(', ') : 'ปฏิเสธ'}
+• โรคประจำตัว (U/D): ${udText}
 • ยาประจำตัว (Current Meds): ${medsText}
-• ประวัติแพ้ยา/แพ้อาหาร (Allergies): ${p.drugAllergy || 'ปฏิเสธ'}
+• ประวัติแพ้ยา/แพ้อาหาร (Allergies): ${allergyText}
 
 [Emergency Risk Assessment (Red Flags)]
 ${effectiveRfs.length > 0 ? `🚩 RED FLAGS DETECTED:\n${effectiveRfs.map(r => `  * ${r.textTh}`).join('\n')}` : '✓ ไม่พบสัญญาณวิกฤต (Low-Risk Exposure)'}
@@ -1811,13 +1810,13 @@ ${effectiveRfs.length > 0 ? `🚩 RED FLAGS DETECTED:\n${effectiveRfs.map(r => `
 • แผนการรักษา (Plan/Orders): ${docNotes.plan || '-'}`;
 
     // 2. NARRATIVE NOTE
-    const narrativeNote = `ผู้ป่วย [${p.name || 'ไม่ระบุชื่อ'}] อายุ ${p.age !== undefined && p.age !== null ? p.age + ' ปี' : '-'} เพศ ${p.gender || 'ไม่ระบุ'} มารับการตรวจที่ห้องฉุกเฉิน รพ.ราชบุรี ด้วยอาการได้รับสารพิษหรือกินยาเกินขนาด เป็นมาประมาณ ${durStr} (ผู้ให้ข้อมูล: ${informantText})
+    const narrativeNote = `ผู้ป่วย [${p.name || 'ไม่ระบุชื่อ'}] อายุ ${p.age && p.age !== 'ไม่ระบุ' ? p.age + ' ปี' : 'ไม่ระบุ'}${(p.gender && p.gender !== 'ไม่ระบุ') ? ' เพศ ' + p.gender : ''} มารับการตรวจที่ห้องฉุกเฉิน รพ.ราชบุรี ด้วยอาการได้รับสารพิษหรือกินยาเกินขนาด เป็นมาประมาณ ${durStr} (ผู้ให้ข้อมูล: ${informantText})
 ได้รับสารผ่านช่องทาง: ${routeText} รายการสารได้แก่ ${subText} (กลุ่มสาร: ${catText}) ${timelineText} ภายหลังเกิดเหตุได้รับการปฐมพยาบาลเบื้องต้นคือ ${firstAidText} สถานะฉลาก/ภาชนะ: ${containerText} เหตุการณ์เกิดจาก: ${intentText} ร่วมกับดื่มแอลกอฮอล์: ${alcoholText} น้ำหนักตัวโดยประมาณ ${p.poisoningWeightKg ? p.poisoningWeightKg + ' กก.' : 'ไม่ระบุ'} ระดับความปวด ${painStr} งดน้ำอาหารล่าสุด ${p.poisoningNpoTime ? p.poisoningNpoTime + ' น.' : 'ไม่ระบุ'}${isFemalePatient ? ` ประวัติสตรี LMP ${p.poisoningLmpDate || 'ไม่ระบุ'} (${femaleText})` : ''}
 
-อาการสำคัญที่ตรวจพบ: ${positives.length > 0 ? positives.join(', ') : 'ยังไม่มีอาการผิดปกติชัดเจน'}
-อาการสำคัญที่ปฏิเสธ: ${negatives.slice(0, 6).join(', ')}
+อาการสำคัญที่ตรวจพบ: ${positives.length > 0 ? positives.join(', ') : 'ไม่ได้ระบุ'}
+อาการสำคัญที่ปฏิเสธ: ${negatives.length > 0 ? negatives.slice(0, 6).join(', ') : 'ไม่ได้ระบุ'}
 
-ประวัติการเจ็บป่วยในอดีต: [${hospLabel}], โรคประจำตัว: ${(p.underlying && p.underlying.length > 0) ? p.underlying.join(', ') : 'ปฏิเสธ'}, ยาประจำตัว: ${medsText}, ประวัติแพ้ยา/แพ้อาหาร: ${p.drugAllergy || 'ปฏิเสธ'}${effectiveRfs.length > 0 ? `\n\n[🚩 แจ้งเตือนสัญญาณวิกฤต (Red Flags)]: ตรวจพบ ${effectiveRfs.map(r => r.textTh).join(', ')}` : ''}
+ประวัติการเจ็บป่วยในอดีต: [${hospLabel}], โรคประจำตัว: ${udText}, ยาประจำตัว: ${medsText}, ประวัติแพ้ยา/แพ้อาหาร: ${allergyText}${effectiveRfs.length > 0 ? `\n\n[🚩 แจ้งเตือนสัญญาณวิกฤต (Red Flags)]: ตรวจพบ ${effectiveRfs.map(r => r.textTh).join(', ')}` : ''}
 
 [บันทึกการตรวจและการประเมินโดยแพทย์]:
 ${docNotes.additional_hpi ? `• ประวัติเพิ่มเติม: ${docNotes.additional_hpi}\n` : ''}${docNotes.physical_exam ? `• การตรวจร่างกาย: ${docNotes.physical_exam}\n` : ''}${docNotes.preliminary_dx ? `• การวินิจฉัย: ${docNotes.preliminary_dx}\n` : ''}${docNotes.plan ? `• แผนการรักษา: ${docNotes.plan}` : ''}`;

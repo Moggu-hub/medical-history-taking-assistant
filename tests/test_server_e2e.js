@@ -52,7 +52,7 @@ async function testServer() {
     const health = await request('GET', '/api/health');
     assert.strictEqual(health.status, 200);
     assert.strictEqual(health.data.status, 'ok');
-    assert.strictEqual(health.data.version, 'v2.80-pilot');
+    assert.strictEqual(health.data.version, 'v2.82-pilot');
     console.log('✅ Health check PASS');
 
     // 2. PIN verification
