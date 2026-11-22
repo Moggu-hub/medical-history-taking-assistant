@@ -62,6 +62,12 @@ function createDatabaseAdapter(options = {}) {
           updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
         );
         CREATE INDEX IF NOT EXISTS idx_user_feedbacks_cc_status ON user_feedbacks (cc_id, status, created_at);
+
+        CREATE TABLE IF NOT EXISTS app_settings (
+          key TEXT PRIMARY KEY,
+          value_json TEXT NOT NULL,
+          updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        );
       `);
       return;
     }
@@ -106,6 +112,12 @@ function createDatabaseAdapter(options = {}) {
         updated_at TEXT NOT NULL
       );
       CREATE INDEX IF NOT EXISTS idx_user_feedbacks_cc_status ON user_feedbacks (cc_id, status, created_at);
+
+      CREATE TABLE IF NOT EXISTS app_settings (
+        key TEXT PRIMARY KEY,
+        value_json TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      );
     `);
   }
 
@@ -345,8 +357,57 @@ function createDatabaseAdapter(options = {}) {
     return Number(res?.changes || 0) > 0;
   }
 
+  async function getAppSetting(key) {
+    if (!key) return null;
+    const row = usePostgres
+      ? (await pgPool.query('SELECT key, value_json, updated_at FROM app_settings WHERE key = $1', [String(key)])).rows[0]
+      : sqliteDb.prepare('SELECT key, value_json, updated_at FROM app_settings WHERE key = ?').get(String(key));
+    if (!row) return null;
+    try {
+      const value = typeof row.value_json === 'string' ? JSON.parse(row.value_json) : row.value_json;
+      return { key: row.key, value, updated_at: row.updated_at };
+    } catch (_) {
+      return null;
+    }
+  }
+
+  async function setAppSetting(key, valueObj) {
+    if (!key) throw new Error('setting key is required');
+    const nowIso = new Date().toISOString();
+    const jsonStr = JSON.stringify(valueObj ?? {});
+    if (usePostgres) {
+      await pgPool.query(`
+        INSERT INTO app_settings (key, value_json, updated_at)
+        VALUES ($1, $2, $3)
+        ON CONFLICT (key) DO UPDATE SET
+          value_json = EXCLUDED.value_json,
+          updated_at = EXCLUDED.updated_at
+      `, [String(key), jsonStr, nowIso]);
+      return { key: String(key), updated_at: nowIso };
+    }
+    sqliteDb.prepare(`
+      INSERT INTO app_settings (key, value_json, updated_at)
+      VALUES (?, ?, ?)
+      ON CONFLICT(key) DO UPDATE SET
+        value_json = excluded.value_json,
+        updated_at = excluded.updated_at
+    `).run(String(key), jsonStr, nowIso);
+    return { key: String(key), updated_at: nowIso };
+  }
+
+  async function deleteAppSetting(key) {
+    if (!key) return false;
+    if (usePostgres) {
+      const res = await pgPool.query('DELETE FROM app_settings WHERE key = $1', [String(key)]);
+      return (res.rowCount || 0) > 0;
+    }
+    const res = sqliteDb.prepare('DELETE FROM app_settings WHERE key = ?').run(String(key));
+    return Number(res?.changes || 0) > 0;
+  }
+
   return {
     engine: usePostgres ? 'postgres' : 'sqlite',
+    sqlitePath,
     init,
     close,
     healthCheck,
@@ -357,6 +418,9 @@ function createDatabaseAdapter(options = {}) {
     listFeedbacks,
     insertFeedback,
     updateFeedbackStatus,
+    getAppSetting,
+    setAppSetting,
+    deleteAppSetting,
     stripDerivedPatientBlobs
   };
 }

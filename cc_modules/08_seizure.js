@@ -1,30 +1,23 @@
 // =========================================================================
 // MODULAR CHIEF COMPLAINT MODULE: 08_seizure.js
-// อาการนำ: ชัก / เกร็งกระตุก (Seizure / Convulsion)
-// ปรับปรุงตาม plan_seizure.md, SKILL_PLAN_CC และ SKILL_CODE_CC (C-AP1 ถึง C-AP16)
+// อาการนำ: ชัก / เกร็งกระตุก (Seizure / Convulsion — Golden 4-Card UX)
+// ปรับปรุงตาม plan_seizure.md, SKILL_PLAN_CC (P-AP1–P-AP14) และ SKILL_CODE_CC (C-AP1–C-AP20)
 // รองรับการเรียกร่วมกับ 09_syncope.js (calculateSheldonScore & evaluateHyperventilationScreen)
-// และ core_engine.js (checkSeizurePediatricAgeGuidance & #seizurePediatricAgeBanner)
+// และ core_engine.js (checkSeizurePediatricAgeGuidance)
 // =========================================================================
 
 function checkSeizurePediatricAgeGuidance() {
-  const ageVal = parseInt(document.getElementById('patientAgeInput')?.value, 10);
-  const banner = document.getElementById('seizurePediatricAgeBanner');
-  if (banner) {
-    banner.classList.remove('hidden');
-    if (!isNaN(ageVal) && ageVal < 6) {
-      banner.classList.add('ring-2', 'ring-amber-500', 'bg-amber-100');
-    } else {
-      banner.classList.remove('ring-2', 'ring-amber-500', 'bg-amber-100');
-    }
-  }
   syncSnFemaleSection();
   updateSnPostIctalContext();
 }
 
+function wrapSnWords(...chunks) {
+  return chunks.map(c => `<span class="inline-block whitespace-nowrap">${c}</span>`).join(' ');
+}
+
 function toggleSnBranch(id, show) {
   const el = document.getElementById(id);
-  if (!el) return;
-  el.classList.toggle('hidden', !show);
+  if (el) el.classList.toggle('hidden', !show);
 }
 
 function renderSnCard(cfg) {
@@ -42,14 +35,29 @@ function renderSnCard(cfg) {
   const spanCls = colSpan2 ? ' sm:col-span-2' : '';
   const roundCls = kind === 'checkbox' ? 'rounded ' : '';
   const topCls = desc ? 'mt-0.5 ' : '';
+  const mlCls = compact ? 'ml-2' : 'ml-3';
+  const titleCls = compact ? 'text-xs' : 'text-xs sm:text-sm';
   const bodyHtml = desc
-    ? `<div class="ml-3"><span class="block text-xs sm:text-sm font-semibold text-slate-800">${title}</span><span class="block text-[11px] text-slate-500 font-normal mt-0.5">${desc}</span></div>`
-    : `<span class="ml-3 ${compact ? 'text-xs' : 'text-xs sm:text-sm'} font-semibold text-slate-800">${title}</span>`;
+    ? `<div class="${mlCls} leading-snug"><span class="block ${titleCls} font-semibold text-slate-800">${title}</span><span class="block text-[11px] text-slate-500 font-normal mt-0.5">${desc}</span></div>`
+    : `<span class="${mlCls} ${titleCls} font-semibold text-slate-800 leading-snug">${title}</span>`;
   return `<label ${wrapAttr}class="selectable-card flex ${alignCls} ${padCls} rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition${spanCls}"><input type="${kind}" ${idAttr}${nameAttr}${valAttr}${chgAttr}class="${topCls}${roundCls}text-medical-600 focus:ring-medical-500 h-4 w-4 flex-shrink-0">${bodyHtml}</label>`;
 }
 
 function renderSnGrid(colsCls, items, shared = {}) {
   return `<div class="grid ${colsCls} gap-2.5">${items.map(it => renderSnCard({ ...shared, ...it })).join('\n')}</div>`;
+}
+
+function renderSnSysHeader({ icon, iconBg, iconColor, title, noneId, noneLabel = 'ไม่มีอาการในหมวดนี้', noneOnchange }) {
+  return `<div class="flex flex-wrap items-center justify-between gap-2 mb-2.5">
+    <div class="flex items-center space-x-2">
+      <span class="inline-flex items-center justify-center w-6 h-6 rounded-lg ${iconBg} ${iconColor} flex-shrink-0"><i data-lucide="${icon}" class="w-3.5 h-3.5"></i></span>
+      <span class="text-xs font-bold text-slate-700">${title}</span>
+    </div>
+    <label class="inline-flex items-center px-2.5 py-1 rounded-lg border border-slate-200 bg-slate-50 hover:border-medical-300 cursor-pointer transition">
+      <input type="checkbox" id="${noneId}" onchange="${noneOnchange}" class="rounded text-medical-600 focus:ring-medical-500 h-3.5 w-3.5 flex-shrink-0">
+      <span class="ml-2 text-xs font-semibold text-slate-800 whitespace-nowrap">${noneLabel}</span>
+    </label>
+  </div>`;
 }
 
 function setSnRadioChecked(name, val) {
@@ -105,7 +113,7 @@ function syncSnFemaleSection(explicitFemale) {
 }
 
 function handleSnExactTimeUnknownChange() {
-  const unk = document.getElementById('snExactTimeUnknown')?.checked;
+  const unk = Boolean(document.getElementById('snExactTimeUnknown')?.checked);
   toggleSnBranch('snExactTimeWrap', !unk);
   if (unk) {
     const tEl = document.getElementById('snExactTime');
@@ -146,16 +154,26 @@ function handleSnPostureChange() {
   }
 }
 
+function handleSnProdromeNoneChange() {
+  const noneEl = document.getElementById('sn_prodrome_none');
+  if (noneEl && noneEl.checked) {
+    document.querySelectorAll('input[name="snWarningProdrome"]').forEach(cb => {
+      cb.checked = false;
+    });
+  }
+}
+
 function handleSnWarningChange(el) {
   if (!el) return;
-  const exclusiveVals = new Set(['none_sudden', 'unknown']);
-  if (el.checked && exclusiveVals.has(el.value)) {
+  const noneEl = document.getElementById('sn_prodrome_none');
+  if (el.checked && noneEl) noneEl.checked = false;
+  if (el.checked && el.value === 'unknown') {
     document.querySelectorAll('input[name="snWarningProdrome"]').forEach(cb => {
       if (cb !== el) cb.checked = false;
     });
   } else if (el.checked) {
     document.querySelectorAll('input[name="snWarningProdrome"]').forEach(cb => {
-      if (exclusiveVals.has(cb.value)) cb.checked = false;
+      if (cb.value === 'unknown') cb.checked = false;
     });
   }
 }
@@ -171,14 +189,35 @@ function handleSnMotorPatternChange() {
   }
 }
 
+const SN_ICTAL_IDS = [
+  'sn_lateral_tongue_bite', 'sn_eye_deviation', 'sn_incontinence',
+  'sn_cyanosis_apnea', 'sn_marked_pallor_sweat'
+];
+
+function handleSnIctalNoneChange() {
+  const noneEl = document.getElementById('sn_ictal_none');
+  if (noneEl && noneEl.checked) {
+    clearSnCheckboxesByIds(SN_ICTAL_IDS);
+  }
+}
+
+function handleSnIctalItemChange(el) {
+  if (el && el.checked) {
+    const noneEl = document.getElementById('sn_ictal_none');
+    if (noneEl) noneEl.checked = false;
+  }
+}
+
+const SN_POST_IDS = [
+  'sn_post_weakness', 'sn_post_headache', 'sn_post_myalgia', 'sn_post_nausea_vomit'
+];
+
 function handleSnRecoveryChange() {
   const rec = getSnRadioValue('snRecoveryDuration');
   const hidePostSymptoms = rec === 'persistent_unconscious';
   toggleSnBranch('snPostRecoverySymptomsWrap', !hidePostSymptoms);
   if (hidePostSymptoms) {
-    clearSnCheckboxesByIds([
-      'sn_post_weakness', 'sn_post_headache', 'sn_post_myalgia', 'sn_post_nausea_vomit', 'sn_post_none'
-    ]);
+    clearSnCheckboxesByIds([...SN_POST_IDS, 'sn_post_none']);
     toggleSnBranch('snToddSideWrap', false);
     clearSnRadioGroup('snToddSide');
   }
@@ -203,9 +242,7 @@ function updateSnPostIctalContext() {
       clearSnRadioGroup('snRecoveryDuration');
     }
     toggleSnBranch('snPostRecoverySymptomsWrap', false);
-    clearSnCheckboxesByIds([
-      'sn_post_weakness', 'sn_post_headache', 'sn_post_myalgia', 'sn_post_nausea_vomit', 'sn_post_none'
-    ]);
+    clearSnCheckboxesByIds([...SN_POST_IDS, 'sn_post_none']);
     toggleSnBranch('snToddSideWrap', false);
     clearSnRadioGroup('snToddSide');
   } else {
@@ -213,16 +250,26 @@ function updateSnPostIctalContext() {
   }
 }
 
+function handleSnPostNoneChange() {
+  const noneEl = document.getElementById('sn_post_none');
+  if (noneEl && noneEl.checked) {
+    clearSnCheckboxesByIds(SN_POST_IDS);
+    toggleSnBranch('snToddSideWrap', false);
+    clearSnRadioGroup('snToddSide');
+  }
+}
+
 function handleSnPostSymptomChange(el) {
-  const symIds = ['sn_post_weakness', 'sn_post_headache', 'sn_post_myalgia', 'sn_post_nausea_vomit'];
-  if (el && el.id === 'sn_post_none' && el.checked) {
-    clearSnCheckboxesByIds(symIds);
-  } else if (el && el.checked && el.id !== 'sn_post_none') {
+  if (el && el.id === 'sn_post_none') {
+    handleSnPostNoneChange();
+    return;
+  }
+  if (el && el.checked) {
     const noneCb = document.getElementById('sn_post_none');
     if (noneCb) noneCb.checked = false;
   }
-  const hasWeak = document.getElementById('sn_post_weakness')?.checked;
-  toggleSnBranch('snToddSideWrap', Boolean(hasWeak));
+  const hasWeak = Boolean(document.getElementById('sn_post_weakness')?.checked);
+  toggleSnBranch('snToddSideWrap', hasWeak);
   if (!hasWeak) clearSnRadioGroup('snToddSide');
 }
 
@@ -242,9 +289,34 @@ function handleSnPriorHistoryChange() {
   if (!isEpilepsy) clearSnRadioGroup('snMedCompliance');
 }
 
+const SN_RF_IDS = [
+  'sn_rf_fever', 'sn_rf_meningismus', 'sn_rf_recent_head_trauma',
+  'sn_rf_sleep_deprivation', 'sn_rf_alcohol_withdrawal', 'sn_rf_diabetic_hypo',
+  'sn_rf_cardiac_history', 'sn_rf_family_scd', 'sn_rf_emotional_panic',
+  'sn_rf_substance_toxin'
+];
+
+function handleSnRfNoneChange() {
+  const noneEl = document.getElementById('sn_rf_none');
+  if (noneEl && noneEl.checked) {
+    clearSnCheckboxesByIds(SN_RF_IDS);
+    toggleSnBranch('snSubstanceDetailsWrap', false);
+    const el = document.getElementById('snSubstanceDetails');
+    if (el) el.value = '';
+  }
+}
+
+function handleSnRfItemChange(el) {
+  if (el && el.checked) {
+    const noneEl = document.getElementById('sn_rf_none');
+    if (noneEl) noneEl.checked = false;
+  }
+  handleSnSubstanceChange();
+}
+
 function handleSnSubstanceChange() {
-  const hasSub = document.getElementById('sn_rf_substance_toxin')?.checked;
-  toggleSnBranch('snSubstanceDetailsWrap', Boolean(hasSub));
+  const hasSub = Boolean(document.getElementById('sn_rf_substance_toxin')?.checked);
+  toggleSnBranch('snSubstanceDetailsWrap', hasSub);
   if (!hasSub) {
     const el = document.getElementById('snSubstanceDetails');
     if (el) el.value = '';
@@ -381,56 +453,57 @@ function evaluateHyperventilationScreen(patient) {
   };
 }
 
-// --- Lookup Tables (Thai Labels for 100% Zero Raw Enum Leaks — C-AP14) ---
+// --- Lookup Tables (Thai Labels for 100% Zero Raw Enum Leaks — C-AP14 / C-AP19) ---
 const SN_LABELS = {
   reporter: {
     patient_self: 'ผู้ป่วยให้ข้อมูลด้วยตนเอง',
     witness_relative: 'ญาติหรือผู้เห็นเหตุการณ์เป็นผู้เล่า',
     both_patient_witness: 'ผู้ป่วยและผู้เห็นเหตุการณ์ร่วมกันให้ข้อมูล',
-    unspecified: 'ไม่ได้ระบุผู้ให้ข้อมูล'
+    unspecified: 'ไม่ได้ระบุ'
   },
   posture: {
     prolonged_standing: 'ยืนนาน หรืออยู่ในที่ร้อนแออัด',
-    sudden_standing: 'ลุกขึ้นยืนหรือเปลี่ยนท่าเร็วๆ',
+    sudden_standing: 'ลุกยืนหรือเปลี่ยนท่าเร็ว',
     during_exertion: 'ขณะออกแรง หรือออกกำลังกาย',
     supine_or_resting: 'ขณะนั่งพัก หรือนอนอยู่เฉยๆ',
     sleep: 'ขณะกำลังนอนหลับ',
     standing_or_walking_normal: 'ขณะยืนหรือเดินตามปกติ',
-    micturition_defecation: 'ขณะหรือหลังปัสสาวะ ขับถ่าย หรือไอแรงๆ',
-    unspecified: 'ไม่ได้ระบุท่าทางก่อนเกิดเหตุ'
+    micturition_defecation: 'ขณะหรือหลังขับถ่าย ปัสสาวะ หรือไอแรง',
+    unspecified: 'ไม่ได้ระบุ'
   },
   lossDuration: {
-    brief_seconds: 'สั้นมาก ไม่เกิน 1 นาที (ประมาณ 10–30 วินาที)',
-    typical_1_4m: 'นานประมาณ 1 – 4 นาที',
-    continuous_unstopped: 'ชักต่อเนื่องไม่หยุดจนถึงขณะนี้',
-    unknown_duration: 'ไม่ทราบระยะเวลาที่แน่นอน (ไม่ได้สังเกต)',
-    unspecified: 'ไม่ได้ระบุระยะเวลาที่ชักหรือหมดสติ'
+    brief_seconds: 'สั้นมาก (< 1 นาที ประมาณ 10–30 วินาที)',
+    typical_1_4m: 'ประมาณ 1–4 นาที',
+    continuous_unstopped: 'ชักต่อเนื่องยังไม่หยุดจนถึงขณะนี้',
+    unknown_duration: 'ไม่ทราบระยะเวลาที่แน่นอน',
+    unspecified: 'ไม่ได้ระบุ'
   },
   interictal: {
     full_recovery: 'ระหว่างรอบฟื้นคืนสติ พูดคุยรู้เรื่องดี',
-    unconscious_or_drowsy: 'ระหว่างรอบไม่ฟื้นสติ หรือซึมตลอดเวลา'
+    unconscious_or_drowsy: 'ระหว่างรอบไม่ฟื้นสติ หรือซึมตลอดเวลา',
+    unspecified: 'ไม่ได้ระบุสภาพระหว่างรอบ'
   },
   prodrome: {
     none_sudden: 'ไม่มีอาการเตือน เกิดขึ้นกะทันหัน',
-    lightheaded_tunnel_vision: 'หน้ามืด วิงเวียน หรือตาพร่ามัว',
-    cold_sweat_pallor_nausea: 'เหงื่อแตกตัวเย็น หรือหน้าซีด',
+    lightheaded_tunnel_vision: 'หน้ามืด ตาพร่ามัว หรือหูอื้อ',
+    cold_sweat_pallor_nausea: 'เหงื่อแตก ตัวเย็น หรือหน้าซีด',
     sudden_palpitation: 'ใจสั่นรัว หรือหัวใจเต้นสะดุด',
-    chest_pain: 'เจ็บแน่นหน้าอก หรืออึดอัดกลางอก',
+    chest_pain: 'เจ็บแน่นหน้าอก',
     hyperventilation_tingling: 'หายใจหอบเร็ว หรือชารอบปากและปลายมือ',
-    epigastric_rising: 'จุกแน่นหรือโหวงในท้องลอยขึ้นมาที่คอ (Aura)',
+    epigastric_rising: 'จุกโหวงในท้องลอยขึ้นมาที่คอ (Aura)',
     olfactory_visual_aura: 'ได้กลิ่นแปลกๆ หรือเห็นแสงวูบวาบ (Aura)',
-    unknown: 'ไม่ทราบ หรือจำอาการก่อนเกิดเหตุไม่ได้'
+    unknown: 'ไม่ทราบ / จำไม่ได้'
   },
   motor: {
-    generalized_tonic_clonic: 'เกร็งแข็งและกระตุกพร้อมกันทั้งตัว (GTCS)',
-    focal_motor: 'เกร็งหรือกระตุกเฉพาะบางส่วนของร่างกาย (Focal)',
-    brief_myoclonic_syncope: 'วูบล้มลงแล้วกระตุกเบาๆ สั้นๆ ไม่กี่ครั้ง',
-    carpopedal_spasm: 'มือจีบเกร็งทั้งสองข้าง นิ้วงุ้มเข้าหากัน',
-    absence_automatism: 'เหม่อลอย นิ่งค้าง เรียกไม่ตอบสนอง',
-    atonic_limp: 'ตัวอ่อนปวกเปียกล้มลง ไม่มีการเกร็งกระตุก',
-    thrashing_closed_eyes: 'ดิ้นสะบัดไปมา หรือส่ายศีรษะขณะหลับตา',
-    unknown_or_unobserved: 'ไม่ทราบแน่ชัด หรือไม่มีผู้เห็นตอนเกิดเหตุ',
-    unspecified: 'ไม่ได้ระบุลักษณะการเกร็ง'
+    generalized_tonic_clonic: 'เกร็งแข็งและกระตุกทั้งตัว (GTCS)',
+    focal_motor: 'เกร็งหรือกระตุกเฉพาะบางส่วน (Focal)',
+    brief_myoclonic_syncope: 'วูบล้มแล้วกระตุกเบาๆ สั้นๆ',
+    carpopedal_spasm: 'มือจีบเกร็งทั้งสองข้าง',
+    absence_automatism: 'เหม่อลอย นิ่งค้างไม่ตอบสนอง',
+    atonic_limp: 'ตัวอ่อนปวกเปียก ไม่เกร็ง',
+    thrashing_closed_eyes: 'ดิ้นสะบัด หรือส่ายหน้าขณะหลับตา',
+    unknown_or_unobserved: 'ไม่ทราบ / ไม่มีผู้เห็นเหตุการณ์',
+    unspecified: 'ไม่ได้ระบุ'
   },
   focalParts: {
     face_mouth: 'ใบหน้า/มุมปาก',
@@ -440,18 +513,18 @@ const SN_LABELS = {
   focalSides: {
     left: 'ข้างซ้าย',
     right: 'ข้างขวา',
-    bilateral_or_secondarily_generalized: 'สลับข้างหรือลามไปทั้งตัว'
+    bilateral_or_secondarily_generalized: 'สลับข้างหรือลามทั้งตัว'
   },
   focalAwareness: {
     aware: 'รู้สึกตัวดีขณะกระตุก',
     impaired: 'เหม่อลอยหรือไม่รู้สึกตัว'
   },
   recovery: {
-    rapid_under_2m_alert: 'ฟื้นคืนสติเร็วมาก ภายใน 1–2 นาที',
-    confusion_drowsy_gt_5m: 'สับสน มึนงง หรือจำเหตุการณ์ไม่ได้นานเกิน 5 นาที',
-    tearful_emotional_tachypnea: 'รู้สึกตัวดีแต่ยังเหนื่อยหอบ ร้องไห้ หรือมือชา',
-    persistent_unconscious: 'ขณะนี้ยังไม่ฟื้นคืนสติ หรือยังซึมมากปลุกตื่นยาก',
-    unspecified: 'ไม่ได้ระบุการฟื้นตัว'
+    rapid_under_2m_alert: 'ฟื้นสติเร็วมาก (ภายใน 1–2 นาที)',
+    confusion_drowsy_gt_5m: 'สับสน มึนงง หรือหลับลึกนานเกิน 5 นาที',
+    tearful_emotional_tachypnea: 'รู้สึกตัวดี แต่ยังหอบ ร้องไห้ หรือมือชา',
+    persistent_unconscious: 'ขณะนี้ยังไม่ฟื้นสติ หรือซึมปลุกตื่นยาก',
+    unspecified: 'ไม่ได้ระบุ'
   },
   toddSides: {
     left: 'ซีกซ้าย',
@@ -459,23 +532,23 @@ const SN_LABELS = {
     both: 'ทั้งสองข้าง'
   },
   priorHistory: {
-    first_time_tloc: 'เพิ่งเคยมีอาการครั้งนี้เป็นครั้งแรกในชีวิต',
+    first_time_tloc: 'เพิ่งเคยเป็นครั้งแรกในชีวิต',
     known_epilepsy: 'เป็นโรคลมชักเดิมอยู่แล้ว',
-    recurrent_vasovagal: 'เคยมีประวัติเป็นลมหน้ามืดบ่อยๆ',
+    recurrent_vasovagal: 'เคยเป็นลมหน้ามืดบ่อยๆ',
     unspecified: 'ไม่ได้ระบุ'
   },
   compliance: {
     compliant: 'รับประทานยาสม่ำเสมอทุกวัน',
-    missed_or_stopped: 'ขาดยา ลืมกินยา หรือหยุดยาเอง',
+    missed_or_stopped: 'ขาดยา ลืมกิน หรือหยุดยาเอง',
     dose_changed: 'เพิ่งปรับขนาดยาหรือเปลี่ยนชนิดยา',
     lost_followup: 'ไม่ได้รักษาต่อเนื่อง หรือขาดนัด',
-    unspecified: 'ไม่ได้ระบุการรับประทานยา'
+    unspecified: 'ไม่ได้ระบุ'
   },
   pregnancy: {
     not_pregnant: 'ไม่ได้ตั้งครรภ์',
     pregnant: 'กำลังตั้งครรภ์',
-    postpartum_6w: 'เพิ่งคลอดบุตร หรือแท้งบุตรภายใน 6 สัปดาห์ที่ผ่านมา',
-    menopause_or_hysterectomy: 'วัยหมดประจำเดือน หรือผ่าตัดมดลูกแล้ว',
+    postpartum_6w: 'เพิ่งคลอด หรือแท้งบุตรภายใน 6 สัปดาห์',
+    menopause_or_hysterectomy: 'หมดประจำเดือน / ผ่าตัดมดลูกแล้ว',
     unknown: 'ไม่แน่ใจสถานะการตั้งครรภ์'
   }
 };
@@ -491,6 +564,25 @@ function formatSnMotorSummary(patient) {
   if (side) extras.push(side);
   if (aware) extras.push(aware);
   return extras.length > 0 ? `${base} [${extras.join(' | ')}]` : base;
+}
+
+function makeSnSeed(ov) {
+  return {
+    chief_complaint: 'seizure', chief_complaint_title: 'ชัก / เกร็งกระตุก', status: 'waiting',
+    snExactTimeUnknown: false, snExactTime: '', snDurationGte5mVal: null, snEpisodeCount: 'single',
+    snEpisodeCountVal: 1, snInterictalState: '', snPostureOtherText: '', sn_prodrome_none: false,
+    snWarningProdromes: [], snFocalParts: [], snFocalSide: '', snFocalAwareness: '', sn_ictal_none: false,
+    sn_lateral_tongue_bite: false, sn_eye_deviation: false, sn_incontinence: false, sn_cyanosis_apnea: false,
+    sn_marked_pallor_sweat: false, sn_post_weakness: false, snToddSide: '', sn_post_headache: false,
+    sn_post_myalgia: false, sn_post_nausea_vomit: false, sn_post_none: false, snFallInjury: 'no',
+    sn_fall_head_impact: false, sn_fall_open_wound: false, sn_fall_pain_swelling: false, snFallInjuryDetailText: '',
+    snMedCompliance: 'unspecified', sn_rf_none: false, sn_rf_fever: false, sn_rf_meningismus: false,
+    sn_rf_fever_meningismus: false, sn_rf_recent_head_trauma: false, sn_rf_sleep_deprivation: false,
+    sn_rf_alcohol_withdrawal: false, sn_rf_diabetic_hypo: false, sn_rf_cardiac_history: false,
+    sn_rf_family_scd: false, sn_rf_cardiac_family: false, sn_rf_emotional_panic: false,
+    sn_rf_substance_toxin: false, snSubstanceDetails: '', snPregnancyStatus: '', snPregnancyWeeks: '',
+    snLmpDate: '', otherSymptomsFree: '', drugAllergy: 'ปฏิเสธ', ...ov
+  };
 }
 
 const seizureModule = {
@@ -519,26 +611,19 @@ const seizureModule = {
 
   formHtml: `
     <div id="seizureQuestionnaireSection" class="hidden space-y-6">
-      <div data-cc-top-banner="seizure"><div class="flex flex-col gap-4">
-      <!-- PEDIATRIC AGE (< 6 YEARS) GUIDANCE BANNER -->
-      <div id="seizurePediatricAgeBanner" class="p-4 bg-amber-50 border-l-4 border-amber-500 rounded-2xl flex items-start space-x-3">
-        <i data-lucide="alert-triangle" class="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0"></i>
-        <div class="text-xs text-amber-900 leading-relaxed">
-          <strong class="font-bold">ข้อความแจ้งเตือนจุดคัดกรอง:</strong> ในกรณีผู้ป่วยเป็นเด็กอายุ &lt; 6 ปี ที่มีอาการชักหรือชักเกร็งจากไข้สูง กรุณาเลือกอาการสำคัญใช้ <strong>&lt;ชักเกร็งในเด็กอายุ &lt; 6 ปี&gt;</strong> แทน เพื่อการประเมินภาวะชักในเด็กอย่างถูกต้อง หรือแจ้งพยาบาลคัดกรองทันที
+      <!-- TOP BANNER: แสดงเหนือการ์ดข้อมูลผู้ป่วยเบื้องต้น (ไม่สร้างแบนเนอร์เด็กซ้ำซ้อน; คง hidden node รองรับ core_engine.js) -->
+      <div data-cc-top-banner="seizure">
+        <div id="seizurePediatricAgeBanner" class="hidden" aria-hidden="true"></div>
+        <div class="p-4 bg-sky-50 border border-sky-200 rounded-2xl flex items-start space-x-3 text-xs text-slate-800 leading-relaxed">
+          <i data-lucide="info" class="w-5 h-5 text-medical-600 mt-0.5 flex-shrink-0"></i>
+          <div class="space-y-1">
+            <p class="font-bold text-slate-900">ข้อแนะนำการดูแลความปลอดภัยเบื้องต้นระหว่างรอพบแพทย์:</p>
+            <p>1. <strong>จัดท่านอนตะแคงกึ่งคว่ำ:</strong> หากผู้ป่วยยังเกร็งกระตุกหรือง่วงซึม ให้จัดนอนตะแคงและหนุนศีรษะด้วยของนุ่ม เพื่อป้องกันการสำลักและป้องกันศีรษะกระแทก</p>
+            <p>2. <strong>ห้ามงัดปากหรือใส่สิ่งของเข้าปากเด็ดขาด:</strong> ห้ามใช้ช้อน นิ้วมือ หรือสิ่งของงัดปาก และให้งดน้ำงดอาหารทุกชนิดไว้ก่อน</p>
+            <p>3. <strong>แจ้งพยาบาลหน้าห้องตรวจทันที:</strong> หากเริ่มชักซ้ำ ชักนานต่อเนื่อง หายใจลำบาก ริมฝีปากเขียวคล้ำ หรือปลุกไม่ตื่น</p>
+          </div>
         </div>
       </div>
-
-      <!-- FIRST-AID SAFETY GUIDANCE BANNER -->
-      <div class="p-4 bg-sky-50 border border-sky-200 rounded-2xl flex items-start space-x-3 text-xs text-slate-800 leading-relaxed">
-        <i data-lucide="info" class="w-5 h-5 text-medical-600 mt-0.5 flex-shrink-0"></i>
-        <div class="space-y-1">
-          <p class="font-bold text-slate-900">ข้อแนะนำการดูแลความปลอดภัยเบื้องต้นระหว่างรอพบแพทย์:</p>
-          <p>1. <strong>จัดท่านอนตะแคงกึ่งคว่ำ:</strong> หากผู้ป่วยยังมีอาการเกร็งกระตุกหรือง่วงซึม ให้จัดนอนตะแคงและหนุนศีรษะด้วยของนุ่ม เพื่อป้องกันการสำลักและป้องกันศีรษะกระแทก</p>
-          <p>2. <strong>ห้ามงัดปากหรือใส่สิ่งของเข้าปากเด็ดขาด:</strong> ห้ามใช้ช้อน นิ้วมือ หรือสิ่งของใดๆ งัดปากผู้ป่วย และให้งดน้ำงดอาหารทุกชนิดไว้ก่อน</p>
-          <p>3. <strong>แจ้งพยาบาลหน้าห้องตรวจทันที:</strong> หากผู้ป่วยเริ่มชักซ้ำ ชักนานต่อเนื่อง หายใจลำบาก ริมฝีปากเขียวคล้ำ หรือปลุกไม่ตื่น</p>
-        </div>
-      </div>
-      </div></div>
 
       <!-- CARD 1: ข้อมูลเหตุการณ์ ช่วงเวลา ความถี่ และท่าทางก่อนเกิดเหตุ -->
       <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 space-y-5">
@@ -554,48 +639,51 @@ const seizureModule = {
         <div>
           <label class="block text-xs font-bold text-slate-700 mb-2">1.1 ผู้ให้ข้อมูลประวัติเหตุการณ์: <span class="text-rose-500">*</span></label>
           ${renderSnGrid('grid-cols-1 sm:grid-cols-3', [
-            { value: 'patient_self', title: 'ผู้ป่วยให้ข้อมูลด้วยตนเอง', desc: 'ผู้ป่วยรู้สึกตัวดีและเล่าเหตุการณ์ได้ด้วยตนเอง' },
-            { value: 'witness_relative', title: 'ญาติ หรือผู้เห็นเหตุการณ์', desc: 'ผู้อยู่ในเหตุการณ์ขณะผู้ป่วยชักหรือหมดสติเป็นผู้ให้ข้อมูล' },
-            { value: 'both_patient_witness', title: 'ผู้ป่วยและผู้เห็นเหตุการณ์ร่วมกัน', desc: 'ทั้งผู้ป่วยและผู้เห็นเหตุการณ์ช่วยกันให้ข้อมูล' }
+            { value: 'patient_self', title: wrapSnWords('ผู้ป่วยให้ข้อมูลเอง') },
+            { value: 'witness_relative', title: wrapSnWords('ญาติ /', 'ผู้เห็นเหตุการณ์') },
+            { value: 'both_patient_witness', title: wrapSnWords('ให้ข้อมูลร่วมกัน') }
           ], { kind: 'radio', name: 'snReporter' })}
         </div>
 
         <!-- 1.2 ระยะเวลาและเวลาเกิดเหตุ -->
         <div class="space-y-3 pt-2 border-t border-slate-100">
-          <label class="block text-xs font-bold text-slate-700">1.2 ระยะเวลาตั้งแต่เริ่มเกิดเหตุการณ์ครั้งนี้จนถึงปัจจุบัน: <span class="text-rose-500">*</span></label>
-          <div class="flex items-center space-x-2 max-w-xs">
-            <input type="number" id="snDurationVal" min="0" placeholder="เช่น 30"
-              class="w-24 bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-800 text-center font-bold focus:outline-none focus:ring-2 focus:ring-medical-500 focus:bg-white">
-            <select id="snDurationUnit" class="bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-medical-500 focus:bg-white flex-1">
-              <option value="minutes">นาที</option>
-              <option value="hours" selected>ชั่วโมง</option>
-              <option value="days">วัน</option>
-              <option value="weeks">สัปดาห์</option>
-              <option value="months">เดือน</option>
-              <option value="years">ปี</option>
-            </select>
-          </div>
-          <div class="space-y-2 pt-1 max-w-md">
-            ${renderSnCard({ kind: 'checkbox', id: 'snExactTimeUnknown', onchange: 'handleSnExactTimeUnknownChange()', title: 'ไม่ทราบเวลาที่เกิดเหตุแน่ชัด', desc: 'เมื่อติ๊กข้อนี้ ระบบจะซ่อนช่องระบุเวลาด้านล่าง' })}
-            <div id="snExactTimeWrap" class="max-w-xs">
-              <span class="block text-xs font-semibold text-slate-600 mb-1">เวลาที่เกิดเหตุล่าสุด (ระบบ 24 ชม.):</span>
-              <input type="text" id="snExactTime" data-universal-time="true" placeholder="เช่น 14:30"
-                class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-medical-500 focus:bg-white">
+          <label class="block text-xs font-bold text-slate-700">1.2 ระยะเวลาตั้งแต่เริ่มเกิดเหตุ และเวลาเกิดเหตุล่าสุด: <span class="text-rose-500">*</span></label>
+          <div class="flex flex-wrap items-center gap-3">
+            <div class="flex items-center space-x-2">
+              <input type="number" id="snDurationVal" min="0" placeholder="เช่น 30"
+                class="w-24 bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-800 text-center font-bold focus:outline-none focus:ring-2 focus:ring-medical-500 focus:bg-white">
+              <select id="snDurationUnit" class="bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-medical-500 focus:bg-white">
+                <option value="minutes">นาที</option>
+                <option value="hours" selected>ชั่วโมง</option>
+                <option value="days">วัน</option>
+                <option value="weeks">สัปดาห์</option>
+                <option value="months">เดือน</option>
+                <option value="years">ปี</option>
+              </select>
             </div>
+            <div id="snExactTimeWrap" class="flex items-center space-x-2">
+              <span class="text-xs font-semibold text-slate-600 whitespace-nowrap">เวลาเกิดเหตุ (24 ชม.):</span>
+              <input type="text" id="snExactTime" data-universal-time="true" placeholder="เช่น 14:30"
+                class="w-28 bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-medical-500 focus:bg-white">
+            </div>
+            <label class="selectable-card inline-flex items-center px-3 py-2 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
+              <input type="checkbox" id="snExactTimeUnknown" onchange="handleSnExactTimeUnknownChange()" class="rounded text-medical-600 focus:ring-medical-500 h-4 w-4 flex-shrink-0">
+              <span class="ml-3 text-xs font-semibold text-slate-800 whitespace-nowrap">ไม่ทราบเวลาแน่ชัด</span>
+            </label>
           </div>
         </div>
 
         <!-- 1.3 ระยะเวลาที่ชักเกร็งหรือหมดสติในแต่ละครั้ง -->
         <div class="pt-2 border-t border-slate-100">
           <label class="block text-xs font-bold text-slate-700 mb-2">1.3 ระยะเวลาที่ชักเกร็งหรือหมดสติในแต่ละครั้ง: <span class="text-rose-500">*</span></label>
-          ${renderSnGrid('grid-cols-1 sm:grid-cols-2', [
-            { value: 'brief_seconds', title: 'สั้นมาก ไม่เกิน 1 นาที', desc: 'วูบหรือเกร็งสั้นๆ ประมาณ 10–30 วินาที แล้วเริ่มรู้สึกตัว' },
-            { value: 'typical_1_4m', title: 'นานประมาณ 1 – 4 นาที', desc: 'มีอาการชักเกร็งหรือหมดสตินานเป็นนาที แล้วหยุดเอง' },
-            { value: 'prolonged_gte_5m', title: 'นานตั้งแต่ 5 นาทีขึ้นไป', desc: 'ชักเกร็งหรือหมดสติติดต่อกันนานตั้งแต่ 5 นาทีขึ้นไป' },
-            { value: 'continuous_unstopped', title: 'ยังชักต่อเนื่องไม่หยุดจนถึงขณะนี้', desc: 'ขณะนี้ยังมีอาการเกร็งกระตุกต่อเนื่องไม่หยุด ควรแจ้งพยาบาลทันที' },
-            { value: 'unknown_duration', title: 'ไม่ทราบระยะเวลาที่แน่นอน', desc: 'ไม่ได้สังเกต หรือพบผู้ป่วยหลังจากหยุดชักแล้ว', colSpan2: true }
+          ${renderSnGrid('grid-cols-1 sm:grid-cols-2 lg:grid-cols-3', [
+            { value: 'brief_seconds', title: wrapSnWords('สั้นมาก', '(< 1 นาที)'), desc: 'ประมาณ 10–30 วินาที' },
+            { value: 'typical_1_4m', title: wrapSnWords('ประมาณ 1–4 นาที') },
+            { value: 'prolonged_gte_5m', title: wrapSnWords('ตั้งแต่ 5 นาทีขึ้นไป') },
+            { value: 'continuous_unstopped', title: wrapSnWords('ชักต่อเนื่อง', 'ยังไม่หยุด') },
+            { value: 'unknown_duration', title: wrapSnWords('ไม่ทราบระยะเวลา') }
           ], { kind: 'radio', name: 'snLossDuration', onchange: 'handleSnLossDurationChange()' })}
-          <div id="snDurationGte5mWrap" class="hidden mt-3 ml-4 p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-2 text-xs">
+          <div id="snDurationGte5mWrap" class="hidden mt-3 p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-2 text-xs">
             <span class="font-semibold text-slate-800 block">ระบุระยะเวลาโดยประมาณ:</span>
             <div class="flex items-center space-x-2 max-w-xs">
               <input type="number" id="snDurationGte5mVal" min="5" max="720" placeholder="เช่น 10, 15, 30"
@@ -607,14 +695,14 @@ const seizureModule = {
 
         <!-- 1.4 จำนวนครั้งที่มีอาการในรอบ 24 ชั่วโมงที่ผ่านมา -->
         <div class="pt-2 border-t border-slate-100">
-          <label class="block text-xs font-bold text-slate-700 mb-2">1.4 จำนวนครั้งที่มีอาการในรอบ 24 ชั่วโมงที่ผ่านมา: <span class="text-rose-500">*</span></label>
+          <label class="block text-xs font-bold text-slate-700 mb-2">1.4 จำนวนครั้งที่มีอาการใน 24 ชั่วโมงที่ผ่านมา: <span class="text-rose-500">*</span></label>
           ${renderSnGrid('grid-cols-1 sm:grid-cols-2', [
-            { value: 'single', title: 'เกิดขึ้นเพียงครั้งเดียว', desc: 'มีอาการชักหรือหมดสติเพียง 1 ครั้งในวันนี้' },
-            { value: 'multiple_cluster', title: 'เกิดซ้ำตั้งแต่ 2 ครั้งขึ้นไป', desc: 'มีอาการชักหรือหมดสติซ้ำหลายรอบในวันนี้' }
+            { value: 'single', title: wrapSnWords('เกิดขึ้นครั้งเดียว') },
+            { value: 'multiple_cluster', title: wrapSnWords('เกิดซ้ำตั้งแต่', '2 ครั้งขึ้นไป') }
           ], { kind: 'radio', name: 'snEpisodeCount', onchange: 'handleSnEpisodeCountChange()' })}
-          <div id="snClusterSubWrap" class="hidden mt-3 ml-4 p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-3 text-xs">
+          <div id="snClusterSubWrap" class="hidden mt-3 p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-3 text-xs">
             <div class="space-y-1.5">
-              <span class="font-semibold text-slate-800 block">1.4.1 จำนวนครั้งที่มีอาการทั้งหมดในวันนี้:</span>
+              <span class="font-semibold text-slate-800 block">1.4.1 จำนวนครั้งทั้งหมดในวันนี้:</span>
               <div class="flex items-center space-x-2 max-w-xs">
                 <input type="number" id="snEpisodeCountVal" min="2" max="50" placeholder="เช่น 2 หรือ 3"
                   class="w-24 bg-white border border-slate-300 rounded-xl px-3 py-1.5 text-xs text-slate-800 text-center font-bold focus:outline-none focus:ring-2 focus:ring-medical-500">
@@ -622,10 +710,10 @@ const seizureModule = {
               </div>
             </div>
             <div class="pt-2 border-t border-slate-200 space-y-2">
-              <span class="font-semibold text-slate-800 block">1.4.2 สภาพความรู้สึกตัวในช่วงพักระหว่างรอบ:</span>
+              <span class="font-semibold text-slate-800 block">1.4.2 ความรู้สึกตัวระหว่างรอบ:</span>
               ${renderSnGrid('grid-cols-1 sm:grid-cols-2', [
-                { value: 'full_recovery', title: 'ฟื้นคืนสติ พูดคุยรู้เรื่องดี', desc: 'ระหว่างรอบตื่นรู้ตัวและพูดคุยตอบสนองได้ตามปกติ' },
-                { value: 'unconscious_or_drowsy', title: 'ไม่ฟื้นสติ หรือซึมตลอดเวลา', desc: 'ระหว่างรอบยังไม่ตื่นรู้ตัว ซึมมาก หรือชักซ้ำต่อเนื่องทันที' }
+                { value: 'full_recovery', title: wrapSnWords('ฟื้นคืนสติ', 'พูดคุยรู้เรื่อง'), desc: 'ระหว่างรอบตื่นรู้ตัวและพูดคุยตอบสนองได้ตามปกติ' },
+                { value: 'unconscious_or_drowsy', title: wrapSnWords('ไม่ฟื้นสติ /', 'ซึมตลอดเวลา'), desc: 'ระหว่างรอบยังไม่ตื่นรู้ตัว ซึมมาก หรือชักซ้ำต่อเนื่องทันที' }
               ], { kind: 'radio', name: 'snInterictalState', onchange: 'updateSnPostIctalContext()' })}
             </div>
           </div>
@@ -633,87 +721,94 @@ const seizureModule = {
 
         <!-- 1.5 ท่าทางหรือกิจกรรมก่อนเกิดอาการ -->
         <div class="pt-2 border-t border-slate-100">
-          <label class="block text-xs font-bold text-slate-700 mb-2">1.5 ท่าทางหรือกิจกรรมที่กำลังทำก่อนเกิดอาการทันที: <span class="text-rose-500">*</span></label>
-          ${renderSnGrid('grid-cols-1 sm:grid-cols-2', [
-            { value: 'prolonged_standing', title: 'ยืนนาน หรืออยู่ในที่ร้อนแออัด', desc: 'เช่น ยืนเข้าแถวนานๆ ยืนตากแดด หรืออยู่ในห้องที่ร้อนอบอ้าว' },
-            { value: 'sudden_standing', title: 'ลุกขึ้นยืนหรือเปลี่ยนท่าเร็วๆ', desc: 'เพิ่งลุกขึ้นยืนอย่างรวดเร็วจากท่านั่งหรือท่านอน' },
-            { value: 'during_exertion', title: 'ขณะออกแรง หรือออกกำลังกาย', desc: 'เกิดอาการขึ้นในขณะที่กำลังทำงานหนัก วิ่ง หรือออกกำลังกาย' },
-            { value: 'supine_or_resting', title: 'ขณะนั่งพัก หรือนอนอยู่เฉยๆ', desc: 'เกิดขึ้นขณะนั่งพักผ่อนหรือนอนหงายอยู่ตามปกติ ไม่ได้ออกแรง' },
-            { value: 'sleep', title: 'ขณะกำลังนอนหลับ', desc: 'เกิดอาการชักขึ้นระหว่างนอนหลับ หรือสังเกตเห็นอาการตอนตื่นนอน' },
-            { value: 'standing_or_walking_normal', title: 'ขณะยืนหรือเดินตามปกติ', desc: 'ยืนหรือเดินทำกิจวัตรทั่วไปโดยไม่ได้ออกแรงหนัก' },
-            { value: 'micturition_defecation', title: 'ขณะหรือหลังปัสสาวะ ขับถ่าย หรือไอแรงๆ', desc: 'เกิดอาการทันทีขณะเบ่งปัสสาวะ ถ่ายอุจจาระ หรือไอติดต่อกันรุนแรง' },
-            { value: 'other', title: 'อื่นๆ', desc: 'ท่าทางหรือกิจกรรมอื่นๆ (ระบุเพิ่มเติมด้านล่าง)' }
+          <label class="block text-xs font-bold text-slate-700 mb-2">1.5 ท่าทางหรือกิจกรรมก่อนเกิดอาการทันที: <span class="text-rose-500">*</span></label>
+          ${renderSnGrid('grid-cols-1 sm:grid-cols-2 lg:grid-cols-4', [
+            { value: 'prolonged_standing', title: wrapSnWords('ยืนนาน /', 'อยู่ในที่ร้อนแออัด') },
+            { value: 'sudden_standing', title: wrapSnWords('ลุกยืน /', 'เปลี่ยนท่าเร็ว') },
+            { value: 'during_exertion', title: wrapSnWords('ขณะออกแรง /', 'ออกกำลังกาย') },
+            { value: 'supine_or_resting', title: wrapSnWords('ขณะนั่งพัก /', 'นอนเฉยๆ') },
+            { value: 'sleep', title: wrapSnWords('ขณะกำลังนอนหลับ') },
+            { value: 'standing_or_walking_normal', title: wrapSnWords('ยืนหรือเดินตามปกติ') },
+            { value: 'micturition_defecation', title: wrapSnWords('ขณะขับถ่าย /', 'ปัสสาวะ /', 'ไอแรง') },
+            { value: 'other', title: wrapSnWords('อื่นๆ') }
           ], { kind: 'radio', name: 'snPrecedingPosture', onchange: 'handleSnPostureChange()' })}
           <div id="snPostureOtherWrap" class="hidden mt-2.5">
-            <input type="text" id="snPostureOtherText" placeholder="ระบุท่าทางหรือกิจกรรมที่กำลังทำก่อนเกิดอาการ..."
+            <input type="text" id="snPostureOtherText" placeholder="ระบุท่าทางหรือกิจกรรมก่อนเกิดอาการ..."
               class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-medical-500 focus:bg-white">
           </div>
         </div>
       </div>
 
-      <!-- CARD 2: อาการเตือนนำ และลักษณะการเกร็งกระตุกขณะเกิดเหตุ -->
+      <!-- CARD 2: อาการเตือนนำ ลักษณะการเกร็งกระตุก และอาการร่วมขณะเกิดเหตุ -->
       <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 space-y-5">
         <div class="flex items-center space-x-3 pb-3 border-b border-slate-100">
           <div class="bg-medical-100 text-medical-700 p-2 rounded-xl"><i data-lucide="activity" class="w-5 h-5"></i></div>
           <div>
-            <h2 class="text-base font-bold text-slate-900">2. อาการเตือนนำ และลักษณะการเกร็งกระตุกขณะเกิดเหตุ</h2>
+            <h2 class="text-base font-bold text-slate-900">2. อาการเตือนนำ ลักษณะการเกร็งกระตุก และอาการร่วมขณะเกิดเหตุ</h2>
             <p class="text-xs text-slate-500">ประเมินอาการนำก่อนหมดสติ ลักษณะการเคลื่อนไหว และอาการร่วมที่สังเกตเห็น</p>
           </div>
         </div>
 
         <!-- 2.1 อาการเตือนนำ -->
         <div>
-          <label class="block text-xs font-bold text-slate-700 mb-2">2.1 อาการเตือนที่ผู้ป่วยรู้สึกได้ก่อนที่จะหมดสติหรือเกร็งกระตุก: (เลือกได้หลายข้อ)</label>
-          ${renderSnGrid('grid-cols-1 sm:grid-cols-2', [
-            { value: 'none_sudden', title: 'ไม่มีอาการเตือน เกิดขึ้นกะทันหัน', desc: 'อยู่ดีๆ ก็หมดสติหรือชักเกร็งขึ้นมาทันทีโดยไม่มีอาการเตือนล่วงหน้า' },
-            { value: 'lightheaded_tunnel_vision', title: 'หน้ามืด วิงเวียน หรือตาพร่ามัว', desc: 'รู้สึกศีรษะเบาหวิว ภาพมืดลงเรื่อยๆ หรือมีเสียงดังอื้อในหู' },
-            { value: 'cold_sweat_pallor_nausea', title: 'เหงื่อแตกตัวเย็น หรือหน้าซีด', desc: 'เหงื่อออกชุ่มตัว ตัวเย็นเฉียบ หรือรู้สึกคลื่นไส้พะอืดพะอมก่อนวูบ' },
-            { value: 'sudden_palpitation', title: 'ใจสั่นรัว หรือหัวใจเต้นสะดุด', desc: 'รู้สึกหัวใจเต้นเร็วแรงผิดจังหวะอย่างกะทันหันก่อนหมดสติ' },
-            { value: 'chest_pain', title: 'เจ็บแน่นหน้าอก หรืออึดอัดกลางอก', desc: 'มีอาการเจ็บแน่นหน้าอกหรือจุกแน่นลิ้นปี่นำมาก่อน' },
-            { value: 'hyperventilation_tingling', title: 'หายใจหอบเร็ว หรือชารอบปากและปลายมือ', desc: 'รู้สึกหายใจไม่อิ่ม หายใจเร็วลึก ร่วมกับชาซ่าๆ รอบริมฝีปากหรือปลายนิ้ว' },
-            { value: 'epigastric_rising', title: 'จุกแน่นหรือโหวงในท้องลอยขึ้นมาที่คอ', desc: 'รู้สึกแปลกๆ ในช่องท้องคล้ายมีก้อนหรือลมตีลอยขึ้นมาที่หน้าอกและลำคอ' },
-            { value: 'olfactory_visual_aura', title: 'ได้กลิ่นแปลกๆ หรือเห็นแสงวูบวาบ', desc: 'เช่น ได้กลิ่นเหม็นไหม้ รสชาติแปลกในปาก เห็นภาพแสงกะพริบ หรือรู้สึกคุ้นเคยประหลาด' },
-            { value: 'unknown', title: 'ไม่ทราบ หรือจำอาการก่อนเกิดเหตุไม่ได้', desc: 'ผู้ป่วยจำช่วงก่อนเกิดเหตุไม่ได้ หรือไม่มีผู้ทราบข้อมูล', colSpan2: true }
+          ${renderSnSysHeader({
+            icon: 'alert-circle',
+            iconBg: 'bg-amber-100',
+            iconColor: 'text-amber-600',
+            title: '2.1 อาการเตือนก่อนหมดสติหรือชัก (เลือกได้หลายข้อ)',
+            noneId: 'sn_prodrome_none',
+            noneLabel: 'ไม่มีอาการเตือน (เกิดขึ้นทันที)',
+            noneOnchange: 'handleSnProdromeNoneChange()'
+          })}
+          ${renderSnGrid('grid-cols-1 sm:grid-cols-2 lg:grid-cols-4', [
+            { value: 'lightheaded_tunnel_vision', title: wrapSnWords('หน้ามืด /', 'ตาพร่ามัว /', 'หูอื้อ') },
+            { value: 'cold_sweat_pallor_nausea', title: wrapSnWords('เหงื่อแตก /', 'ตัวเย็น /', 'หน้าซีด') },
+            { value: 'sudden_palpitation', title: wrapSnWords('ใจสั่นรัว /', 'หัวใจเต้นสะดุด') },
+            { value: 'chest_pain', title: wrapSnWords('เจ็บแน่นหน้าอก') },
+            { value: 'hyperventilation_tingling', title: wrapSnWords('หายใจหอบเร็ว /', 'ชารอบปาก-มือ') },
+            { value: 'epigastric_rising', title: wrapSnWords('จุกโหวงในท้อง', 'ลอยขึ้นคอ'), desc: 'คล้ายลมตีจากท้องขึ้นหน้าอก/คอ' },
+            { value: 'olfactory_visual_aura', title: wrapSnWords('ได้กลิ่นแปลก /', 'เห็นแสงวูบวาบ'), desc: 'เช่น กลิ่นเหม็นไหม้ หรือแสงกะพริบ' },
+            { value: 'unknown', title: wrapSnWords('ไม่ทราบ /', 'จำไม่ได้') }
           ], { kind: 'checkbox', name: 'snWarningProdrome', onchange: 'handleSnWarningChange(this)' })}
         </div>
 
         <!-- 2.2 ลักษณะการเกร็งหรือกระตุกของร่างกายขณะเกิดเหตุ -->
         <div class="pt-2 border-t border-slate-100">
-          <label class="block text-xs font-bold text-slate-700 mb-2">2.2 ลักษณะการเกร็งหรือกระตุกของร่างกายขณะเกิดเหตุ: <span class="text-rose-500">*</span></label>
-          ${renderSnGrid('grid-cols-1 sm:grid-cols-2', [
-            { value: 'generalized_tonic_clonic', title: 'เกร็งแข็งและกระตุกพร้อมกันทั้งตัว', desc: 'แขนขาและลำตัวแข็งเกร็ง ตามด้วยกระตุกเป็นจังหวะทั้งสองข้างพร้อมกัน' },
-            { value: 'focal_motor', title: 'เกร็งหรือกระตุกเฉพาะบางส่วนของร่างกาย', desc: 'เช่น กระตุกเฉพาะใบหน้า มุมปาก แขน หรือขาเพียงข้างเดียว' },
-            { value: 'brief_myoclonic_syncope', title: 'วูบล้มลงแล้วกระตุกเบาๆ สั้นๆ ไม่กี่ครั้ง', desc: 'ตัวอ่อนล้มลงก่อน แล้วมีแขนขากระตุกเบาๆ เพียงไม่กี่วินาที' },
-            { value: 'carpopedal_spasm', title: 'มือจีบเกร็งทั้งสองข้าง นิ้วงุ้มเข้าหากัน', desc: 'ข้อมือและนิ้วมือทั้งสองข้างเกร็งจีบเข้าหากัน หรือเกร็งปลายเท้างุ้ม' },
-            { value: 'absence_automatism', title: 'เหม่อลอย นิ่งค้าง เรียกไม่ตอบสนอง', desc: 'นิ่งเหม่อไปชั่วขณะ อาจมีอาการเคี้ยวปาก เม้มปาก หรือขยำมือซ้ำๆ' },
-            { value: 'atonic_limp', title: 'ตัวอ่อนปวกเปียกล้มลง ไม่มีการเกร็งกระตุก', desc: 'หมดสติตัวอ่อนพับลงกับพื้นเฉยๆ โดยไม่มีอาการเกร็งหรือกระตุก' },
-            { value: 'thrashing_closed_eyes', title: 'ดิ้นสะบัดไปมา หรือส่ายศีรษะขณะหลับตา', desc: 'แขนขาสะบัดไม่พร้อมกัน ส่ายศีรษะไปมา หรือแอ่นลำตัว' },
-            { value: 'unknown_or_unobserved', title: 'ไม่ทราบแน่ชัด หรือไม่มีผู้เห็นตอนเกิดเหตุ', desc: 'ไม่มีคนเห็นเหตุการณ์ขณะกำลังชักหรือหมดสติ' }
+          <label class="block text-xs font-bold text-slate-700 mb-2">2.2 ลักษณะการเกร็งหรือกระตุกขณะเกิดเหตุ: <span class="text-rose-500">*</span></label>
+          ${renderSnGrid('grid-cols-1 sm:grid-cols-2 lg:grid-cols-4', [
+            { value: 'generalized_tonic_clonic', title: wrapSnWords('เกร็งแข็งและ', 'กระตุกทั้งตัว') },
+            { value: 'focal_motor', title: wrapSnWords('เกร็งหรือกระตุก', 'เฉพาะบางส่วน'), desc: 'เช่น เฉพาะมุมปาก แขน หรือขาข้างเดียว' },
+            { value: 'brief_myoclonic_syncope', title: wrapSnWords('วูบล้มแล้วกระตุก', 'เบาๆ สั้นๆ'), desc: 'กระตุกไม่กี่ครั้งเพียงไม่กี่วินาที' },
+            { value: 'carpopedal_spasm', title: wrapSnWords('มือจีบเกร็ง', 'ทั้งสองข้าง'), desc: 'ข้อมือและนิ้วงุ้มจีบเข้าหากัน' },
+            { value: 'absence_automatism', title: wrapSnWords('เหม่อลอย /', 'นิ่งค้างไม่ตอบสนอง'), desc: 'อาจเคี้ยวปากหรือขยำมือซ้ำๆ' },
+            { value: 'atonic_limp', title: wrapSnWords('ตัวอ่อนปวกเปียก', 'ไม่เกร็ง') },
+            { value: 'thrashing_closed_eyes', title: wrapSnWords('ดิ้นสะบัด /', 'ส่ายหน้าขณะหลับตา') },
+            { value: 'unknown_or_unobserved', title: wrapSnWords('ไม่ทราบ /', 'ไม่มีผู้เห็นเหตุการณ์') }
           ], { kind: 'radio', name: 'snMotorPattern', onchange: 'handleSnMotorPatternChange()' })}
 
-          <!-- 2.2.1 กิ่งย่อย Focal Seizure (แยกแถวตำแหน่ง / ข้าง / ความรู้สึกตัว ชัดเจนตาม P-AP9) -->
-          <div id="snFocalBranchWrap" class="hidden mt-3 ml-4 p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-3 text-xs">
+          <!-- 2.2.1 กิ่งย่อย Focal Seizure (วางใต้แถวตาราง แยกแถวตำแหน่ง / ข้าง / ความรู้สึกตัว) -->
+          <div id="snFocalBranchWrap" class="hidden mt-3 p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-3 text-xs">
             <div>
               <span class="font-semibold text-slate-800 block mb-1.5">ตำแหน่งที่มีอาการเกร็งหรือกระตุก (เลือกได้หลายข้อ):</span>
               ${renderSnGrid('grid-cols-1 sm:grid-cols-3', [
-                { value: 'face_mouth', title: 'ใบหน้า / มุมปาก' },
-                { value: 'arm_hand', title: 'แขน / มือ' },
-                { value: 'leg_foot', title: 'ขา / เท้า' }
+                { value: 'face_mouth', title: wrapSnWords('ใบหน้า /', 'มุมปาก') },
+                { value: 'arm_hand', title: wrapSnWords('แขน /', 'มือ') },
+                { value: 'leg_foot', title: wrapSnWords('ขา /', 'เท้า') }
               ], { kind: 'checkbox', name: 'snFocalParts', compact: true })}
             </div>
             <div class="pt-2 border-t border-slate-200">
-              <span class="font-semibold text-slate-800 block mb-1.5">ข้างที่มีอาการกระตุก:</span>
+              <span class="font-semibold text-slate-800 block mb-1.5">ข้างที่มีอาการ:</span>
               ${renderSnGrid('grid-cols-1 sm:grid-cols-3', [
-                { value: 'left', title: 'ข้างซ้าย' },
-                { value: 'right', title: 'ข้างขวา' },
-                { value: 'bilateral_or_secondarily_generalized', title: 'สลับข้างหรือลามทั้งตัว' }
+                { value: 'left', title: wrapSnWords('ข้างซ้าย') },
+                { value: 'right', title: wrapSnWords('ข้างขวา') },
+                { value: 'bilateral_or_secondarily_generalized', title: wrapSnWords('สลับข้าง /', 'ลามทั้งตัว') }
               ], { kind: 'radio', name: 'snFocalSide', compact: true })}
             </div>
             <div class="pt-2 border-t border-slate-200">
               <span class="font-semibold text-slate-800 block mb-1.5">ความรู้สึกตัวขณะกระตุก:</span>
               ${renderSnGrid('grid-cols-1 sm:grid-cols-2', [
-                { value: 'aware', title: 'รู้สึกตัวดีขณะกระตุก' },
-                { value: 'impaired', title: 'เหม่อลอยหรือไม่รู้สึกตัว' }
+                { value: 'aware', title: wrapSnWords('รู้สึกตัวดี') },
+                { value: 'impaired', title: wrapSnWords('เหม่อลอย /', 'ไม่รู้สึกตัว') }
               ], { kind: 'radio', name: 'snFocalAwareness', compact: true })}
             </div>
           </div>
@@ -721,23 +816,31 @@ const seizureModule = {
 
         <!-- 2.3 อาการร่วมที่สังเกตเห็นขณะเกิดเหตุ -->
         <div class="pt-2 border-t border-slate-100">
-          <label class="block text-xs font-bold text-slate-700 mb-2">2.3 อาการร่วมที่สังเกตเห็นขณะเกิดเหตุ: (เลือกได้หลายข้อ)</label>
-          ${renderSnGrid('grid-cols-1 sm:grid-cols-2', [
-            { id: 'sn_lateral_tongue_bite', title: 'กัดลิ้น หรือมีเลือดออกในปาก', desc: 'มีแผลกัดที่ด้านข้างของลิ้น กระพุ้งแก้ม หรือมีน้ำลายปนเลือด' },
-            { id: 'sn_eye_deviation', title: 'ตาค้าง หรือตาเหลือกเบนไปข้างเดียว', desc: 'ลูกตาเหลือกค้างขึ้นด้านบน หรือหันเบนค้างไปทางซ้ายหรือขวา' },
-            { id: 'sn_incontinence', title: 'ปัสสาวะราด หรืออุจจาระราด', desc: 'ไม่สามารถกลั้นปัสสาวะหรืออุจจาระได้ในขณะหมดสติ' },
-            { id: 'sn_cyanosis_apnea', title: 'ริมฝีปากเขียวคล้ำ หรือหยุดหายใจชั่วขณะ', desc: 'สังเกตเห็นปากเขียว หน้าเขียวคล้ำ หรือมีเสียงหายใจครืดคราด' },
-            { id: 'sn_marked_pallor_sweat', title: 'ใบหน้าซีดเผือด ตัวเย็น เหงื่อออกชุ่ม', desc: 'หน้าซีดขาว มือเท้าเย็น และมีเหงื่อออกเปียกชุ่มตัว', colSpan2: true }
-          ], { kind: 'checkbox' })}
+          ${renderSnSysHeader({
+            icon: 'eye',
+            iconBg: 'bg-purple-100',
+            iconColor: 'text-purple-600',
+            title: '2.3 อาการร่วมที่สังเกตเห็นขณะเกิดเหตุ (เลือกได้หลายข้อ)',
+            noneId: 'sn_ictal_none',
+            noneLabel: 'ไม่มีอาการในหมวดนี้',
+            noneOnchange: 'handleSnIctalNoneChange()'
+          })}
+          ${renderSnGrid('grid-cols-1 sm:grid-cols-2 lg:grid-cols-3', [
+            { id: 'sn_lateral_tongue_bite', title: wrapSnWords('กัดลิ้น /', 'เลือดออกในปาก') },
+            { id: 'sn_eye_deviation', title: wrapSnWords('ตาค้าง /', 'ตาเหลือกเบนข้างเดียว') },
+            { id: 'sn_incontinence', title: wrapSnWords('ปัสสาวะราด /', 'อุจจาระราด') },
+            { id: 'sn_cyanosis_apnea', title: wrapSnWords('ปากเขียวคล้ำ /', 'หยุดหายใจชั่วขณะ') },
+            { id: 'sn_marked_pallor_sweat', title: wrapSnWords('หน้าซีดเผือด /', 'ตัวเย็นเหงื่อชุ่ม') }
+          ], { kind: 'checkbox', onchange: 'handleSnIctalItemChange(this)' })}
         </div>
       </div>
 
-      <!-- CARD 3: สภาพความรู้สึกตัวหลังเกิดเหตุ อาการทางกาย และการบาดเจ็บจากการล้ม -->
+      <!-- CARD 3: การฟื้นคืนสติ อาการหลังชัก และการบาดเจ็บจากการล้ม -->
       <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 space-y-5">
         <div class="flex items-center space-x-3 pb-3 border-b border-slate-100">
           <div class="bg-medical-100 text-medical-700 p-2 rounded-xl"><i data-lucide="refresh-cw" class="w-5 h-5"></i></div>
           <div>
-            <h2 class="text-base font-bold text-slate-900">3. สภาพความรู้สึกตัวหลังเกิดเหตุ อาการทางกาย และการบาดเจ็บจากการล้ม</h2>
+            <h2 class="text-base font-bold text-slate-900">3. การฟื้นคืนสติ อาการหลังชัก และการบาดเจ็บจากการล้ม</h2>
             <p class="text-xs text-slate-500">ประเมินการฟื้นคืนสติ อาการอ่อนแรงหลังชัก และภาวะบาดเจ็บจากการล้ม</p>
           </div>
         </div>
@@ -748,31 +851,38 @@ const seizureModule = {
 
         <!-- 3.1 การฟื้นคืนสติ -->
         <div>
-          <label class="block text-xs font-bold text-slate-700 mb-2">3.1 การฟื้นคืนสติและสภาพความรู้สึกตัวหลังหยุดชัก: <span class="text-rose-500">*</span></label>
+          <label class="block text-xs font-bold text-slate-700 mb-2">3.1 การฟื้นคืนสติหลังหยุดชัก: <span class="text-rose-500">*</span></label>
           ${renderSnGrid('grid-cols-1 sm:grid-cols-2', [
-            { wrapId: 'snRecOptWrap_rapid', value: 'rapid_under_2m_alert', title: 'ฟื้นคืนสติเร็วมาก ภายใน 1 – 2 นาที', desc: 'ตื่นรู้ตัวและพูดคุยรู้เรื่องเป็นปกติทันทีภายในไม่กี่นาที ไม่งง' },
-            { wrapId: 'snRecOptWrap_confused', value: 'confusion_drowsy_gt_5m', title: 'สับสน มึนงง หรือจำไม่ได้นานเกิน 5 นาที', desc: 'หลังหยุดชักยังมีอาการงง ถามซ้ำๆ จำไม่ได้ หรือหลับลึกอยู่นาน' },
-            { wrapId: 'snRecOptWrap_tearful', value: 'tearful_emotional_tachypnea', title: 'รู้สึกตัวดีแต่ยังเหนื่อยหอบ ร้องไห้ หรือมือชา', desc: 'ตื่นรู้เรื่องดีแต่ยังหายใจหอบเร็ว ตกใจกลัว หรือยังมีอาการมือจีบชา' },
-            { value: 'persistent_unconscious', title: 'ขณะนี้ยังไม่ฟื้นคืนสติ หรือยังซึมมาก', desc: 'จนถึงขณะนี้ผู้ป่วยยังไม่ตื่นเป็นปกติ หรือเรียกแล้วไม่ค่อยตอบสนอง' }
+            { wrapId: 'snRecOptWrap_rapid', value: 'rapid_under_2m_alert', title: wrapSnWords('ฟื้นสติเร็วมาก', '(ภายใน 1–2 นาที)'), desc: 'พูดคุยรู้เรื่องเป็นปกติทันที ไม่งง' },
+            { wrapId: 'snRecOptWrap_confused', value: 'confusion_drowsy_gt_5m', title: wrapSnWords('สับสน /', 'มึนงง /', 'หลับลึกเกิน 5 นาที') },
+            { wrapId: 'snRecOptWrap_tearful', value: 'tearful_emotional_tachypnea', title: wrapSnWords('รู้สึกตัวดี', 'แต่ยังหอบ /', 'ร้องไห้ /', 'มือชา') },
+            { value: 'persistent_unconscious', title: wrapSnWords('ขณะนี้ยังไม่ฟื้นสติ /', 'ซึมปลุกตื่นยาก') }
           ], { kind: 'radio', name: 'snRecoveryDuration', onchange: 'handleSnRecoveryChange()' })}
         </div>
 
         <!-- 3.2 อาการผิดปกติหลังจากเริ่มรู้สึกตัว (Context-Filtered) -->
         <div id="snPostRecoverySymptomsWrap" class="pt-2 border-t border-slate-100 space-y-2.5">
-          <label class="block text-xs font-bold text-slate-700">3.2 อาการผิดปกติหลังจากเริ่มรู้สึกตัว: (เลือกได้หลายข้อ)</label>
-          ${renderSnGrid('grid-cols-1 sm:grid-cols-2', [
-            { id: 'sn_post_weakness', title: 'แขนขาอ่อนแรง ปากเบี้ยว หรือพูดไม่ชัด', desc: 'ขยับแขนหรือขาข้างใดข้างหนึ่งได้น้อยลง ยกไม่ขึ้น หรือมุมปากตกหลังหยุดชัก' },
-            { id: 'sn_post_headache', title: 'ปวดศีรษะรุนแรง', desc: 'มีอาการปวดศีรษะตุบๆ หรือปวดมึนศีรษะมากหลังฟื้น' },
-            { id: 'sn_post_myalgia', title: 'ปวดเมื่อยหรือระบมกล้ามเนื้อตามตัว', desc: 'รู้สึกปวดตึงหรือระบมกล้ามเนื้อแขนขาและลำตัวหลังเกร็งกระตุก' },
-            { id: 'sn_post_nausea_vomit', title: 'คลื่นไส้ หรืออาเจียน', desc: 'มีอาการคลื่นไส้หรืออาเจียนหลังเกิดเหตุ' },
-            { id: 'sn_post_none', title: 'ไม่มีอาการผิดปกติ (หรืออ่อนเพลียเล็กน้อยเท่านั้น)', desc: 'เมื่อเลือกข้อนี้ ระบบจะยกเลิกอาการผิดปกติข้ออื่นในหมวด 3.2 อัตโนมัติ', colSpan2: true }
+          ${renderSnSysHeader({
+            icon: 'stethoscope',
+            iconBg: 'bg-blue-100',
+            iconColor: 'text-blue-600',
+            title: '3.2 อาการผิดปกติหลังจากเริ่มรู้สึกตัว (เลือกได้หลายข้อ)',
+            noneId: 'sn_post_none',
+            noneLabel: 'ไม่มีอาการในหมวดนี้',
+            noneOnchange: 'handleSnPostNoneChange()'
+          })}
+          ${renderSnGrid('grid-cols-1 sm:grid-cols-2 lg:grid-cols-4', [
+            { id: 'sn_post_weakness', title: wrapSnWords('แขนขาอ่อนแรง /', 'ปากเบี้ยว /', 'พูดไม่ชัด') },
+            { id: 'sn_post_headache', title: wrapSnWords('ปวดศีรษะรุนแรง') },
+            { id: 'sn_post_myalgia', title: wrapSnWords('ปวดเมื่อย /', 'ระบมกล้ามเนื้อ') },
+            { id: 'sn_post_nausea_vomit', title: wrapSnWords('คลื่นไส้ /', 'อาเจียน') }
           ], { kind: 'checkbox', onchange: 'handleSnPostSymptomChange(this)' })}
-          <div id="snToddSideWrap" class="hidden mt-3 ml-4 p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-2 text-xs">
-            <span class="font-semibold text-slate-800 block">ข้างที่มีอาการอ่อนแรงหรือปากเบี้ยว:</span>
+          <div id="snToddSideWrap" class="hidden mt-3 p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-2 text-xs">
+            <span class="font-semibold text-slate-800 block">ข้างที่มีอาการอ่อนแรง / ปากเบี้ยว:</span>
             ${renderSnGrid('grid-cols-1 sm:grid-cols-3', [
-              { value: 'left', title: 'ซีกซ้าย' },
-              { value: 'right', title: 'ซีกขวา' },
-              { value: 'both', title: 'ทั้งสองข้าง' }
+              { value: 'left', title: wrapSnWords('ซีกซ้าย') },
+              { value: 'right', title: wrapSnWords('ซีกขวา') },
+              { value: 'both', title: wrapSnWords('ทั้งสองข้าง') }
             ], { kind: 'radio', name: 'snToddSide', compact: true })}
           </div>
         </div>
@@ -781,32 +891,32 @@ const seizureModule = {
         <div class="pt-2 border-t border-slate-100">
           <label class="block text-xs font-bold text-slate-700 mb-2">3.3 การบาดเจ็บจากการล้มหรือกระแทกขณะเกิดเหตุ: <span class="text-rose-500">*</span></label>
           ${renderSnGrid('grid-cols-1 sm:grid-cols-2', [
-            { value: 'no', title: 'ไม่มีการบาดเจ็บจากการล้ม', desc: 'มีคนประคองทัน หรือเกิดเหตุบนเตียง/ที่ปลอดภัย ไม่มีแผลกระแทก' },
-            { value: 'yes', title: 'มีศีรษะกระแทกพื้น หรือบาดเจ็บตามร่างกาย', desc: 'ล้มกระแทกพื้นหรือของแข็งจนมีแผล เลือดออก หรือปวดบวม' }
+            { value: 'no', title: wrapSnWords('ไม่มีการบาดเจ็บ', 'จากการล้ม') },
+            { value: 'yes', title: wrapSnWords('มีศีรษะกระแทก /', 'บาดเจ็บตามร่างกาย') }
           ], { kind: 'radio', name: 'snFallInjury', onchange: 'handleSnFallInjuryChange()' })}
-          <div id="snFallInjuryDetailWrap" class="hidden mt-3 ml-4 p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-3 text-xs">
-            <span class="font-semibold text-slate-800 block">ลักษณะการบาดเจ็บที่เกิดขึ้น (เลือกได้หลายข้อ):</span>
+          <div id="snFallInjuryDetailWrap" class="hidden mt-3 p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-3 text-xs">
+            <span class="font-semibold text-slate-800 block">ลักษณะการบาดเจ็บ (เลือกได้หลายข้อ):</span>
             ${renderSnGrid('grid-cols-1 sm:grid-cols-3', [
-              { id: 'sn_fall_head_impact', title: 'ศีรษะหรือใบหน้ากระแทกพื้นโดยตรง' },
-              { id: 'sn_fall_open_wound', title: 'มีแผลฉีกขาดหรือเลือดออก' },
-              { id: 'sn_fall_pain_swelling', title: 'มีอาการปวดบวม ฟกช้ำ หรือปวดกระดูก' }
+              { id: 'sn_fall_head_impact', title: wrapSnWords('ศีรษะ /', 'ใบหน้ากระแทกพื้น') },
+              { id: 'sn_fall_open_wound', title: wrapSnWords('แผลฉีกขาด /', 'เลือดออก') },
+              { id: 'sn_fall_pain_swelling', title: wrapSnWords('ปวดบวม /', 'ฟกช้ำ') }
             ], { kind: 'checkbox', compact: true })}
             <div>
-              <span class="block text-xs font-semibold text-slate-700 mb-1">ระบุตำแหน่งที่ได้รับบาดเจ็บ (ถ้ามี):</span>
-              <input type="text" id="snFallInjuryDetailText" placeholder="เช่น หน้าผากแตก, ท้ายทอยโน, ปวดหัวไหล่ขวา..."
+              <span class="block text-xs font-semibold text-slate-700 mb-1">ตำแหน่งที่บาดเจ็บ (ถ้ามี):</span>
+              <input type="text" id="snFallInjuryDetailText" placeholder="เช่น หน้าผากแตก, ท้ายทอยโน, ปวดไหล่ขวา..."
                 class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-medical-500">
             </div>
           </div>
         </div>
       </div>
 
-      <!-- CARD 4: ประวัติโรคลมชักเดิม ปัจจัยกระตุ้น และข้อมูลเฉพาะสตรี -->
+      <!-- CARD 4: ประวัติเดิม ปัจจัยกระตุ้น และข้อมูลเฉพาะสตรี -->
       <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 space-y-5">
         <div class="flex items-center space-x-3 pb-3 border-b border-slate-100">
           <div class="bg-medical-100 text-medical-700 p-2 rounded-xl"><i data-lucide="shield-alert" class="w-5 h-5"></i></div>
           <div>
-            <h2 class="text-base font-bold text-slate-900">4. ประวัติโรคลมชักเดิม ปัจจัยกระตุ้น และข้อมูลเฉพาะสตรี</h2>
-            <p class="text-xs text-slate-500">ประวัติการชัก การรับประทานยา ปัจจัยกระตุ้น และประวัติการตั้งครรภ์เฉพาะสตรี</p>
+            <h2 class="text-base font-bold text-slate-900">4. ประวัติเดิม ปัจจัยกระตุ้น และข้อมูลเฉพาะสตรี</h2>
+            <p class="text-xs text-slate-500">ประวัติการชัก การรับประทานยา ปัจจัยกระตุ้น และข้อมูลเฉพาะสตรี</p>
           </div>
         </div>
 
@@ -814,37 +924,47 @@ const seizureModule = {
         <div>
           <label class="block text-xs font-bold text-slate-700 mb-2">4.1 ประวัติการชักหรือหมดสติในอดีต: <span class="text-rose-500">*</span></label>
           ${renderSnGrid('grid-cols-1 sm:grid-cols-3', [
-            { value: 'first_time_tloc', title: 'เพิ่งเคยมีอาการครั้งแรก', desc: 'ไม่เคยมีอาการชักหรือเป็นลมหมดสติลักษณะนี้มาก่อนเลย' },
-            { value: 'known_epilepsy', title: 'เป็นโรคลมชักเดิมอยู่แล้ว', desc: 'เคยได้รับการวินิจฉัยว่าเป็นโรคลมชัก หรือรับประทานยากันชักอยู่' },
-            { value: 'recurrent_vasovagal', title: 'เคยเป็นลมหน้ามืดบ่อยๆ', desc: 'เคยเป็นลมเวลาเหนื่อย ยืนนาน อากาศร้อน ตกใจ หรือเห็นเลือด' }
+            { value: 'first_time_tloc', title: wrapSnWords('เพิ่งเคยเป็นครั้งแรก') },
+            { value: 'known_epilepsy', title: wrapSnWords('เป็นโรคลมชักเดิมอยู่แล้ว') },
+            { value: 'recurrent_vasovagal', title: wrapSnWords('เคยเป็นลมหน้ามืดบ่อยๆ') }
           ], { kind: 'radio', name: 'snPriorHistory', onchange: 'handleSnPriorHistoryChange()' })}
-          <div id="snMedComplianceWrap" class="hidden mt-3 ml-4 p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-2 text-xs">
+          <div id="snMedComplianceWrap" class="hidden mt-3 p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-2 text-xs">
             <span class="font-semibold text-slate-800 block">การรับประทานยากันชักในช่วง 7 วันที่ผ่านมา:</span>
-            ${renderSnGrid('grid-cols-1 sm:grid-cols-2', [
-              { value: 'compliant', title: 'รับประทานยาสม่ำเสมอทุกวัน', desc: 'กินยาครบตรงเวลาตามแพทย์สั่งทุกวัน' },
-              { value: 'missed_or_stopped', title: 'ขาดยา ลืมกินยา หรือหยุดยาเอง', desc: 'ลืมทานยาหรือหยุดยาเองในช่วง 1 – 7 วันนี้' },
-              { value: 'dose_changed', title: 'เพิ่งปรับขนาดยาหรือเปลี่ยนชนิดยา', desc: 'เพิ่งเปลี่ยนสูตรยาหรือปรับลดขนาดยาเมื่อเร็วๆ นี้' },
-              { value: 'lost_followup', title: 'ไม่ได้รักษาต่อเนื่อง หรือขาดนัด', desc: 'ขาดนัดรักษานานแล้วและไม่ได้กินยากันชักต่อเนื่อง' }
-            ], { kind: 'radio', name: 'snMedCompliance' })}
+            ${renderSnGrid('grid-cols-1 sm:grid-cols-2 lg:grid-cols-4', [
+              { value: 'compliant', title: wrapSnWords('กินยาสม่ำเสมอทุกวัน') },
+              { value: 'missed_or_stopped', title: wrapSnWords('ขาดยา /', 'ลืมกิน /', 'หยุดยาเอง') },
+              { value: 'dose_changed', title: wrapSnWords('เพิ่งปรับขนาด /', 'เปลี่ยนชนิดยา') },
+              { value: 'lost_followup', title: wrapSnWords('ไม่ได้รักษาต่อเนื่อง /', 'ขาดนัด') }
+            ], { kind: 'radio', name: 'snMedCompliance', compact: true })}
           </div>
         </div>
 
-        <!-- 4.2 ปัจจัยกระตุ้นหรืออาการเจ็บป่วยร่วมก่อนเกิดเหตุ -->
+        <!-- 4.2 ปัจจัยกระตุ้นหรือภาวะเสี่ยงก่อนเกิดเหตุ -->
         <div class="pt-2 border-t border-slate-100">
-          <label class="block text-xs font-bold text-slate-700 mb-2">4.2 ปัจจัยกระตุ้นหรืออาการเจ็บป่วยร่วมก่อนเกิดเหตุครั้งนี้: (เลือกได้หลายข้อ)</label>
-          ${renderSnGrid('grid-cols-1 sm:grid-cols-2', [
-            { id: 'sn_rf_fever_meningismus', title: 'มีไข้สูง หนาวสั่น หรือคอแข็งก้มคอไม่ได้', desc: 'มีไข้ร่วมกับปวดศีรษะรุนแรง คอแข็งตึง หรือซึมสับสนนำมาก่อน' },
-            { id: 'sn_rf_recent_head_trauma', title: 'เพิ่งได้รับอุบัติเหตุศีรษะกระแทกมาก่อนหน้านี้', desc: 'เคยหกล้ม รถชน หรือถูกกระแทกที่ศีรษะก่อนเริ่มมีอาการชัก' },
-            { id: 'sn_rf_sleep_deprivation', title: 'อดนอน หรือพักผ่อนน้อยผิดปกติ', desc: 'นอนดึก ทำงานกะดึกติดต่อกัน หรือไม่ได้นอนก่อนเกิดอาการ' },
-            { id: 'sn_rf_alcohol_withdrawal', title: 'ดื่มสุราเป็นประจำ และเพิ่งหยุดดื่มหรือลดปริมาณลง', desc: 'หยุดดื่มสุราหรือดื่มน้อยลงในช่วง 1 – 3 วันที่ผ่านมา' },
-            { id: 'sn_rf_diabetic_hypo', title: 'เป็นเบาหวาน ฉีดยา/กินยาเบาหวาน หรืออดอาหาร', desc: 'ไม่ได้ทานอาหารตามมื้อ หรือมีอาการหิว มือสั่น เหงื่อออกก่อนหมดสติ' },
-            { id: 'sn_rf_cardiac_family', title: 'มีโรคหัวใจเดิม หรือครอบครัวเสียชีวิตอายุน้อย', desc: 'โรคหัวใจเต้นผิดจังหวะ/หลอดเลือดหัวใจ หรือญาติสายตรงเสียชีวิตกะทันหันก่อนอายุ 50 ปี' },
-            { id: 'sn_rf_emotional_panic', title: 'มีความเครียดรุนแรง ตกใจ หรือร้องไห้หนัก', desc: 'เพิ่งมีเรื่องกระทบจิตใจรุนแรง ทะเลาะวิวาท หรือตื่นตระหนกก่อนเกิดเหตุ' },
-            { id: 'sn_rf_substance_toxin', title: 'ใช้ยาทรามาดอล สารเสพติด หรือได้รับสารพิษ', desc: 'เช่น กินยาเกินขนาด ใช้ยาแก้ปวดทรามาดอล ยาบ้า กระท่อม หรือสัมผัสสารเคมี', onchange: 'handleSnSubstanceChange()' }
-          ], { kind: 'checkbox' })}
-          <div id="snSubstanceDetailsWrap" class="hidden mt-3 ml-4 p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-2 text-xs">
-            <span class="font-semibold text-slate-800 block">ระบุชื่อยา สารเสพติด หรือสารที่ได้รับ (ถ้าทราบ):</span>
-            <input type="text" id="snSubstanceDetails" placeholder="เช่น Tramadol, ยาบ้า, ยาฆ่าแมลง..."
+          ${renderSnSysHeader({
+            icon: 'flame',
+            iconBg: 'bg-orange-100',
+            iconColor: 'text-orange-600',
+            title: '4.2 ปัจจัยกระตุ้นหรือภาวะเสี่ยงก่อนเกิดเหตุ (เลือกได้หลายข้อ)',
+            noneId: 'sn_rf_none',
+            noneLabel: 'ไม่มีปัจจัยในหมวดนี้',
+            noneOnchange: 'handleSnRfNoneChange()'
+          })}
+          ${renderSnGrid('grid-cols-1 sm:grid-cols-2 lg:grid-cols-4', [
+            { id: 'sn_rf_fever', title: wrapSnWords('มีไข้สูง /', 'หนาวสั่น') },
+            { id: 'sn_rf_meningismus', title: wrapSnWords('ปวดหัวรุนแรง /', 'คอแข็ง') },
+            { id: 'sn_rf_recent_head_trauma', title: wrapSnWords('เพิ่งบาดเจ็บศีรษะ', 'มาก่อน') },
+            { id: 'sn_rf_sleep_deprivation', title: wrapSnWords('อดนอน /', 'พักผ่อนน้อย') },
+            { id: 'sn_rf_alcohol_withdrawal', title: wrapSnWords('เพิ่งหยุดหรือ', 'ลดดื่มสุรา'), desc: 'ดื่มประจำแล้วหยุดภายใน 1–3 วัน' },
+            { id: 'sn_rf_diabetic_hypo', title: wrapSnWords('เป็นเบาหวาน /', 'อดอาหาร'), desc: 'ฉีดยา/กินยาเบาหวาน หรือหิวมือสั่น' },
+            { id: 'sn_rf_cardiac_history', title: wrapSnWords('มีโรคหัวใจเดิม') },
+            { id: 'sn_rf_family_scd', title: wrapSnWords('ครอบครัวเสียชีวิต', 'อายุน้อย'), desc: 'ญาติสายตรงเสียชีวิตกะทันหันก่อนอายุ 50 ปี' },
+            { id: 'sn_rf_emotional_panic', title: wrapSnWords('เครียดหนัก /', 'ตกใจ /', 'ร้องไห้') },
+            { id: 'sn_rf_substance_toxin', title: wrapSnWords('ใช้ยาทรามาดอล /', 'สารเสพติด /', 'สารพิษ'), desc: 'ยาโปร, ยาเกินขนาด, ยาบ้า, กระท่อม หรือสารเคมี' }
+          ], { kind: 'checkbox', onchange: 'handleSnRfItemChange(this)' })}
+          <div id="snSubstanceDetailsWrap" class="hidden mt-3 p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-2 text-xs">
+            <span class="font-semibold text-slate-800 block">ชื่อยา สารเสพติด หรือสารพิษที่ได้รับ (ถ้าทราบ):</span>
+            <input type="text" id="snSubstanceDetails" placeholder="เช่น ทรามาดอล(ยาโปร), ยาบ้า, ยาฆ่าแมลง..."
               class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-medical-500">
           </div>
         </div>
@@ -857,14 +977,14 @@ const seizureModule = {
           </div>
           <div class="space-y-3 bg-pink-50/40 p-3.5 rounded-xl border border-pink-200">
             <div>
-              <span class="block text-xs font-semibold text-slate-700 mb-2">สถานะการตั้งครรภ์หรือหลังคลอด:</span>
-              ${renderSnGrid('grid-cols-1 sm:grid-cols-2', [
-                { value: 'not_pregnant', title: 'ไม่ได้ตั้งครรภ์' },
-                { value: 'pregnant', title: 'กำลังตั้งครรภ์' },
-                { value: 'postpartum_6w', title: 'เพิ่งคลอด หรือแท้งบุตรภายใน 6 สัปดาห์' },
-                { value: 'menopause_or_hysterectomy', title: 'วัยหมดประจำเดือน / ผ่าตัดมดลูกแล้ว' },
-                { value: 'unknown', title: 'ไม่แน่ใจ / ไม่ทราบ', colSpan2: true }
-              ], { kind: 'radio', name: 'snPregnancyStatus', onchange: 'handleSnPregnancyChange()' })}
+              <span class="block text-xs font-semibold text-slate-700 mb-2">สถานะการตั้งครรภ์ / หลังคลอด:</span>
+              ${renderSnGrid('grid-cols-1 sm:grid-cols-3', [
+                { value: 'not_pregnant', title: wrapSnWords('ไม่ได้ตั้งครรภ์') },
+                { value: 'pregnant', title: wrapSnWords('กำลังตั้งครรภ์') },
+                { value: 'postpartum_6w', title: wrapSnWords('เพิ่งคลอด /', 'แท้งใน 6 สัปดาห์') },
+                { value: 'menopause_or_hysterectomy', title: wrapSnWords('หมดประจำเดือน /', 'ผ่าตัดมดลูก') },
+                { value: 'unknown', title: wrapSnWords('ไม่แน่ใจ') }
+              ], { kind: 'radio', name: 'snPregnancyStatus', onchange: 'handleSnPregnancyChange()', compact: true })}
               <div id="snPregnancyWeeksWrap" class="hidden mt-2.5 max-w-xs">
                 <input type="text" id="snPregnancyWeeks" placeholder="ระบุอายุครรภ์ เช่น 32 สัปดาห์"
                   class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-medical-500">
@@ -891,7 +1011,6 @@ const seizureModule = {
         <textarea id="seizure_other_free" rows="2" placeholder="พิมพ์ระบุอาการอื่นๆ ที่ท่านมีหรือต้องการบอกแพทย์เพิ่มเติม (ถ้ามี)..."
           class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-medical-500 focus:bg-white"></textarea>
       </div>
-
     </div>
   `,
 
@@ -920,14 +1039,9 @@ const seizureModule = {
     });
 
     clearSnCheckboxesByIds([
-      'snExactTimeUnknown', 'sn_lateral_tongue_bite', 'sn_eye_deviation',
-      'sn_incontinence', 'sn_cyanosis_apnea', 'sn_marked_pallor_sweat',
-      'sn_post_weakness', 'sn_post_headache', 'sn_post_myalgia',
-      'sn_post_nausea_vomit', 'sn_post_none', 'sn_fall_head_impact',
-      'sn_fall_open_wound', 'sn_fall_pain_swelling', 'sn_rf_fever_meningismus',
-      'sn_rf_recent_head_trauma', 'sn_rf_sleep_deprivation', 'sn_rf_alcohol_withdrawal',
-      'sn_rf_diabetic_hypo', 'sn_rf_cardiac_family', 'sn_rf_emotional_panic',
-      'sn_rf_substance_toxin'
+      'snExactTimeUnknown', 'sn_prodrome_none', 'sn_ictal_none', 'sn_post_none', 'sn_rf_none',
+      ...SN_ICTAL_IDS, ...SN_POST_IDS, ...SN_RF_IDS,
+      'sn_fall_head_impact', 'sn_fall_open_wound', 'sn_fall_pain_swelling'
     ]);
 
     this.inputIdsToClear.forEach(id => {
@@ -954,7 +1068,6 @@ const seizureModule = {
   onSelectForm() {
     syncSnFemaleSection();
     updateSnPostIctalContext();
-    checkSeizurePediatricAgeGuidance();
   },
 
   onActivate(patient) {
@@ -998,8 +1111,10 @@ const seizureModule = {
     handleSnPostureChange();
 
     const prodromes = Array.isArray(patient.snWarningProdromes) ? patient.snWarningProdromes : [];
+    const prodromeNone = Boolean(patient.sn_prodrome_none || prodromes.includes('none_sudden'));
+    setChk('sn_prodrome_none', prodromeNone);
     document.querySelectorAll('input[name="snWarningProdrome"]').forEach(cb => {
-      cb.checked = prodromes.includes(cb.value);
+      cb.checked = !prodromeNone && prodromes.includes(cb.value);
     });
 
     setSnRadioChecked('snMotorPattern', patient.snMotorPattern || patient.seizureMotorPattern);
@@ -1011,6 +1126,7 @@ const seizureModule = {
     setSnRadioChecked('snFocalAwareness', patient.snFocalAwareness);
     handleSnMotorPatternChange();
 
+    setChk('sn_ictal_none', patient.sn_ictal_none);
     setChk('sn_lateral_tongue_bite', patient.sn_lateral_tongue_bite || patient.seizure_lateral_tongue_bite);
     setChk('sn_eye_deviation', patient.sn_eye_deviation || patient.seizure_eye_deviation);
     setChk('sn_incontinence', patient.sn_incontinence || patient.seizure_incontinence);
@@ -1038,12 +1154,15 @@ const seizureModule = {
     setSnRadioChecked('snMedCompliance', patient.snMedCompliance || patient.seizureMedCompliance);
     handleSnPriorHistoryChange();
 
-    setChk('sn_rf_fever_meningismus', patient.sn_rf_fever_meningismus || patient.seizure_rf_fever_meningismus);
+    setChk('sn_rf_none', patient.sn_rf_none);
+    setChk('sn_rf_fever', patient.sn_rf_fever || patient.sn_rf_fever_meningismus || patient.seizure_rf_fever_meningismus);
+    setChk('sn_rf_meningismus', patient.sn_rf_meningismus || patient.sn_rf_fever_meningismus || patient.seizure_rf_fever_meningismus);
     setChk('sn_rf_recent_head_trauma', patient.sn_rf_recent_head_trauma || patient.seizure_rf_recent_head_trauma);
     setChk('sn_rf_sleep_deprivation', patient.sn_rf_sleep_deprivation);
     setChk('sn_rf_alcohol_withdrawal', patient.sn_rf_alcohol_withdrawal || patient.seizure_rf_alcohol_withdrawal);
     setChk('sn_rf_diabetic_hypo', patient.sn_rf_diabetic_hypo || patient.seizure_rf_diabetic_hypo);
-    setChk('sn_rf_cardiac_family', patient.sn_rf_cardiac_family || patient.seizure_rf_known_cardiac_disease || patient.seizure_rf_family_sudden_death);
+    setChk('sn_rf_cardiac_history', patient.sn_rf_cardiac_history || patient.sn_rf_cardiac_family || patient.seizure_rf_known_cardiac_disease);
+    setChk('sn_rf_family_scd', patient.sn_rf_family_scd || patient.seizure_rf_family_sudden_death);
     setChk('sn_rf_emotional_panic', patient.sn_rf_emotional_panic || patient.seizure_rf_emotional_panic_trigger);
     setChk('sn_rf_substance_toxin', patient.sn_rf_substance_toxin || patient.seizure_rf_substance_toxin);
     setVal('snSubstanceDetails', patient.snSubstanceDetails || patient.seizureSubstanceDetails || '');
@@ -1059,7 +1178,6 @@ const seizureModule = {
     }
 
     setVal('seizure_other_free', patient.otherSymptomsFree || '');
-    checkSeizurePediatricAgeGuidance();
   },
 
   collectIntake(ctx = {}) {
@@ -1081,38 +1199,47 @@ const seizureModule = {
     const rawDur5m = parseInt(document.getElementById('snDurationGte5mVal')?.value, 10);
     const snDurationGte5mVal = snLossDuration === 'prolonged_gte_5m' && !isNaN(rawDur5m) && rawDur5m > 0 ? rawDur5m : null;
 
+    // Zero Default Bias (P-AP14 / C-AP20): Never fabricate count=1 or full_recovery when unanswered
     const snEpisodeCount = getSnRadioValue('snEpisodeCount') || 'unspecified';
     const rawEpCnt = parseInt(document.getElementById('snEpisodeCountVal')?.value, 10);
-    const snEpisodeCountVal = snEpisodeCount === 'multiple_cluster' && !isNaN(rawEpCnt) && rawEpCnt >= 2 ? rawEpCnt : 1;
-    const snInterictalState = snEpisodeCount === 'multiple_cluster' ? (getSnRadioValue('snInterictalState') || 'full_recovery') : 'full_recovery';
+    const snEpisodeCountVal = snEpisodeCount === 'multiple_cluster'
+      ? (!isNaN(rawEpCnt) && rawEpCnt >= 2 ? rawEpCnt : null)
+      : (snEpisodeCount === 'single' ? 1 : null);
+    const snInterictalState = snEpisodeCount === 'multiple_cluster'
+      ? (getSnRadioValue('snInterictalState') || 'unspecified')
+      : '';
 
     const snPrecedingPosture = getSnRadioValue('snPrecedingPosture') || 'unspecified';
     const snPostureOtherText = snPrecedingPosture === 'other' ? (document.getElementById('snPostureOtherText')?.value?.trim() || '') : '';
 
-    const snWarningProdromes = getSnCheckedValues('snWarningProdrome');
+    const sn_prodrome_none = Boolean(document.getElementById('sn_prodrome_none')?.checked);
+    const checkedProdromes = getSnCheckedValues('snWarningProdrome');
+    const snWarningProdromes = sn_prodrome_none ? ['none_sudden'] : checkedProdromes;
+
     const snMotorPattern = getSnRadioValue('snMotorPattern') || 'unspecified';
     const snFocalParts = snMotorPattern === 'focal_motor' ? getSnCheckedValues('snFocalParts') : [];
     const snFocalSide = snMotorPattern === 'focal_motor' ? (getSnRadioValue('snFocalSide') || '') : '';
     const snFocalAwareness = snMotorPattern === 'focal_motor' ? (getSnRadioValue('snFocalAwareness') || '') : '';
 
-    const sn_lateral_tongue_bite = Boolean(document.getElementById('sn_lateral_tongue_bite')?.checked);
-    const sn_eye_deviation = Boolean(document.getElementById('sn_eye_deviation')?.checked);
-    const sn_incontinence = Boolean(document.getElementById('sn_incontinence')?.checked);
-    const sn_cyanosis_apnea = Boolean(document.getElementById('sn_cyanosis_apnea')?.checked);
-    const sn_marked_pallor_sweat = Boolean(document.getElementById('sn_marked_pallor_sweat')?.checked);
+    const sn_ictal_none = Boolean(document.getElementById('sn_ictal_none')?.checked);
+    const sn_lateral_tongue_bite = !sn_ictal_none && Boolean(document.getElementById('sn_lateral_tongue_bite')?.checked);
+    const sn_eye_deviation = !sn_ictal_none && Boolean(document.getElementById('sn_eye_deviation')?.checked);
+    const sn_incontinence = !sn_ictal_none && Boolean(document.getElementById('sn_incontinence')?.checked);
+    const sn_cyanosis_apnea = !sn_ictal_none && Boolean(document.getElementById('sn_cyanosis_apnea')?.checked);
+    const sn_marked_pallor_sweat = !sn_ictal_none && Boolean(document.getElementById('sn_marked_pallor_sweat')?.checked);
 
     const isActiveUnconscious =
       snLossDuration === 'continuous_unstopped' ||
       (snEpisodeCount === 'multiple_cluster' && snInterictalState === 'unconscious_or_drowsy');
-    const snRecoveryDuration = getSnRadioValue('snRecoveryDuration') || (isActiveUnconscious ? 'persistent_unconscious' : 'unspecified');
+    const snRecoveryDuration = getSnRadioValue('snRecoveryDuration') || 'unspecified';
     const hidePost = isActiveUnconscious || snRecoveryDuration === 'persistent_unconscious';
 
-    const sn_post_weakness = !hidePost && Boolean(document.getElementById('sn_post_weakness')?.checked);
-    const snToddSide = sn_post_weakness ? (getSnRadioValue('snToddSide') || '') : '';
-    const sn_post_headache = !hidePost && Boolean(document.getElementById('sn_post_headache')?.checked);
-    const sn_post_myalgia = !hidePost && Boolean(document.getElementById('sn_post_myalgia')?.checked);
-    const sn_post_nausea_vomit = !hidePost && Boolean(document.getElementById('sn_post_nausea_vomit')?.checked);
     const sn_post_none = !hidePost && Boolean(document.getElementById('sn_post_none')?.checked);
+    const sn_post_weakness = !hidePost && !sn_post_none && Boolean(document.getElementById('sn_post_weakness')?.checked);
+    const snToddSide = sn_post_weakness ? (getSnRadioValue('snToddSide') || '') : '';
+    const sn_post_headache = !hidePost && !sn_post_none && Boolean(document.getElementById('sn_post_headache')?.checked);
+    const sn_post_myalgia = !hidePost && !sn_post_none && Boolean(document.getElementById('sn_post_myalgia')?.checked);
+    const sn_post_nausea_vomit = !hidePost && !sn_post_none && Boolean(document.getElementById('sn_post_nausea_vomit')?.checked);
 
     const snFallInjury = getSnRadioValue('snFallInjury') || 'unspecified';
     const hasFall = snFallInjury === 'yes';
@@ -1124,14 +1251,19 @@ const seizureModule = {
     const snPriorHistory = getSnRadioValue('snPriorHistory') || 'unspecified';
     const snMedCompliance = snPriorHistory === 'known_epilepsy' ? (getSnRadioValue('snMedCompliance') || 'unspecified') : 'unspecified';
 
-    const sn_rf_fever_meningismus = Boolean(document.getElementById('sn_rf_fever_meningismus')?.checked);
-    const sn_rf_recent_head_trauma = Boolean(document.getElementById('sn_rf_recent_head_trauma')?.checked);
-    const sn_rf_sleep_deprivation = Boolean(document.getElementById('sn_rf_sleep_deprivation')?.checked);
-    const sn_rf_alcohol_withdrawal = Boolean(document.getElementById('sn_rf_alcohol_withdrawal')?.checked);
-    const sn_rf_diabetic_hypo = Boolean(document.getElementById('sn_rf_diabetic_hypo')?.checked);
-    const sn_rf_cardiac_family = Boolean(document.getElementById('sn_rf_cardiac_family')?.checked);
-    const sn_rf_emotional_panic = Boolean(document.getElementById('sn_rf_emotional_panic')?.checked);
-    const sn_rf_substance_toxin = Boolean(document.getElementById('sn_rf_substance_toxin')?.checked);
+    const sn_rf_none = Boolean(document.getElementById('sn_rf_none')?.checked);
+    const sn_rf_fever = !sn_rf_none && Boolean(document.getElementById('sn_rf_fever')?.checked);
+    const sn_rf_meningismus = !sn_rf_none && Boolean(document.getElementById('sn_rf_meningismus')?.checked);
+    const sn_rf_fever_meningismus = sn_rf_fever || sn_rf_meningismus;
+    const sn_rf_recent_head_trauma = !sn_rf_none && Boolean(document.getElementById('sn_rf_recent_head_trauma')?.checked);
+    const sn_rf_sleep_deprivation = !sn_rf_none && Boolean(document.getElementById('sn_rf_sleep_deprivation')?.checked);
+    const sn_rf_alcohol_withdrawal = !sn_rf_none && Boolean(document.getElementById('sn_rf_alcohol_withdrawal')?.checked);
+    const sn_rf_diabetic_hypo = !sn_rf_none && Boolean(document.getElementById('sn_rf_diabetic_hypo')?.checked);
+    const sn_rf_cardiac_history = !sn_rf_none && Boolean(document.getElementById('sn_rf_cardiac_history')?.checked);
+    const sn_rf_family_scd = !sn_rf_none && Boolean(document.getElementById('sn_rf_family_scd')?.checked);
+    const sn_rf_cardiac_family = sn_rf_cardiac_history || sn_rf_family_scd;
+    const sn_rf_emotional_panic = !sn_rf_none && Boolean(document.getElementById('sn_rf_emotional_panic')?.checked);
+    const sn_rf_substance_toxin = !sn_rf_none && Boolean(document.getElementById('sn_rf_substance_toxin')?.checked);
     const snSubstanceDetails = sn_rf_substance_toxin ? (document.getElementById('snSubstanceDetails')?.value?.trim() || '') : '';
 
     const isFemale = gender === 'หญิง';
@@ -1164,11 +1296,13 @@ const seizureModule = {
       snInterictalState,
       snPrecedingPosture,
       snPostureOtherText,
+      sn_prodrome_none,
       snWarningProdromes,
       snMotorPattern,
       snFocalParts,
       snFocalSide,
       snFocalAwareness,
+      sn_ictal_none,
       sn_lateral_tongue_bite,
       sn_eye_deviation,
       sn_incontinence,
@@ -1188,11 +1322,16 @@ const seizureModule = {
       snFallInjuryDetailText,
       snPriorHistory,
       snMedCompliance,
+      sn_rf_none,
+      sn_rf_fever,
+      sn_rf_meningismus,
       sn_rf_fever_meningismus,
       sn_rf_recent_head_trauma,
       sn_rf_sleep_deprivation,
       sn_rf_alcohol_withdrawal,
       sn_rf_diabetic_hypo,
+      sn_rf_cardiac_history,
+      sn_rf_family_scd,
       sn_rf_cardiac_family,
       sn_rf_emotional_panic,
       sn_rf_substance_toxin,
@@ -1203,8 +1342,8 @@ const seizureModule = {
       otherSymptomsFree,
       hospRecordStatus: hospRecordStatus || 'unspecified',
       underlying: Array.isArray(underlying) && underlying.length > 0 ? underlying : ((hospRecordStatus === 'self' || hospRecordStatus === 'additional') ? ['ปฏิเสธ'] : []),
-      drugAllergy,
-      currentMeds,
+      drugAllergy: drugAllergy || 'ไม่ได้ระบุ',
+      currentMeds: currentMeds || 'ไม่ได้ระบุ',
       doctor_notes: preservedDoctorNotes
     };
   },
@@ -1265,6 +1404,8 @@ const seizureModule = {
       patient.snPrecedingPosture === 'during_exertion' ||
       prodromes.includes('sudden_palpitation') ||
       prodromes.includes('chest_pain') ||
+      patient.sn_rf_cardiac_history ||
+      patient.sn_rf_family_scd ||
       patient.sn_rf_cardiac_family
     ) {
       redFlags.push({
@@ -1274,10 +1415,10 @@ const seizureModule = {
       });
     }
 
-    if (patient.sn_rf_fever_meningismus) {
+    if (patient.sn_rf_fever || patient.sn_rf_meningismus || patient.sn_rf_fever_meningismus) {
       redFlags.push({
         key: 'cns_infection_meningismus',
-        textTh: 'มีไข้สูง ปวดศีรษะรุนแรง หรือคอแข็งนำมาก่อน (Suspected CNS Infection: Meningitis / Encephalitis)',
+        textTh: 'มีไข้สูง หนาวสั่น ปวดศีรษะรุนแรง หรือคอแข็งนำมาก่อน (Suspected CNS Infection: Meningitis / Encephalitis)',
         risk: 'เสี่ยงเยื่อหุ้มสมองหรือเนื้อสมองอักเสบ ต้องประเมิน Neuroimaging / Lumbar Puncture และให้ Empiric IV Antimicrobial ทันที'
       });
     }
@@ -1310,7 +1451,7 @@ const seizureModule = {
       const det = patient.snSubstanceDetails ? ` [${patient.snSubstanceDetails}]` : '';
       redFlags.push({
         key: 'substance_toxin_overdose',
-        textTh: `ใช้ยาทรามาดอล สารเสพติด หรือได้รับสารพิษ${det} (Toxin / Drug-Induced Seizure)`,
+        textTh: `ใช้ยาทรามาดอล(ยาโปร) สารเสพติด หรือได้รับสารพิษ${det} (Toxin / Drug-Induced Seizure)`,
         risk: 'ระวัง Tramadol, Amphetamine, สารกำจัดศัตรูพืช หรือยาเกินขนาด เฝ้าระวังทางเดินหายใจและให้การรักษาเฉพาะทาง'
       });
     }
@@ -1338,7 +1479,7 @@ const seizureModule = {
   updateOutputs(patient) {
     if (!patient) return { rapid: '', narrative: '', json: '{}' };
     const unitMap = { minutes: 'นาที', hours: 'ชั่วโมง', days: 'วัน', weeks: 'สัปดาห์', months: 'เดือน', years: 'ปี' };
-    const durationText = patient.durationVal ? `${patient.durationVal} ${unitMap[patient.durationUnit] || 'ชั่วโมง'}` : 'ไม่ระบุ';
+    const durationText = patient.durationVal ? `${patient.durationVal} ${unitMap[patient.durationUnit] || 'ชั่วโมง'}` : 'ไม่ได้ระบุ';
     const timeText = patient.snExactTimeUnknown
       ? 'ไม่ทราบเวลาแน่ชัด'
       : (patient.snExactTime ? `เวลา ${patient.snExactTime} น.` : '');
@@ -1349,19 +1490,25 @@ const seizureModule = {
       : (SN_LABELS.posture[patient.snPrecedingPosture] || SN_LABELS.posture.unspecified);
 
     const lossDurationStr = patient.snLossDuration === 'prolonged_gte_5m'
-      ? `นานตั้งแต่ 5 นาทีขึ้นไป${patient.snDurationGte5mVal ? ` (ประมาณ ${patient.snDurationGte5mVal} นาที)` : ''}`
+      ? `ตั้งแต่ 5 นาทีขึ้นไป${patient.snDurationGte5mVal ? ` (ประมาณ ${patient.snDurationGte5mVal} นาที)` : ''}`
       : (SN_LABELS.lossDuration[patient.snLossDuration] || SN_LABELS.lossDuration.unspecified);
 
-    const clusterStr = patient.snEpisodeCount === 'multiple_cluster'
-      ? `เกิดซ้ำ ${patient.snEpisodeCountVal || 2} ครั้ง (${SN_LABELS.interictal[patient.snInterictalState] || 'ไม่ระบุสภาพระหว่างรอบ'})`
-      : (patient.snEpisodeCount === 'single' ? 'เกิดขึ้นเพียงครั้งเดียว' : 'ไม่ได้ระบุจำนวนครั้ง');
+    let clusterStr = 'ไม่ได้ระบุ';
+    if (patient.snEpisodeCount === 'single') {
+      clusterStr = 'เกิดขึ้นครั้งเดียว';
+    } else if (patient.snEpisodeCount === 'multiple_cluster') {
+      const cntPart = patient.snEpisodeCountVal ? `${patient.snEpisodeCountVal} ครั้ง` : 'ตั้งแต่ 2 ครั้งขึ้นไป';
+      const interPart = SN_LABELS.interictal[patient.snInterictalState] || SN_LABELS.interictal.unspecified;
+      clusterStr = `เกิดซ้ำ ${cntPart} (${interPart})`;
+    }
 
-    const prodromes = Array.isArray(patient.snWarningProdromes) && patient.snWarningProdromes.length > 0
-      ? patient.snWarningProdromes
-      : [];
-    const prodromesStr = prodromes.length > 0
-      ? prodromes.map(p => SN_LABELS.prodrome[p] || p).join(', ')
-      : 'ไม่ได้ระบุอาการเตือน';
+    const prodromes = Array.isArray(patient.snWarningProdromes) ? patient.snWarningProdromes : [];
+    let prodromesStr = 'ไม่ได้ระบุ';
+    if (patient.sn_prodrome_none || prodromes.includes('none_sudden')) {
+      prodromesStr = SN_LABELS.prodrome.none_sudden;
+    } else if (prodromes.length > 0) {
+      prodromesStr = prodromes.map(p => SN_LABELS.prodrome[p] || p).join(', ');
+    }
 
     const motorStr = formatSnMotorSummary(patient);
     const recoveryStr = SN_LABELS.recovery[patient.snRecoveryDuration] || SN_LABELS.recovery.unspecified;
@@ -1369,8 +1516,8 @@ const seizureModule = {
     let fallStr = patient.snFallInjury === 'no' ? 'ไม่มีการบาดเจ็บจากการล้ม' : 'ไม่ได้ระบุ';
     if (patient.snFallInjury === 'yes') {
       const fParts = [];
-      if (patient.sn_fall_head_impact) fParts.push('ศีรษะหรือใบหน้ากระแทกพื้นโดยตรง');
-      if (patient.sn_fall_open_wound) fParts.push('มีแผลฉีกขาด/เลือดออก');
+      if (patient.sn_fall_head_impact) fParts.push('ศีรษะหรือใบหน้ากระแทกพื้น');
+      if (patient.sn_fall_open_wound) fParts.push('แผลฉีกขาด/เลือดออก');
       if (patient.sn_fall_pain_swelling) fParts.push('ปวดบวม/ฟกช้ำ');
       if (patient.snFallInjuryDetailText) fParts.push(patient.snFallInjuryDetailText);
       fallStr = fParts.length > 0 ? `มีบาดเจ็บ (${fParts.join(', ')})` : 'มีบาดเจ็บจากการล้ม';
@@ -1381,65 +1528,80 @@ const seizureModule = {
       ? (SN_LABELS.compliance[patient.snMedCompliance] || SN_LABELS.compliance.unspecified)
       : '';
 
+    // Pertinent Positives & Zero-Default-Bias Pertinent Negatives (P-AP14 / C-AP20)
     const positives = [];
     const negatives = [];
-    const anyIctalAnswered = Boolean(
+
+    // 2.3 Ictal Associated Signs
+    const anyIctalPos = Boolean(
       patient.sn_lateral_tongue_bite || patient.sn_eye_deviation || patient.sn_incontinence ||
-      patient.sn_cyanosis_apnea || patient.sn_marked_pallor_sweat ||
-      (patient.snMotorPattern && patient.snMotorPattern !== 'unspecified')
+      patient.sn_cyanosis_apnea || patient.sn_marked_pallor_sweat
     );
-    const anyPostAnswered = Boolean(
-      patient.sn_post_weakness || patient.sn_post_headache || patient.sn_post_myalgia ||
-      patient.sn_post_nausea_vomit || patient.sn_post_none ||
-      (patient.snRecoveryDuration && patient.snRecoveryDuration !== 'unspecified')
-    );
-    const anyTriggerRiskAnswered = Boolean(
-      patient.sn_rf_fever_meningismus || patient.sn_rf_recent_head_trauma || patient.sn_rf_sleep_deprivation ||
-      patient.sn_rf_alcohol_withdrawal || patient.sn_rf_diabetic_hypo || patient.sn_rf_cardiac_family ||
-      patient.sn_rf_emotional_panic || patient.sn_rf_substance_toxin
-    );
+    if (patient.sn_ictal_none) {
+      negatives.push('ไม่มีอาการกัดลิ้น ตาค้าง ปัสสาวะราด ปากเขียว หรือหน้าซีดขณะเกิดเหตุ');
+    } else if (anyIctalPos) {
+      if (patient.sn_lateral_tongue_bite) positives.push('กัดลิ้นหรือมีเลือดออกในปาก');
+      else negatives.push('ไม่พบแผลกัดลิ้น');
 
-    if (patient.sn_lateral_tongue_bite) positives.push('กัดลิ้นหรือมีเลือดออกในปาก');
-    else if (anyIctalAnswered) negatives.push('ไม่พบแผลกัดลิ้น');
+      if (patient.sn_eye_deviation) positives.push('ตาค้างหรือตาเหลือกเบนไปข้างเดียว');
+      else negatives.push('ไม่มีตาค้างหรือตาเหลือก');
 
-    if (patient.sn_eye_deviation) positives.push('ตาค้างหรือตาเหลือกเบนไปข้างเดียว');
-    else if (anyIctalAnswered) negatives.push('ไม่มีตาค้างหรือตาเหลือก');
+      if (patient.sn_incontinence) positives.push('ปัสสาวะหรืออุจจาระราดขณะหมดสติ');
+      else negatives.push('ไม่มีปัสสาวะหรืออุจจาระราด');
 
-    if (patient.sn_incontinence) positives.push('ปัสสาวะหรืออุจจาระราดขณะหมดสติ');
-    else if (anyIctalAnswered) negatives.push('ไม่มีปัสสาวะหรืออุจจาระราด');
+      if (patient.sn_cyanosis_apnea) positives.push('ริมฝีปากเขียวคล้ำหรือหยุดหายใจชั่วขณะ');
+      else negatives.push('ไม่มีปากเขียวหรือหยุดหายใจ');
 
-    if (patient.sn_cyanosis_apnea) positives.push('ริมฝีปากเขียวคล้ำหรือหยุดหายใจชั่วขณะ');
-    else if (anyIctalAnswered) negatives.push('ไม่มีปากเขียวหรือหยุดหายใจ');
-
-    if (patient.sn_marked_pallor_sweat) positives.push('หน้าซีด ตัวเย็น เหงื่อออกชุ่ม');
-    else if (anyIctalAnswered) negatives.push('ไม่มีหน้าซีดเหงื่อออกชุ่ม');
-
-    if (patient.sn_post_weakness) {
-      const tSide = patient.snToddSide ? ` (${SN_LABELS.toddSides[patient.snToddSide] || patient.snToddSide})` : '';
-      positives.push(`แขนขาอ่อนแรง ปากเบี้ยว หรือพูดไม่ชัดหลังชัก${tSide}`);
-    } else if (anyPostAnswered && patient.snRecoveryDuration !== 'persistent_unconscious') {
-      negatives.push('ไม่มีแขนขาอ่อนแรงหลังหยุดชัก');
+      if (patient.sn_marked_pallor_sweat) positives.push('หน้าซีดเผือด ตัวเย็น เหงื่อออกชุ่ม');
+      else negatives.push('ไม่มีหน้าซีดเหงื่อออกชุ่ม');
     }
 
-    if (patient.sn_post_headache) positives.push('ปวดศีรษะรุนแรงหลังฟื้น');
-    if (patient.sn_post_myalgia) positives.push('ปวดเมื่อยระบมกล้ามเนื้อหลังชัก');
-    if (patient.sn_post_nausea_vomit) positives.push('คลื่นไส้หรืออาเจียนหลังเกิดเหตุ');
-    if (patient.sn_fall_head_impact) positives.push('ล้มศีรษะกระแทกพื้นโดยตรงขณะเกิดเหตุ');
+    // 3.2 Post-ictal Symptoms
+    const anyPostPos = Boolean(
+      patient.sn_post_weakness || patient.sn_post_headache || patient.sn_post_myalgia || patient.sn_post_nausea_vomit
+    );
+    if (patient.sn_post_none && patient.snRecoveryDuration !== 'persistent_unconscious') {
+      negatives.push('ไม่มีอาการอ่อนแรง ปวดศีรษะ ปวดกล้ามเนื้อ หรือคลื่นไส้อาเจียนหลังฟื้น');
+    } else if (anyPostPos) {
+      if (patient.sn_post_weakness) {
+        const tSide = patient.snToddSide ? ` (${SN_LABELS.toddSides[patient.snToddSide] || patient.snToddSide})` : '';
+        positives.push(`แขนขาอ่อนแรง ปากเบี้ยว หรือพูดไม่ชัดหลังชัก${tSide}`);
+      } else if (patient.snRecoveryDuration !== 'persistent_unconscious') {
+        negatives.push('ไม่มีแขนขาอ่อนแรงหลังหยุดชัก');
+      }
+      if (patient.sn_post_headache) positives.push('ปวดศีรษะรุนแรงหลังฟื้น');
+      if (patient.sn_post_myalgia) positives.push('ปวดเมื่อยระบมกล้ามเนื้อหลังชัก');
+      if (patient.sn_post_nausea_vomit) positives.push('คลื่นไส้หรืออาเจียนหลังเกิดเหตุ');
+    }
+
+    // 3.3 Secondary Injury details (when positive)
+    if (patient.sn_fall_head_impact) positives.push('ล้มศีรษะหรือใบหน้ากระแทกพื้น');
     if (patient.sn_fall_open_wound) positives.push('มีแผลฉีกขาดหรือเลือดออกจากการล้ม');
     if (patient.sn_fall_pain_swelling) positives.push('มีอาการปวดบวมหรือฟกช้ำจากการล้ม');
 
-    if (patient.sn_rf_fever_meningismus) positives.push('มีไข้สูง หนาวสั่น หรือคอแข็งนำมาก่อน');
-    else if (anyTriggerRiskAnswered) negatives.push('ไม่มีไข้สูงหรือคอแข็งนำมาก่อน');
+    // 4.2 Triggers & Risk Factors (Explicit None vs Positive Only — Zero Default Bias)
+    const hasFever = Boolean(patient.sn_rf_fever || (!('sn_rf_fever' in patient) && patient.sn_rf_fever_meningismus));
+    const hasMeningismus = Boolean(patient.sn_rf_meningismus || (!('sn_rf_meningismus' in patient) && patient.sn_rf_fever_meningismus));
+    const hasCardiac = Boolean(patient.sn_rf_cardiac_history || (!('sn_rf_cardiac_history' in patient) && patient.sn_rf_cardiac_family));
+    const hasFamilyScd = Boolean(patient.sn_rf_family_scd);
 
-    if (patient.sn_rf_recent_head_trauma) positives.push('เพิ่งได้รับอุบัติเหตุศีรษะกระแทกมาก่อนหน้านี้');
-    if (patient.sn_rf_sleep_deprivation) positives.push('อดนอนหรือพักผ่อนน้อยก่อนเกิดอาการ');
-    if (patient.sn_rf_alcohol_withdrawal) positives.push('ดื่มสุราประจำและเพิ่งหยุดดื่มภายใน 1–3 วัน');
-    if (patient.sn_rf_diabetic_hypo) positives.push('เป็นเบาหวานหรืออดอาหารก่อนหมดสติ');
-    if (patient.sn_rf_cardiac_family) positives.push('มีโรคหัวใจเดิมหรือครอบครัวเสียชีวิตอายุน้อย');
-    if (patient.sn_rf_emotional_panic) positives.push('มีความเครียดรุนแรง ตกใจ หรือร้องไห้หนักก่อนเกิดเหตุ');
-    if (patient.sn_rf_substance_toxin) {
-      positives.push(`ใช้ยาทรามาดอล สารเสพติด หรือได้รับสารพิษ${patient.snSubstanceDetails ? ` (${patient.snSubstanceDetails})` : ''}`);
+    if (patient.sn_rf_none) {
+      negatives.push('ไม่มีปัจจัยกระตุ้นหรือภาวะเสี่ยงสำคัญก่อนเกิดเหตุ (ไข้ คอแข็ง บาดเจ็บศีรษะ อดนอน หยุดสุรา เบาหวาน โรคหัวใจ หรือสารพิษ)');
+    } else {
+      if (hasFever) positives.push('มีไข้สูงหรือหนาวสั่นนำมาก่อน');
+      if (hasMeningismus) positives.push('ปวดศีรษะรุนแรงหรือคอแข็งนำมาก่อน');
+      if (patient.sn_rf_recent_head_trauma) positives.push('เพิ่งบาดเจ็บศีรษะมาก่อนหน้านี้');
+      if (patient.sn_rf_sleep_deprivation) positives.push('อดนอนหรือพักผ่อนน้อยก่อนเกิดอาการ');
+      if (patient.sn_rf_alcohol_withdrawal) positives.push('ดื่มสุราประจำและเพิ่งหยุดหรือลดปริมาณภายใน 1–3 วัน');
+      if (patient.sn_rf_diabetic_hypo) positives.push('เป็นเบาหวานหรืออดอาหารก่อนหมดสติ');
+      if (hasCardiac) positives.push('มีโรคหัวใจเดิม');
+      if (hasFamilyScd) positives.push('มีประวัติครอบครัวเสียชีวิตกะทันหันอายุน้อย (< 50 ปี)');
+      if (patient.sn_rf_emotional_panic) positives.push('เครียดหนัก ตกใจ หรือร้องไห้ก่อนเกิดเหตุ');
+      if (patient.sn_rf_substance_toxin) {
+        positives.push(`ใช้ยาทรามาดอล(ยาโปร) สารเสพติด หรือได้รับสารพิษ${patient.snSubstanceDetails ? ` (${patient.snSubstanceDetails})` : ''}`);
+      }
     }
+
     if (patient.otherSymptomsFree && String(patient.otherSymptomsFree).trim()) {
       positives.push(String(patient.otherSymptomsFree).trim());
     }
@@ -1526,7 +1688,7 @@ ${effectiveRfs.length > 0
 การประเมินแยกโรคเบื้องต้น (Sheldon Score = ${sheldon.score}): ${sheldon.interpretation}; ${hvs.label}
 อาการร่วมสำคัญที่ตรวจพบ: ${positives.join(', ')}
 อาการสำคัญที่ปฏิเสธ: ${patient.pertinentNegatives.join(', ')}
-ประวัติการชัก/เป็นลมเดิม: [${priorStr}]${complianceStr ? ` (การรับประทานยากันชัก: ${complianceStr})` : ''}, โรคประจำตัว: ${udText}, ยาประจำตัว: ${medsText}, แพ้ยา: ${allergyText}${effectiveRfs.length > 0 ? `\n[🚩 สัญญาณเตือนอันตราย (Red Flags)]: ${effectiveRfs.map(rf => rf.textTh).join('; ')}` : ''}`;
+ประวัติการชัก/เป็นลมเดิม: [${priorStr}]${complianceStr ? ` (การรับประทานยากันชัก: ${complianceStr})` : ''}, โรคประจำตัว: ${udText}, ยาประจำตัว: ${medsText}, แพ้ยา: ${allergyText}${effectiveRfs.length > 0 ? `\n[แจ้งเตือนความเสี่ยงสูง]: ${effectiveRfs.map(rf => rf.textTh).join('; ')}` : ''}`;
 
     const jsonSchema = {
       '$schema': 'https://json-schema.org/draft/2020-12/schema',
@@ -1566,7 +1728,7 @@ ${effectiveRfs.length > 0
         female_pregnancy_lmp: isFemale ? (femaleStr || null) : null
       },
       pertinent_positives: positives,
-      pertinent_negatives: negatives,
+      pertinent_negatives: patient.pertinentNegatives,
       other_symptoms_free_text: patient.otherSymptomsFree || '',
       red_flags: effectiveRfs.map(r => r.key),
       doctor_clinical_addendum: docNotes
@@ -1588,290 +1750,77 @@ ${effectiveRfs.length > 0
   },
 
   seedPatients: [
-    {
-      id: 'case-091',
-      queue_number: 'A-091',
-      hn: '6708101',
-      name: 'นายภาณุพงศ์ กิตติคุณ',
-      age: 28,
-      gender: 'ชาย',
-      chief_complaint: 'seizure',
-      chief_complaint_title: 'ชัก / เกร็งกระตุก',
-      status: 'waiting',
-      timestamp: '2026-10-26T02:31:26.424Z',
-      durationVal: 45,
-      durationUnit: 'minutes',
-      snExactTimeUnknown: false,
-      snExactTime: '08:45',
-      snReporter: 'witness_relative',
-      snLossDuration: 'prolonged_gte_5m',
-      snDurationGte5mVal: 20,
-      snEpisodeCount: 'multiple_cluster',
-      snEpisodeCountVal: 2,
-      snInterictalState: 'unconscious_or_drowsy',
-      snPrecedingPosture: 'sleep',
-      snPostureOtherText: '',
-      snWarningProdromes: ['none_sudden'],
-      snMotorPattern: 'generalized_tonic_clonic',
-      snFocalParts: [],
-      snFocalSide: '',
-      snFocalAwareness: '',
-      sn_lateral_tongue_bite: true,
-      sn_eye_deviation: true,
-      sn_incontinence: true,
-      sn_cyanosis_apnea: true,
-      sn_marked_pallor_sweat: false,
-      snRecoveryDuration: 'persistent_unconscious',
-      sn_post_weakness: false,
-      snToddSide: '',
-      sn_post_headache: false,
-      sn_post_myalgia: false,
-      sn_post_nausea_vomit: false,
-      sn_post_none: false,
-      snFallInjury: 'no',
-      sn_fall_head_impact: false,
-      sn_fall_open_wound: false,
-      sn_fall_pain_swelling: false,
-      snFallInjuryDetailText: '',
-      snPriorHistory: 'known_epilepsy',
-      snMedCompliance: 'missed_or_stopped',
-      sn_rf_fever_meningismus: false,
-      sn_rf_recent_head_trauma: false,
-      sn_rf_sleep_deprivation: true,
-      sn_rf_alcohol_withdrawal: false,
-      sn_rf_diabetic_hypo: false,
-      sn_rf_cardiac_family: false,
-      sn_rf_emotional_panic: false,
-      sn_rf_substance_toxin: false,
-      snSubstanceDetails: '',
-      snPregnancyStatus: '',
-      snPregnancyWeeks: '',
-      snLmpDate: '',
-      otherSymptomsFree: 'ยังซึมปลุกไม่ตื่นขณะนำส่งโรงพยาบาล',
-      hospRecordStatus: 'complete',
+    makeSnSeed({
+      id: 'case-091', queue_number: 'A-091', hn: '6708101', name: 'นายภาณุพงศ์ กิตติคุณ', age: 28, gender: 'ชาย',
+      timestamp: '2026-10-26T02:31:26.424Z', durationVal: 45, durationUnit: 'minutes', snExactTime: '08:45',
+      snReporter: 'witness_relative', snLossDuration: 'prolonged_gte_5m', snDurationGte5mVal: 20,
+      snEpisodeCount: 'multiple_cluster', snEpisodeCountVal: 2, snInterictalState: 'unconscious_or_drowsy',
+      snPrecedingPosture: 'sleep', sn_prodrome_none: true, snWarningProdromes: ['none_sudden'],
+      snMotorPattern: 'generalized_tonic_clonic', sn_lateral_tongue_bite: true, sn_eye_deviation: true,
+      sn_incontinence: true, sn_cyanosis_apnea: true, snRecoveryDuration: 'persistent_unconscious',
+      snPriorHistory: 'known_epilepsy', snMedCompliance: 'missed_or_stopped', sn_rf_sleep_deprivation: true,
+      otherSymptomsFree: 'ยังซึมปลุกไม่ตื่นขณะนำส่งโรงพยาบาล', hospRecordStatus: 'complete',
       underlying: ['โรคลมชัก (Epilepsy)'],
-      drugAllergy: 'ปฏิเสธ',
       currentMeds: 'Sodium Valproate 500 mg bid, Levetiracetam 500 mg bid (ขาดยา 3 วัน)',
       doctor_notes: {
         additional_hpi: 'ผู้ป่วยโรคลมชักเดิม ขาดยามา 3 วันและอดนอน ชักเกร็งทั้งตัวนาน 20 นาที ซ้ำ 2 รอบ ระหว่างรอบไม่ฟื้นสติ',
         physical_exam: 'BT 37.2 C, PR 122/min, RR 26/min, BP 148/92 mmHg, SpO2 93% -> 99% O2 cannula. DTX 114 mg/dL. GCS E2V2M4.',
-        preliminary_dx: 'Convulsive Status Epilepticus secondary to Antiseizure Non-Compliance 🚩',
+        preliminary_dx: 'Convulsive Status Epilepticus secondary to Antiseizure Non-Compliance',
         plan: 'Airway support + high-flow O2, IV Diazepam 10 mg STAT, IV Levetiracetam loading, STAT labs & CT Brain'
       }
-    },
-    {
-      id: 'case-092',
-      queue_number: 'A-092',
-      hn: '6708214',
-      name: 'น.ส.ชุติมา ธนสถิตย์',
-      age: 24,
-      gender: 'หญิง',
-      chief_complaint: 'seizure',
-      chief_complaint_title: 'ชัก / เกร็งกระตุก',
-      status: 'waiting',
-      timestamp: '2026-10-26T02:21:26.424Z',
-      durationVal: 1,
-      durationUnit: 'hours',
-      snExactTimeUnknown: false,
-      snExactTime: '08:20',
-      snReporter: 'both_patient_witness',
-      snLossDuration: 'typical_1_4m',
-      snDurationGte5mVal: null,
-      snEpisodeCount: 'single',
-      snEpisodeCountVal: 1,
-      snInterictalState: 'full_recovery',
-      snPrecedingPosture: 'supine_or_resting',
-      snPostureOtherText: '',
-      snWarningProdromes: ['none_sudden'],
-      snMotorPattern: 'generalized_tonic_clonic',
-      snFocalParts: [],
-      snFocalSide: '',
-      snFocalAwareness: '',
-      sn_lateral_tongue_bite: false,
-      sn_eye_deviation: true,
-      sn_incontinence: true,
-      sn_cyanosis_apnea: true,
-      sn_marked_pallor_sweat: false,
-      snRecoveryDuration: 'confusion_drowsy_gt_5m',
-      sn_post_weakness: false,
-      snToddSide: '',
-      sn_post_headache: true,
-      sn_post_myalgia: true,
-      sn_post_nausea_vomit: false,
-      sn_post_none: false,
-      snFallInjury: 'no',
-      sn_fall_head_impact: false,
-      sn_fall_open_wound: false,
-      sn_fall_pain_swelling: false,
-      snFallInjuryDetailText: '',
-      snPriorHistory: 'first_time_tloc',
-      snMedCompliance: 'compliant',
-      sn_rf_fever_meningismus: false,
-      sn_rf_recent_head_trauma: false,
-      sn_rf_sleep_deprivation: false,
-      sn_rf_alcohol_withdrawal: false,
-      sn_rf_diabetic_hypo: false,
-      sn_rf_cardiac_family: false,
-      sn_rf_emotional_panic: false,
-      sn_rf_substance_toxin: false,
-      snSubstanceDetails: '',
-      snPregnancyStatus: 'pregnant',
-      snPregnancyWeeks: '34 สัปดาห์',
-      snLmpDate: '20/03/2026',
-      otherSymptomsFree: 'ปวดศีรษะท้ายทอยและตาพร่ามัวก่อนชัก',
-      hospRecordStatus: 'complete',
-      underlying: ['ความดันโลหิตสูงขณะตั้งครรภ์'],
-      drugAllergy: 'ปฏิเสธ',
-      currentMeds: 'Methyldopa 250 mg tid',
+    }),
+    makeSnSeed({
+      id: 'case-092', queue_number: 'A-092', hn: '6708214', name: 'น.ส.ชุติมา ธนสถิตย์', age: 24, gender: 'หญิง',
+      timestamp: '2026-10-26T02:21:26.424Z', durationVal: 1, durationUnit: 'hours', snExactTime: '08:20',
+      snReporter: 'both_patient_witness', snLossDuration: 'typical_1_4m', snPrecedingPosture: 'supine_or_resting',
+      sn_prodrome_none: true, snWarningProdromes: ['none_sudden'], snMotorPattern: 'generalized_tonic_clonic',
+      sn_eye_deviation: true, sn_incontinence: true, sn_cyanosis_apnea: true,
+      snRecoveryDuration: 'confusion_drowsy_gt_5m', sn_post_headache: true, sn_post_myalgia: true,
+      snPriorHistory: 'first_time_tloc', sn_rf_none: true, snPregnancyStatus: 'pregnant',
+      snPregnancyWeeks: '34 สัปดาห์', snLmpDate: '20/03/2026',
+      otherSymptomsFree: 'ปวดศีรษะท้ายทอยและตาพร่ามัวก่อนชัก', hospRecordStatus: 'complete',
+      underlying: ['ความดันโลหิตสูงขณะตั้งครรภ์'], currentMeds: 'Methyldopa 250 mg tid',
       doctor_notes: {
         additional_hpi: 'หญิงตั้งครรภ์ 34 สัปดาห์ มีอาการชักเกร็งทั้งตัวเป็นครั้งแรกหลังปวดศีรษะและตาพร่ามัว',
         physical_exam: 'BT 36.8 C, PR 96/min, RR 20/min, BP 178/112 mmHg, SpO2 98%. Urine dipstick: Protein 3+.',
-        preliminary_dx: 'Antepartum Eclampsia 🚩 [OBSTETRIC CRITICAL EMERGENCY]',
+        preliminary_dx: 'Antepartum Eclampsia [OBSTETRIC CRITICAL EMERGENCY]',
         plan: 'IV MgSO4 loading 4g then 1g/hr, IV Nicardipine titration, Emergency OB-GYN consult'
       }
-    },
-    {
-      id: 'case-093',
-      queue_number: 'A-093',
-      hn: '6708325',
-      name: 'นายประเสริฐ ทองสุข',
-      age: 58,
-      gender: 'ชาย',
-      chief_complaint: 'seizure',
-      chief_complaint_title: 'ชัก / เกร็งกระตุก',
-      status: 'waiting',
-      timestamp: '2026-10-26T02:16:26.424Z',
-      durationVal: 2,
-      durationUnit: 'hours',
-      snExactTimeUnknown: true,
-      snExactTime: '',
-      snReporter: 'witness_relative',
-      snLossDuration: 'typical_1_4m',
-      snDurationGte5mVal: null,
-      snEpisodeCount: 'single',
-      snEpisodeCountVal: 1,
-      snInterictalState: 'full_recovery',
-      snPrecedingPosture: 'standing_or_walking_normal',
-      snPostureOtherText: '',
-      snWarningProdromes: ['unknown'],
-      snMotorPattern: 'focal_motor',
-      snFocalParts: ['face_mouth', 'arm_hand'],
-      snFocalSide: 'left',
-      snFocalAwareness: 'aware',
-      sn_lateral_tongue_bite: false,
-      sn_eye_deviation: false,
-      sn_incontinence: false,
-      sn_cyanosis_apnea: false,
-      sn_marked_pallor_sweat: false,
-      snRecoveryDuration: 'confusion_drowsy_gt_5m',
-      sn_post_weakness: true,
-      snToddSide: 'left',
-      sn_post_headache: true,
-      sn_post_myalgia: false,
-      sn_post_nausea_vomit: false,
-      sn_post_none: false,
-      snFallInjury: 'yes',
-      sn_fall_head_impact: true,
-      sn_fall_open_wound: true,
-      sn_fall_pain_swelling: false,
-      snFallInjuryDetailText: 'แผลถลอกและปูดโนบริเวณหน้าผากซ้าย',
-      snPriorHistory: 'first_time_tloc',
-      snMedCompliance: 'compliant',
-      sn_rf_fever_meningismus: false,
-      sn_rf_recent_head_trauma: false,
-      sn_rf_sleep_deprivation: false,
-      sn_rf_alcohol_withdrawal: false,
-      sn_rf_diabetic_hypo: false,
-      sn_rf_cardiac_family: false,
-      sn_rf_emotional_panic: false,
-      sn_rf_substance_toxin: false,
-      snSubstanceDetails: '',
-      snPregnancyStatus: '',
-      snPregnancyWeeks: '',
-      snLmpDate: '',
-      otherSymptomsFree: '',
-      hospRecordStatus: 'self',
-      underlying: ['ความดันโลหิตสูง'],
-      drugAllergy: 'ปฏิเสธ',
-      currentMeds: 'Amlodipine 5 mg od',
+    }),
+    makeSnSeed({
+      id: 'case-093', queue_number: 'A-093', hn: '6708325', name: 'นายประเสริฐ ทองสุข', age: 58, gender: 'ชาย',
+      timestamp: '2026-10-26T02:16:26.424Z', durationVal: 2, durationUnit: 'hours', snExactTimeUnknown: true,
+      snReporter: 'witness_relative', snLossDuration: 'typical_1_4m', snPrecedingPosture: 'standing_or_walking_normal',
+      snWarningProdromes: ['unknown'], snMotorPattern: 'focal_motor', snFocalParts: ['face_mouth', 'arm_hand'],
+      snFocalSide: 'left', snFocalAwareness: 'aware', sn_ictal_none: true,
+      snRecoveryDuration: 'confusion_drowsy_gt_5m', sn_post_weakness: true, snToddSide: 'left',
+      sn_post_headache: true, snFallInjury: 'yes', sn_fall_head_impact: true, sn_fall_open_wound: true,
+      snFallInjuryDetailText: 'แผลถลอกและปูดโนบริเวณหน้าผากซ้าย', snPriorHistory: 'first_time_tloc', sn_rf_none: true,
+      hospRecordStatus: 'self', underlying: ['ความดันโลหิตสูง'], currentMeds: 'Amlodipine 5 mg od',
       doctor_notes: {
         additional_hpi: 'ชักกระตุกเฉพาะมุมปากและแขนซ้ายครั้งแรกในชีวิต หลังหยุดชักแขนซ้ายอ่อนแรงและล้มศีรษะกระแทกพื้น',
         physical_exam: 'BT 36.9 C, PR 88/min, RR 18/min, BP 164/96 mmHg. Left hemiparesis grade 3/5, scalp abrasion left frontal.',
-        preliminary_dx: 'First-Onset Focal Motor Seizure with Todd Paresis & Secondary Head Impact 🚩',
+        preliminary_dx: 'First-Onset Focal Motor Seizure with Todd Paresis & Secondary Head Impact',
         plan: 'STAT Non-contrast CT Brain, Electrolytes, DTX, Neuro consult'
       }
-    },
-    {
-      id: 'case-094',
-      queue_number: 'A-094',
-      hn: '6708436',
-      name: 'น.ส.พิมพ์ชนก สุวรรณเวช',
-      age: 19,
-      gender: 'หญิง',
-      chief_complaint: 'seizure',
-      chief_complaint_title: 'ชัก / เกร็งกระตุก',
-      status: 'waiting',
-      timestamp: '2026-10-26T02:11:26.424Z',
-      durationVal: 30,
-      durationUnit: 'minutes',
-      snExactTimeUnknown: false,
-      snExactTime: '08:40',
-      snReporter: 'both_patient_witness',
-      snLossDuration: 'brief_seconds',
-      snDurationGte5mVal: null,
-      snEpisodeCount: 'single',
-      snEpisodeCountVal: 1,
-      snInterictalState: 'full_recovery',
-      snPrecedingPosture: 'prolonged_standing',
-      snPostureOtherText: '',
+    }),
+    makeSnSeed({
+      id: 'case-094', queue_number: 'A-094', hn: '6708436', name: 'น.ส.พิมพ์ชนก สุวรรณเวช', age: 19, gender: 'หญิง',
+      timestamp: '2026-10-26T02:11:26.424Z', durationVal: 30, durationUnit: 'minutes', snExactTime: '08:40',
+      snReporter: 'both_patient_witness', snLossDuration: 'brief_seconds', snPrecedingPosture: 'prolonged_standing',
       snWarningProdromes: ['lightheaded_tunnel_vision', 'cold_sweat_pallor_nausea'],
-      snMotorPattern: 'brief_myoclonic_syncope',
-      snFocalParts: [],
-      snFocalSide: '',
-      snFocalAwareness: '',
-      sn_lateral_tongue_bite: false,
-      sn_eye_deviation: false,
-      sn_incontinence: false,
-      sn_cyanosis_apnea: false,
-      sn_marked_pallor_sweat: true,
-      snRecoveryDuration: 'rapid_under_2m_alert',
-      sn_post_weakness: false,
-      snToddSide: '',
-      sn_post_headache: false,
-      sn_post_myalgia: false,
-      sn_post_nausea_vomit: false,
-      sn_post_none: true,
-      snFallInjury: 'no',
-      sn_fall_head_impact: false,
-      sn_fall_open_wound: false,
-      sn_fall_pain_swelling: false,
-      snFallInjuryDetailText: '',
-      snPriorHistory: 'recurrent_vasovagal',
-      snMedCompliance: 'compliant',
-      sn_rf_fever_meningismus: false,
-      sn_rf_recent_head_trauma: false,
-      sn_rf_sleep_deprivation: false,
-      sn_rf_alcohol_withdrawal: false,
-      sn_rf_diabetic_hypo: false,
-      sn_rf_cardiac_family: false,
-      sn_rf_emotional_panic: false,
-      sn_rf_substance_toxin: false,
-      snSubstanceDetails: '',
-      snPregnancyStatus: 'not_pregnant',
-      snPregnancyWeeks: '',
-      snLmpDate: '01/11/2026',
+      snMotorPattern: 'brief_myoclonic_syncope', sn_marked_pallor_sweat: true,
+      snRecoveryDuration: 'rapid_under_2m_alert', sn_post_none: true, snPriorHistory: 'recurrent_vasovagal',
+      sn_rf_none: true, snPregnancyStatus: 'not_pregnant', snLmpDate: '01/11/2026',
       otherSymptomsFree: 'ไม่ได้ทานข้าวเช้า ยืนเข้าแถวกลางแดดร้อนจัด รู้สึกหูอื้อและภาพตัดวูบไป',
-      hospRecordStatus: 'self',
-      underlying: ['ปฏิเสธ'],
-      drugAllergy: 'ปฏิเสธ',
-      currentMeds: 'ไม่มี',
+      hospRecordStatus: 'self', underlying: ['ปฏิเสธ'], currentMeds: 'ไม่มี',
       doctor_notes: {
         additional_hpi: 'ยืนกลางแดดนาน หน้ามืดตัวเย็นเหงื่อซึมแล้ววูบกระตุกสั้นๆ 10 วินาที ฟื้นสติรู้เรื่องเต็มที่ภายใน 1 นาที',
         physical_exam: 'BT 36.7 C, PR 72/min, RR 16/min, BP 112/68 mmHg, SpO2 99%. Neuro exam normal. 12-lead EKG NSR.',
         preliminary_dx: 'Neurocardiogenic / Vasovagal Syncope with Brief Convulsive Myoclonus',
         plan: 'Hydration, reassurance, EKG screen, discharge instructions'
       }
-    }
+    })
   ]
 };
 
@@ -1890,13 +1839,19 @@ if (typeof window !== 'undefined') {
   window.handleSnLossDurationChange = handleSnLossDurationChange;
   window.handleSnEpisodeCountChange = handleSnEpisodeCountChange;
   window.handleSnPostureChange = handleSnPostureChange;
+  window.handleSnProdromeNoneChange = handleSnProdromeNoneChange;
   window.handleSnWarningChange = handleSnWarningChange;
   window.handleSnMotorPatternChange = handleSnMotorPatternChange;
+  window.handleSnIctalNoneChange = handleSnIctalNoneChange;
+  window.handleSnIctalItemChange = handleSnIctalItemChange;
   window.handleSnRecoveryChange = handleSnRecoveryChange;
   window.updateSnPostIctalContext = updateSnPostIctalContext;
+  window.handleSnPostNoneChange = handleSnPostNoneChange;
   window.handleSnPostSymptomChange = handleSnPostSymptomChange;
   window.handleSnFallInjuryChange = handleSnFallInjuryChange;
   window.handleSnPriorHistoryChange = handleSnPriorHistoryChange;
+  window.handleSnRfNoneChange = handleSnRfNoneChange;
+  window.handleSnRfItemChange = handleSnRfItemChange;
   window.handleSnSubstanceChange = handleSnSubstanceChange;
   window.handleSnPregnancyChange = handleSnPregnancyChange;
 }

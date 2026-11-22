@@ -1,8 +1,13 @@
 // =========================================================================
 // MODULAR CHIEF COMPLAINT MODULE: 09_syncope.js
-// อาการนำ: หมดสติ / วูบ / เป็นลม (Syncope / Blackout / Collapse)
-// ปรับปรุงตาม plan_syncope.md, SKILL_PLAN_CC และ SKILL_CODE_CC (C-AP1 ถึง C-AP16)
+// อาการนำ: หมดสติ / วูบ / เป็นลม (Syncope / Blackout / Collapse — Golden 4-Card UX)
+// ปรับปรุงตาม SKILL_PLAN_CC (P-AP1–P-AP14) และ SKILL_CODE_CC (C-AP1–C-AP20)
+// รองรับการเรียกร่วมกับ 08_seizure.js (calculateSheldonScore & evaluateHyperventilationScreen)
 // =========================================================================
+
+function wrapSyncWords(...chunks) {
+  return chunks.map(c => `<span class="inline-block whitespace-nowrap">${c}</span>`).join(' ');
+}
 
 function toggleSyncopeBranch(id, show) {
   const el = document.getElementById(id);
@@ -12,8 +17,9 @@ function toggleSyncopeBranch(id, show) {
 function renderSyncopeCard(cfg) {
   const {
     kind = 'radio', id = '', name = '', value = '', title,
-    desc = '', onchange = '', colSpan2 = false, compact = false, bgWhite = false
+    desc = '', onchange = '', wrapId = '', compact = false, bgWhite = false
   } = cfg;
+  const wrapAttr = wrapId ? `id="${wrapId}" ` : '';
   const idAttr = id ? `id="${id}" ` : '';
   const nameAttr = name ? `name="${name}" ` : '';
   const valAttr = value ? `value="${value}" ` : '';
@@ -21,18 +27,32 @@ function renderSyncopeCard(cfg) {
   const alignCls = desc ? 'items-start' : 'items-center';
   const padCls = compact ? 'p-2.5' : 'p-3';
   const bgCls = bgWhite ? 'bg-white ' : '';
-  const spanCls = colSpan2 ? ' sm:col-span-2' : '';
   const roundCls = kind === 'checkbox' ? 'rounded ' : '';
   const topCls = desc ? 'mt-0.5 ' : '';
+  const mlCls = compact ? 'ml-2' : 'ml-3';
   const szCls = compact ? 'h-3.5 w-3.5' : 'h-4 w-4';
+  const titleCls = compact ? 'text-xs' : 'text-xs sm:text-sm';
   const bodyHtml = desc
-    ? `<div class="ml-3"><span class="block text-xs sm:text-sm font-semibold text-slate-800">${title}</span><span class="block text-[11px] text-slate-500 font-normal mt-0.5">${desc}</span></div>`
-    : `<span class="ml-3 ${compact ? 'text-xs' : 'text-xs sm:text-sm'} font-semibold text-slate-800">${title}</span>`;
-  return `<label class="selectable-card ${bgCls}flex ${alignCls} ${padCls} rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition${spanCls}"><input type="${kind}" ${idAttr}${nameAttr}${valAttr}${chgAttr}class="${topCls}${roundCls}text-medical-600 focus:ring-medical-500 ${szCls} flex-shrink-0">${bodyHtml}</label>`;
+    ? `<div class="${mlCls} leading-snug"><span class="block ${titleCls} font-semibold text-slate-800">${title}</span><span class="block text-[11px] text-slate-500 font-normal mt-0.5">${desc}</span></div>`
+    : `<span class="${mlCls} ${titleCls} font-semibold text-slate-800 leading-snug">${title}</span>`;
+  return `<label ${wrapAttr}class="selectable-card ${bgCls}flex ${alignCls} ${padCls} rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition"><input type="${kind}" ${idAttr}${nameAttr}${valAttr}${chgAttr}class="${topCls}${roundCls}text-medical-600 focus:ring-medical-500 ${szCls} flex-shrink-0">${bodyHtml}</label>`;
 }
 
 function renderSyncopeGrid(colsCls, items, shared = {}) {
   return `<div class="grid ${colsCls} gap-2.5">${items.map(it => renderSyncopeCard({ ...shared, ...it })).join('\n')}</div>`;
+}
+
+function renderSyncSysHeader({ icon, iconBg, iconColor, title, noneId, noneLabel = 'ไม่มีอาการในหมวดนี้', noneOnchange }) {
+  return `<div class="flex flex-wrap items-center justify-between gap-2 mb-2.5">
+    <div class="flex items-center space-x-2">
+      <span class="inline-flex items-center justify-center w-6 h-6 rounded-lg ${iconBg} ${iconColor} flex-shrink-0"><i data-lucide="${icon}" class="w-3.5 h-3.5"></i></span>
+      <span class="text-xs font-bold text-slate-700">${title}</span>
+    </div>
+    <label class="inline-flex items-center px-2.5 py-1 rounded-lg border border-slate-200 bg-slate-50 hover:border-medical-300 cursor-pointer transition">
+      <input type="checkbox" id="${noneId}" onchange="${noneOnchange}" class="rounded text-medical-600 focus:ring-medical-500 h-3.5 w-3.5 flex-shrink-0">
+      <span class="ml-2 text-xs font-semibold text-slate-800 whitespace-nowrap">${noneLabel}</span>
+    </label>
+  </div>`;
 }
 
 function setSyncopeRadioChecked(name, val) {
@@ -84,6 +104,15 @@ function syncSyncopeFemaleSection(explicitFemale) {
   }
 }
 
+function handleSyncopeExactTimeUnknownChange() {
+  const unk = Boolean(document.getElementById('syncopeExactTimeUnknown')?.checked);
+  toggleSyncopeBranch('syncopeExactTimeWrap', !unk);
+  if (unk) {
+    const tEl = document.getElementById('syncopeExactTime');
+    if (tEl) tEl.value = '';
+  }
+}
+
 function handleSyncopePostureChange() {
   const val = getSyncopeRadioValue('syncopePosture');
   const isExertion = val === 'during_exertion';
@@ -105,16 +134,24 @@ function handleSyncopePostureChange() {
 function updateSyncopeRecoveryContext() {
   const consLevel = getSyncopeRadioValue('syncopeConsciousnessLevel');
   const durVal = getSyncopeRadioValue('syncopeUnconsciousDuration');
-  if (consLevel === 'true_syncope' && durVal === 'continuous_unconscious') {
-    setSyncopeRadioChecked('syncopeRecoveryPattern', 'persistent_drowsy_coma');
-  }
   const recVal = getSyncopeRadioValue('syncopeRecoveryPattern');
-  const stillComa = (consLevel === 'true_syncope' && durVal === 'continuous_unconscious') || recVal === 'persistent_drowsy_coma';
+  const isContinuous = consLevel === 'true_syncope' && durVal === 'continuous_unconscious';
+  const stillComa = isContinuous || recVal === 'persistent_drowsy_coma';
+
+  toggleSyncopeBranch('syncopeUnconsciousContextNotice', isContinuous);
+  ['syncopeRecOptWrap_rapid', 'syncopeRecOptWrap_confused'].forEach(id => {
+    toggleSyncopeBranch(id, !isContinuous);
+  });
+
+  if (isContinuous && recVal && recVal !== 'persistent_drowsy_coma') {
+    clearSyncopeRadioGroup('syncopeRecoveryPattern');
+  }
+
   toggleSyncopeBranch('syncopePostSymptomsSectionWrap', !stillComa);
   if (stillComa) {
-    document.querySelectorAll('input[name="syncopePostSymptoms"]').forEach(cb => {
-      cb.checked = false;
-    });
+    document.querySelectorAll('input[name="syncopePostSymptoms"]').forEach(cb => { cb.checked = false; });
+    const postNone = document.getElementById('syncope_post_none');
+    if (postNone) postNone.checked = false;
   }
 }
 
@@ -152,15 +189,25 @@ function handleSyncopeEpisodeCountChange() {
   }
 }
 
+function handleSyncopeProdromeNoneChange() {
+  const noneEl = document.getElementById('syncope_prodrome_none');
+  if (noneEl && noneEl.checked) {
+    document.querySelectorAll('input[name="syncopeProdromes"]').forEach(cb => { cb.checked = false; });
+  }
+}
+
 function handleSyncopeWarningChange(el) {
   if (!el) return;
-  if (el.value === 'none_sudden' && el.checked) {
+  const noneEl = document.getElementById('syncope_prodrome_none');
+  if (el.checked && noneEl) noneEl.checked = false;
+  if (el.checked && el.value === 'unknown') {
     document.querySelectorAll('input[name="syncopeProdromes"]').forEach(cb => {
-      if (cb.value !== 'none_sudden') cb.checked = false;
+      if (cb !== el) cb.checked = false;
     });
-  } else if (el.checked && el.value !== 'none_sudden') {
-    const noneCb = document.querySelector('input[name="syncopeProdromes"][value="none_sudden"]');
-    if (noneCb) noneCb.checked = false;
+  } else if (el.checked) {
+    document.querySelectorAll('input[name="syncopeProdromes"]').forEach(cb => {
+      if (cb.value === 'unknown') cb.checked = false;
+    });
   }
 }
 
@@ -171,14 +218,26 @@ function handleSyncopeMotorCategoryChange() {
   if (!isAbnormal) clearSyncopeRadioGroup('syncopeMotorSign');
 }
 
+function handleSyncopeSignsNoneChange() {
+  if (!document.getElementById('syncope_signs_none')?.checked) return;
+  document.querySelectorAll('input[name="syncopeSigns"]').forEach(cb => { cb.checked = false; });
+}
+
+function handleSyncopeSignsItemChange(el) {
+  if (el && el.checked) {
+    const noneEl = document.getElementById('syncope_signs_none');
+    if (noneEl) noneEl.checked = false;
+  }
+}
+
+function handleSyncopePostNoneChange() {
+  if (!document.getElementById('syncope_post_none')?.checked) return;
+  document.querySelectorAll('input[name="syncopePostSymptoms"]').forEach(cb => { cb.checked = false; });
+}
+
 function handleSyncopePostSymptomChange(el) {
-  if (!el) return;
-  if (el.value === 'post_none_asymptomatic' && el.checked) {
-    document.querySelectorAll('input[name="syncopePostSymptoms"]').forEach(cb => {
-      if (cb.value !== 'post_none_asymptomatic') cb.checked = false;
-    });
-  } else if (el.checked && el.value !== 'post_none_asymptomatic') {
-    const noneCb = document.querySelector('input[name="syncopePostSymptoms"][value="post_none_asymptomatic"]');
+  if (el && el.checked) {
+    const noneCb = document.getElementById('syncope_post_none');
     if (noneCb) noneCb.checked = false;
   }
 }
@@ -194,15 +253,15 @@ function handleSyncopeFallInjuryChange() {
   }
 }
 
+function handleSyncopeRiskNoneChange() {
+  if (!document.getElementById('syncope_risk_none')?.checked) return;
+  document.querySelectorAll('input[name="syncopeRiskFactors"]').forEach(cb => { cb.checked = false; });
+}
+
 function handleSyncopeRiskChange(el) {
-  if (!el) return;
-  if (el.value === 'none_unremarkable' && el.checked) {
-    document.querySelectorAll('input[name="syncopeRiskFactors"]').forEach(cb => {
-      if (cb.value !== 'none_unremarkable') cb.checked = false;
-    });
-  } else if (el.checked && el.value !== 'none_unremarkable') {
-    const noneCb = document.querySelector('input[name="syncopeRiskFactors"][value="none_unremarkable"]');
-    if (noneCb) noneCb.checked = false;
+  if (el && el.checked) {
+    const noneEl = document.getElementById('syncope_risk_none');
+    if (noneEl) noneEl.checked = false;
   }
 }
 
@@ -216,29 +275,29 @@ function handleSyncopePregnancyChange() {
   }
 }
 
-// --- Lookup Tables (Thai Labels — 100% Zero Raw Enum Leaks, C-AP14) ---
+// --- Lookup Tables (Thai Labels — 100% Zero Raw Enum Leaks, C-AP14 / C-AP19) ---
 const SYNCOPE_LABELS = {
   units: { minutes: 'นาที', hours: 'ชั่วโมง', days: 'วัน', weeks: 'สัปดาห์', months: 'เดือน', years: 'ปี' },
   reporter: {
-    patient_self: 'ผู้ป่วยรู้สึกตัวดีและให้ข้อมูลด้วยตนเอง',
-    witness_relative: 'ญาติหรือผู้เห็นเหตุการณ์ขณะหมดสติเป็นผู้เล่า',
-    both_patient_witness: 'ทั้งผู้ป่วยและผู้เห็นเหตุการณ์ร่วมกันให้ข้อมูล',
-    unspecified: 'ไม่ได้ระบุผู้ให้ข้อมูล'
+    patient_self: 'ผู้ป่วยให้ข้อมูลเอง',
+    witness_relative: 'ญาติหรือผู้เห็นเหตุการณ์เป็นผู้เล่า',
+    both_patient_witness: 'ผู้ป่วยและผู้เห็นเหตุการณ์ร่วมกันให้ข้อมูล',
+    unspecified: 'ไม่ได้ระบุ'
   },
   posture: {
-    prolonged_standing: 'ยืนอยู่นานหรืออยู่ในที่ร้อนแออัด',
-    sudden_standing: 'เพิ่งลุกขึ้นยืนหรือเปลี่ยนท่าเร็วๆ จากท่านั่งหรือนอน',
+    prolonged_standing: 'ยืนนาน หรืออยู่ในที่ร้อนแออัด',
+    sudden_standing: 'ลุกยืนหรือเปลี่ยนท่าเร็ว',
     during_exertion: 'ขณะออกแรงหรือออกกำลังกาย',
     supine_or_resting: 'ขณะพักผ่อนอยู่เฉยๆ',
-    standing_or_walking_normal: 'ขณะยืนหรือเดินตามปกติ ไม่ได้ออกแรงหนัก',
-    micturition_defecation: 'ขณะหรือทันทีหลังปัสสาวะ ถ่ายอุจจาระ กลืนอาหาร หรือไอแรงๆ',
+    standing_or_walking_normal: 'ขณะยืนหรือเดินตามปกติ',
+    micturition_defecation: 'ขณะหรือหลังปัสสาวะ ขับถ่าย กลืน หรือไอแรง',
     neck_movement: 'ขณะหันศีรษะ เงยหน้า หรือสวมเสื้อคอแน่น',
-    other: 'ท่าทางหรือกิจกรรมอื่นๆ',
-    unspecified: 'ไม่ได้ระบุท่าทางก่อนเกิดเหตุ'
+    other: 'อื่นๆ',
+    unspecified: 'ไม่ได้ระบุ'
   },
   exertionTiming: {
     during_active_exertion: 'ระหว่างกำลังออกแรงหรือออกกำลังกาย',
-    immediately_post_exertion: 'หยุดออกกำลังกายกะทันหันก่อน แล้วจึงมีอาการ',
+    immediately_post_exertion: 'หยุดออกกำลังกายกะทันหันก่อนแล้วจึงมีอาการ',
     unspecified: ''
   },
   restingPosition: {
@@ -247,78 +306,80 @@ const SYNCOPE_LABELS = {
     unspecified: ''
   },
   consciousLevel: {
-    true_syncope: 'หมดสติไปชั่วขณะ ไม่รู้สึกตัว (True Syncope / TLOC)',
-    near_syncope: 'เกือบหมดสติ หรือแค่วูบหน้ามืด แต่ยังรู้สึกตัว (Near-Syncope)',
-    unspecified: 'ไม่ได้ระบุระดับความรู้สึกตัว'
+    true_syncope: 'หมดสติไม่รู้สึกตัว (True Syncope / TLOC)',
+    near_syncope: 'เกือบหมดสติ / แค่วูบหน้ามืด (Near-Syncope)',
+    unspecified: 'ไม่ได้ระบุ'
   },
   lossDuration: {
-    brief_seconds: 'สั้นมากไม่เกิน 1 นาที (ประมาณ 10–30 วินาที)',
-    typical_minutes: 'นานประมาณ 1 – 4 นาที',
-    typical_1_to_2m: 'นานประมาณ 1 – 2 นาที',
-    prolonged_gte_5m: 'นานตั้งแต่ 5 นาทีขึ้นไป',
+    brief_seconds: 'สั้นมาก (< 1 นาที ประมาณ 10–30 วินาที)',
+    typical_minutes: 'ประมาณ 1–4 นาที',
+    typical_1_to_2m: 'ประมาณ 1–2 นาที',
+    prolonged_gte_5m: 'ตั้งแต่ 5 นาทีขึ้นไป',
     continuous_unconscious: 'ยังไม่ฟื้นสติจนถึงขณะนี้',
-    unknown_unobserved: 'ไม่ทราบระยะเวลา (ไม่ได้สังเกต)',
-    unspecified: 'ไม่ได้ระบุระยะเวลาหมดสติ'
+    unknown_unobserved: 'ไม่ทราบระยะเวลา',
+    not_applicable: 'ไม่หมดสติเต็มที่ (เกือบหมดสติ/หน้ามืด)',
+    unspecified: 'ไม่ได้ระบุ'
   },
   prodrome: {
-    none_sudden: 'ไม่มีอาการเตือน ล้มลงหมดสติทันที',
-    lightheaded_tunnel_vision: 'หน้ามืด วิงเวียน หรือตาพร่ามัวเห็นภาพมืดลง',
-    cold_sweat_pallor_nausea: 'เหงื่อแตกตัวเย็น หน้าซีด หรือคลื่นไส้',
-    sudden_palpitation: 'ใจสั่นรัวหรือหัวใจเต้นสะดุดกะทันหันก่อนวูบ',
-    chest_pain_pressure: 'เจ็บแน่นหน้าอกหรือปวดร้าวไปกราม/สะบักหลัง',
-    severe_dyspnea: 'หายใจหอบเหนื่อยหรือหายใจไม่อิ่มกะทันหันก่อนวูบ',
+    none_sudden: 'ไม่มีอาการเตือน ล้มหมดสติทันที',
+    lightheaded_tunnel_vision: 'หน้ามืด ตาพร่ามัว หรือหูอื้อ',
+    cold_sweat_pallor_nausea: 'เหงื่อแตก ตัวเย็น หรือหน้าซีดคลื่นไส้',
+    sudden_palpitation: 'ใจสั่นรัว หรือหัวใจเต้นสะดุด',
+    chest_pain_pressure: 'เจ็บแน่นหน้าอก หรือปวดร้าวกราม/หลัง',
+    severe_dyspnea: 'หายใจหอบเหนื่อย หรือหายใจไม่อิ่ม',
     thunderclap_headache: 'ปวดศีรษะรุนแรงเฉียบพลันก่อนหมดสติ',
-    hyperventilation_tingling: 'หายใจหอบเร็ว ชารอบปาก หรือชาปลายมือ',
-    aura_epigastric_olfactory: 'จุกแน่นในท้องลอยขึ้นคอ ได้กลิ่นแปลกๆ หรือเห็นแสงวาบ (Aura)',
-    unspecified: 'ไม่ได้ระบุอาการเตือน'
+    hyperventilation_tingling: 'หายใจหอบเร็ว หรือชารอบปากและปลายมือ',
+    aura_epigastric_olfactory: 'จุกในท้องลอยขึ้นคอ ได้กลิ่นแปลก หรือเห็นแสงวาบ (Aura)',
+    unknown: 'ไม่ทราบ / จำไม่ได้',
+    unspecified: 'ไม่ได้ระบุ'
   },
   motorSign: {
-    brief_myoclonic_jerks: 'กระตุกเบาๆ สั้นๆ ไม่กี่ครั้งหลังล้มลง (Convulsive Syncope)',
-    generalized_tonic_clonic: 'เกร็งแข็งและกระตุกรุนแรงทั้งตัวต่อเนื่องเป็นนาที (GTCS)',
-    carpopedal_spasm: 'มือจีบเกร็งทั้งสองข้าง นิ้วมืองุ้มเข้าหากัน (Carpopedal spasm)',
-    thrashing_closed_eyes: 'ดิ้นสะบัดไปมา ส่ายศีรษะ หรือหลับตาแน่น',
-    unknown_unobserved: 'ไม่ทราบแน่ชัด (ไม่ได้สังเกต)',
-    limp_flaccid: 'ตัวอ่อนปวกเปียกล้มลง ไม่มีการเกร็งกระตุก',
-    unspecified: 'ไม่ได้ระบุลักษณะการเคลื่อนไหว'
+    brief_myoclonic_jerks: 'กระตุกเบาๆ สั้นๆ หลังล้ม (Convulsive Syncope)',
+    generalized_tonic_clonic: 'เกร็งแข็งและกระตุกทั้งตัวเป็นนาที (GTCS)',
+    carpopedal_spasm: 'มือจีบเกร็งทั้งสองข้าง (Carpopedal spasm)',
+    thrashing_closed_eyes: 'ดิ้นสะบัด หรือส่ายหน้าหลับตาแน่น',
+    unknown_unobserved: 'ไม่ทราบ / ไม่ได้สังเกต',
+    limp_flaccid: 'ตัวอ่อนปวกเปียก ไม่เกร็งกระตุก',
+    unspecified: 'ไม่ได้ระบุ'
   },
   recovery: {
-    rapid_spontaneous: 'หลังเริ่มตื่นรู้เรื่องทันทีภายใน 1–2 นาที ไม่งง ไม่สับสน',
-    prolonged_confusion: 'หลังตื่นยังสับสน มึนงง จำเหตุการณ์ไม่ได้ หรือหลับต่อนานเกิน 5 นาที',
-    persistent_drowsy_coma: 'ยังมีอาการสับสน มึนงง ปลุกยากจนถึงขณะนี้',
-    unspecified: 'ไม่ได้ระบุสภาพหลังเริ่มฟื้น'
+    rapid_spontaneous: 'ฟื้นแล้วรู้เรื่องทันที ไม่งง (ภายใน 1–2 นาที)',
+    prolonged_confusion: 'ตื่นแล้วยังสับสน มึนงง หรือหลับต่อนานเกิน 5 นาที',
+    persistent_drowsy_coma: 'ยังไม่ตื่น หรือซึมปลุกยากจนถึงขณะนี้',
+    unspecified: 'ไม่ได้ระบุ'
   },
   postSymptom: {
-    post_focal_weakness: 'แขนขาอ่อนแรงครึ่งซีก ปากเบี้ยว หรือพูดไม่ชัดหลังฟื้น',
-    post_ongoing_chestpain: 'ยังคงเจ็บแน่นหน้าอก หอบเหนื่อย หรือใจสั่นต่อเนื่องหลังฟื้น',
-    post_orthostatic_intolerance: 'หน้ามืดจะเป็นลมซ้ำทันทีเมื่อพยายามลุกนั่งหรือยืน',
-    post_severe_abdpain_melena: 'ปวดท้องรุนแรงหรือปวดร้าวไปที่หลัง',
+    post_focal_weakness: 'แขนขาอ่อนแรง ปากเบี้ยว หรือพูดไม่ชัดหลังฟื้น',
+    post_ongoing_chestpain: 'ยังเจ็บแน่นหน้าอก หอบ หรือใจสั่นต่อเนื่องหลังฟื้น',
+    post_orthostatic_intolerance: 'หน้ามืดจะเป็นลมซ้ำทันทีเมื่อลุกนั่งหรือยืน',
+    post_severe_abdpain_melena: 'ปวดท้องรุนแรงหรือปวดร้าวหลัง',
     post_severe_headache: 'ปวดศีรษะรุนแรงต่อเนื่องหลังฟื้น',
     post_diffuse_muscle_pain: 'ปวดเมื่อยระบมกล้ามเนื้อทั่วตัวหลังฟื้น',
     post_severe_headache_myalgia: 'ปวดศีรษะรุนแรงและปวดเมื่อยระบมกล้ามเนื้อทั่วตัว',
     post_mild_fatigue: 'อ่อนเพลียเล็กน้อยหลังฟื้น',
-    post_none_asymptomatic: 'ไม่มีอาการผิดปกติหลังฟื้นสติ',
-    none: 'ไม่มีอาการผิดปกติหลังฟื้นสติ'
+    post_none_asymptomatic: 'ไม่มีอาการผิดปกติหลังฟื้นคืนสติ',
+    none: 'ไม่มีอาการผิดปกติหลังฟื้นคืนสติ'
   },
   riskFactor: {
     known_heart_disease: 'มีโรคหัวใจเดิมหรือเคยผ่าตัดหัวใจ',
-    known_arrhythmia_pacemaker: 'มีภาวะหัวใจเต้นผิดจังหวะหรือใส่เครื่องกระตุ้นหัวใจ (Pacemaker/ICD)',
-    family_sudden_death_young: 'มีประวัติครอบครัวสายตรงเสียชีวิตกะทันหันอายุน้อย (< 50 ปี)',
-    recent_bp_med_adjustment: 'เพิ่งเริ่มทานยาความดัน ยาขับปัสสาวะ หรือเพิ่งปรับเพิ่มขนาดยา',
-    dehydration_diarrhea: 'มีอาการท้องเสีย อาเจียน ดื่มน้ำน้อย หรือขาดน้ำมาก่อนวูบ',
-    suspected_gi_bleeding: 'ถ่ายอุจจาระดำ ถ่ายเป็นเลือดสด หรืออาเจียนเป็นเลือด',
-    diabetic_on_meds: 'เป็นเบาหวานที่ฉีดอินซูลินหรือทานยาลดน้ำตาล',
-    known_diabetes_insulin: 'เป็นเบาหวานที่ฉีดอินซูลินหรือทานยาลดน้ำตาล',
-    known_epilepsy_seizure: 'มีโรคประจำตัวเป็นโรคลมชักหรือเคยชักมาก่อน',
+    known_arrhythmia_pacemaker: 'ภาวะหัวใจเต้นผิดจังหวะหรือใส่เครื่องกระตุ้นหัวใจ (Pacemaker/ICD)',
+    family_sudden_death_young: 'ประวัติครอบครัวเสียชีวิตกะทันหันอายุน้อย (< 50 ปี)',
+    recent_bp_med_adjustment: 'เพิ่งเริ่มหรือปรับเพิ่มยาความดัน/ยาขับปัสสาวะ',
+    dehydration_diarrhea: 'ท้องเสีย อาเจียน ดื่มน้ำน้อย หรือขาดน้ำมาก',
+    suspected_gi_bleeding: 'ถ่ายดำ ถ่ายเป็นเลือดสด หรืออาเจียนเป็นเลือด',
+    diabetic_on_meds: 'เป็นเบาหวานฉีดอินซูลินหรือทานยาลดน้ำตาล',
+    known_diabetes_insulin: 'เป็นเบาหวานฉีดอินซูลินหรือทานยาลดน้ำตาล',
+    known_epilepsy_seizure: 'เป็นโรคลมชักหรือเคยวูบซ้ำบ่อย',
     recurrent_syncope_history: 'เคยวูบ เป็นลม หรือหมดสติซ้ำตั้งแต่ 2 ครั้งขึ้นไป',
     female_missed_period: 'ขาดประจำเดือนหรือสงสัยตั้งครรภ์',
-    none_unremarkable: 'ไม่มีปัจจัยเสี่ยงจำเพาะดังกล่าว'
+    none_unremarkable: 'ไม่มีปัจจัยเสี่ยงสำคัญทางหัวใจหรือการเสียเลือด'
   },
   pregnancy: {
-    not_pregnant: 'ประจำเดือนมาตามปกติ / ไม่ได้ตั้งครรภ์',
-    missed_period: 'ขาดประจำเดือนหรือสงสัยว่าอาจตั้งครรภ์',
+    not_pregnant: 'ไม่ได้ตั้งครรภ์ / ประจำเดือนปกติ',
+    missed_period: 'ขาดประจำเดือน / สงสัยอาจตั้งครรภ์',
     pregnant: 'กำลังตั้งครรภ์',
-    postpartum_6w: 'เพิ่งคลอดบุตรหรือแท้งบุตรภายใน 6 สัปดาห์',
-    menopause_hysterectomy: 'วัยหมดประจำเดือนหรือผ่าตัดมดลูกแล้ว',
+    postpartum_6w: 'เพิ่งคลอดหรือแท้งภายใน 6 สัปดาห์',
+    menopause_hysterectomy: 'หมดประจำเดือน / ผ่าตัดมดลูกแล้ว',
     unsure: 'ไม่แน่ใจสถานะการตั้งครรภ์',
     not_applicable: ''
   },
@@ -505,11 +566,7 @@ function evaluateSyncopeRedFlags(patient) {
     });
   }
 
-  const hasHeadTrauma = Boolean(
-    signs.includes('syncope_head_facial_injury') ||
-    (patient.syncopeFallInjury === 'yes' && patient.syncope_fall_head_impact)
-  );
-  if (hasHeadTrauma) {
+  if (signs.includes('syncope_head_facial_injury') || (patient.syncopeFallInjury === 'yes' && patient.syncope_fall_head_impact)) {
     redFlags.push({
       key: 'syncope_head_injury',
       textTh: 'มีศีรษะหรือใบหน้ากระแทกพื้นจากการล้มหมดสติ (Secondary Head Injury)',
@@ -520,7 +577,7 @@ function evaluateSyncopeRedFlags(patient) {
   if (patient.syncopeEpisodeCount === 'multiple_cluster') {
     redFlags.push({
       key: 'syncope_cluster',
-      textTh: `มีอาการวูบหรือหมดสติซ้ำหลายครั้งใน 24 ชม. (${patient.syncopeEpisodeCountVal || 2} ครั้ง)`,
+      textTh: `มีอาการวูบหรือหมดสติซ้ำหลายครั้งใน 24 ชม. (${patient.syncopeEpisodeCountVal ? `${patient.syncopeEpisodeCountVal} ครั้ง` : 'ตั้งแต่ 2 ครั้งขึ้นไป'})`,
       risk: 'บ่งชี้ความไม่คงที่ของการไหลเวียนเลือดสมองหรือหัวใจเต้นผิดจังหวะซ้ำ ต้องติดตามใกล้ชิด'
     });
   }
@@ -531,12 +588,15 @@ function evaluateSyncopeRedFlags(patient) {
 function updateSyncopeOutputs(patient) {
   const durationText = patient.durationVal
     ? `${patient.durationVal} ${SYNCOPE_LABELS.units[patient.durationUnit] || 'ชั่วโมง'}`
-    : 'ไม่ระบุระยะเวลา';
+    : 'ไม่ได้ระบุระยะเวลา';
+  const timeText = patient.syncopeExactTimeUnknown
+    ? 'ไม่ทราบเวลาแน่ชัด'
+    : (patient.syncopeExactTime ? `เวลา ${patient.syncopeExactTime} น.` : '');
 
   const { sheldon, hvs } = computeSyncopeSheldonAndHvs(patient);
 
-  const reporterStr = SYNCOPE_LABELS.reporter[patient.syncopeReporter] || 'ไม่ได้ระบุผู้ให้ข้อมูล';
-  let postureStr = SYNCOPE_LABELS.posture[patient.syncopePosture] || 'ไม่ได้ระบุท่าทางก่อนเกิดเหตุ';
+  const reporterStr = SYNCOPE_LABELS.reporter[patient.syncopeReporter] || 'ไม่ได้ระบุ';
+  let postureStr = SYNCOPE_LABELS.posture[patient.syncopePosture] || 'ไม่ได้ระบุ';
   if (patient.syncopePosture === 'during_exertion' && patient.syncopeExertionTiming) {
     const exStr = SYNCOPE_LABELS.exertionTiming[patient.syncopeExertionTiming];
     if (exStr) postureStr += ` (${exStr})`;
@@ -547,88 +607,107 @@ function updateSyncopeOutputs(patient) {
     postureStr = `อื่นๆ (${patient.syncopePostureOtherText})`;
   }
 
-  const consciousStr = SYNCOPE_LABELS.consciousLevel[patient.syncopeConsciousnessLevel] || 'ไม่ได้ระบุระดับความรู้สึกตัว';
+  const consciousStr = SYNCOPE_LABELS.consciousLevel[patient.syncopeConsciousnessLevel] || 'ไม่ได้ระบุ';
   const durMinExtra = (patient.syncopeUnconsciousDuration === 'prolonged_gte_5m' && patient.syncopeDurationGte5mVal)
     ? ` (ประมาณ ${patient.syncopeDurationGte5mVal} นาที)`
     : '';
   const lossDurationStr = patient.syncopeConsciousnessLevel === 'true_syncope'
-    ? `${SYNCOPE_LABELS.lossDuration[patient.syncopeUnconsciousDuration] || 'ไม่ได้ระบุระยะเวลาหมดสติ'}${durMinExtra}`
-    : (patient.syncopeConsciousnessLevel === 'near_syncope' ? 'ไม่หมดสติเต็มที่ (เกือบหมดสติ/หน้ามืด)' : 'ไม่ได้ระบุระยะเวลาหมดสติ');
+    ? `${SYNCOPE_LABELS.lossDuration[patient.syncopeUnconsciousDuration] || 'ไม่ได้ระบุ'}${durMinExtra}`
+    : (patient.syncopeConsciousnessLevel === 'near_syncope' ? SYNCOPE_LABELS.lossDuration.not_applicable : 'ไม่ได้ระบุ');
 
-  const episodeStr = patient.syncopeEpisodeCount === 'multiple_cluster'
-    ? `เกิดซ้ำตั้งแต่ 2 ครั้งขึ้นไป (${patient.syncopeEpisodeCountVal || 2} ครั้งใน 24 ชม.)`
-    : (patient.syncopeEpisodeCount === 'single' ? 'เกิดขึ้นเพียงครั้งเดียว' : 'ไม่ได้ระบุจำนวนครั้ง');
+  let episodeStr = 'ไม่ได้ระบุ';
+  if (patient.syncopeEpisodeCount === 'single') {
+    episodeStr = 'เกิดขึ้นเพียงครั้งเดียว';
+  } else if (patient.syncopeEpisodeCount === 'multiple_cluster') {
+    episodeStr = patient.syncopeEpisodeCountVal
+      ? `เกิดซ้ำ ${patient.syncopeEpisodeCountVal} ครั้งใน 24 ชม.`
+      : 'เกิดซ้ำตั้งแต่ 2 ครั้งขึ้นไป';
+  }
 
-  const prodromesRaw = Array.isArray(patient.syncopeProdromes) && patient.syncopeProdromes.length > 0
-    ? patient.syncopeProdromes
-    : [];
-  const prodromesStr = prodromesRaw.length > 0
-    ? prodromesRaw.map(p => SYNCOPE_LABELS.prodrome[p] || p).join(', ')
-    : 'ไม่ได้ระบุอาการเตือน';
+  const prodromesRaw = Array.isArray(patient.syncopeProdromes) ? patient.syncopeProdromes : [];
+  let prodromesStr = 'ไม่ได้ระบุ';
+  if (patient.syncope_prodrome_none || prodromesRaw.includes('none_sudden')) {
+    prodromesStr = SYNCOPE_LABELS.prodrome.none_sudden;
+  } else if (prodromesRaw.length > 0) {
+    prodromesStr = prodromesRaw.map(p => SYNCOPE_LABELS.prodrome[p] || p).join(', ');
+  }
 
-  let motorStr = 'ไม่ได้ระบุลักษณะการเคลื่อนไหว';
+  let motorStr = 'ไม่ได้ระบุ';
   if (patient.syncopeMotorCategory === 'limp_flaccid') {
     motorStr = SYNCOPE_LABELS.motorSign.limp_flaccid;
   } else if (patient.syncopeMotorCategory === 'abnormal_movements') {
-    motorStr = SYNCOPE_LABELS.motorSign[patient.syncopeMotorSign] || 'มีอาการเกร็งกระตุกหรือเคลื่อนไหวผิดปกติ';
+    motorStr = SYNCOPE_LABELS.motorSign[patient.syncopeMotorSign] || 'มีเกร็งกระตุกหรือเคลื่อนไหวผิดปกติ';
   }
 
-  const recoveryStr = SYNCOPE_LABELS.recovery[patient.syncopeRecoveryPattern] || 'ไม่ได้ระบุสภาพหลังเริ่มฟื้น';
+  const recoveryStr = SYNCOPE_LABELS.recovery[patient.syncopeRecoveryPattern] || 'ไม่ได้ระบุ';
 
   const postSxRaw = Array.isArray(patient.syncopePostSymptoms) ? patient.syncopePostSymptoms : [];
-  const postSxStr = postSxRaw.length > 0
-    ? postSxRaw.map(s => SYNCOPE_LABELS.postSymptom[s] || s).join(', ')
-    : 'ไม่ได้ระบุ';
+  let postSxStr = 'ไม่ได้ระบุ';
+  if (patient.syncope_post_none || postSxRaw.includes('post_none_asymptomatic')) {
+    postSxStr = SYNCOPE_LABELS.postSymptom.post_none_asymptomatic;
+  } else if (postSxRaw.length > 0) {
+    postSxStr = postSxRaw.map(s => SYNCOPE_LABELS.postSymptom[s] || s).join(', ');
+  }
 
-  // Fall Injury Summary
   const signs = Array.isArray(patient.syncopeSigns) ? patient.syncopeSigns : [];
   const hasFallYes = patient.syncopeFallInjury === 'yes' || signs.includes('syncope_head_facial_injury');
   let fallStr = patient.syncopeFallInjury === 'no' ? 'ไม่มีการบาดเจ็บจากการล้ม' : 'ไม่ได้ระบุ';
   if (hasFallYes) {
     const fallParts = [];
     if (patient.syncope_fall_head_impact || signs.includes('syncope_head_facial_injury')) fallParts.push('ศีรษะหรือใบหน้ากระแทกพื้น');
-    if (patient.syncope_fall_open_wound) fallParts.push('มีบาดแผลฉีกขาดหรือเลือดออก');
-    if (patient.syncope_fall_limb_pain) fallParts.push('ปวดบวมฟกช้ำหรือผิดรูปบริเวณแขนขา/ลำตัว');
+    if (patient.syncope_fall_open_wound) fallParts.push('มีแผลฉีกขาดหรือเลือดออก');
+    if (patient.syncope_fall_limb_pain) fallParts.push('ปวดบวมฟกช้ำหรือผิดรูป');
     if (patient.syncopeFallInjuryDetailText) fallParts.push(`ตำแหน่ง: ${patient.syncopeFallInjuryDetailText}`);
     fallStr = `มีการบาดเจ็บจากการล้ม (${fallParts.join(', ') || 'ระบุว่าบาดเจ็บ'})`;
   }
 
+  // Zero-Default-Bias Positives & Negatives (P-AP14 / C-AP20)
   const positives = [];
   const negatives = [];
-  const signsAnswered = signs.length > 0 || Boolean(patient.syncopeMotorCategory && patient.syncopeMotorCategory !== 'unspecified');
 
-  if (signs.includes('syncope_marked_pallor_sweat')) positives.push('มีใบหน้าซีดเผือด ตัวเย็น เหงื่อออกชุ่มขณะเกิดเหตุ');
-  else if (signsAnswered) negatives.push('ไม่มีหน้าซีดเหงื่อออกชุ่มชัดเจน');
+  if (patient.syncope_signs_none) {
+    negatives.push('ไม่มีหน้าซีด ปากเขียว กัดลิ้น ตาค้าง หรือปัสสาวะอุจจาระราดขณะเกิดเหตุ');
+  } else if (signs.length > 0) {
+    if (signs.includes('syncope_marked_pallor_sweat')) positives.push('หน้าซีดเผือด ตัวเย็น เหงื่อออกชุ่มขณะเกิดเหตุ');
+    else negatives.push('ไม่มีหน้าซีดเหงื่อออกชุ่มชัดเจน');
 
-  if (signs.includes('syncope_cyanosis_apnea')) positives.push('มีริมฝีปากเขียวคล้ำหรือหยุดหายใจชั่วขณะ');
-  else if (signsAnswered) negatives.push('ไม่มีริมฝีปากเขียวคล้ำหรือหยุดหายใจ');
+    if (signs.includes('syncope_cyanosis_apnea')) positives.push('ริมฝีปากเขียวคล้ำหรือหยุดหายใจชั่วขณะ');
+    else negatives.push('ไม่มีริมฝีปากเขียวคล้ำหรือหยุดหายใจ');
 
-  if (signs.includes('syncope_lateral_tongue_bite')) positives.push('มีอาการกัดลิ้นหรือมีเลือดออกในปาก');
-  else if (signsAnswered) negatives.push('ไม่มีแผลกัดลิ้นหรือเลือดออกในปาก');
+    if (signs.includes('syncope_lateral_tongue_bite')) positives.push('กัดลิ้นหรือมีเลือดออกในปาก');
+    else negatives.push('ไม่มีแผลกัดลิ้นหรือเลือดออกในปาก');
 
-  if (signs.includes('syncope_eyes_open_deviated')) positives.push('มีตาค้าง ตาเหลือกขึ้นบน หรือเบนไปข้างเดียว');
-  else if (signsAnswered) negatives.push('ไม่มีตาค้างหรือตาเหลือกเบน');
+    if (signs.includes('syncope_eyes_open_deviated')) positives.push('ตาค้าง หรือตาเหลือกเบนไปข้างเดียว');
+    else negatives.push('ไม่มีตาค้างหรือตาเหลือกเบน');
 
-  if (signs.includes('syncope_incontinence')) positives.push('มีปัสสาวะราดหรืออุจจาระราดขณะหมดสติ');
-  else if (signsAnswered) negatives.push('ไม่มีปัสสาวะหรืออุจจาระราด');
+    if (signs.includes('syncope_incontinence')) positives.push('ปัสสาวะราดหรืออุจจาระราดขณะหมดสติ');
+    else negatives.push('ไม่มีปัสสาวะหรืออุจจาระราด');
+  }
 
   if (hasFallYes) positives.push(fallStr);
   else if (patient.syncopeFallInjury === 'no') negatives.push('ไม่มีบาดเจ็บหรือศีรษะกระแทกพื้นจากการล้ม');
 
-  postSxRaw.forEach(s => {
-    if (s !== 'post_none_asymptomatic' && SYNCOPE_LABELS.postSymptom[s]) {
-      positives.push(SYNCOPE_LABELS.postSymptom[s]);
-    }
-  });
+  if (patient.syncope_post_none || postSxRaw.includes('post_none_asymptomatic')) {
+    negatives.push('ไม่มีอาการผิดปกติหลังฟื้นคืนสติ');
+  } else {
+    postSxRaw.forEach(s => {
+      if (s !== 'post_none_asymptomatic' && SYNCOPE_LABELS.postSymptom[s]) {
+        positives.push(SYNCOPE_LABELS.postSymptom[s]);
+      }
+    });
+  }
 
   const risksRaw = Array.isArray(patient.syncopeRiskFactors) ? patient.syncopeRiskFactors : [];
   const riskLabels = risksRaw
     .filter(r => r !== 'none_unremarkable')
     .map(r => SYNCOPE_LABELS.riskFactor[r] || r);
   riskLabels.forEach(rl => positives.push(rl));
+  if (patient.syncope_risk_none || risksRaw.includes('none_unremarkable')) {
+    negatives.push('ไม่มีปัจจัยเสี่ยงสำคัญทางหัวใจหรือการเสียเลือด');
+  }
   const riskSummaryText = riskLabels.length > 0
     ? riskLabels.join(', ')
-    : (risksRaw.includes('none_unremarkable') ? 'ปฏิเสธ' : 'ไม่ได้ระบุ');
+    : ((patient.syncope_risk_none || risksRaw.includes('none_unremarkable')) ? 'ปฏิเสธ' : 'ไม่ได้ระบุ');
 
   if (patient.otherSymptomsFree && String(patient.otherSymptomsFree).trim()) {
     positives.push(`ผู้ป่วยแจ้งอาการเพิ่มเติม: "${String(patient.otherSymptomsFree).trim()}"`);
@@ -645,7 +724,6 @@ function updateSyncopeOutputs(patient) {
   patient.pertinentPositives = positives;
   patient.pertinentNegatives = negatives.length > 0 ? negatives : ['ผู้ป่วยไม่ได้ระบุคำตอบยืนยันในหมวดอาการร่วม'];
 
-  // Female Reproductive Section (C-AP13 — never emitted for males)
   const isFemale = patient.gender === 'หญิง';
   let femaleLine = '';
   let femaleStr = '';
@@ -674,7 +752,7 @@ function updateSyncopeOutputs(patient) {
 
   const defaultRapid =
 `[Chief Complaint (CC)]
-หมดสติ / วูบ / เป็นลม (Syncope / TLOC Workup) มา ${durationText}
+หมดสติ / วูบ / เป็นลม (Syncope / TLOC Workup) มา ${durationText}${timeText ? ` (${timeText})` : ''}
 
 [History of Present Illness (HPI)]
 • ผู้ให้ข้อมูล: ${reporterStr}
@@ -712,12 +790,12 @@ ${effectiveRfs.length > 0
 • แผนการรักษา (Plan/Orders): ${docNotes.plan || '-'}`;
 
   const defaultNarrative =
-`ผู้ป่วย [${patient.name || 'ไม่ระบุชื่อ'}] อายุ ${patient.age || '-'} ปี เพศ ${patient.gender || 'ไม่ระบุ'} มารับการตรวจที่ห้องฉุกเฉิน รพ.ราชบุรี ด้วยอาการหมดสติ / วูบ / เป็นลม มา ${durationText} ให้ข้อมูลโดย [${reporterStr}]
+`ผู้ป่วย [${patient.name || 'ไม่ระบุชื่อ'}] อายุ ${patient.age || '-'} ปี เพศ ${patient.gender || 'ไม่ระบุ'} มารับการตรวจที่ห้องฉุกเฉิน รพ.ราชบุรี ด้วยอาการหมดสติ / วูบ / เป็นลม มา ${durationText}${timeText ? ` (${timeText})` : ''} ให้ข้อมูลโดย [${reporterStr}]
 เหตุการณ์: [${consciousStr}] เกิดเหตุขณะ [${postureStr}] อาการเตือนก่อนวูบ: [${prodromesStr}] ลักษณะขณะเกิดเหตุ: [${motorStr}] ระยะเวลาที่หมดสติ: [${lossDurationStr}] ความถี่: [${episodeStr}] การฟื้นคืนสติหลังตื่น: [${recoveryStr}] อาการหลังฟื้น: [${postSxStr}] การบาดเจ็บจากการล้ม: [${fallStr}]${femaleStr ? ` ประวัติสตรี: [${femaleStr}]` : ''}
 การประเมินแยกโรค TLOC (Sheldon Score = ${sheldon.score}): ${sheldon.interpretation}; ${hvs.label}
 อาการร่วมสำคัญที่พบ: ${positives.join(', ')}
 อาการสำคัญที่ปฏิเสธ: ${patient.pertinentNegatives.join(', ')}
-ประวัติสุขภาพและยา: [${hospLabel}], ปัจจัยเสี่ยง: ${riskSummaryText}, โรคประจำตัว: ${udList}, ยาประจำตัว: ${medsText}, แพ้ยา: ${allergyText}${effectiveRfs.length > 0 ? `\n[🚩 สัญญาณเตือนอันตราย (Red Flags)]: ${effectiveRfs.map(rf => rf.textTh).join('; ')}` : ''}
+ประวัติสุขภาพและยา: [${hospLabel}], ปัจจัยเสี่ยง: ${riskSummaryText}, โรคประจำตัว: ${udList}, ยาประจำตัว: ${medsText}, แพ้ยา: ${allergyText}${effectiveRfs.length > 0 ? `\n[แจ้งเตือนความเสี่ยงสูง]: ${effectiveRfs.map(rf => rf.textTh).join('; ')}` : ''}
 
 [บันทึกการตรวจและการประเมินโดยแพทย์]:
 ${docNotes.additional_hpi ? `• ประวัติเพิ่มเติม: ${docNotes.additional_hpi}\n` : ''}${docNotes.physical_exam ? `• การตรวจร่างกาย: ${docNotes.physical_exam}\n` : ''}${docNotes.preliminary_dx ? `• การวินิจฉัย: ${docNotes.preliminary_dx}\n` : ''}${docNotes.plan ? `• แผนการรักษา: ${docNotes.plan}` : ''}`;
@@ -741,6 +819,7 @@ ${docNotes.additional_hpi ? `• ประวัติเพิ่มเติ�
     syncope_tloc_profile: {
       duration_value: patient.durationVal || null,
       duration_unit: patient.durationUnit || null,
+      event_time: timeText || null,
       history_informant: patient.syncopeReporter || 'unspecified',
       preceding_posture: patient.syncopePosture || 'unspecified',
       exertion_timing: patient.syncopeExertionTiming || '',
@@ -751,7 +830,7 @@ ${docNotes.additional_hpi ? `• ประวัติเพิ่มเติ�
       unconscious_duration_gte_5m_approx_minutes: patient.syncopeDurationGte5mVal || null,
       episode_frequency: {
         type: patient.syncopeEpisodeCount || 'unspecified',
-        total_count: patient.syncopeEpisodeCountVal || 1
+        total_count: patient.syncopeEpisodeCountVal || null
       },
       warning_prodromes: prodromesRaw,
       motor_manifestation: {
@@ -764,7 +843,7 @@ ${docNotes.additional_hpi ? `• ประวัติเพิ่มเติ�
         post_symptoms: postSxRaw
       },
       fall_injury: {
-        status: hasFallYes ? 'yes' : 'no',
+        status: patient.syncopeFallInjury || 'unspecified',
         head_facial_impact: Boolean(patient.syncope_fall_head_impact || signs.includes('syncope_head_facial_injury')),
         open_wound_bleeding: Boolean(patient.syncope_fall_open_wound),
         limb_or_trunk_pain_swelling: Boolean(patient.syncope_fall_limb_pain),
@@ -772,7 +851,7 @@ ${docNotes.additional_hpi ? `• ประวัติเพิ่มเติ�
       },
       high_risk_and_etiology_factors: risksRaw,
       female_reproductive_history: isFemale ? {
-        pregnancy_status: effPregStatus || 'unsure',
+        pregnancy_status: effPregStatus || null,
         gestational_age_weeks: patient.syncopePregnancyWeeks || '',
         lower_abdominal_pain: Boolean(patient.syncope_fem_lower_abd_pain),
         abnormal_vaginal_bleeding: Boolean(patient.syncope_fem_pv_bleeding),
@@ -785,7 +864,7 @@ ${docNotes.additional_hpi ? `• ประวัติเพิ่มเติ�
       }
     },
     pertinent_positives: positives,
-    pertinent_negatives: negatives,
+    pertinent_negatives: patient.pertinentNegatives,
     other_symptoms_free_text: patient.otherSymptomsFree || '',
     patient_background: {
       hospital_record_status: patient.hospRecordStatus || null,
@@ -817,25 +896,24 @@ ${docNotes.additional_hpi ? `• ประวัติเพิ่มเติ�
   return { rapid: finalRapid, narrative: finalNarrative, json: jsonPayload };
 }
 
-// --- Build Form HTML cleanly using C-AP1 / C-AP16 compliant templates ---
+// --- Golden 4-Card HTML (Word-Boundary Guarded, Branch Below Grid, Corner Rejections) ---
 const SYNCOPE_CARD1_HTML = `
 <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
   <div class="flex items-center space-x-3 mb-4 pb-3 border-b border-slate-100">
     <div class="bg-medical-100 text-medical-700 p-2 rounded-xl"><i data-lucide="clock" class="w-5 h-5"></i></div>
     <div>
-      <h2 class="text-base font-bold text-slate-900">1. ข้อมูลเหตุการณ์ เวลา ท่าทางก่อนเกิดเหตุ และระดับความรู้สึกตัว</h2>
-      <p class="text-xs text-slate-500 font-sans">Event Timing, Preceding Posture &amp; Consciousness Assessment</p>
+      <h2 class="text-base font-bold text-slate-900">1. เวลา ท่าทางก่อนเกิดเหตุ ระดับความรู้สึกตัว และความถี่</h2>
+      <p class="text-xs text-slate-500">ระบุเวลาเกิดเหตุ ท่าทางก่อนวูบ ระดับความรู้สึกตัว และจำนวนครั้งใน 24 ชม.</p>
     </div>
   </div>
   <div class="space-y-5">
     <div>
-      <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">1.1 ระยะเวลาตั้งแต่เกิดอาการวูบหรือหมดสติครั้งนี้จนถึงปัจจุบัน <span class="text-rose-500">*</span></label>
-      <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
-        <div class="col-span-1 sm:col-span-2">
-          <input type="number" id="syncopeDurationVal" min="1" max="1000" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-slate-800 font-semibold focus:outline-none focus:ring-2 focus:ring-medical-500 focus:bg-white text-sm placeholder:text-slate-400 placeholder:font-normal" placeholder="เช่น 30 หรือ 2">
-        </div>
-        <div class="col-span-1">
-          <select id="syncopeDurationUnit" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 text-slate-800 font-medium focus:outline-none focus:ring-2 focus:ring-medical-500 focus:bg-white text-sm">
+      <label class="block text-xs font-bold text-slate-700 mb-2">1.1 ระยะเวลาตั้งแต่เกิดอาการครั้งนี้ และเวลาเกิดเหตุล่าสุด: <span class="text-rose-500">*</span></label>
+      <div class="flex flex-wrap items-center gap-3">
+        <div class="flex items-center space-x-2">
+          <input type="number" id="syncopeDurationVal" min="1" max="1000" placeholder="เช่น 30"
+            class="w-24 bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-800 text-center font-bold focus:outline-none focus:ring-2 focus:ring-medical-500 focus:bg-white">
+          <select id="syncopeDurationUnit" class="bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-medical-500 focus:bg-white">
             <option value="minutes">นาที</option>
             <option value="hours" selected>ชั่วโมง</option>
             <option value="days">วัน</option>
@@ -844,83 +922,92 @@ const SYNCOPE_CARD1_HTML = `
             <option value="years">ปี</option>
           </select>
         </div>
+        <div id="syncopeExactTimeWrap" class="flex items-center space-x-2">
+          <span class="text-xs font-semibold text-slate-600 whitespace-nowrap">เวลาเกิดเหตุ (24 ชม.):</span>
+          <input type="text" id="syncopeExactTime" data-universal-time="true" placeholder="เช่น 14:30"
+            class="w-28 bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-medical-500 focus:bg-white">
+        </div>
+        <label class="selectable-card inline-flex items-center px-3 py-2 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
+          <input type="checkbox" id="syncopeExactTimeUnknown" onchange="handleSyncopeExactTimeUnknownChange()" class="rounded text-medical-600 focus:ring-medical-500 h-4 w-4 flex-shrink-0">
+          <span class="ml-3 text-xs font-semibold text-slate-800 whitespace-nowrap">ไม่ทราบเวลาแน่ชัด</span>
+        </label>
       </div>
     </div>
 
-    <div>
-      <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">1.2 ผู้ให้ข้อมูลประวัติเหตุการณ์</label>
+    <div class="pt-2 border-t border-slate-100">
+      <label class="block text-xs font-bold text-slate-700 mb-2">1.2 ผู้ให้ข้อมูลประวัติเหตุการณ์:</label>
       ${renderSyncopeGrid('grid-cols-1 sm:grid-cols-3', [
-        { name: 'syncopeReporter', value: 'patient_self', title: 'ผู้ป่วยให้ข้อมูลเอง', desc: 'ผู้ป่วยรู้สึกตัวดีและเล่าเหตุการณ์ได้ด้วยตนเอง' },
-        { name: 'syncopeReporter', value: 'witness_relative', title: 'ญาติ หรือผู้เห็นเหตุการณ์', desc: 'ผู้อยู่ในเหตุการณ์ขณะผู้ป่วยวูบหรือหมดสติเป็นผู้เล่า' },
-        { name: 'syncopeReporter', value: 'both_patient_witness', title: 'ผู้ป่วยและญาติร่วมกันเล่า', desc: 'ทั้งผู้ป่วยและผู้เห็นเหตุการณ์ช่วยกันให้ข้อมูล' }
-      ])}
+        { value: 'patient_self', title: wrapSyncWords('ผู้ป่วยให้ข้อมูลเอง') },
+        { value: 'witness_relative', title: wrapSyncWords('ญาติ /', 'ผู้เห็นเหตุการณ์') },
+        { value: 'both_patient_witness', title: wrapSyncWords('ให้ข้อมูลร่วมกัน') }
+      ], { kind: 'radio', name: 'syncopeReporter' })}
     </div>
 
-    <div>
-      <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">1.3 ท่าทางหรือกิจกรรมที่กำลังทำก่อนเกิดอาการทันที</label>
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-        ${renderSyncopeCard({ name: 'syncopePosture', value: 'prolonged_standing', onchange: 'handleSyncopePostureChange()', title: 'ยืนนาน หรืออยู่ในที่ร้อนแออัด', desc: 'เช่น ยืนเข้าแถวนานๆ ยืนตากแดด หรืออยู่ในห้องที่ร้อนอบอ้าว' })}
-        ${renderSyncopeCard({ name: 'syncopePosture', value: 'sudden_standing', onchange: 'handleSyncopePostureChange()', title: 'เพิ่งลุกขึ้นยืนหรือเปลี่ยนท่าเร็วๆ', desc: 'ลุกขึ้นยืนอย่างรวดเร็วจากท่านั่งหรือท่านอน' })}
-        ${renderSyncopeCard({ name: 'syncopePosture', value: 'standing_or_walking_normal', onchange: 'handleSyncopePostureChange()', title: 'ขณะยืนหรือเดินตามปกติ', desc: 'ยืนหรือเดินทำกิจวัตรทั่วไปโดยไม่ได้ออกแรงหนัก' })}
-        ${renderSyncopeCard({ name: 'syncopePosture', value: 'micturition_defecation', onchange: 'handleSyncopePostureChange()', title: 'ขณะหรือหลังปัสสาวะ ขับถ่าย หรือไอแรงๆ', desc: 'เกิดอาการทันทีขณะเบ่งปัสสาวะ ถ่ายอุจจาระ กลืนอาหาร หรือไอติดต่อกันรุนแรง' })}
-        ${renderSyncopeCard({ name: 'syncopePosture', value: 'during_exertion', onchange: 'handleSyncopePostureChange()', colSpan2: true, title: 'ขณะออกแรง หรือออกกำลังกาย', desc: 'เกิดขึ้นในขณะที่กำลังเดินเร็ว วิ่ง ยกของหนัก หรือออกกำลังกาย' })}
-        <div id="syncopeExertionSubWrap" class="hidden sm:col-span-2 bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-2 text-xs">
-          <span class="font-semibold text-slate-800 block">ช่วงเวลาที่เกิดอาการสัมพันธ์กับการออกแรง:</span>
-          ${renderSyncopeGrid('grid-cols-1 sm:grid-cols-2', [
-            { name: 'syncopeExertionTiming', value: 'during_active_exertion', title: 'ระหว่างกำลังออกแรง/ออกกำลังกาย', desc: 'เกิดขึ้นในขณะที่กำลังออกแรงหรือวิ่งอยู่', compact: true, bgWhite: true },
-            { name: 'syncopeExertionTiming', value: 'immediately_post_exertion', title: 'หยุดออกกำลังกายกะทันหันก่อน แล้วจึงมีอาการ', desc: 'หยุดวิ่งหรือหยุดออกแรงทันทีแล้วจึงหน้ามืดวูบตามมา', compact: true, bgWhite: true }
-          ])}
-        </div>
-        ${renderSyncopeCard({ name: 'syncopePosture', value: 'supine_or_resting', onchange: 'handleSyncopePostureChange()', colSpan2: true, title: 'ขณะนอนราบ หรือนั่งพักอยู่เฉยๆ', desc: 'เกิดขึ้นขณะพักผ่อนโดยไม่ได้ออกแรงหรือเปลี่ยนท่า' })}
-        <div id="syncopeRestingSubWrap" class="hidden sm:col-span-2 bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-2 text-xs">
-          <span class="font-semibold text-slate-800 block">ท่าทางขณะพักที่เกิดเหตุ:</span>
-          ${renderSyncopeGrid('grid-cols-1 sm:grid-cols-2', [
-            { name: 'syncopeRestingPosition', value: 'while_lying_supine', title: 'ขณะนอน', desc: 'เกิดขึ้นในขณะที่กำลังนอนหงาย นอนตะแคง หรือนอนพักอยู่', compact: true, bgWhite: true },
-            { name: 'syncopeRestingPosition', value: 'while_sitting_resting', title: 'ขณะนั่ง', desc: 'เกิดขึ้นในขณะที่กำลังนั่งพักหรือนั่งทำงานอยู่เฉยๆ', compact: true, bgWhite: true }
-          ])}
-        </div>
-        ${renderSyncopeCard({ name: 'syncopePosture', value: 'neck_movement', onchange: 'handleSyncopePostureChange()', title: 'ขณะหันศีรษะ เงยหน้า หรือสวมเสื้อคอแน่น', desc: 'เกิดอาการทันทีเมื่อหันคอ โกนหนวด หรือถูกกดบริเวณลำคอ' })}
-        ${renderSyncopeCard({ name: 'syncopePosture', value: 'other', onchange: 'handleSyncopePostureChange()', title: 'อื่นๆ', desc: 'ระบุท่าทางหรือกิจกรรมก่อนเกิดเหตุเพิ่มเติม' })}
-        <div id="syncopePostureOtherWrap" class="hidden sm:col-span-2 bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-2">
-          <label class="block text-xs font-semibold text-slate-700">ระบุท่าทางหรือกิจกรรมก่อนเกิดเหตุ:</label>
-          <input type="text" id="syncopePostureOtherText" placeholder="เช่น กำลังขับรถ หรือนั่งทำงาน..." class="w-full bg-white border border-slate-300 rounded-xl px-4 py-2 text-slate-800 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-medical-500 placeholder:text-slate-400">
+    <div class="pt-2 border-t border-slate-100">
+      <label class="block text-xs font-bold text-slate-700 mb-2">1.3 ท่าทางหรือกิจกรรมก่อนเกิดอาการทันที:</label>
+      ${renderSyncopeGrid('grid-cols-1 sm:grid-cols-2 lg:grid-cols-4', [
+        { value: 'prolonged_standing', title: wrapSyncWords('ยืนนาน /', 'ร้อนแออัด') },
+        { value: 'sudden_standing', title: wrapSyncWords('ลุกยืน /', 'เปลี่ยนท่าเร็ว') },
+        { value: 'standing_or_walking_normal', title: wrapSyncWords('ยืนหรือเดินตามปกติ') },
+        { value: 'micturition_defecation', title: wrapSyncWords('ขับถ่าย /', 'ปัสสาวะ /', 'ไอแรง') },
+        { value: 'during_exertion', title: wrapSyncWords('ขณะออกแรง /', 'ออกกำลังกาย') },
+        { value: 'supine_or_resting', title: wrapSyncWords('ขณะนอนราบ /', 'นั่งพักเฉยๆ') },
+        { value: 'neck_movement', title: wrapSyncWords('หันคอ /', 'เงยหน้า /', 'คอเสื้อแน่น') },
+        { value: 'other', title: wrapSyncWords('อื่นๆ') }
+      ], { kind: 'radio', name: 'syncopePosture', onchange: 'handleSyncopePostureChange()' })}
+      <div id="syncopeExertionSubWrap" class="hidden mt-3 bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-2 text-xs">
+        <span class="font-semibold text-slate-800 block">ช่วงเวลาที่เกิดอาการสัมพันธ์กับการออกแรง:</span>
+        ${renderSyncopeGrid('grid-cols-1 sm:grid-cols-2', [
+          { value: 'during_active_exertion', title: wrapSyncWords('ระหว่างกำลังออกแรง /', 'ออกกำลังกาย') },
+          { value: 'immediately_post_exertion', title: wrapSyncWords('หยุดออกกำลังกะทันหัน', 'แล้วจึงวูบ') }
+        ], { kind: 'radio', name: 'syncopeExertionTiming', compact: true, bgWhite: true })}
+      </div>
+      <div id="syncopeRestingSubWrap" class="hidden mt-3 bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-2 text-xs">
+        <span class="font-semibold text-slate-800 block">ท่าทางขณะพักที่เกิดเหตุ:</span>
+        ${renderSyncopeGrid('grid-cols-1 sm:grid-cols-2', [
+          { value: 'while_lying_supine', title: wrapSyncWords('ขณะนอนราบ') },
+          { value: 'while_sitting_resting', title: wrapSyncWords('ขณะนั่งพักเฉยๆ') }
+        ], { kind: 'radio', name: 'syncopeRestingPosition', compact: true, bgWhite: true })}
+      </div>
+      <div id="syncopePostureOtherWrap" class="hidden mt-3 bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-1.5">
+        <label class="block text-xs font-semibold text-slate-700">ระบุท่าทางหรือกิจกรรมก่อนเกิดเหตุ:</label>
+        <input type="text" id="syncopePostureOtherText" placeholder="เช่น กำลังขับรถ หรือนั่งทำงาน..." class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-slate-800 text-xs focus:outline-none focus:ring-2 focus:ring-medical-500">
+      </div>
+    </div>
+
+    <div class="pt-2 border-t border-slate-100">
+      <label class="block text-xs font-bold text-slate-700 mb-2">1.4 ลักษณะความรู้สึกตัวขณะเกิดเหตุ:</label>
+      ${renderSyncopeGrid('grid-cols-1 sm:grid-cols-2', [
+        { value: 'true_syncope', title: wrapSyncWords('หมดสติไม่รู้สึกตัว'), desc: 'สลบไปชั่วคราว จำช่วงที่ล้มลงไม่ได้' },
+        { value: 'near_syncope', title: wrapSyncWords('เกือบหมดสติ /', 'แค่วูบหน้ามืด'), desc: 'เข่าอ่อนหน้ามืด แต่ยังรู้สึกตัวและได้ยินเสียงรอบข้าง' }
+      ], { kind: 'radio', name: 'syncopeConsciousnessLevel', onchange: 'handleSyncopeConsciousnessLevelChange()' })}
+      <div id="syncopeUnconsciousDurationWrap" class="hidden mt-3 bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-3 text-xs">
+        <span class="font-semibold text-slate-800 block">ระยะเวลาที่หมดสติไม่รู้สึกตัว (สลบไปนานกี่นาที):</span>
+        ${renderSyncopeGrid('grid-cols-1 sm:grid-cols-2 lg:grid-cols-3', [
+          { value: 'brief_seconds', title: wrapSyncWords('สั้นมาก (< 1 นาที)'), desc: 'ประมาณ 10–30 วินาที' },
+          { value: 'typical_minutes', title: wrapSyncWords('ประมาณ 1–4 นาที') },
+          { value: 'prolonged_gte_5m', title: wrapSyncWords('ตั้งแต่ 5 นาทีขึ้นไป') },
+          { value: 'continuous_unconscious', title: wrapSyncWords('ยังไม่ฟื้นสติ', 'จนถึงขณะนี้') },
+          { value: 'unknown_unobserved', title: wrapSyncWords('ไม่ทราบระยะเวลา') }
+        ], { kind: 'radio', name: 'syncopeUnconsciousDuration', onchange: 'handleSyncopeUnconsciousDurationChange()', compact: true, bgWhite: true })}
+        <div id="syncopeDurationGte5mWrap" class="hidden bg-white border border-slate-200 rounded-xl p-3 flex items-center space-x-2 max-w-xs">
+          <label class="text-xs font-semibold text-slate-700 whitespace-nowrap">ระบุเวลาโดยประมาณ:</label>
+          <input type="number" id="syncopeDurationGte5mVal" min="5" max="999" placeholder="เช่น 10" class="w-20 bg-slate-50 border border-slate-300 rounded-lg px-2 py-1.5 text-slate-800 font-semibold text-xs text-center focus:outline-none focus:ring-2 focus:ring-medical-500">
+          <span class="text-xs text-slate-600">นาที</span>
         </div>
       </div>
     </div>
 
-    <div>
-      <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">1.4 ลักษณะความรู้สึกตัวขณะเกิดเหตุ</label>
-      <div class="grid grid-cols-1 gap-2.5">
-        ${renderSyncopeCard({ name: 'syncopeConsciousnessLevel', value: 'true_syncope', onchange: 'handleSyncopeConsciousnessLevelChange()', title: 'หมดสติไปชั่วขณะ ไม่รู้สึกตัว', desc: 'หมดสติไปเลยชั่วคราว จำช่วงที่ล้มลงหรือช่วงที่สลบไปไม่ได้' })}
-        <div id="syncopeUnconsciousDurationWrap" class="hidden bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-3 text-xs">
-          <span class="font-semibold text-slate-800 block">ระยะเวลาที่หมดสติไม่รู้สึกตัว (สลบไปนานกี่นาทีก่อนจะเริ่มฟื้น):</span>
-          ${renderSyncopeGrid('grid-cols-1 sm:grid-cols-2', [
-            { name: 'syncopeUnconsciousDuration', value: 'brief_seconds', onchange: 'handleSyncopeUnconsciousDurationChange()', title: 'สั้นมาก ไม่เกิน 1 นาที', desc: 'ประมาณ 10–30 วินาที แล้วเริ่มตื่นรู้ตัว', compact: true, bgWhite: true },
-            { name: 'syncopeUnconsciousDuration', value: 'typical_minutes', onchange: 'handleSyncopeUnconsciousDurationChange()', title: 'นานประมาณ 1 – 4 นาที', compact: true, bgWhite: true },
-            { name: 'syncopeUnconsciousDuration', value: 'prolonged_gte_5m', onchange: 'handleSyncopeUnconsciousDurationChange()', title: 'นานตั้งแต่ 5 นาทีขึ้นไป', compact: true, bgWhite: true },
-            { name: 'syncopeUnconsciousDuration', value: 'continuous_unconscious', onchange: 'handleSyncopeUnconsciousDurationChange()', title: 'ยังไม่ฟื้นสติจนถึงขณะนี้', compact: true, bgWhite: true },
-            { name: 'syncopeUnconsciousDuration', value: 'unknown_unobserved', onchange: 'handleSyncopeUnconsciousDurationChange()', title: 'ไม่ทราบระยะเวลา (ไม่ได้สังเกต)', desc: 'อยู่คนเดียวขณะเป็นลม หรือไม่มีผู้สังเกตเวลา', colSpan2: true, compact: true, bgWhite: true }
-          ])}
-          <div id="syncopeDurationGte5mWrap" class="hidden bg-white border border-slate-200 rounded-xl p-3 flex items-center space-x-2">
-            <label class="text-xs font-semibold text-slate-700 whitespace-nowrap">ระบุเวลาที่หมดสติโดยประมาณ:</label>
-            <input type="number" id="syncopeDurationGte5mVal" min="5" max="999" placeholder="เช่น 10" class="w-24 bg-slate-50 border border-slate-300 rounded-lg px-3 py-1.5 text-slate-800 font-semibold text-xs focus:outline-none focus:ring-2 focus:ring-medical-500">
-            <span class="text-xs text-slate-600">นาที</span>
-          </div>
-        </div>
-        ${renderSyncopeCard({ name: 'syncopeConsciousnessLevel', value: 'near_syncope', onchange: 'handleSyncopeConsciousnessLevelChange()', title: 'เกือบหมดสติ หรือแค่วูบหน้ามืด', desc: 'รู้สึกเหมือนจะเป็นลม เข่าอ่อน ทรงตัวไม่อยู่ แต่ยังรู้สึกตัวและได้ยินเสียงรอบข้างตลอดเวลา' })}
-      </div>
-    </div>
-
-    <div>
-      <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">1.5 จำนวนครั้งที่มีอาการวูบหรือหมดสติในรอบ 24 ชั่วโมงที่ผ่านมา</label>
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-        ${renderSyncopeCard({ name: 'syncopeEpisodeCount', value: 'single', onchange: 'handleSyncopeEpisodeCountChange()', title: 'เกิดขึ้นเพียงครั้งเดียว', compact: true })}
-        ${renderSyncopeCard({ name: 'syncopeEpisodeCount', value: 'multiple_cluster', onchange: 'handleSyncopeEpisodeCountChange()', title: 'เกิดซ้ำตั้งแต่ 2 ครั้งขึ้นไป', compact: true })}
-        <div id="syncopeEpisodeCountWrap" class="hidden sm:col-span-2 bg-slate-50 border border-slate-200 rounded-2xl p-3 flex items-center space-x-2 text-xs">
-          <label class="font-semibold text-slate-700 whitespace-nowrap">ระบุจำนวนครั้งทั้งหมดในวันนี้:</label>
-          <input type="number" id="syncopeEpisodeCountVal" min="2" max="50" placeholder="เช่น 2" class="w-24 bg-white border border-slate-300 rounded-lg px-3 py-1.5 text-slate-800 font-semibold text-xs focus:outline-none focus:ring-2 focus:ring-medical-500">
-          <span class="text-slate-600">ครั้ง</span>
-        </div>
+    <div class="pt-2 border-t border-slate-100">
+      <label class="block text-xs font-bold text-slate-700 mb-2">1.5 จำนวนครั้งใน 24 ชั่วโมงที่ผ่านมา:</label>
+      ${renderSyncopeGrid('grid-cols-1 sm:grid-cols-2', [
+        { value: 'single', title: wrapSyncWords('เกิดขึ้นครั้งเดียว') },
+        { value: 'multiple_cluster', title: wrapSyncWords('เกิดซ้ำตั้งแต่', '2 ครั้งขึ้นไป') }
+      ], { kind: 'radio', name: 'syncopeEpisodeCount', onchange: 'handleSyncopeEpisodeCountChange()' })}
+      <div id="syncopeEpisodeCountWrap" class="hidden mt-3 bg-slate-50 border border-slate-200 rounded-xl p-3 flex items-center space-x-2 text-xs max-w-xs">
+        <label class="font-semibold text-slate-700 whitespace-nowrap">จำนวนครั้งทั้งหมดวันนี้:</label>
+        <input type="number" id="syncopeEpisodeCountVal" min="2" max="50" placeholder="เช่น 2" class="w-20 bg-white border border-slate-300 rounded-lg px-2 py-1.5 text-slate-800 font-semibold text-xs text-center focus:outline-none focus:ring-2 focus:ring-medical-500">
+        <span class="text-slate-600">ครั้ง</span>
       </div>
     </div>
   </div>
@@ -931,53 +1018,69 @@ const SYNCOPE_CARD2_HTML = `
   <div class="flex items-center space-x-3 mb-4 pb-3 border-b border-slate-100">
     <div class="bg-medical-100 text-medical-700 p-2 rounded-xl"><i data-lucide="bell-ring" class="w-5 h-5"></i></div>
     <div>
-      <h2 class="text-base font-bold text-slate-900">2. อาการเตือนนำก่อนวูบ และลักษณะที่สังเกตเห็นขณะเกิดเหตุ</h2>
-      <p class="text-xs text-slate-500 font-sans">Prodromal Symptoms &amp; Witnessed Event Characteristics</p>
+      <h2 class="text-base font-bold text-slate-900">2. อาการเตือนนำ ลักษณะการเคลื่อนไหว และอาการขณะเกิดเหตุ</h2>
+      <p class="text-xs text-slate-500">ประเมินอาการนำก่อนวูบ ลักษณะการเกร็งกระตุก และอาการร่วมที่สังเกตเห็น</p>
     </div>
   </div>
   <div class="space-y-5">
     <div>
-      <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">2.1 อาการเตือนที่รู้สึกได้ก่อนจะวูบหรือหมดสติ (เลือกได้หลายข้อ)</label>
-      ${renderSyncopeGrid('grid-cols-1 sm:grid-cols-2', [
-        { kind: 'checkbox', name: 'syncopeProdromes', value: 'none_sudden', onchange: 'handleSyncopeWarningChange(this)', title: 'ไม่มีอาการเตือน ล้มหมดสติทันที', desc: 'อยู่ดีๆ ก็วูบล้มลงทันทีโดยไม่มีอาการหน้ามืดหรือใจสั่นเตือนล่วงหน้า' },
-        { kind: 'checkbox', name: 'syncopeProdromes', value: 'lightheaded_tunnel_vision', onchange: 'handleSyncopeWarningChange(this)', title: 'หน้ามืด วิงเวียน หรือตาพร่ามัว', desc: 'รู้สึกศีรษะเบาหวิว ภาพมืดลงเรื่อยๆ หรือมีเสียงดังอื้อในหู' },
-        { kind: 'checkbox', name: 'syncopeProdromes', value: 'cold_sweat_pallor_nausea', onchange: 'handleSyncopeWarningChange(this)', title: 'เหงื่อแตกตัวเย็น หน้าซีด หรือคลื่นไส้', desc: 'เหงื่อออกชุ่มตัว ตัวเย็นเฉียบ หรือรู้สึกพะอืดพะอมคล้ายจะอาเจียนก่อนวูบ' },
-        { kind: 'checkbox', name: 'syncopeProdromes', value: 'sudden_palpitation', onchange: 'handleSyncopeWarningChange(this)', title: 'ใจสั่นรัว หรือหัวใจเต้นสะดุด', desc: 'รู้สึกหัวใจเต้นเร็วแรงหรือเต้นผิดจังหวะขึ้นมาอย่างกะทันหันก่อนวูบ' },
-        { kind: 'checkbox', name: 'syncopeProdromes', value: 'chest_pain_pressure', onchange: 'handleSyncopeWarningChange(this)', title: 'เจ็บแน่นหน้าอก หรือปวดร้าวไปกราม/หลัง', desc: 'มีอาการเจ็บแน่นอึดอัดหน้าอก หรือปวดร้าวไปที่คอ กราม หรือสะบักหลัง' },
-        { kind: 'checkbox', name: 'syncopeProdromes', value: 'severe_dyspnea', onchange: 'handleSyncopeWarningChange(this)', title: 'หายใจหอบเหนื่อย หรือหายใจไม่อิ่ม', desc: 'รู้สึกเหนื่อยหอบรุนแรงหรืออึดอัดหายใจไม่ทันก่อนที่จะหมดสติ' },
-        { kind: 'checkbox', name: 'syncopeProdromes', value: 'thunderclap_headache', onchange: 'handleSyncopeWarningChange(this)', title: 'ปวดศีรษะรุนแรงเฉียบพลันก่อนหมดสติ', desc: 'อยู่ดีๆ ก็ปวดศีรษะรุนแรงขึ้นมาทันทีก่อนที่จะวูบหมดสติไป' },
-        { kind: 'checkbox', name: 'syncopeProdromes', value: 'hyperventilation_tingling', onchange: 'handleSyncopeWarningChange(this)', title: 'หายใจหอบเร็ว ชารอบปาก หรือชาปลายมือ', desc: 'มักเกิดร่วมกับความเครียด ตกใจกลัว หรือร้องไห้หนักก่อนมีอาการ' },
-        { kind: 'checkbox', name: 'syncopeProdromes', value: 'aura_epigastric_olfactory', onchange: 'handleSyncopeWarningChange(this)', title: 'จุกแน่นในท้องลอยขึ้นคอ หรือได้กลิ่นแปลกๆ', desc: 'รู้สึกโหวงหรือจุกแน่นจากลิ้นปี่ลอยขึ้นคอ ได้กลิ่นแปลกประหลาด หรือเห็นแสงวูบวาบ', colSpan2: true }
-      ])}
+      ${renderSyncSysHeader({
+        icon: 'alert-circle',
+        iconBg: 'bg-amber-100',
+        iconColor: 'text-amber-600',
+        title: '2.1 อาการเตือนก่อนวูบหรือหมดสติ (เลือกได้หลายข้อ)',
+        noneId: 'syncope_prodrome_none',
+        noneLabel: 'ไม่มีอาการเตือน (ล้มทันที)',
+        noneOnchange: 'handleSyncopeProdromeNoneChange()'
+      })}
+      ${renderSyncopeGrid('grid-cols-1 sm:grid-cols-2 lg:grid-cols-4', [
+        { value: 'lightheaded_tunnel_vision', title: wrapSyncWords('หน้ามืด /', 'ตาพร่ามัว /', 'หูอื้อ') },
+        { value: 'cold_sweat_pallor_nausea', title: wrapSyncWords('เหงื่อแตก /', 'ตัวเย็น /', 'หน้าซีด') },
+        { value: 'sudden_palpitation', title: wrapSyncWords('ใจสั่นรัว /', 'หัวใจเต้นสะดุด') },
+        { value: 'chest_pain_pressure', title: wrapSyncWords('เจ็บแน่นหน้าอก /', 'ร้าวกราม-หลัง') },
+        { value: 'severe_dyspnea', title: wrapSyncWords('หอบเหนื่อย /', 'หายใจไม่อิ่ม') },
+        { value: 'thunderclap_headache', title: wrapSyncWords('ปวดศีรษะรุนแรง', 'เฉียบพลัน') },
+        { value: 'hyperventilation_tingling', title: wrapSyncWords('หายใจหอบเร็ว /', 'ชารอบปาก-มือ') },
+        { value: 'aura_epigastric_olfactory', title: wrapSyncWords('จุกในท้องลอยขึ้นคอ /', 'ได้กลิ่นแปลก'), desc: 'หรือเห็นแสงวาบก่อนวูบ (Aura)' },
+        { value: 'unknown', title: wrapSyncWords('ไม่ทราบ /', 'จำไม่ได้') }
+      ], { kind: 'checkbox', name: 'syncopeProdromes', onchange: 'handleSyncopeWarningChange(this)' })}
     </div>
 
     <div class="pt-3 border-t border-slate-100">
-      <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">2.2 ลักษณะการเคลื่อนไหวของร่างกายขณะเกิดเหตุ</label>
-      <div class="grid grid-cols-1 gap-2.5">
-        ${renderSyncopeCard({ name: 'syncopeMotorCategory', value: 'limp_flaccid', onchange: 'handleSyncopeMotorCategoryChange()', title: 'ตัวอ่อนปวกเปียกล้มลง ไม่มีการเกร็งกระตุก', desc: 'หมดสติตัวอ่อนพับลงเฉยๆ โดยไม่มีอาการเกร็งแข็งหรือกระตุก' })}
-        ${renderSyncopeCard({ name: 'syncopeMotorCategory', value: 'abnormal_movements', onchange: 'handleSyncopeMotorCategoryChange()', title: 'มีอาการเกร็ง กระตุก หรือเคลื่อนไหวผิดปกติ', desc: 'พบอาการกระตุก เกร็ง มือจีบ หรือดิ้นสะบัดขณะหมดสติ' })}
-        <div id="syncopeMotorSubWrap" class="hidden bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-2 text-xs">
-          <span class="font-semibold text-slate-800 block">ลักษณะการเกร็งหรือกระตุกที่สังเกตพบ:</span>
-          ${renderSyncopeGrid('grid-cols-1 sm:grid-cols-2', [
-            { name: 'syncopeMotorSign', value: 'brief_myoclonic_jerks', title: 'กระตุกเบาๆ สั้นๆ ไม่กี่ครั้งหลังล้มลง', desc: 'กระตุกสั้นๆ เพียง 5–15 วินาทีหลังจากล้มลงไปแล้ว', compact: true, bgWhite: true },
-            { name: 'syncopeMotorSign', value: 'generalized_tonic_clonic', title: 'เกร็งแข็งและกระตุกรุนแรงทั้งตัวต่อเนื่องเป็นนาที', desc: 'ตัวแข็งเกร็งแล้วกระตุกพร้อมกันทั้งตัวนานเป็นนาที', compact: true, bgWhite: true },
-            { name: 'syncopeMotorSign', value: 'carpopedal_spasm', title: 'มือจีบเกร็งทั้งสองข้าง นิ้วมืองุ้มเข้าหากัน', desc: 'ข้อมือและนิ้วมือทั้งสองข้างเกร็งจีบ หรือเกร็งปลายเท้างุ้ม', compact: true, bgWhite: true },
-            { name: 'syncopeMotorSign', value: 'thrashing_closed_eyes', title: 'ดิ้นสะบัดไปมา ส่ายศีรษะ หรือหลับตาแน่น', desc: 'แขนขาสะบัดไม่พร้อมกัน ส่ายศีรษะ หรือแอ่นลำตัวขณะหลับตา', compact: true, bgWhite: true },
-            { name: 'syncopeMotorSign', value: 'unknown_unobserved', title: 'ไม่ทราบแน่ชัด (ไม่ได้สังเกต)', colSpan2: true, compact: true, bgWhite: true }
-          ])}
-        </div>
+      <label class="block text-xs font-bold text-slate-700 mb-2">2.2 ลักษณะการเคลื่อนไหวของร่างกายขณะเกิดเหตุ:</label>
+      ${renderSyncopeGrid('grid-cols-1 sm:grid-cols-2', [
+        { value: 'limp_flaccid', title: wrapSyncWords('ตัวอ่อนปวกเปียก', 'ไม่เกร็งกระตุก') },
+        { value: 'abnormal_movements', title: wrapSyncWords('มีเกร็ง /', 'กระตุก /', 'เคลื่อนไหวผิดปกติ') }
+      ], { kind: 'radio', name: 'syncopeMotorCategory', onchange: 'handleSyncopeMotorCategoryChange()' })}
+      <div id="syncopeMotorSubWrap" class="hidden mt-3 bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-2 text-xs">
+        <span class="font-semibold text-slate-800 block">ลักษณะการเกร็งหรือกระตุกที่สังเกตพบ:</span>
+        ${renderSyncopeGrid('grid-cols-1 sm:grid-cols-2 lg:grid-cols-3', [
+          { value: 'brief_myoclonic_jerks', title: wrapSyncWords('กระตุกเบาๆ สั้นๆ', 'หลังล้ม'), desc: 'เพียง 5–15 วินาทีหลังล้มลง' },
+          { value: 'generalized_tonic_clonic', title: wrapSyncWords('เกร็งแข็งกระตุก', 'ทั้งตัวเป็นนาที') },
+          { value: 'carpopedal_spasm', title: wrapSyncWords('มือจีบเกร็ง', 'ทั้งสองข้าง'), desc: 'นิ้วมืองุ้มจีบเข้าหากัน' },
+          { value: 'thrashing_closed_eyes', title: wrapSyncWords('ดิ้นสะบัด /', 'ส่ายหน้าหลับตาแน่น') },
+          { value: 'unknown_unobserved', title: wrapSyncWords('ไม่ทราบ /', 'ไม่ได้สังเกต') }
+        ], { kind: 'radio', name: 'syncopeMotorSign', compact: true, bgWhite: true })}
       </div>
     </div>
 
     <div class="pt-3 border-t border-slate-100">
-      <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">2.3 อาการร่วมที่สังเกตเห็นขณะเกิดเหตุ (เลือกได้หลายข้อ)</label>
-      ${renderSyncopeGrid('grid-cols-1 sm:grid-cols-2', [
-        { kind: 'checkbox', name: 'syncopeSigns', value: 'syncope_marked_pallor_sweat', title: 'ใบหน้าซีดเผือด ตัวเย็น เหงื่อออกชุ่ม', desc: 'สังเกตเห็นหน้าซีดขาว มือเท้าเย็น และเหงื่อออกเปียกชุ่มตัว' },
-        { kind: 'checkbox', name: 'syncopeSigns', value: 'syncope_cyanosis_apnea', title: 'ริมฝีปากเขียวคล้ำ หรือหยุดหายใจชั่วขณะ', desc: 'สังเกตเห็นปากเขียว หน้าคล้ำ หรือมีเสียงหายใจครืดคราด' },
-        { kind: 'checkbox', name: 'syncopeSigns', value: 'syncope_lateral_tongue_bite', title: 'กัดลิ้น หรือมีเลือดออกในปาก', desc: 'มีแผลกัดที่ลิ้น กระพุ้งแก้ม หรือมีน้ำลายปนเลือด' },
-        { kind: 'checkbox', name: 'syncopeSigns', value: 'syncope_eyes_open_deviated', title: 'ตาค้าง หรือตาเหลือกเบนไปข้างเดียว', desc: 'ลูกตาเหลือกค้างขึ้นด้านบน หรือหันเบนค้างไปด้านซ้ายหรือขวา' },
-        { kind: 'checkbox', name: 'syncopeSigns', value: 'syncope_incontinence', title: 'ปัสสาวะราด หรืออุจจาระราด', desc: 'ไม่สามารถกลั้นปัสสาวะหรืออุจจาระได้ในขณะหมดสติ', colSpan2: true }
-      ])}
+      ${renderSyncSysHeader({
+        icon: 'eye',
+        iconBg: 'bg-purple-100',
+        iconColor: 'text-purple-600',
+        title: '2.3 อาการร่วมที่สังเกตเห็นขณะเกิดเหตุ (เลือกได้หลายข้อ)',
+        noneId: 'syncope_signs_none',
+        noneLabel: 'ไม่มีอาการในหมวดนี้',
+        noneOnchange: 'handleSyncopeSignsNoneChange()'
+      })}
+      ${renderSyncopeGrid('grid-cols-1 sm:grid-cols-2 lg:grid-cols-3', [
+        { value: 'syncope_marked_pallor_sweat', title: wrapSyncWords('หน้าซีดเผือด /', 'ตัวเย็นเหงื่อชุ่ม') },
+        { value: 'syncope_cyanosis_apnea', title: wrapSyncWords('ปากเขียวคล้ำ /', 'หยุดหายใจชั่วขณะ') },
+        { value: 'syncope_lateral_tongue_bite', title: wrapSyncWords('กัดลิ้น /', 'เลือดออกในปาก') },
+        { value: 'syncope_eyes_open_deviated', title: wrapSyncWords('ตาค้าง /', 'ตาเหลือกเบนข้างเดียว') },
+        { value: 'syncope_incontinence', title: wrapSyncWords('ปัสสาวะราด /', 'อุจจาระราด') }
+      ], { kind: 'checkbox', name: 'syncopeSigns', onchange: 'handleSyncopeSignsItemChange(this)' })}
     </div>
   </div>
 </div>`;
@@ -988,49 +1091,59 @@ const SYNCOPE_CARD3_HTML = `
     <div class="bg-medical-100 text-medical-700 p-2 rounded-xl"><i data-lucide="rotate-ccw" class="w-5 h-5"></i></div>
     <div>
       <h2 class="text-base font-bold text-slate-900">3. การฟื้นคืนสติ อาการผิดปกติหลังฟื้น และการบาดเจ็บจากการล้ม</h2>
-      <p class="text-xs text-slate-500 font-sans">Recovery Phase, Post-Event Symptoms &amp; Fall Trauma</p>
+      <p class="text-xs text-slate-500">ประเมินสภาพหลังฟื้นตื่น อาการคงค้าง และการบาดเจ็บจากการล้มกระแทก</p>
     </div>
   </div>
   <div class="space-y-5">
+    <div id="syncopeUnconsciousContextNotice" class="hidden p-3 bg-sky-50 border border-sky-200 rounded-xl text-xs text-slate-700">
+      ระบบตรวจพบว่าผู้ป่วยยังไม่ฟื้นสติในข้อ 1.4 จึงซ่อนตัวเลือกฟื้นตัวเร็วและอาการหลังฟื้นโดยอัตโนมัติ
+    </div>
+
     <div>
-      <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1">3.1 สภาพความรู้สึกตัว "หลังจากเริ่มฟื้นตื่นแล้ว" (เมื่อลืมตาขึ้นมาแล้ว รู้เรื่องเป็นปกติทันทีหรือไม่?)</label>
-      <p class="text-[11px] text-slate-500 mb-2.5">หมายเหตุ: ข้อนี้ถามถึงอาการ <strong>หลังจากผู้ป่วยเริ่มฟื้นตื่นแล้ว</strong> ว่าสมองโล่งรู้เรื่องทันทีหรือยังงง/ซึมอยู่นาน (ต่างจากข้อ 1.4 ที่ถามว่าสลบไปนานกี่นาที)</p>
+      <label class="block text-xs font-bold text-slate-700 mb-2">3.1 สภาพความรู้สึกตัว "หลังจากเริ่มฟื้นตื่นแล้ว":</label>
       ${renderSyncopeGrid('grid-cols-1 sm:grid-cols-3', [
-        { name: 'syncopeRecoveryPattern', value: 'rapid_spontaneous', onchange: 'updateSyncopeRecoveryContext()', title: 'ฟื้นแล้วรู้เรื่องทันที ไม่งง ไม่สับสน', desc: 'ทันทีที่ตื่นขึ้นมา สามารถพูดคุยโต้ตอบ รู้วันเวลาสถานที่ และจำเรื่องราวก่อนวูบได้เป็นปกติภายใน 1–2 นาที' },
-        { name: 'syncopeRecoveryPattern', value: 'prolonged_confusion', onchange: 'updateSyncopeRecoveryContext()', title: 'ตื่นแล้วแต่ยังสับสน มึนงง หรือหลับต่อ', desc: 'พ้นช่วงหมดสติ/ชักแล้ว แต่หลังจากฟื้นขึ้นมายังถามซ้ำๆ พูดจาสับสน จำเหตุการณ์ไม่ได้ หรือซึมหลับลึกต่อนานเกิน 5 นาที' },
-        { name: 'syncopeRecoveryPattern', value: 'persistent_drowsy_coma', onchange: 'updateSyncopeRecoveryContext()', title: 'ยังมีอาการสับสน มึนงง ปลุกยากจนถึงขณะนี้', desc: 'จนถึงขณะนี้ผู้ป่วยยังไม่ตื่นรู้เรื่องเป็นปกติ ยังสับสน มึนงง ซึมมาก หรือต้องปลุกกระตุ้นจึงจะตอบสนอง' }
-      ])}
+        { wrapId: 'syncopeRecOptWrap_rapid', value: 'rapid_spontaneous', title: wrapSyncWords('ฟื้นแล้วรู้เรื่องทันที', 'ไม่งง'), desc: 'พูดคุยโต้ตอบเป็นปกติภายใน 1–2 นาที' },
+        { wrapId: 'syncopeRecOptWrap_confused', value: 'prolonged_confusion', title: wrapSyncWords('ตื่นแล้วยังสับสน /', 'หลับต่อ > 5 นาที'), desc: 'ถามซ้ำๆ หรือจำเหตุการณ์ไม่ได้' },
+        { value: 'persistent_drowsy_coma', title: wrapSyncWords('ยังไม่ตื่น /', 'ซึมปลุกยากจนถึงขณะนี้') }
+      ], { kind: 'radio', name: 'syncopeRecoveryPattern', onchange: 'updateSyncopeRecoveryContext()' })}
     </div>
 
     <div id="syncopePostSymptomsSectionWrap" class="pt-3 border-t border-slate-100">
-      <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">3.2 อาการผิดปกติที่ยังคงมีอยู่หลังฟื้นคืนสติ (เลือกได้หลายข้อ)</label>
-      ${renderSyncopeGrid('grid-cols-1 sm:grid-cols-2', [
-        { kind: 'checkbox', name: 'syncopePostSymptoms', value: 'post_focal_weakness', onchange: 'handleSyncopePostSymptomChange(this)', title: 'แขนขาอ่อนแรง ปากเบี้ยว หรือพูดไม่ชัด', desc: 'ยกแขนหรือขาข้างใดข้างหนึ่งไม่ขึ้น ชาครึ่งซีก มุมปากตก หรือพูดอ้อแอ้' },
-        { kind: 'checkbox', name: 'syncopePostSymptoms', value: 'post_ongoing_chestpain', onchange: 'handleSyncopePostSymptomChange(this)', title: 'ยังคงเจ็บแน่นหน้าอก หอบเหนื่อย หรือใจสั่นต่อเนื่อง', desc: 'ฟื้นแล้วแต่ยังรู้สึกแน่นหน้าอก หายใจไม่อิ่ม หรือหัวใจเต้นรัวไม่หยุด' },
-        { kind: 'checkbox', name: 'syncopePostSymptoms', value: 'post_orthostatic_intolerance', onchange: 'handleSyncopePostSymptomChange(this)', title: 'หน้ามืดจะเป็นลมซ้ำทันทีเมื่อพยายามลุกนั่งหรือยืน', desc: 'นอนราบแล้วดีขึ้น แต่พอลุกขึ้นนั่งหรือยืนจะหน้ามืดวูบซ้ำทันที' },
-        { kind: 'checkbox', name: 'syncopePostSymptoms', value: 'post_severe_abdpain_melena', onchange: 'handleSyncopePostSymptomChange(this)', title: 'ปวดท้องรุนแรง หรือปวดร้าวไปที่หลัง', desc: 'มีอาการปวดบิดเกร็งในท้อง ท้องอืดตึง หรือปวดร้าวทะลุกลางหลัง' },
-        { kind: 'checkbox', name: 'syncopePostSymptoms', value: 'post_severe_headache', onchange: 'handleSyncopePostSymptomChange(this)', title: 'ปวดศีรษะรุนแรงต่อเนื่อง', desc: 'มีอาการปวดศีรษะตุ๊บๆ หรือปวดตื้อรุนแรงหลังจากฟื้น' },
-        { kind: 'checkbox', name: 'syncopePostSymptoms', value: 'post_diffuse_muscle_pain', onchange: 'handleSyncopePostSymptomChange(this)', title: 'ปวดเมื่อยหรือระบมกล้ามเนื้อทั่วตัว', desc: 'รู้สึกปวดตึงระบมกล้ามเนื้อแขนขาและลำตัวหลังจากเกร็งกระตุก' },
-        { kind: 'checkbox', name: 'syncopePostSymptoms', value: 'post_none_asymptomatic', onchange: 'handleSyncopePostSymptomChange(this)', title: 'ไม่มีอาการผิดปกติหลังฟื้น (หรืออ่อนเพลียเล็กน้อย)', desc: 'เมื่อเลือกข้อนี้ ระบบจะยกเลิกอาการผิดปกติข้ออื่นอัตโนมัติ', colSpan2: true }
-      ])}
+      ${renderSyncSysHeader({
+        icon: 'stethoscope',
+        iconBg: 'bg-blue-100',
+        iconColor: 'text-blue-600',
+        title: '3.2 อาการผิดปกติที่ยังคงมีอยู่หลังฟื้นคืนสติ (เลือกได้หลายข้อ)',
+        noneId: 'syncope_post_none',
+        noneLabel: 'ไม่มีอาการในหมวดนี้',
+        noneOnchange: 'handleSyncopePostNoneChange()'
+      })}
+      ${renderSyncopeGrid('grid-cols-1 sm:grid-cols-2 lg:grid-cols-3', [
+        { value: 'post_focal_weakness', title: wrapSyncWords('แขนขาอ่อนแรง /', 'ปากเบี้ยว /', 'พูดไม่ชัด') },
+        { value: 'post_ongoing_chestpain', title: wrapSyncWords('ยังเจ็บแน่นหน้าอก /', 'หอบ /', 'ใจสั่น') },
+        { value: 'post_orthostatic_intolerance', title: wrapSyncWords('หน้ามืดจะเป็นลมซ้ำ', 'เมื่อลุกนั่ง/ยืน') },
+        { value: 'post_severe_abdpain_melena', title: wrapSyncWords('ปวดท้องรุนแรง /', 'ปวดร้าวไปที่หลัง') },
+        { value: 'post_severe_headache', title: wrapSyncWords('ปวดศีรษะรุนแรง', 'ต่อเนื่อง') },
+        { value: 'post_diffuse_muscle_pain', title: wrapSyncWords('ปวดเมื่อย /', 'ระบมกล้ามเนื้อทั่วตัว') }
+      ], { kind: 'checkbox', name: 'syncopePostSymptoms', onchange: 'handleSyncopePostSymptomChange(this)' })}
     </div>
 
     <div class="pt-3 border-t border-slate-100">
-      <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">3.3 การบาดเจ็บจากการล้มหรือกระแทกพื้นในครั้งนี้</label>
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-        ${renderSyncopeCard({ name: 'syncopeFallInjury', value: 'no', onchange: 'handleSyncopeFallInjuryChange()', title: 'ไม่มีการบาดเจ็บจากการล้ม', desc: 'มีคนช่วยประคองไว้ทัน หรือค่อยๆ ทรุดตัวลงโดยไม่ได้กระแทกพื้น' })}
-        ${renderSyncopeCard({ name: 'syncopeFallInjury', value: 'yes', onchange: 'handleSyncopeFallInjuryChange()', title: 'มีการบาดเจ็บจากการล้มกระแทกพื้น', desc: 'ศีรษะหรือร่างกายกระแทกพื้น มีแผล หรือมีอาการปวดบวม' })}
-      </div>
-      <div id="syncopeFallInjuryDetailWrap" class="hidden bg-slate-50 border border-slate-200 rounded-2xl p-4 mt-2.5 space-y-3 text-xs">
-        <span class="font-semibold text-slate-800 block">ลักษณะและตำแหน่งการบาดเจ็บ (เลือกได้หลายข้อ):</span>
+      <label class="block text-xs font-bold text-slate-700 mb-2">3.3 การบาดเจ็บจากการล้มหรือกระแทกพื้นในครั้งนี้:</label>
+      ${renderSyncopeGrid('grid-cols-1 sm:grid-cols-2', [
+        { value: 'no', title: wrapSyncWords('ไม่มีการบาดเจ็บ', 'จากการล้ม') },
+        { value: 'yes', title: wrapSyncWords('มีการบาดเจ็บจากการล้ม', 'กระแทกพื้น') }
+      ], { kind: 'radio', name: 'syncopeFallInjury', onchange: 'handleSyncopeFallInjuryChange()' })}
+      <div id="syncopeFallInjuryDetailWrap" class="hidden mt-3 bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-3 text-xs">
+        <span class="font-semibold text-slate-800 block">ลักษณะการบาดเจ็บ (เลือกได้หลายข้อ):</span>
         ${renderSyncopeGrid('grid-cols-1 sm:grid-cols-3', [
-          { kind: 'checkbox', id: 'syncope_fall_head_impact', title: 'ศีรษะหรือใบหน้ากระแทกพื้น', compact: true, bgWhite: true },
-          { kind: 'checkbox', id: 'syncope_fall_open_wound', title: 'มีบาดแผลฉีกขาด หรือมีเลือดออก', compact: true, bgWhite: true },
-          { kind: 'checkbox', id: 'syncope_fall_limb_pain', title: 'ปวดบวม ฟกช้ำ หรือผิดรูปบริเวณแขนขา/ลำตัว', compact: true, bgWhite: true }
+          { kind: 'checkbox', id: 'syncope_fall_head_impact', title: wrapSyncWords('ศีรษะ /', 'ใบหน้ากระแทกพื้น'), compact: true, bgWhite: true },
+          { kind: 'checkbox', id: 'syncope_fall_open_wound', title: wrapSyncWords('แผลฉีกขาด /', 'เลือดออก'), compact: true, bgWhite: true },
+          { kind: 'checkbox', id: 'syncope_fall_limb_pain', title: wrapSyncWords('ปวดบวม /', 'ฟกช้ำ /', 'ผิดรูป'), compact: true, bgWhite: true }
         ])}
         <div>
-          <label class="block text-xs font-semibold text-slate-700 mb-1.5">ระบุตำแหน่งบาดเจ็บเพิ่มเติม (ถ้ามี):</label>
-          <input type="text" id="syncopeFallInjuryDetailText" placeholder="เช่น คิ้วขวาแตก, ท้ายทอยโน, ปวดข้อมือซ้าย..." class="w-full bg-white border border-slate-300 rounded-xl px-4 py-2 text-slate-800 text-xs focus:outline-none focus:ring-2 focus:ring-medical-500 placeholder:text-slate-400">
+          <label class="block text-xs font-semibold text-slate-700 mb-1">ตำแหน่งบาดเจ็บเพิ่มเติม (ถ้ามี):</label>
+          <input type="text" id="syncopeFallInjuryDetailText" placeholder="เช่น คิ้วขวาแตก, ท้ายทอยโน, ปวดข้อมือซ้าย..." class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-slate-800 text-xs focus:outline-none focus:ring-2 focus:ring-medical-500">
         </div>
       </div>
     </div>
@@ -1042,55 +1155,64 @@ const SYNCOPE_CARD4_HTML = `
   <div class="flex items-center space-x-3 mb-4 pb-3 border-b border-slate-100">
     <div class="bg-medical-100 text-medical-700 p-2 rounded-xl"><i data-lucide="shield-alert" class="w-5 h-5"></i></div>
     <div>
-      <h2 class="text-base font-bold text-slate-900">4. ปัจจัยเสี่ยงสำคัญ ประวัติการใช้ยา และข้อมูลเฉพาะสตรี</h2>
-      <p class="text-xs text-slate-500 font-sans">Cardiac Risk, Volume Depletion, Medications &amp; Female History</p>
+      <h2 class="text-base font-bold text-slate-900">4. ปัจจัยเสี่ยงสำคัญ</h2>
+      <p class="text-xs text-slate-500">ประวัติความเสี่ยงทางหัวใจ โรคประจำตัว และการเสียเลือด</p>
     </div>
   </div>
   <div class="space-y-5">
     <div>
-      <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">4.1 ประวัติความเสี่ยงทางหัวใจ การเสียเลือด และเหตุการณ์นำก่อนวูบ (เลือกได้หลายข้อ)</label>
-      ${renderSyncopeGrid('grid-cols-1 sm:grid-cols-2', [
-        { kind: 'checkbox', name: 'syncopeRiskFactors', value: 'known_heart_disease', onchange: 'handleSyncopeRiskChange(this)', title: 'มีโรคหัวใจเดิม หรือเคยผ่าตัดหัวใจ', desc: 'เช่น โรคหลอดเลือดหัวใจตีบ กล้ามเนื้อหัวใจหนา หัวใจล้มเหลว หรือลิ้นหัวใจตีบ' },
-        { kind: 'checkbox', name: 'syncopeRiskFactors', value: 'known_arrhythmia_pacemaker', onchange: 'handleSyncopeRiskChange(this)', title: 'มีภาวะหัวใจเต้นผิดจังหวะ หรือใส่เครื่องกระตุ้นหัวใจ', desc: 'เคยตรวจพบหัวใจเต้นผิดจังหวะ หรือใส่เครื่องกระตุ้นหัวใจไว้ที่หน้าอก' },
-        { kind: 'checkbox', name: 'syncopeRiskFactors', value: 'family_sudden_death_young', onchange: 'handleSyncopeRiskChange(this)', title: 'มีคนในครอบครัวสายตรงเสียชีวิตกะทันหันตั้งแต่อายุน้อย', desc: 'พ่อ แม่ พี่น้อง หรือลูก เสียชีวิตกะทันหันโดยไม่ทราบสาเหตุก่อนอายุ 50 ปี' },
-        { kind: 'checkbox', name: 'syncopeRiskFactors', value: 'recent_bp_med_adjustment', onchange: 'handleSyncopeRiskChange(this)', title: 'เพิ่งเริ่มทานยาความดัน ยาขับปัสสาวะ หรือเพิ่งปรับเพิ่มขนาดยา', desc: 'เพิ่งเปลี่ยนยาหรือเพิ่มขนาดยาลดความดันโลหิต ยาขับปัสสาวะ หรือยาต่อมลูกหมาก' },
-        { kind: 'checkbox', name: 'syncopeRiskFactors', value: 'suspected_gi_bleeding', onchange: 'handleSyncopeRiskChange(this)', title: 'ถ่ายอุจจาระดำ ถ่ายเป็นเลือด หรืออาเจียนเป็นเลือด', desc: 'มีอาการถ่ายดำเหนียวเหมือนยางมะตอย ถ่ายปนเลือดสด หรืออาเจียนมีเลือดปน' },
-        { kind: 'checkbox', name: 'syncopeRiskFactors', value: 'dehydration_diarrhea', onchange: 'handleSyncopeRiskChange(this)', title: 'ท้องเสีย อาเจียน ดื่มน้ำน้อย หรือเสียเหงื่อมากก่อนวูบ', desc: 'มีภาวะสูญเสียน้ำในร่างกาย หรืออดอาหารและน้ำก่อนเกิดอาการ' },
-        { kind: 'checkbox', name: 'syncopeRiskFactors', value: 'known_diabetes_insulin', onchange: 'handleSyncopeRiskChange(this)', title: 'เป็นโรคเบาหวานที่ฉีดอินซูลินหรือทานยาลดน้ำตาล', desc: 'โดยเฉพาะกรณีทานอาหารน้อยกว่าปกติหรือผิดเวลา' },
-        { kind: 'checkbox', name: 'syncopeRiskFactors', value: 'known_epilepsy_seizure', onchange: 'handleSyncopeRiskChange(this)', title: 'เคยมีประวัติโรคลมชัก หรือเคยวูบหมดสติซ้ำหลายครั้ง', desc: 'เคยได้รับการวินิจฉัยโรคลมชัก หรือเคยวูบเป็นลมมาแล้วตั้งแต่ 2 ครั้งขึ้นไป' },
-        { kind: 'checkbox', name: 'syncopeRiskFactors', value: 'none_unremarkable', onchange: 'handleSyncopeRiskChange(this)', title: 'ไม่มีปัจจัยเสี่ยงดังกล่าวข้างต้น', colSpan2: true, compact: true }
-      ])}
+      ${renderSyncSysHeader({
+        icon: 'shield-alert',
+        iconBg: 'bg-orange-100',
+        iconColor: 'text-orange-600',
+        title: '4.1 ประวัติความเสี่ยงทางหัวใจ การเสียเลือด และโรคเดิม (เลือกได้หลายข้อ)',
+        noneId: 'syncope_risk_none',
+        noneLabel: 'ไม่มีปัจจัยเสี่ยงในหมวดนี้',
+        noneOnchange: 'handleSyncopeRiskNoneChange()'
+      })}
+      ${renderSyncopeGrid('grid-cols-1 sm:grid-cols-2 lg:grid-cols-4', [
+        { value: 'known_heart_disease', title: wrapSyncWords('มีโรคหัวใจเดิม /', 'เคยผ่าตัดหัวใจ') },
+        { value: 'known_arrhythmia_pacemaker', title: wrapSyncWords('หัวใจเต้นผิดจังหวะ /', 'ใส่เครื่องกระตุ้น'), desc: 'Pacemaker / ICD' },
+        { value: 'family_sudden_death_young', title: wrapSyncWords('ครอบครัวเสียชีวิต', 'อายุน้อย'), desc: 'ญาติสายตรงเสียชีวิตกะทันหันก่อนอายุ 50 ปี' },
+        { value: 'recent_bp_med_adjustment', title: wrapSyncWords('เพิ่งเริ่มหรือเพิ่ม', 'ยาความดัน / ขับปัสสาวะ') },
+        { value: 'suspected_gi_bleeding', title: wrapSyncWords('ถ่ายดำ /', 'ถ่ายเป็นเลือด /', 'อาเจียนเลือด') },
+        { value: 'dehydration_diarrhea', title: wrapSyncWords('ท้องเสีย /', 'อาเจียน /', 'ขาดน้ำมาก') },
+        { value: 'known_diabetes_insulin', title: wrapSyncWords('เบาหวานฉีดอินซูลิน /', 'กินยาลดน้ำตาล') },
+        { value: 'known_epilepsy_seizure', title: wrapSyncWords('เป็นโรคลมชัก /', 'วูบซ้ำบ่อย') }
+      ], { kind: 'checkbox', name: 'syncopeRiskFactors', onchange: 'handleSyncopeRiskChange(this)' })}
     </div>
 
-    <div id="syncopeFemaleSection" class="hidden pt-4 border-t border-slate-100 space-y-4">
-      <div class="p-3 bg-pink-50 border border-pink-200 rounded-xl text-xs text-pink-900">
-        <strong>4.2 เฉพาะผู้ป่วยหญิง:</strong> ข้อมูลประจำเดือนและการตั้งครรภ์สำคัญอย่างยิ่งต่อการคัดกรองภาวะเสียเลือดภายในช่องท้องหรือการตั้งครรภ์นอกมดลูก
+    <div id="syncopeFemaleSection" class="hidden pt-4 border-t border-slate-100 space-y-3">
+      <div class="flex items-center space-x-2">
+        <span class="px-2 py-0.5 text-[10px] font-bold bg-pink-100 text-pink-700 rounded-md">เฉพาะสตรี</span>
+        <label class="block text-xs font-bold text-slate-700">4.2 ประจำเดือนและการตั้งครรภ์ (LMP &amp; Pregnancy)</label>
       </div>
-      <div>
-        <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">สถานะประจำเดือนและการตั้งครรภ์</label>
-        ${renderSyncopeGrid('grid-cols-1 sm:grid-cols-2', [
-          { name: 'syncopePregnancyStatus', value: 'not_pregnant', onchange: 'handleSyncopePregnancyChange()', title: 'ประจำเดือนมาตามปกติ / ไม่ได้ตั้งครรภ์', compact: true },
-          { name: 'syncopePregnancyStatus', value: 'missed_period', onchange: 'handleSyncopePregnancyChange()', title: 'ขาดประจำเดือน หรือสงสัยว่าอาจตั้งครรภ์', compact: true },
-          { name: 'syncopePregnancyStatus', value: 'pregnant', onchange: 'handleSyncopePregnancyChange()', title: 'กำลังตั้งครรภ์', compact: true },
-          { name: 'syncopePregnancyStatus', value: 'postpartum_6w', onchange: 'handleSyncopePregnancyChange()', title: 'เพิ่งคลอดบุตร หรือแท้งบุตรภายใน 6 สัปดาห์ที่ผ่านมา', compact: true },
-          { name: 'syncopePregnancyStatus', value: 'menopause_hysterectomy', onchange: 'handleSyncopePregnancyChange()', title: 'วัยหมดประจำเดือน หรือผ่าตัดมดลูกแล้ว', compact: true },
-          { name: 'syncopePregnancyStatus', value: 'unsure', onchange: 'handleSyncopePregnancyChange()', title: 'ไม่แน่ใจ / จำไม่ได้', compact: true }
-        ])}
-        <div id="syncopePregnancyWeeksWrap" class="hidden mt-2.5 bg-slate-50 border border-slate-200 rounded-xl p-3">
-          <label class="block text-xs font-semibold text-slate-700 mb-1.5">อายุครรภ์โดยประมาณ</label>
-          <input type="text" id="syncopePregnancyWeeks" placeholder="ระบุอายุครรภ์ เช่น 8 สัปดาห์" class="w-full bg-white border border-slate-300 rounded-xl px-4 py-2 text-slate-800 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-medical-500 placeholder:text-slate-400">
+      <div class="space-y-3 bg-pink-50/40 p-3.5 rounded-xl border border-pink-200">
+        <div>
+          <span class="block text-xs font-semibold text-slate-700 mb-2">สถานะประจำเดือนและการตั้งครรภ์:</span>
+          ${renderSyncopeGrid('grid-cols-1 sm:grid-cols-3', [
+            { value: 'not_pregnant', title: wrapSyncWords('ไม่ได้ตั้งครรภ์') },
+            { value: 'missed_period', title: wrapSyncWords('ขาดประจำเดือน /', 'สงสัยตั้งครรภ์') },
+            { value: 'pregnant', title: wrapSyncWords('กำลังตั้งครรภ์') },
+            { value: 'postpartum_6w', title: wrapSyncWords('เพิ่งคลอด /', 'แท้งใน 6 สัปดาห์') },
+            { value: 'menopause_hysterectomy', title: wrapSyncWords('หมดประจำเดือน /', 'ผ่าตัดมดลูก') },
+            { value: 'unsure', title: wrapSyncWords('ไม่แน่ใจ') }
+          ], { kind: 'radio', name: 'syncopePregnancyStatus', onchange: 'handleSyncopePregnancyChange()', compact: true, bgWhite: true })}
+          <div id="syncopePregnancyWeeksWrap" class="hidden mt-2.5 max-w-xs">
+            <input type="text" id="syncopePregnancyWeeks" placeholder="ระบุอายุครรภ์ เช่น 8 สัปดาห์" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-slate-800 text-xs focus:outline-none focus:ring-2 focus:ring-medical-500">
+          </div>
         </div>
-      </div>
-      <div>
-        <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">อาการทางสูตินรีเวชที่พบร่วมด้วย (เลือกได้หลายข้อ)</label>
-        ${renderSyncopeGrid('grid-cols-1 sm:grid-cols-2', [
-          { kind: 'checkbox', id: 'syncope_fem_lower_abd_pain', title: 'ปวดหน่วงหรือปวดบิดเกร็งบริเวณท้องน้อย', compact: true },
-          { kind: 'checkbox', id: 'syncope_fem_pv_bleeding', title: 'มีเลือดออกผิดปกติทางช่องคลอด', compact: true }
-        ])}
-      </div>
-      <div>
-        <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">วันแรกของประจำเดือนครั้งสุดท้าย (LMP)</label>
-        <input type="text" id="syncopeLmpDate" data-universal-date="true" placeholder="วว/ดด/ปปปป (dd/mm/yyyy)" class="w-full sm:w-72 bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-slate-800 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-medical-500 focus:bg-white placeholder:text-slate-400">
+        <div>
+          <span class="block text-xs font-semibold text-slate-700 mb-2">อาการทางสูตินรีเวชที่พบร่วม (เลือกได้หลายข้อ):</span>
+          ${renderSyncopeGrid('grid-cols-1 sm:grid-cols-2', [
+            { kind: 'checkbox', id: 'syncope_fem_lower_abd_pain', title: wrapSyncWords('ปวดหน่วง /', 'ปวดบิดท้องน้อย'), compact: true, bgWhite: true },
+            { kind: 'checkbox', id: 'syncope_fem_pv_bleeding', title: wrapSyncWords('เลือดออกผิดปกติ', 'ทางช่องคลอด'), compact: true, bgWhite: true }
+          ])}
+        </div>
+        <div class="max-w-xs">
+          <span class="block text-xs font-semibold text-slate-700 mb-1">วันแรกของประจำเดือนครั้งสุดท้าย (LMP):</span>
+          <input type="text" id="syncopeLmpDate" data-universal-date="true" placeholder="วว/ดด/ปปปป (dd/mm/yyyy)" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-slate-800 text-xs focus:outline-none focus:ring-2 focus:ring-medical-500">
+        </div>
       </div>
     </div>
   </div>
@@ -1098,34 +1220,45 @@ const SYNCOPE_CARD4_HTML = `
 
 const SYNCOPE_FORM_HTML = `
 <div id="syncopeQuestionnaireSection" class="hidden space-y-6">
-  <div data-cc-top-banner="syncope"><div class="flex flex-col gap-4">
-  <div class="p-4 bg-sky-50 border border-sky-200 rounded-2xl flex items-start space-x-3">
-    <i data-lucide="info" class="w-5 h-5 text-sky-700 mt-0.5 flex-shrink-0"></i>
-    <div class="text-xs text-sky-900 leading-relaxed space-y-1">
-      <div class="font-bold">ข้อแนะนำการดูแลความปลอดภัยเบื้องต้นระหว่างรอพบแพทย์</div>
-      <p>1. <strong>นั่งพักหรือนอนราบและห้ามลุกยืนเร็วๆ:</strong> หากยังรู้สึกหน้ามืดวิงเวียน ให้นอนราบหนุนขาสูงเล็กน้อย และห้ามเดินไปเข้าห้องน้ำตามลำพังเพื่อป้องกันการวูบล้มศีรษะกระแทกซ้ำ</p>
-      <p>2. <strong>งดน้ำและอาหารไว้ก่อนชั่วคราว:</strong> เพื่อความปลอดภัยเผื่อกรณีต้องตรวจพิเศษหรือให้การรักษาฉุกเฉิน</p>
-      <p>3. <strong>แจ้งพยาบาลหน้าห้องตรวจทันที:</strong> หากมีอาการ <strong>วูบซ้ำ เจ็บแน่นหน้าอก ใจสั่นรัว หายใจหอบเหนื่อย ปวดท้องรุนแรง ปากเบี้ยว แขนขาอ่อนแรง หรือเริ่มซึมลง</strong></p>
+  <div data-cc-top-banner="syncope">
+    <div class="p-4 bg-sky-50 border border-sky-200 rounded-2xl flex items-start space-x-3">
+      <i data-lucide="info" class="w-5 h-5 text-sky-700 mt-0.5 flex-shrink-0"></i>
+      <div class="text-xs text-sky-900 leading-relaxed space-y-1">
+        <div class="font-bold">ข้อแนะนำการดูแลความปลอดภัยเบื้องต้นระหว่างรอพบแพทย์</div>
+        <p>1. <strong>นั่งพักหรือนอนราบและห้ามลุกยืนเร็วๆ:</strong> หากยังรู้สึกหน้ามืดวิงเวียน ให้นอนราบหนุนขาสูงเล็กน้อย และห้ามเดินไปเข้าห้องน้ำตามลำพัง</p>
+        <p>2. <strong>งดน้ำและอาหารไว้ก่อนชั่วคราว:</strong> เพื่อความปลอดภัยเผื่อกรณีต้องตรวจพิเศษหรือให้การรักษาฉุกเฉิน</p>
+        <p>3. <strong>แจ้งพยาบาลหน้าห้องตรวจทันที:</strong> หากมีอาการ <strong>วูบซ้ำ เจ็บแน่นหน้าอก ใจสั่นรัว หอบเหนื่อย ปวดท้องรุนแรง ปากเบี้ยว อ่อนแรง หรือซึมลง</strong></p>
+      </div>
     </div>
   </div>
-  </div></div>
-
   ${SYNCOPE_CARD1_HTML}
   ${SYNCOPE_CARD2_HTML}
   ${SYNCOPE_CARD3_HTML}
   ${SYNCOPE_CARD4_HTML}
-
   <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
-    <div class="flex items-center space-x-3 mb-3 pb-3 border-b border-slate-100">
-      <div class="bg-medical-100 text-medical-700 p-2 rounded-xl"><i data-lucide="message-square-plus" class="w-5 h-5"></i></div>
+    <div class="flex items-center space-x-3 mb-3 pb-2 border-b border-slate-100">
+      <div class="bg-slate-100 text-slate-600 p-2 rounded-xl"><i data-lucide="message-square-plus" class="w-5 h-5"></i></div>
       <div>
         <h2 class="text-base font-bold text-slate-900">อาการอื่นๆ ที่ต้องการแจ้งเพิ่มเติม</h2>
-        <p class="text-xs text-slate-500 font-sans">Additional Symptoms or Concerns (ระบุอิสระ)</p>
+        <p class="text-xs text-slate-500">ระบุอาการอื่นๆ ที่ท่านมีหรือต้องการบอกแพทย์เพิ่มเติม (ถ้ามี)</p>
       </div>
     </div>
-    <textarea id="syncope_other_free" rows="2" placeholder="ระบุรายละเอียดหรือข้อสังเกตเพิ่มเติมที่ต้องการแจ้งแพทย์หรือพยาบาล..." class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-slate-800 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-medical-500 focus:bg-white placeholder:text-slate-400"></textarea>
+    <textarea id="syncope_other_free" rows="2" placeholder="ระบุรายละเอียดหรือข้อสังเกตเพิ่มเติม..." class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-slate-800 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-medical-500 focus:bg-white"></textarea>
   </div>
 </div>`;
+
+function makeSyncSeed(ov) {
+  return {
+    chief_complaint: 'syncope', chief_complaint_title: 'หมดสติ / วูบ / เป็นลม', status: 'waiting',
+    syncopeExactTimeUnknown: false, syncopeExactTime: '', syncopeExertionTiming: '', syncopeRestingPosition: '',
+    syncopePostureOtherText: '', syncopeDurationGte5mVal: '', syncopeEpisodeCount: 'single', syncopeEpisodeCountVal: 1,
+    syncope_prodrome_none: false, syncope_signs_none: false, syncope_post_none: false, syncope_risk_none: false,
+    syncopeFallInjury: 'no', syncope_fall_head_impact: false, syncope_fall_open_wound: false, syncope_fall_limb_pain: false,
+    syncopeFallInjuryDetailText: '', syncopePregnancyStatus: 'not_applicable', syncopePregnancyWeeks: '',
+    syncope_fem_lower_abd_pain: false, syncope_fem_pv_bleeding: false, syncopeLmpDate: '',
+    drugAllergy: 'ปฏิเสธ', otherSymptomsFree: '', ...ov
+  };
+}
 
 const syncopeModule = {
   id: 'syncope',
@@ -1137,27 +1270,17 @@ const syncopeModule = {
   getPmhSectionNumber: () => 5,
   doctorCcBadgeHtml: '<i data-lucide="sparkles" class="w-3 h-3 mr-1"></i> CC: หมดสติ / วูบ / เป็นลม (Syncope / TLOC)',
   dateFields: ['syncopeLmpDate'],
+  timeFields: ['syncopeExactTime'],
   branchIds: [
-    'syncopeExertionSubWrap',
-    'syncopeRestingSubWrap',
-    'syncopePostureOtherWrap',
-    'syncopeUnconsciousDurationWrap',
-    'syncopeDurationGte5mWrap',
-    'syncopeEpisodeCountWrap',
-    'syncopeMotorSubWrap',
-    'syncopeFallInjuryDetailWrap',
-    'syncopeFemaleSection',
-    'syncopePregnancyWeeksWrap'
+    'syncopeExactTimeWrap', 'syncopeExertionSubWrap', 'syncopeRestingSubWrap', 'syncopePostureOtherWrap',
+    'syncopeUnconsciousDurationWrap', 'syncopeDurationGte5mWrap', 'syncopeEpisodeCountWrap', 'syncopeMotorSubWrap',
+    'syncopeUnconsciousContextNotice', 'syncopePostSymptomsSectionWrap',
+    'syncopeFallInjuryDetailWrap', 'syncopeFemaleSection', 'syncopePregnancyWeeksWrap'
   ],
   inputIdsToClear: [
-    'syncopeDurationVal',
-    'syncopePostureOtherText',
-    'syncopeDurationGte5mVal',
-    'syncopeEpisodeCountVal',
-    'syncopeFallInjuryDetailText',
-    'syncopePregnancyWeeks',
-    'syncopeLmpDate',
-    'syncope_other_free'
+    'syncopeDurationVal', 'syncopeExactTime', 'syncopePostureOtherText', 'syncopeDurationGte5mVal',
+    'syncopeEpisodeCountVal', 'syncopeFallInjuryDetailText', 'syncopePregnancyWeeks',
+    'syncopeLmpDate', 'syncope_other_free'
   ],
   formHtml: SYNCOPE_FORM_HTML,
 
@@ -1192,30 +1315,25 @@ const syncopeModule = {
   },
 
   resetForm() {
-    clearSyncopeRadioGroup('syncopeReporter');
-    clearSyncopeRadioGroup('syncopePosture');
-    clearSyncopeRadioGroup('syncopeExertionTiming');
-    clearSyncopeRadioGroup('syncopeRestingPosition');
-    clearSyncopeRadioGroup('syncopeConsciousnessLevel');
-    clearSyncopeRadioGroup('syncopeUnconsciousDuration');
-    clearSyncopeRadioGroup('syncopeEpisodeCount');
-    clearSyncopeRadioGroup('syncopeMotorCategory');
-    clearSyncopeRadioGroup('syncopeMotorSign');
-    clearSyncopeRadioGroup('syncopeRecoveryPattern');
-    clearSyncopeRadioGroup('syncopeFallInjury');
-    clearSyncopeRadioGroup('syncopePregnancyStatus');
+    [
+      'syncopeReporter', 'syncopePosture', 'syncopeExertionTiming', 'syncopeRestingPosition',
+      'syncopeConsciousnessLevel', 'syncopeUnconsciousDuration', 'syncopeEpisodeCount',
+      'syncopeMotorCategory', 'syncopeMotorSign', 'syncopeRecoveryPattern',
+      'syncopeFallInjury', 'syncopePregnancyStatus'
+    ].forEach(clearSyncopeRadioGroup);
     document.querySelectorAll('input[name="syncopeProdromes"], input[name="syncopeSigns"], input[name="syncopePostSymptoms"], input[name="syncopeRiskFactors"]').forEach(cb => {
       cb.checked = false;
     });
     clearSyncopeCheckboxes([
-      'syncope_fall_head_impact',
-      'syncope_fall_open_wound',
-      'syncope_fall_limb_pain',
-      'syncope_fem_lower_abd_pain',
-      'syncope_fem_pv_bleeding'
+      'syncopeExactTimeUnknown', 'syncope_prodrome_none', 'syncope_signs_none',
+      'syncope_post_none', 'syncope_risk_none', 'syncope_fall_head_impact',
+      'syncope_fall_open_wound', 'syncope_fall_limb_pain',
+      'syncope_fem_lower_abd_pain', 'syncope_fem_pv_bleeding'
     ]);
     this.branchIds.forEach(bId => toggleSyncopeBranch(bId, false));
+    toggleSyncopeBranch('syncopeExactTimeWrap', true);
     toggleSyncopeBranch('syncopePostSymptomsSectionWrap', true);
+    ['syncopeRecOptWrap_rapid', 'syncopeRecOptWrap_confused'].forEach(id => toggleSyncopeBranch(id, true));
     this.inputIdsToClear.forEach(iId => {
       const el = document.getElementById(iId);
       if (el) el.value = '';
@@ -1225,50 +1343,18 @@ const syncopeModule = {
   },
 
   seedPatients: [
-    {
-      id: 'case-095',
-      queue_number: 'A-095',
-      hn: '6709841',
-      name: 'นายเกริกเกียรติ สว่างวงศ์',
-      age: 48,
-      gender: 'ชาย',
-      chief_complaint: 'syncope',
-      chief_complaint_title: 'หมดสติ / วูบ / เป็นลม',
-      status: 'waiting',
-      timestamp: '2026-10-26T02:11:26.425Z',
-      durationVal: 1,
-      durationUnit: 'hours',
-      syncopeReporter: 'both_patient_witness',
-      syncopePosture: 'during_exertion',
-      syncopeExertionTiming: 'during_active_exertion',
-      syncopeRestingPosition: '',
-      syncopePostureOtherText: '',
-      syncopeConsciousnessLevel: 'true_syncope',
-      syncopeUnconsciousDuration: 'brief_seconds',
-      syncopeDurationGte5mVal: '',
-      syncopeEpisodeCount: 'single',
-      syncopeEpisodeCountVal: 1,
-      syncopeProdromes: ['sudden_palpitation', 'chest_pain_pressure'],
-      syncopeMotorCategory: 'abnormal_movements',
-      syncopeMotorSign: 'brief_myoclonic_jerks',
-      syncopeSigns: ['syncope_marked_pallor_sweat'],
-      syncopeRecoveryPattern: 'rapid_spontaneous',
-      syncopePostSymptoms: ['post_ongoing_chestpain'],
-      syncopeFallInjury: 'yes',
-      syncope_fall_head_impact: true,
-      syncope_fall_open_wound: true,
-      syncope_fall_limb_pain: false,
-      syncopeFallInjuryDetailText: 'คิ้วขวาแตก',
-      syncopeRiskFactors: ['known_heart_disease', 'family_sudden_death_young'],
-      syncopePregnancyStatus: 'not_applicable',
-      syncopePregnancyWeeks: '',
-      syncope_fem_lower_abd_pain: false,
-      syncope_fem_pv_bleeding: false,
-      syncopeLmpDate: '',
+    makeSyncSeed({
+      id: 'case-095', queue_number: 'A-095', hn: '6709841', name: 'นายเกริกเกียรติ สว่างวงศ์', age: 48, gender: 'ชาย',
+      timestamp: '2026-10-26T02:11:26.425Z', durationVal: 1, durationUnit: 'hours', syncopeExactTime: '08:15',
+      syncopeReporter: 'both_patient_witness', syncopePosture: 'during_exertion', syncopeExertionTiming: 'during_active_exertion',
+      syncopeConsciousnessLevel: 'true_syncope', syncopeUnconsciousDuration: 'brief_seconds',
+      syncopeProdromes: ['sudden_palpitation', 'chest_pain_pressure'], syncopeMotorCategory: 'abnormal_movements',
+      syncopeMotorSign: 'brief_myoclonic_jerks', syncopeSigns: ['syncope_marked_pallor_sweat'],
+      syncopeRecoveryPattern: 'rapid_spontaneous', syncopePostSymptoms: ['post_ongoing_chestpain'],
+      syncopeFallInjury: 'yes', syncope_fall_head_impact: true, syncope_fall_open_wound: true,
+      syncopeFallInjuryDetailText: 'คิ้วขวาแตก', syncopeRiskFactors: ['known_heart_disease', 'family_sudden_death_young'],
       otherSymptomsFree: 'หมดสติขณะกำลังวิ่งจ็อกกิ้งรอบสวนสาธารณะ มีอาการใจสั่นรัวและแน่นหน้าอกนำ ล้มหน้ากระแทกพื้นมีแผลคิ้วแตก',
-      hospRecordStatus: 'ratchaburi',
-      underlying: ['โรคหลอดเลือดหัวใจตีบ (CAD s/p PCI 2 ปีก่อน)', 'ไขมันในเลือดสูง (DLP)'],
-      drugAllergy: 'ปฏิเสธ',
+      hospRecordStatus: 'ratchaburi', underlying: ['โรคหลอดเลือดหัวใจตีบ (CAD s/p PCI 2 ปีก่อน)', 'ไขมันในเลือดสูง (DLP)'],
       currentMeds: 'Aspirin 81 mg 1x1 pc, Atorvastatin 40 mg 1x1 hs, Metoprolol 50 mg 1/2x2 pc',
       doctor_notes: {
         additional_hpi: 'ชาย 48 ปี ประวัติ CAD เคยทำบอลลูน 2 ปีก่อน ขณะวิ่งจ็อกกิ้ง 15 นาที เกิดใจสั่นรัวและแน่นหน้าอกร้าวกรามซ้าย หน้ามืดหมดสติล้มคิ้วขวาแตก กระตุกสั้นๆ 3-4 ครั้ง 10 วินาที ฟื้นสติไม่งงแต่ยังแน่นหน้าอกต่อเนื่อง',
@@ -1276,103 +1362,39 @@ const syncopeModule = {
         preliminary_dx: 'Exertional Cardiac Syncope (Ventricular Arrhythmia / ACS) with Facial Laceration',
         plan: 'Telemetry monitor, STAT 12-lead EKG (NSVT / ST depression V4-V6), Hs-Troponin-I, Electrolytes, urgent Cardiology consult & CCU'
       }
-    },
-    {
-      id: 'case-096',
-      queue_number: 'A-096',
-      hn: '6709952',
-      name: 'น.ส.แพรวพรรณ โสภณพิทักษ์',
-      age: 21,
-      gender: 'หญิง',
-      chief_complaint: 'syncope',
-      chief_complaint_title: 'หมดสติ / วูบ / เป็นลม',
-      status: 'waiting',
-      timestamp: '2026-10-26T01:56:26.425Z',
-      durationVal: 1,
-      durationUnit: 'hours',
-      syncopeReporter: 'both_patient_witness',
-      syncopePosture: 'prolonged_standing',
-      syncopeExertionTiming: '',
-      syncopeRestingPosition: '',
-      syncopePostureOtherText: '',
-      syncopeConsciousnessLevel: 'true_syncope',
-      syncopeUnconsciousDuration: 'brief_seconds',
-      syncopeDurationGte5mVal: '',
-      syncopeEpisodeCount: 'single',
-      syncopeEpisodeCountVal: 1,
+    }),
+    makeSyncSeed({
+      id: 'case-096', queue_number: 'A-096', hn: '6709952', name: 'น.ส.แพรวพรรณ โสภณพิทักษ์', age: 21, gender: 'หญิง',
+      timestamp: '2026-10-26T01:56:26.425Z', durationVal: 1, durationUnit: 'hours', syncopeExactTime: '08:05',
+      syncopeReporter: 'both_patient_witness', syncopePosture: 'prolonged_standing',
+      syncopeConsciousnessLevel: 'true_syncope', syncopeUnconsciousDuration: 'brief_seconds',
       syncopeProdromes: ['lightheaded_tunnel_vision', 'cold_sweat_pallor_nausea'],
-      syncopeMotorCategory: 'limp_flaccid',
-      syncopeMotorSign: 'limp_flaccid',
-      syncopeSigns: ['syncope_marked_pallor_sweat'],
-      syncopeRecoveryPattern: 'rapid_spontaneous',
-      syncopePostSymptoms: ['post_none_asymptomatic'],
-      syncopeFallInjury: 'no',
-      syncope_fall_head_impact: false,
-      syncope_fall_open_wound: false,
-      syncope_fall_limb_pain: false,
-      syncopeFallInjuryDetailText: '',
-      syncopeRiskFactors: ['none_unremarkable'],
-      syncopePregnancyStatus: 'not_pregnant',
-      syncopePregnancyWeeks: '',
-      syncope_fem_lower_abd_pain: false,
-      syncope_fem_pv_bleeding: false,
-      syncopeLmpDate: '10/10/2026',
+      syncopeMotorCategory: 'limp_flaccid', syncopeMotorSign: 'limp_flaccid',
+      syncopeSigns: ['syncope_marked_pallor_sweat'], syncopeRecoveryPattern: 'rapid_spontaneous',
+      syncope_post_none: true, syncopePostSymptoms: ['post_none_asymptomatic'],
+      syncope_risk_none: true, syncopeRiskFactors: ['none_unremarkable'],
+      syncopePregnancyStatus: 'not_pregnant', syncopeLmpDate: '10/10/2026',
       otherSymptomsFree: 'ยืนเข้าแถวกลางแดดนาน ร้อนอบอ้าว เพื่อนช่วยพยุงตัวลง ไม่ศีรษะกระแทก',
-      hospRecordStatus: 'self',
-      underlying: ['ปฏิเสธ'],
-      drugAllergy: 'ปฏิเสธ',
-      currentMeds: 'ไม่มี',
+      hospRecordStatus: 'self', underlying: ['ปฏิเสธ'], currentMeds: 'ไม่มี',
       doctor_notes: {
         additional_hpi: 'หญิง 21 ปี ยืนเข้าแถวกลางแดดเกือบ 45 นาที อากาศร้อน ดื่มน้ำน้อย หน้ามืดตาพร่า เหงื่อแตกตัวเย็น แล้วตัวอ่อนล้มพับ เพื่อนประคองลง หมดสติ 15-20 วินาที ฟื้นรู้เรื่องทันที ไม่งง ไม่มีบาดเจ็บ',
         physical_exam: 'BT 36.8 C, PR 72/min, RR 16/min, BP 106/68 mmHg, SpO2 99% RA. No orthostatic drop. Neuro intact, no trauma.',
         preliminary_dx: 'Simple Vasovagal / Reflex Syncope (Low Risk)',
         plan: 'Reassurance, ORS hydration, 12-lead EKG baseline normal, counterpressure maneuver education, discharge'
       }
-    },
-    {
-      id: 'case-097',
-      queue_number: 'A-097',
-      hn: '6710063',
-      name: 'นายอัครเดช บวรเกียรติ',
-      age: 33,
-      gender: 'ชาย',
-      chief_complaint: 'syncope',
-      chief_complaint_title: 'หมดสติ / วูบ / เป็นลม',
-      status: 'waiting',
-      timestamp: '2026-10-26T01:31:26.425Z',
-      durationVal: 2,
-      durationUnit: 'hours',
-      syncopeReporter: 'both_patient_witness',
-      syncopePosture: 'supine_or_resting',
-      syncopeExertionTiming: '',
-      syncopeRestingPosition: 'while_sitting_resting',
-      syncopePostureOtherText: '',
-      syncopeConsciousnessLevel: 'true_syncope',
-      syncopeUnconsciousDuration: 'typical_minutes',
-      syncopeDurationGte5mVal: '',
-      syncopeEpisodeCount: 'single',
-      syncopeEpisodeCountVal: 1,
-      syncopeProdromes: ['aura_epigastric_olfactory'],
-      syncopeMotorCategory: 'abnormal_movements',
+    }),
+    makeSyncSeed({
+      id: 'case-097', queue_number: 'A-097', hn: '6710063', name: 'นายอัครเดช บวรเกียรติ', age: 33, gender: 'ชาย',
+      timestamp: '2026-10-26T01:31:26.425Z', durationVal: 2, durationUnit: 'hours', syncopeExactTimeUnknown: true,
+      syncopeReporter: 'both_patient_witness', syncopePosture: 'supine_or_resting', syncopeRestingPosition: 'while_sitting_resting',
+      syncopeConsciousnessLevel: 'true_syncope', syncopeUnconsciousDuration: 'typical_minutes',
+      syncopeProdromes: ['aura_epigastric_olfactory'], syncopeMotorCategory: 'abnormal_movements',
       syncopeMotorSign: 'generalized_tonic_clonic',
       syncopeSigns: ['syncope_cyanosis_apnea', 'syncope_lateral_tongue_bite', 'syncope_incontinence', 'syncope_eyes_open_deviated'],
-      syncopeRecoveryPattern: 'prolonged_confusion',
-      syncopePostSymptoms: ['post_diffuse_muscle_pain', 'post_severe_headache'],
-      syncopeFallInjury: 'no',
-      syncope_fall_head_impact: false,
-      syncope_fall_open_wound: false,
-      syncope_fall_limb_pain: false,
-      syncopeFallInjuryDetailText: '',
+      syncopeRecoveryPattern: 'prolonged_confusion', syncopePostSymptoms: ['post_diffuse_muscle_pain', 'post_severe_headache'],
       syncopeRiskFactors: ['known_epilepsy_seizure'],
-      syncopePregnancyStatus: 'not_applicable',
-      syncopePregnancyWeeks: '',
-      syncope_fem_lower_abd_pain: false,
-      syncope_fem_pv_bleeding: false,
-      syncopeLmpDate: '',
       otherSymptomsFree: 'หมดสติขณะนั่งทำงาน เพื่อนเห็นเกร็งกระตุกทั้งตัว ตาเหลือก กัดลิ้นเลือดออก มีปัสสาวะราด ฟื้นแล้วงงมาก',
-      hospRecordStatus: 'self',
-      underlying: ['โรคลมชัก (Epilepsy - ขาดยา 3 วัน)'],
-      drugAllergy: 'ปฏิเสธ',
+      hospRecordStatus: 'self', underlying: ['โรคลมชัก (Epilepsy - ขาดยา 3 วัน)'],
       currentMeds: 'Sodium Valproate 500 mg 1x2 pc (ขาดยา 3 วัน)',
       doctor_notes: {
         additional_hpi: 'ชาย 33 ปี U/D Epilepsy ขาดยากันชัก 3 วัน ขณะนั่งทำงานรู้สึกโหวงในท้องลอยขึ้นคอและได้กลิ่นไหม้ แล้วชักเกร็งกระตุกทั้งตัว 2 นาที ตาเหลือก กัดลิ้น ปัสสาวะราด หลังฟื้นสับสนหลับลึกนานกว่า 20 นาที',
@@ -1380,62 +1402,32 @@ const syncopeModule = {
         preliminary_dx: 'Generalized Tonic-Clonic Seizure (Breakthrough due to missed Valproate)',
         plan: 'Airway monitoring, CBC, Electrolytes, Ca, Mg, Valproic acid level, IV Valproate loading, compliance counseling'
       }
-    },
-    {
-      id: 'case-098',
-      queue_number: 'A-098',
-      hn: '6710174',
-      name: 'น.ส.กมลวรรณ ธนสารเจริญ',
-      age: 27,
-      gender: 'หญิง',
-      chief_complaint: 'syncope',
-      chief_complaint_title: 'หมดสติ / วูบ / เป็นลม',
-      status: 'waiting',
-      timestamp: '2026-10-26T02:06:26.425Z',
-      durationVal: 2,
-      durationUnit: 'hours',
-      syncopeReporter: 'both_patient_witness',
-      syncopePosture: 'sudden_standing',
-      syncopeExertionTiming: '',
-      syncopeRestingPosition: '',
-      syncopePostureOtherText: '',
-      syncopeConsciousnessLevel: 'true_syncope',
-      syncopeUnconsciousDuration: 'brief_seconds',
-      syncopeDurationGte5mVal: '',
-      syncopeEpisodeCount: 'single',
-      syncopeEpisodeCountVal: 1,
+    }),
+    makeSyncSeed({
+      id: 'case-098', queue_number: 'A-098', hn: '6710174', name: 'น.ส.กมลวรรณ ธนสารเจริญ', age: 27, gender: 'หญิง',
+      timestamp: '2026-10-26T02:06:26.425Z', durationVal: 2, durationUnit: 'hours', syncopeExactTime: '07:45',
+      syncopeReporter: 'both_patient_witness', syncopePosture: 'sudden_standing',
+      syncopeConsciousnessLevel: 'true_syncope', syncopeUnconsciousDuration: 'brief_seconds',
       syncopeProdromes: ['lightheaded_tunnel_vision', 'cold_sweat_pallor_nausea'],
-      syncopeMotorCategory: 'limp_flaccid',
-      syncopeMotorSign: 'limp_flaccid',
-      syncopeSigns: ['syncope_marked_pallor_sweat'],
-      syncopeRecoveryPattern: 'rapid_spontaneous',
+      syncopeMotorCategory: 'limp_flaccid', syncopeMotorSign: 'limp_flaccid',
+      syncopeSigns: ['syncope_marked_pallor_sweat'], syncopeRecoveryPattern: 'rapid_spontaneous',
       syncopePostSymptoms: ['post_severe_abdpain_melena', 'post_orthostatic_intolerance'],
-      syncopeFallInjury: 'no',
-      syncope_fall_head_impact: false,
-      syncope_fall_open_wound: false,
-      syncope_fall_limb_pain: false,
-      syncopeFallInjuryDetailText: '',
-      syncopeRiskFactors: [],
-      syncopePregnancyStatus: 'missed_period',
-      syncopePregnancyWeeks: '',
-      syncope_fem_lower_abd_pain: true,
-      syncope_fem_pv_bleeding: true,
-      syncopeLmpDate: '12/09/2026',
+      syncopeRiskFactors: [], syncopePregnancyStatus: 'missed_period',
+      syncope_fem_lower_abd_pain: true, syncope_fem_pv_bleeding: true, syncopeLmpDate: '12/09/2026',
       otherSymptomsFree: 'ปวดท้องน้อยรุนแรงร้าวสะบักขวา ขาดประจำเดือน 6 สัปดาห์ ลุกจากเตียงแล้ววูบล้ม หน้ามืดซ้ำตลอดเวลานั่ง',
-      hospRecordStatus: 'self',
-      underlying: ['ปฏิเสธ'],
-      drugAllergy: 'ปฏิเสธ',
-      currentMeds: 'ไม่มี',
+      hospRecordStatus: 'self', underlying: ['ปฏิเสธ'], currentMeds: 'ไม่มี',
       doctor_notes: {
         additional_hpi: 'หญิง 27 ปี ขาดประจำเดือน 6 สัปดาห์ ปวดบิดท้องน้อยขวาร้าวสะบักขวา ลุกยืนแล้วหน้ามืดเหงื่อแตกวูบหมดสติ 20-30 วินาที ฟื้นแล้วยังหน้ามืดเมื่อลุกนั่ง มีเลือดออกกะปริบกะปรอยทางช่องคลอด',
         physical_exam: 'BT 36.4 C, PR 118/min, BP 86/52 mmHg, SpO2 97% RA. Marked pallor, RLQ & suprapubic guarding with rebound tenderness.',
         preliminary_dx: 'Hemorrhagic Shock secondary to Ruptured Ectopic Pregnancy',
         plan: 'Code Shock Red, 2 large-bore IV NSS bolus, STAT Urine Pregnancy Test, FAST POCUS (hemoperitoneum), Crossmatch 4U PRC, STAT OB-GYN'
       }
-    }
+    })
   ],
 
   hydrateForm(patient) {
+    if (!patient) return;
+    this.resetForm();
     const setVal = (id, val) => {
       const el = document.getElementById(id);
       if (el) el.value = val !== undefined && val !== null ? val : '';
@@ -1448,6 +1440,9 @@ const syncopeModule = {
     setVal('syncopeDurationVal', patient.durationVal || '');
     const unitEl = document.getElementById('syncopeDurationUnit');
     if (unitEl) unitEl.value = patient.durationUnit || 'hours';
+    setChk('syncopeExactTimeUnknown', patient.syncopeExactTimeUnknown);
+    setVal('syncopeExactTime', patient.syncopeExactTime || '');
+    handleSyncopeExactTimeUnknownChange();
 
     setSyncopeRadioChecked('syncopeReporter', patient.syncopeReporter);
     setSyncopeRadioChecked('syncopePosture', patient.syncopePosture);
@@ -1479,8 +1474,11 @@ const syncopeModule = {
       setVal('syncopeEpisodeCountVal', patient.syncopeEpisodeCountVal || '');
     }
 
+    const prodArr = Array.isArray(patient.syncopeProdromes) ? patient.syncopeProdromes : [];
+    const prodNone = Boolean(patient.syncope_prodrome_none || prodArr.includes('none_sudden'));
+    setChk('syncope_prodrome_none', prodNone);
     document.querySelectorAll('input[name="syncopeProdromes"]').forEach(cb => {
-      cb.checked = Array.isArray(patient.syncopeProdromes) && patient.syncopeProdromes.includes(cb.value);
+      cb.checked = !prodNone && prodArr.includes(cb.value);
     });
 
     setSyncopeRadioChecked('syncopeMotorCategory', patient.syncopeMotorCategory);
@@ -1490,22 +1488,25 @@ const syncopeModule = {
     }
 
     const signsArr = Array.isArray(patient.syncopeSigns) ? patient.syncopeSigns : [];
+    setChk('syncope_signs_none', patient.syncope_signs_none);
     document.querySelectorAll('input[name="syncopeSigns"]').forEach(cb => {
-      cb.checked = signsArr.includes(cb.value);
+      cb.checked = !patient.syncope_signs_none && signsArr.includes(cb.value);
     });
 
     setSyncopeRadioChecked('syncopeRecoveryPattern', patient.syncopeRecoveryPattern);
     updateSyncopeRecoveryContext();
 
     const postArr = Array.isArray(patient.syncopePostSymptoms) ? patient.syncopePostSymptoms : [];
+    const postNone = Boolean(patient.syncope_post_none || postArr.includes('post_none_asymptomatic'));
+    setChk('syncope_post_none', postNone);
     document.querySelectorAll('input[name="syncopePostSymptoms"]').forEach(cb => {
-      cb.checked = postArr.includes(cb.value);
+      cb.checked = !postNone && postArr.includes(cb.value);
     });
 
-    // Fall injury hydration (supporting explicit field + legacy head_facial sign)
-    const derivedFall = patient.syncopeFallInjury
+    // Zero Default Bias (P-AP14): Never default missing syncopeFallInjury to 'no'
+    const derivedFall = patient.syncopeFallInjury && patient.syncopeFallInjury !== 'unspecified'
       ? patient.syncopeFallInjury
-      : (signsArr.includes('syncope_head_facial_injury') ? 'yes' : 'no');
+      : (signsArr.includes('syncope_head_facial_injury') ? 'yes' : '');
     if (derivedFall === 'yes' || derivedFall === 'no') {
       setSyncopeRadioChecked('syncopeFallInjury', derivedFall);
     }
@@ -1518,11 +1519,12 @@ const syncopeModule = {
     }
 
     const risksArr = Array.isArray(patient.syncopeRiskFactors) ? patient.syncopeRiskFactors : [];
+    const riskNone = Boolean(patient.syncope_risk_none || risksArr.includes('none_unremarkable'));
+    setChk('syncope_risk_none', riskNone);
     document.querySelectorAll('input[name="syncopeRiskFactors"]').forEach(cb => {
-      cb.checked = risksArr.includes(cb.value);
+      cb.checked = !riskNone && risksArr.includes(cb.value);
     });
 
-    // Female section (C-AP13)
     const isFem = patient.gender === 'หญิง' || isSyncopeFemaleTitle();
     syncSyncopeFemaleSection(isFem);
     if (isFem) {
@@ -1537,9 +1539,7 @@ const syncopeModule = {
         setSyncopeRadioChecked('syncopePregnancyStatus', pregStat);
       }
       handleSyncopePregnancyChange();
-      if (pregStat === 'pregnant') {
-        setVal('syncopePregnancyWeeks', patient.syncopePregnancyWeeks || '');
-      }
+      if (pregStat === 'pregnant') setVal('syncopePregnancyWeeks', patient.syncopePregnancyWeeks || '');
       setChk('syncope_fem_lower_abd_pain', patient.syncope_fem_lower_abd_pain);
       setChk('syncope_fem_pv_bleeding', patient.syncope_fem_pv_bleeding);
       setVal('syncopeLmpDate', patient.syncopeLmpDate || '');
@@ -1548,85 +1548,87 @@ const syncopeModule = {
     setVal('syncope_other_free', patient.otherSymptomsFree || '');
   },
 
-  collectIntake(ctx) {
+  collectIntake(ctx = {}) {
     const {
-      recordId,
-      queueNumber,
-      randomHn,
-      patientName,
-      patientAge,
-      gender,
-      recordStatus,
-      hospRecordStatus,
-      underlying,
-      drugAllergy,
-      currentMeds,
-      preservedDoctorNotes,
-      otherSymptomsFree
+      recordId, queueNumber, randomHn, patientName, patientAge, gender,
+      recordStatus, hospRecordStatus, underlying, drugAllergy, currentMeds,
+      preservedDoctorNotes, otherSymptomsFree
     } = ctx;
 
     const rawDur = parseFloat(document.getElementById('syncopeDurationVal')?.value);
     const durationVal = (!isNaN(rawDur) && rawDur > 0) ? rawDur : null;
     const durationUnit = document.getElementById('syncopeDurationUnit')?.value || 'hours';
+    const syncopeExactTimeUnknown = Boolean(document.getElementById('syncopeExactTimeUnknown')?.checked);
+    const syncopeExactTime = syncopeExactTimeUnknown ? '' : (document.getElementById('syncopeExactTime')?.value?.trim() || '');
 
     const syncopeReporter = getSyncopeRadioValue('syncopeReporter') || 'unspecified';
     const syncopePosture = getSyncopeRadioValue('syncopePosture') || 'unspecified';
-    const syncopeExertionTiming = syncopePosture === 'during_exertion'
-      ? (getSyncopeRadioValue('syncopeExertionTiming') || 'during_active_exertion')
-      : '';
-    const syncopeRestingPosition = syncopePosture === 'supine_or_resting'
-      ? (getSyncopeRadioValue('syncopeRestingPosition') || 'while_lying_supine')
-      : '';
-    const syncopePostureOtherText = syncopePosture === 'other'
-      ? (document.getElementById('syncopePostureOtherText')?.value.trim() || '')
-      : '';
+    const syncopeExertionTiming = syncopePosture === 'during_exertion' ? (getSyncopeRadioValue('syncopeExertionTiming') || '') : '';
+    const syncopeRestingPosition = syncopePosture === 'supine_or_resting' ? (getSyncopeRadioValue('syncopeRestingPosition') || '') : '';
+    const syncopePostureOtherText = syncopePosture === 'other' ? (document.getElementById('syncopePostureOtherText')?.value?.trim() || '') : '';
 
     const syncopeConsciousnessLevel = getSyncopeRadioValue('syncopeConsciousnessLevel') || 'unspecified';
     const syncopeUnconsciousDuration = syncopeConsciousnessLevel === 'true_syncope'
       ? (getSyncopeRadioValue('syncopeUnconsciousDuration') || 'unspecified')
-      : 'brief_seconds';
+      : (syncopeConsciousnessLevel === 'near_syncope' ? 'not_applicable' : 'unspecified');
     const syncopeDurationGte5mVal = (syncopeConsciousnessLevel === 'true_syncope' && syncopeUnconsciousDuration === 'prolonged_gte_5m')
       ? (parseInt(document.getElementById('syncopeDurationGte5mVal')?.value, 10) || null)
       : null;
 
     const syncopeEpisodeCount = getSyncopeRadioValue('syncopeEpisodeCount') || 'unspecified';
+    const rawEpCnt = parseInt(document.getElementById('syncopeEpisodeCountVal')?.value, 10);
     const syncopeEpisodeCountVal = syncopeEpisodeCount === 'multiple_cluster'
-      ? (parseInt(document.getElementById('syncopeEpisodeCountVal')?.value, 10) || 2)
-      : 1;
+      ? (!isNaN(rawEpCnt) && rawEpCnt >= 2 ? rawEpCnt : null)
+      : (syncopeEpisodeCount === 'single' ? 1 : null);
 
-    const syncopeProdromes = Array.from(document.querySelectorAll('input[name="syncopeProdromes"]:checked')).map(cb => cb.value);
+    const syncope_prodrome_none = Boolean(document.getElementById('syncope_prodrome_none')?.checked);
+    const checkedProdromes = Array.from(document.querySelectorAll('input[name="syncopeProdromes"]:checked')).map(cb => cb.value);
+    const syncopeProdromes = syncope_prodrome_none ? ['none_sudden'] : checkedProdromes;
+
     const syncopeMotorCategory = getSyncopeRadioValue('syncopeMotorCategory') || 'unspecified';
     const syncopeMotorSign = syncopeMotorCategory === 'abnormal_movements'
-      ? (getSyncopeRadioValue('syncopeMotorSign') || 'unknown_unobserved')
+      ? (getSyncopeRadioValue('syncopeMotorSign') || 'unspecified')
       : (syncopeMotorCategory === 'limp_flaccid' ? 'limp_flaccid' : 'unspecified');
 
-    const syncopeSigns = Array.from(document.querySelectorAll('input[name="syncopeSigns"]:checked')).map(cb => cb.value);
+    const syncope_signs_none = Boolean(document.getElementById('syncope_signs_none')?.checked);
+    const syncopeSigns = syncope_signs_none
+      ? []
+      : Array.from(document.querySelectorAll('input[name="syncopeSigns"]:checked')).map(cb => cb.value);
 
     const syncopeRecoveryPattern = getSyncopeRadioValue('syncopeRecoveryPattern') || 'unspecified';
     const stillUnconscious = (syncopeConsciousnessLevel === 'true_syncope' && syncopeUnconsciousDuration === 'continuous_unconscious') ||
       syncopeRecoveryPattern === 'persistent_drowsy_coma';
+    const syncope_post_none = !stillUnconscious && Boolean(document.getElementById('syncope_post_none')?.checked);
     const syncopePostSymptoms = stillUnconscious
       ? []
-      : Array.from(document.querySelectorAll('input[name="syncopePostSymptoms"]:checked')).map(cb => cb.value);
+      : (syncope_post_none
+        ? ['post_none_asymptomatic']
+        : Array.from(document.querySelectorAll('input[name="syncopePostSymptoms"]:checked')).map(cb => cb.value));
 
     const syncopeFallInjury = getSyncopeRadioValue('syncopeFallInjury') || 'unspecified';
-    const syncope_fall_head_impact = syncopeFallInjury === 'yes' && (document.getElementById('syncope_fall_head_impact')?.checked || false);
-    const syncope_fall_open_wound = syncopeFallInjury === 'yes' && (document.getElementById('syncope_fall_open_wound')?.checked || false);
-    const syncope_fall_limb_pain = syncopeFallInjury === 'yes' && (document.getElementById('syncope_fall_limb_pain')?.checked || false);
+    const syncope_fall_head_impact = syncopeFallInjury === 'yes' && Boolean(document.getElementById('syncope_fall_head_impact')?.checked);
+    const syncope_fall_open_wound = syncopeFallInjury === 'yes' && Boolean(document.getElementById('syncope_fall_open_wound')?.checked);
+    const syncope_fall_limb_pain = syncopeFallInjury === 'yes' && Boolean(document.getElementById('syncope_fall_limb_pain')?.checked);
     const syncopeFallInjuryDetailText = syncopeFallInjury === 'yes'
-      ? (document.getElementById('syncopeFallInjuryDetailText')?.value.trim() || '')
+      ? (document.getElementById('syncopeFallInjuryDetailText')?.value?.trim() || '')
       : '';
 
-    const syncopeRiskFactors = Array.from(document.querySelectorAll('input[name="syncopeRiskFactors"]:checked')).map(cb => cb.value);
+    const syncope_risk_none = Boolean(document.getElementById('syncope_risk_none')?.checked);
+    const syncopeRiskFactors = syncope_risk_none
+      ? ['none_unremarkable']
+      : Array.from(document.querySelectorAll('input[name="syncopeRiskFactors"]:checked')).map(cb => cb.value);
 
     const isFem = gender === 'หญิง' || isSyncopeFemaleTitle();
     const syncopePregnancyStatus = isFem ? (getSyncopeRadioValue('syncopePregnancyStatus') || '') : 'not_applicable';
     const syncopePregnancyWeeks = (isFem && syncopePregnancyStatus === 'pregnant')
-      ? (document.getElementById('syncopePregnancyWeeks')?.value.trim() || '')
+      ? (document.getElementById('syncopePregnancyWeeks')?.value?.trim() || '')
       : '';
-    const syncope_fem_lower_abd_pain = isFem && (document.getElementById('syncope_fem_lower_abd_pain')?.checked || false);
-    const syncope_fem_pv_bleeding = isFem && (document.getElementById('syncope_fem_pv_bleeding')?.checked || false);
-    const syncopeLmpDate = isFem ? (document.getElementById('syncopeLmpDate')?.value.trim() || '') : '';
+    const syncope_fem_lower_abd_pain = isFem && Boolean(document.getElementById('syncope_fem_lower_abd_pain')?.checked);
+    const syncope_fem_pv_bleeding = isFem && Boolean(document.getElementById('syncope_fem_pv_bleeding')?.checked);
+    const syncopeLmpDate = isFem ? (document.getElementById('syncopeLmpDate')?.value?.trim() || '') : '';
+
+    const freeBoxVal = document.getElementById('syncope_other_free')?.value?.trim() || '';
+    const mergedFree = (otherSymptomsFree && String(otherSymptomsFree).trim()) || freeBoxVal;
 
     return {
       id: recordId,
@@ -1634,13 +1636,15 @@ const syncopeModule = {
       hn: randomHn,
       name: patientName,
       age: patientAge,
-      gender: gender,
+      gender,
       chief_complaint: 'syncope',
       chief_complaint_title: 'หมดสติ / วูบ / เป็นลม',
       status: recordStatus,
       timestamp: new Date().toISOString(),
       durationVal,
       durationUnit,
+      syncopeExactTimeUnknown,
+      syncopeExactTime,
       syncopeReporter,
       syncopePosture,
       syncopeExertionTiming,
@@ -1651,24 +1655,28 @@ const syncopeModule = {
       syncopeDurationGte5mVal,
       syncopeEpisodeCount,
       syncopeEpisodeCountVal,
+      syncope_prodrome_none,
       syncopeProdromes,
       syncopeMotorCategory,
       syncopeMotorSign,
+      syncope_signs_none,
       syncopeSigns,
       syncopeRecoveryPattern,
+      syncope_post_none,
       syncopePostSymptoms,
       syncopeFallInjury,
       syncope_fall_head_impact,
       syncope_fall_open_wound,
       syncope_fall_limb_pain,
       syncopeFallInjuryDetailText,
+      syncope_risk_none,
       syncopeRiskFactors,
       syncopePregnancyStatus,
       syncopePregnancyWeeks,
       syncope_fem_lower_abd_pain,
       syncope_fem_pv_bleeding,
       syncopeLmpDate,
-      otherSymptomsFree: otherSymptomsFree || '',
+      otherSymptomsFree: mergedFree,
       hospRecordStatus: hospRecordStatus || 'unspecified',
       underlying: underlying && underlying.length > 0 ? underlying : ((hospRecordStatus === 'self' || hospRecordStatus === 'additional') ? ['ปฏิเสธ'] : []),
       drugAllergy: drugAllergy || 'ไม่ได้ระบุ',
@@ -1698,15 +1706,21 @@ if (typeof registerCcModule === 'function') {
 
 if (typeof window !== 'undefined') {
   window.toggleSyncopeBranch = toggleSyncopeBranch;
+  window.handleSyncopeExactTimeUnknownChange = handleSyncopeExactTimeUnknownChange;
   window.handleSyncopePostureChange = handleSyncopePostureChange;
   window.updateSyncopeRecoveryContext = updateSyncopeRecoveryContext;
   window.handleSyncopeConsciousnessLevelChange = handleSyncopeConsciousnessLevelChange;
   window.handleSyncopeUnconsciousDurationChange = handleSyncopeUnconsciousDurationChange;
   window.handleSyncopeEpisodeCountChange = handleSyncopeEpisodeCountChange;
+  window.handleSyncopeProdromeNoneChange = handleSyncopeProdromeNoneChange;
   window.handleSyncopeWarningChange = handleSyncopeWarningChange;
   window.handleSyncopeMotorCategoryChange = handleSyncopeMotorCategoryChange;
+  window.handleSyncopeSignsNoneChange = handleSyncopeSignsNoneChange;
+  window.handleSyncopeSignsItemChange = handleSyncopeSignsItemChange;
+  window.handleSyncopePostNoneChange = handleSyncopePostNoneChange;
   window.handleSyncopePostSymptomChange = handleSyncopePostSymptomChange;
   window.handleSyncopeFallInjuryChange = handleSyncopeFallInjuryChange;
+  window.handleSyncopeRiskNoneChange = handleSyncopeRiskNoneChange;
   window.handleSyncopeRiskChange = handleSyncopeRiskChange;
   window.handleSyncopePregnancyChange = handleSyncopePregnancyChange;
 }

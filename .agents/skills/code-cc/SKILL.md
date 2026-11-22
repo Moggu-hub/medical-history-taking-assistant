@@ -52,10 +52,14 @@ description: มาตรฐานบังคับสำหรับการ�
     <input type="checkbox" id="..." name="..." value="..." class="mt-0.5 text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
     <div class="ml-3 leading-snug">
       <span class="block text-xs sm:text-sm font-semibold text-slate-800">หัวข้อตัวเลือกสั้นกระชับ</span>
-      <span class="block text-[11px] text-slate-500 font-normal mt-0.5">คำอธิบายขยายความที่คนไข้เข้าใจง่าย</span>
+      <span class="block text-xs text-slate-500 font-normal mt-0.5">คำอธิบายขยายความที่คนไข้เข้าใจง่าย</span>
     </div>
   </label>
   ```
+- **กฎขนาดตัวอักษรเท่ากันทั้งฟอร์ม (Uniform Typography Scaling — สำหรับ CC ใหม่และการแก้ไขในอนาคต):**
+  - ใน Helper สร้างการ์ด (`render*Option`) หัวข้อตัวเลือกทุกข้อต้องใช้ **`text-xs sm:text-sm font-semibold text-slate-800`** เหมือนกันหมดทั้งการ์ดปกติ การ์ด `compact` การ์ดมี `desc` และไม่มี `desc` (**ห้าม** เขียน `${compact ? 'text-xs' : 'text-xs sm:text-sm'}` เพราะทำให้ข้อที่มีและไม่มี `desc` ในตารางเดียวกันขนาดไม่เท่ากัน)
+  - คำอธิบายย่อย (`desc`), ป้ายส่วนย่อย (`ด้าน / ข้าง:`, `ลักษณะบาดเจ็บ:`) และข้อความช่วยอธิบายใช้ **`text-xs`** สม่ำเสมอ (ไม่ปะปน `text-[11px]` กับ `text-xs sm:text-sm`)
+  - ป้ายคำถามย่อย (`X.X ...`) และช่องกรอก (`input`/`select`/`textarea`) ใช้ **`text-xs sm:text-sm`** สม่ำเสมอทั้งฟอร์ม และไม่วางกริดหลายคอลัมน์แคบๆ (เช่น `sm:grid-cols-3`) ซ้อนในกล่องย่อยที่อยู่ครึ่งความกว้างอยู่แล้ว (ใช้ `grid-cols-1` เพื่อไม่ให้ข้อความล้นกรอบ)
 - **🚫 ข้อห้ามเด็ดขาดใน `formHtml`:**
   - ห้ามลืม `ml-3` (หรือ `ml-2` ในกิ่งย่อย `compact`) ระหว่าง `<input>` กับข้อความ
   - ห้ามใช้สีตัวอักษรอื่นในตัวเลือกคนไข้ (เช่น ❌ `text-rose-700`, `text-red-600`, `text-amber-800`, `text-emerald-700`) ต้องใช้ **`text-slate-800`** สำหรับหัวข้อตัวเลือก และ **`text-slate-500`** สำหรับคำอธิบายย่อยเท่านั้น
@@ -69,7 +73,7 @@ description: มาตรฐานบังคับสำหรับการ�
 
 | รหัส | จุดบกพร่องทางเทคนิคที่ห้ามเกิด (Anti-Pattern) | แนวทางเขียนโค้ดที่ถูกต้อง (Mandatory Implementation) |
 | :--- | :--- | :--- |
-| **C-AP1** | สีตัวอักษรหรือระยะห่าง `ml-3` ในตัวเลือกผิดเพี้ยนจากมาตรฐาน | ใช้คลาส `selectable-card`, `ml-3`, `text-slate-800` และคำอธิบายย่อย `text-[11px] text-slate-500` เหมือนกันทุกข้อ |
+| **C-AP1** | สีตัวอักษร ระยะห่าง `ml-3` หรือขนาดตัวอักษรในตัวเลือกผิดเพี้ยนไม่เท่ากัน | ใช้คลาส `selectable-card`, `ml-3`, หัวข้อ **`text-xs sm:text-sm font-semibold text-slate-800`** ทุกข้อ (ห้ามย่อ `compact` เหลือ `text-xs` จนขนาดต่างกับข้อที่มี `desc`) และคำอธิบายย่อย `text-xs text-slate-500` เหมือนกันทุกข้อ (บังคับใช้กับ CC ใหม่และการแก้ไขนับจากนี้เป็นต้นไป) |
 | **C-AP2** | ลืมเปิด `active: true` ใน `clinical_knowledge_core.js` หรือเพิ่มบรรทัดเกินเพดาน | แก้ `active: true` ในบรรทัดเดิมของ `clinical_knowledge_core.js` และตรวจจำนวนบรรทัดของไฟล์หลักเสมอ |
 | **C-AP3** | DOM ID ไม่ตรงกัน หรือแถวที่สร้างเพิ่มแบบ Dynamic Repeater ไม่รองรับ Universal Date/Time | ทุก `getElementById`/`toggleBranch` ต้องมี ID จริงใน `formHtml` และช่องกรอกวันที่/เวลาในแถวที่กด `+` เพิ่มใหม่ต้องจัดรูปแบบเป็น `dd/mm/yyyy` และ `HH:mm` (24 ชม.) เสมอ |
 | **C-AP4** | ข้อมูลตกหล่นเมื่อกดแก้ไขประวัติ (`Guided Edit` / `hydrateForm`) | ทุกฟิลด์และทุกแถวของ Dynamic Repeater ที่อ่านใน `collectIntake(ctx)` ต้องถูกเขียนคืนเข้า DOM และเรียกอัปเดตการเปิดกิ่ง/การกรองอาการ (`Route/Context Filter`) ใน `hydrateForm(patient)` แบบครบ 100% |

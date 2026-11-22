@@ -49,7 +49,7 @@ const CHIEF_COMPLAINTS = [
   { id: 'syncope', schemaCode: 'syncope', titleTh: 'หมดสติ / วูบ / เป็นลม', titleEn: 'Syncope / Loss of consciousness', icon: 'sparkles', active: true, phase: 5 },
   { id: 'altered_mental', schemaCode: 'altered_mental_status', titleTh: 'ซึมลง / สับสนเฉียบพลัน / ระดับความรู้สึกตัวเปลี่ยนแปลง', titleEn: 'Altered mental status / Confusion', icon: 'help-circle', active: true, phase: 5 },
   { id: 'vomiting', schemaCode: 'severe_nausea_vomiting', titleTh: 'คลื่นไส้ / อาเจียน', titleEn: 'Nausea & Vomiting', icon: 'frown', active: true, phase: 6 },
-  { id: 'diarrhea', schemaCode: 'diarrhea', titleTh: 'ถ่ายเหลว / ถ่ายเป็นน้ำ', titleEn: 'Diarrhea', icon: 'droplets', active: true, phase: 7 },
+  { id: 'diarrhea', schemaCode: 'diarrhea', titleTh: 'ท้องเสีย / ถ่ายเหลว / ถ่ายเป็นน้ำ', titleEn: 'Diarrhea', icon: 'droplets', active: true, phase: 7 },
   { id: 'gi_bleed', schemaCode: 'gi_bleeding', titleTh: 'อาเจียนเป็นเลือด / ถ่ายดำ / ถ่ายเป็นเลือดสด', titleEn: 'Hematemesis / Melena / Hematochezia', icon: 'alert-triangle', active: true, phase: 7 },
   { id: 'palpitation', schemaCode: 'palpitations', titleTh: 'ใจสั่น', titleEn: 'Palpitations', icon: 'activity', active: true, phase: 8 },
   { id: 'weakness', schemaCode: 'generalized_weakness', titleTh: 'อ่อนเพลีย / กินไม่ได้ / ไม่มีแรง', titleEn: 'Generalized weakness / Poor intake', icon: 'battery-low', active: true, phase: 8 },

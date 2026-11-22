@@ -1,98 +1,185 @@
 // =========================================================================
 // MODULAR CHIEF COMPLAINT MODULE: 14_palpitation.js
-// อาการนำ: ใจสั่น (Palpitations / Cardiac Arrhythmia & Hemodynamic Instability Triage)
-// ไฟล์นี้แยกอิสระสำหรับอาการนำ palpitation เพื่อให้ทีมแพทย์และ IT โรงพยาบาลนำไปพัฒนาต่อได้โดยไม่กระทบระบบหลัก
+// อาการนำ: ใจสั่น (Palpitations & Suspected Cardiac Arrhythmias)
+// ปรับปรุงตามมาตรฐาน plan_palpitation.md, plan-cc และ code-cc (กลุ่ม B2)
 // =========================================================================
 
-// --- UI Toggle Handlers ---
+// --- Internal DOM & UI Helpers ---
+function getPalEl(id) {
+  return typeof document !== 'undefined' ? document.getElementById(id) : null;
+}
+
+function queryPalOne(selector) {
+  return typeof document !== 'undefined' ? document.querySelector(selector) : null;
+}
+
+function queryPalAll(selector) {
+  return typeof document !== 'undefined' ? Array.from(document.querySelectorAll(selector)) : [];
+}
+
+function wrapPalWords(chunks) {
+  if (!Array.isArray(chunks)) return chunks;
+  return chunks.map(c => `<span class="inline-block whitespace-nowrap">${c}</span>`).join(' ');
+}
+
+function renderPalOption(cfg) {
+  const {
+    kind = 'checkbox',
+    id = '',
+    name = '',
+    value = '',
+    title,
+    desc = '',
+    onchange = '',
+    compact = false,
+    colSpan2 = false
+  } = cfg;
+  const idAttr = id ? `id="${id}" ` : '';
+  const nameAttr = name ? `name="${name}" ` : '';
+  const valAttr = value ? `value="${value}" ` : '';
+  const chgAttr = onchange ? `onchange="${onchange}" ` : '';
+  const alignCls = desc ? 'items-start' : 'items-center';
+  const padCls = compact ? 'p-2.5' : 'p-3';
+  const spanCls = colSpan2 ? ' sm:col-span-2' : '';
+  const roundCls = kind === 'checkbox' ? 'rounded ' : '';
+  const topCls = desc ? 'mt-0.5 ' : '';
+  const szCls = compact ? 'h-3.5 w-3.5' : 'h-4 w-4';
+  const titleHtml = Array.isArray(title) ? wrapPalWords(title) : title;
+  const bodyHtml = desc
+    ? `<div class="ml-3 leading-snug"><span class="block text-xs sm:text-sm font-semibold text-slate-800">${titleHtml}</span><span class="block text-[11px] text-slate-500 font-normal mt-0.5">${desc}</span></div>`
+    : `<span class="ml-3 ${compact ? 'text-xs' : 'text-xs sm:text-sm'} font-semibold text-slate-800 leading-snug">${titleHtml}</span>`;
+  return `<label class="selectable-card bg-white flex ${alignCls} ${padCls} rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition${spanCls}"><input type="${kind}" ${idAttr}${nameAttr}${valAttr}${chgAttr}class="${topCls}${roundCls}text-medical-600 focus:ring-medical-500 ${szCls} flex-shrink-0">${bodyHtml}</label>`;
+}
+
+function renderPalGrid(colsCls, items, shared = {}) {
+  return `<div class="grid ${colsCls} gap-2.5">${items.map(it => renderPalOption({ ...shared, ...it })).join('\n')}</div>`;
+}
+
+function renderPalSysHeader({
+  label,
+  icon,
+  colorClass,
+  toggleId = '',
+  toggleLabel = '',
+  toggleOnchange = '',
+  toggleName = '',
+  toggleValue = ''
+}) {
+  const nameAttr = toggleName ? `name="${toggleName}" ` : '';
+  const valAttr = toggleValue ? `value="${toggleValue}" ` : '';
+  const toggleHtml = toggleId
+    ? `<label class="inline-flex items-center px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 border border-slate-200 text-xs font-medium text-slate-700 cursor-pointer transition select-none flex-shrink-0">
+      <input type="checkbox" id="${toggleId}" ${nameAttr}${valAttr}onchange="${toggleOnchange}" class="text-medical-600 focus:ring-medical-500 h-3.5 w-3.5 rounded">
+      <span class="ml-1.5 whitespace-nowrap">${toggleLabel}</span>
+    </label>`
+    : '';
+  return `<div class="flex flex-wrap items-center justify-between gap-2 mb-2.5">
+    <label class="flex items-center text-xs sm:text-sm font-bold text-slate-800">
+      <span class="${colorClass} p-1.5 rounded-lg mr-2 inline-flex items-center justify-center"><i data-lucide="${icon}" class="w-4 h-4"></i></span>
+      <span>${label}</span>
+    </label>
+    ${toggleHtml}
+  </div>`;
+}
+
+function clearPalBranchValues(wrapEl) {
+  if (!wrapEl) return;
+  wrapEl.querySelectorAll('input[type="radio"], input[type="checkbox"]').forEach(inp => {
+    inp.checked = false;
+  });
+  wrapEl.querySelectorAll('input[type="text"], input[type="number"], textarea').forEach(inp => {
+    inp.value = '';
+  });
+}
+
+function uncheckPalNone(noneId, noneVal) {
+  const noneEl = noneId ? getPalEl(noneId) : null;
+  if (noneEl && noneEl.checked) noneEl.checked = false;
+  if (noneVal) {
+    queryPalAll(`input[value="${noneVal}"]`).forEach(el => { el.checked = false; });
+  }
+}
+
+// --- Progressive Disclosure & Mutual Exclusion Handlers ---
 function handlePalpitationWarningNoneToggle(el) {
   if (el && el.checked) {
-    document.querySelectorAll('input[name="palpitationWarningSigns"]').forEach(cb => {
+    queryPalAll('input[name="palpitationWarningSigns"]').forEach(cb => {
       if (cb !== el) cb.checked = false;
     });
   }
+}
+
+function handlePalpitationWarningItemChange(el) {
+  if (el && el.checked) uncheckPalNone('palpitationWarningNoneCb', 'none_warning');
 }
 
 function handlePalpitationSubstancesNoneToggle(el) {
   if (el && el.checked) {
-    document.querySelectorAll('input[name="palpitationSubstances"]').forEach(cb => {
+    queryPalAll('input[name="palpitationSubstances"]').forEach(cb => {
       if (cb !== el) cb.checked = false;
     });
   }
+}
+
+function handlePalpitationSubstancesItemChange(el) {
+  if (el && el.checked) uncheckPalNone('palpitationSubNoneCb', 'none_substances');
 }
 
 function handlePalpitationMedsNoneToggle(el) {
   if (el && el.checked) {
-    document.querySelectorAll('input[name="palpitationMeds"]').forEach(cb => {
+    queryPalAll('input[name="palpitationMeds"]').forEach(cb => {
       if (cb !== el) cb.checked = false;
     });
   }
+}
+
+function handlePalpitationMedsItemChange(el) {
+  if (el && el.checked) uncheckPalNone('palpitationMedsNoneCb', 'none_meds');
 }
 
 function handlePalpitationCustomTriggerChange(val) {
-  const wrap = document.getElementById('palpitationCustomTriggerWrap');
-  if (wrap) {
-    if (val === 'has_custom_trigger') {
-      wrap.classList.remove('hidden');
-    } else {
-      wrap.classList.add('hidden');
-      const inp = document.getElementById('palpitationCustomTriggerText');
-      if (inp) inp.value = '';
-    }
-  }
-}
-
-function handlePalpitationCardiacNoneToggle(el) {
-  if (el && el.checked) {
-    document.querySelectorAll('input[name="palpitationCardiacHistory"]').forEach(cb => {
-      if (cb !== el) cb.checked = false;
-    });
-  }
-}
-
-function handlePalpitationNonCardiacNoneToggle(el) {
-  if (el && el.checked) {
-    document.querySelectorAll('input[name="palpitationNonCardiacHistory"]').forEach(cb => {
-      if (cb !== el) cb.checked = false;
-    });
+  const wrap = getPalEl('palpitationCustomTriggerWrap');
+  if (!wrap) return;
+  if (val === 'has_custom_trigger') {
+    wrap.classList.remove('hidden');
+  } else {
+    wrap.classList.add('hidden');
+    const inp = getPalEl('palpitationCustomTriggerText');
+    if (inp) inp.value = '';
   }
 }
 
 function handlePalpitationHeartToggle(el) {
-  const wrap = document.getElementById('palpitationHeartSubWrap');
-  if (wrap) {
-    if (el && el.checked) {
-      wrap.classList.remove('hidden');
-      const noneCb = document.querySelector('input[name="palpitationImportantConditions"][value="none_important_pmh"]');
-      if (noneCb) noneCb.checked = false;
-    } else {
-      wrap.classList.add('hidden');
-      document.querySelectorAll('input[name="palpitationCardiacHistory"]').forEach(cb => { cb.checked = false; });
-    }
-  }
-}
-
-function handlePalpitationImportantNoneToggle(el) {
-  if (el && el.checked) {
-    document.querySelectorAll('input[name="palpitationImportantConditions"]').forEach(cb => {
-      if (cb !== el) cb.checked = false;
-    });
-    const wrap = document.getElementById('palpitationHeartSubWrap');
-    if (wrap) {
-      wrap.classList.add('hidden');
-      document.querySelectorAll('input[name="palpitationCardiacHistory"]').forEach(cb => { cb.checked = false; });
-    }
+  const isChecked = el ? el.checked : (getPalEl('palpitationHeartCb')?.checked || false);
+  const wrap = getPalEl('palpitationHeartSubWrap');
+  if (isChecked) uncheckPalNone('palpitationImportantNoneCb', 'none_important_pmh');
+  if (!wrap) return;
+  if (isChecked) {
+    wrap.classList.remove('hidden');
+  } else {
+    wrap.classList.add('hidden');
+    clearPalBranchValues(wrap);
   }
 }
 
 function handlePalpitationImportantItemChange(el) {
+  if (el && el.checked) uncheckPalNone('palpitationImportantNoneCb', 'none_important_pmh');
+}
+
+function handlePalpitationImportantNoneToggle(el) {
   if (el && el.checked) {
-    const noneCb = document.querySelector('input[name="palpitationImportantConditions"][value="none_important_pmh"]');
-    if (noneCb) noneCb.checked = false;
+    queryPalAll('input[name="palpitationImportantConditions"]').forEach(cb => {
+      if (cb !== el) cb.checked = false;
+    });
+    const wrap = getPalEl('palpitationHeartSubWrap');
+    if (wrap) {
+      wrap.classList.add('hidden');
+      clearPalBranchValues(wrap);
+    }
   }
 }
 
-// --- Red Flag Evaluator ---
+// --- Red Flag Evaluator (6 Criteria Preserved) ---
 function evaluatePalpitationRedFlags(patient) {
   const flags = [];
   if (!patient) return flags;
@@ -126,7 +213,7 @@ function evaluatePalpitationRedFlags(patient) {
   const hasIllicit = substances.includes('illicit_stimulants');
   const hasEnergyDrinks = substances.includes('energy_drinks');
 
-  // 1. Unstable Hemodynamics & Shock (ACLS Red Flag)
+  // 1. Unstable Hemodynamics & Shock
   if (hasSyncope || hasChestPain || hasHeartFailure || (hasPresyncope && hasColdDiaphoresis)) {
     flags.push({
       key: 'palpitation_rf_unstable_hemodynamics',
@@ -134,19 +221,19 @@ function evaluatePalpitationRedFlags(patient) {
       risk: 'มีอาการใจสั่นร่วมกับหมดสติ เจ็บแน่นหน้าอกรุนแรง หายใจหอบเหนื่อยรุนแรง หรือมือเท้าเย็นเหงื่อแตกท่วมตัว',
       triageLevel: 1,
       severity: 'CRITICAL',
-      suggestedAction: 'Triage Level 1: ย้ายเข้าห้อง Resuscitation ทันที, ติด Monitor + EKG 12 ลีด ด่วนภายใน 10 นาที, เตรียมเครื่อง Defibrillator สำหรับ Synchronized Cardioversion หรือ External Pacing, เปิด IV และเตรียมยาตาม ACLS'
+      suggestedAction: 'Triage Level 1: ย้ายเข้าห้อง Resuscitation ทันที, ติด Monitor + EKG 12 ลีด ด่วนภายใน 10 นาที, เตรียม Synchronized Cardioversion/External Pacing, เปิด IV'
     });
   }
 
-  // 2. High Risk for Malignant Ventricular Arrhythmias (VT/VF Risk)
+  // 2. High Risk for Malignant Ventricular Arrhythmias
   if ((hasCadStent || hasPriorHf || hasPpmIcd) && (rhythm === 'rapid_regular' || hasSyncope)) {
     flags.push({
       key: 'palpitation_rf_malignant_ventricular',
       textTh: 'สงสัยภาวะหัวใจเต้นผิดจังหวะรุนแรงชนิดห้องล่าง (Suspected Ventricular Tachycardia in Structural Heart Disease)',
-      risk: 'ผู้ป่วยมีโรคกล้ามเนื้อหัวใจขาดเลือดเดิม ใส่ขดลวด หรือหัวใจล้มเหลว ร่วมกับใจสั่นเต้นเร็วรัวทันทีหรือหมดสติ เสี่ยงต่อภาวะใหลตายและหัวใจหยุดเต้นกะทันหัน',
+      risk: 'ผู้ป่วยมีโรคกล้ามเนื้อหัวใจขาดเลือดเดิม ใส่ขดลวด หรือหัวใจล้มเหลว ร่วมกับใจสั่นเต้นเร็วรัวทันทีหรือหมดสติ เสี่ยงต่อภาวะหัวใจหยุดเต้นกะทันหัน',
       triageLevel: 1,
       severity: 'CRITICAL',
-      suggestedAction: 'Stat EKG 12 leads ทันที, Stat Electrolytes (K+, Mg2+), Troponin-T, เตรียม IV Amiodarone หรือ Lidocaine และเตรียมเตียงวิกฤตโรคหัวใจ (CCU)'
+      suggestedAction: 'Stat EKG 12 leads ทันที, Stat Electrolytes (K+, Mg2+), Troponin-T, เตรียม IV Amiodarone หรือ Lidocaine และเตรียมเตียง CCU'
     });
   }
 
@@ -154,11 +241,11 @@ function evaluatePalpitationRedFlags(patient) {
   if (familySuddenDeath && (hasSyncope || rhythm === 'rapid_regular')) {
     flags.push({
       key: 'palpitation_rf_channelopathy_scd',
-      textTh: 'เสี่ยงต่อกลุ่มโรคหัวใจเต้นผิดจังหวะทางพันธุกรรม/ใหลตาย (Risk of Inherited Arrhythmia / Brugada / Long QT Syndrome)',
+      textTh: 'เสี่ยงต่อกลุ่มโรคหัวใจเต้นผิดจังหวะทางพันธุกรรม/ใหลตาย (Risk of Inherited Arrhythmia / Brugada / Long QT)',
       risk: 'มีประวัติคนในครอบครัวเสียชีวิตกะทันหันในวัยหนุ่มสาว ร่วมกับผู้ป่วยมีใจสั่นเต้นเร็วรัวหรือวูบหมดสติ',
       triageLevel: 2,
       severity: 'HIGH',
-      suggestedAction: 'ตรวจ High-precordial leads EKG (V1-V2 ช่องซี่โครงที่ 2-3) หา Brugada pattern, วัดค่า QTc อย่างละเอียด, ห้ามจำหน่ายกลับบ้าน ต้อง Admit สังเกตอาการบน Telemetry Monitor'
+      suggestedAction: 'ตรวจ High-precordial leads EKG (V1-V2 ช่องซี่โครงที่ 2-3) หา Brugada pattern, วัดค่า QTc อย่างละเอียด, Admit สังเกตอาการบน Telemetry Monitor'
     });
   }
 
@@ -168,10 +255,10 @@ function evaluatePalpitationRedFlags(patient) {
     flags.push({
       key: 'palpitation_rf_rapid_af_stroke',
       textTh: 'สงสัยภาวะหัวใจห้องบนสั่นพลิ้วเต้นเร็ว (Atrial Fibrillation with RVR & Stroke Risk)',
-      risk: 'ใจสั่นแบบไม่สม่ำเสมอ พลิกคว่ำพลิกหงาย ในผู้สูงอายุหรือมีปัจจัยเสี่ยงหลอดเลือด เสี่ยงต่อภาวะหัวใจล้มเหลวและลิ่มเลือดอุดตันในสมอง (Stroke)',
+      risk: 'ใจสั่นแบบไม่สม่ำเสมอในผู้สูงอายุหรือมีปัจจัยเสี่ยงหลอดเลือด เสี่ยงต่อภาวะหัวใจล้มเหลวและลิ่มเลือดอุดตันในสมอง (Stroke)',
       triageLevel: 2,
       severity: 'HIGH',
-      suggestedAction: 'ตรวจยืนยันจังหวะด้วย EKG 12 leads, พิจารณา Rate Control (IV Beta-blocker หรือ Diltiazem), ประเมิน CHA2DS2-VASc Score เพื่อพิจารณายาต้านการแข็งตัวของเลือด'
+      suggestedAction: 'ตรวจ EKG 12 leads, พิจารณา Rate Control, ประเมิน CHA2DS2-VASc Score เพื่อพิจารณายาต้านการแข็งตัวของเลือด'
     });
   }
 
@@ -183,7 +270,7 @@ function evaluatePalpitationRedFlags(patient) {
       risk: 'ผู้ป่วยโรคไทรอยด์มีอาการใจสั่นรุนแรง หัวใจเต้นผิดจังหวะ หรือมีอาการซึมสับสน',
       triageLevel: 2,
       severity: 'HIGH',
-      suggestedAction: 'ประเมิน Burch-Wartofsky Point Scale, ส่ง Stat Thyroid Panel (Free T3, Free T4, TSH), Electrolytes, ให้การรักษาด้วย Beta-blocker (Propranolol), ยาต้านไทรอยด์ (PTU) และ Hydrocortisone IV'
+      suggestedAction: 'ประเมิน Burch-Wartofsky Point Scale, ส่ง Stat Thyroid Panel (FT3, FT4, TSH), พิจารณา Beta-blocker, ยาต้านไทรอยด์ และ Hydrocortisone IV'
     });
   }
 
@@ -191,11 +278,11 @@ function evaluatePalpitationRedFlags(patient) {
   if (hasIllicit || hasEnergyDrinks) {
     flags.push({
       key: 'palpitation_rf_sympathomimetic_toxicity',
-      textTh: 'ใจสั่นจากสารกระตุ้นระบบประสาทซิมพาเทติก (Sympathomimetic / Stimulant Toxicity)',
-      risk: 'มีประวัติใช้ยาบ้า ยาไอซ์ ยาลดความอ้วน หรือดื่มเครื่องดื่มชูกำลังปริมาณมาก เสี่ยงต่อ Tachyarrhythmias และ Myocardial Ischemia',
-      triageLevel: 2,
-      severity: 'HIGH',
-      suggestedAction: 'ตรวจ EKG เฝ้าระวัง Tachyarrhythmias และ Ischemia, ให้ IV Fluid และ Benzodiazepines (Diazepam IV) เพื่อลด Sympathetic tone, หลีกเลี่ยง Beta-blocker เดี่ยวๆ'
+      textTh: 'ภาวะหัวใจเต้นเร็วจากสารกระตุ้นประสาทหรือคาเฟอีนขนาดสูง (Sympathomimetic / Stimulant Toxicity)',
+      risk: 'ได้รับสารกระตุ้นประสาท ยาลดความอ้วน หรือเครื่องดื่มชูกำลังในปริมาณมาก เสี่ยงต่อ Arrhythmia และ Hypertensive Crisis',
+      triageLevel: 3,
+      severity: 'MODERATE',
+      suggestedAction: 'Monitor EKG และ Vital signs, ส่ง Electrolytes, พิจารณา Urine Amphetamine/Toxin screen, ให้ Benzodiazepine หากกระสับกระส่ายรุนแรง'
     });
   }
 
@@ -203,796 +290,658 @@ function evaluatePalpitationRedFlags(patient) {
 }
 
 function isPalpitationRedFlag(patient) {
-  const flags = evaluatePalpitationRedFlags(patient);
-  return flags.length > 0;
+  if (!patient) return false;
+  return evaluatePalpitationRedFlags(patient).length > 0;
 }
 
-// --- Output Formatting & Medical Translation ---
-function updatePalpitationOutputs(patient) {
-  if (!patient) return;
+// --- Output Rendering Helpers (Zero 🚩 in UI/Positives/Narrative) ---
+function formatPalpitationOutputBundle(patient) {
+  const unitMap = { minutes: 'นาที', hours: 'ชั่วโมง', days: 'วัน', weeks: 'สัปดาห์', months: 'เดือน', years: 'ปี' };
+  const durStr = patient.durationVal
+    ? `${patient.durationVal} ${unitMap[patient.durationUnit] || 'ชั่วโมง'}`
+    : 'ไม่ระบุระยะเวลา';
 
-  const rfs = evaluatePalpitationRedFlags(patient);
-  const warningSigns = Array.isArray(patient.palpitationWarningSigns) ? patient.palpitationWarningSigns : [];
+  const statusMap = {
+    currently_ongoing: 'ยังมีอาการใจสั่นอยู่ในขณะนี้',
+    resolved_recently: 'อาการใจสั่นหายไปแล้วก่อนมาถึง รพ.'
+  };
+  const freqMap = {
+    first_time: 'เป็นครั้งแรกในชีวิต',
+    weekly_frequent: 'เป็นบ่อยสัปดาห์ละหลายครั้ง',
+    monthly: 'เป็นเดือนละ 1–2 ครั้ง',
+    infrequent_yearly: 'นานๆ เป็นครั้ง (ปีละ 1–2 ครั้ง)'
+  };
+  const rhythmMap = {
+    rapid_regular: 'เต้นเร็วรัวสม่ำเสมอเป็นจังหวะ',
+    rapid_irregular: 'เต้นเร็วและไม่สม่ำเสมอ กระโดดไปมา',
+    ectopic_skipped: 'เต้นสะดุดเป็นพักๆ เหมือนหยุดไปแล้วเต้นแรง',
+    abnormally_slow: 'เต้นช้ามากผิดปกติจนอ่อนเพลีย',
+    forceful_normal_rate: 'เต้นแรงตึกๆ ในอก แต่อัตราเร็วปกติ'
+  };
+  const onsetOffsetMap = {
+    sudden_both: 'เริ่มเร็วทันที และหยุดทันที (เหมือนเปิด-ปิดสวิตช์)',
+    gradual_both: 'ค่อยๆ เร็วขึ้น และค่อยๆ ช้าลง'
+  };
+  const triggerMap = {
+    valsalva_relieved: 'หยุดเต้นเร็วเมื่อกลั้นหายใจเบ่ง หรือล้างหน้าน้ำเย็น',
+    exertional: 'กำเริบขณะออกแรงหรือออกกำลังกาย',
+    rest_or_nocturnal: 'กำเริบขณะนอนพัก หรือสะดุ้งตื่นกลางดึก',
+    anxiety_panic: 'สัมพันธ์กับความเครียด วิตกกังวล หรือตกใจ'
+  };
+  const warningMap = {
+    presyncope_dizziness: 'หน้ามืด วิงเวียนศีรษะ ตาพร่ามัว',
+    syncope: 'เป็นลม วูบหมดสติชั่วขณะ',
+    ischemic_chest_pain: 'เจ็บแน่นหน้าอก อึดอัด หรือร้าวไปกราม/แขน',
+    acute_heart_failure: 'หายใจหอบเหนื่อย นอนราบไม่ได้ หรือสะดุ้งหอบกลางดึก',
+    cold_diaphoresis: 'เหงื่อแตกท่วมตัว ตัวเย็นชืด ซีด',
+    altered_mental: 'ซึมลง สับสน ตอบสนองช้า',
+    hyperventilation_tingling: 'มือเท้าชา หายใจเร็วตื้น นิ้วเกร็งจีบ'
+  };
+  const subMap = {
+    energy_drinks: 'เครื่องดื่มชูกำลัง',
+    caffeine_heavy: 'กาแฟ/ชาเข้มข้น/น้ำอัดลม/ช็อกโกแลตปริมาณมาก',
+    alcohol_binge: 'เครื่องดื่มแอลกอฮอล์/ดื่มหนักต่อเนื่อง',
+    cannabis_kratom: 'กัญชา/พืชกระท่อม/สารสกัดสมุนไพร',
+    illicit_stimulants: 'ยาลดความอ้วน/สารกระตุ้นประสาทต้องห้าม'
+  };
+  const medMap = {
+    decongestants: 'ยาแก้หวัด/ลดน้ำมูก (Pseudoephedrine/Phenylephrine)',
+    asthma_inhalers: 'ยาพ่นขยายหลอดลม (Salbutamol)',
+    thyroid_hormone: 'ฮอร์โมนไทรอยด์ (Levothyroxine)',
+    antiarrhythmics: 'ยาควบคุมจังหวะหัวใจ (Amiodarone/Digoxin/Beta-blockers)',
+    diuretics: 'ยาขับปัสสาวะ (Furosemide/HCTZ)'
+  };
+  const cardiacMap = {
+    cad_stent: 'โรคหลอดเลือดหัวใจตีบ/เคยใส่ขดลวดหัวใจ',
+    prior_arrhythmia: 'เคยเป็นโรคหัวใจเต้นผิดจังหวะ (AF/SVT/VT)',
+    prior_ablation: 'เคยรับการสวนจี้ไฟฟ้าหัวใจ',
+    heart_failure: 'โรคหัวใจล้มเหลว/หัวใจโต',
+    valvular_disease: 'โรคลิ้นหัวใจ/เคยผ่าตัดเปลี่ยนลิ้นหัวใจ',
+    pacemaker_icd: 'ใส่เครื่องกระตุ้น/กระตุกไฟฟ้าหัวใจ (Pacemaker/ICD)'
+  };
+  const importantMap = {
+    heart_disease: 'โรคหัวใจ',
+    hyperthyroidism: 'ต่อมไทรอยด์ทำงานเกิน/คอพอกเป็นพิษ',
+    diabetes: 'โรคเบาหวาน'
+  };
+  const nonCardiacMap = {
+    hyperthyroidism: 'ต่อมไทรอยด์ทำงานเกิน',
+    diabetes: 'โรคเบาหวาน',
+    hypertension: 'โรคความดันโลหิตสูง',
+    anemia: 'ภาวะโลหิตจาง'
+  };
+
+  const exactDt = [
+    patient.palpitationOnsetExactDate ? `วันที่ ${patient.palpitationOnsetExactDate}` : '',
+    patient.palpitationOnsetExactTime ? `เวลา ${patient.palpitationOnsetExactTime} น.` : ''
+  ].filter(Boolean).join(' ');
+
+  const statusText = statusMap[patient.palpitationCurrentStatus] || '';
+  const freqText = freqMap[patient.palpitationEpisodeFreq] || '';
+  const rhythmText = rhythmMap[patient.palpitationRhythmPattern] || '';
+  const onsetOffsetText = onsetOffsetMap[patient.palpitationOnsetOffset] || '';
+
   const triggers = Array.isArray(patient.palpitationTriggers) ? patient.palpitationTriggers : [];
+  const trigPos = triggers.map(t => triggerMap[t]).filter(Boolean);
+
+  const warnings = Array.isArray(patient.palpitationWarningSigns) ? patient.palpitationWarningSigns : [];
+  const warnPos = warnings.filter(w => w !== 'none_warning').map(w => warningMap[w]).filter(Boolean);
+
   const substances = Array.isArray(patient.palpitationSubstances) ? patient.palpitationSubstances : [];
+  const subPos = substances.filter(s => s !== 'none_substances').map(s => subMap[s]).filter(Boolean);
+
   const meds = Array.isArray(patient.palpitationMeds) ? patient.palpitationMeds : [];
-  const cardiacHistory = Array.isArray(patient.palpitationCardiacHistory) ? patient.palpitationCardiacHistory : [];
-  const nonCardiac = Array.isArray(patient.palpitationNonCardiacHistory) ? patient.palpitationNonCardiacHistory : [];
+  const medPos = meds.filter(m => m !== 'none_meds').map(m => medMap[m]).filter(Boolean);
 
-  const unitMapTh = { minutes: 'นาที', hours: 'ชั่วโมง', days: 'วัน', weeks: 'สัปดาห์', months: 'เดือน', years: 'ปี' };
-  const durationStr = patient.durationVal ? `${patient.durationVal} ${unitMapTh[patient.durationUnit] || patient.durationUnit || 'ชั่วโมง'}` : 'ไม่ระบุ';
+  const cardH = Array.isArray(patient.palpitationCardiacHistory) ? patient.palpitationCardiacHistory : [];
+  const cardPos = cardH.filter(c => c !== 'none_cardiac_pmh').map(c => cardiacMap[c]).filter(Boolean);
 
-  let statusTh = patient.palpitationCurrentStatus === 'currently_ongoing'
-    ? 'ขณะนี้ยังคงมีอาการใจสั่นเต้นเร็วต่อเนื่องตลอดเวลา (Currently Ongoing)'
-    : (patient.palpitationCurrentStatus === 'intermittent_resolved' ? 'อาการใจสั่นหยุดไปแล้ว แต่มีอาการกำเริบเป็นพักๆ (Intermittent / Resolved)' : 'ไม่ระบุ');
+  const impCond = Array.isArray(patient.palpitationImportantConditions) ? patient.palpitationImportantConditions : [];
+  const impPos = impCond.filter(i => i !== 'none_important_pmh').map(i => importantMap[i]).filter(Boolean);
 
-  let rhythmTh = 'ไม่ระบุ';
-  if (patient.palpitationRhythmPattern === 'rapid_regular') rhythmTh = 'เต้นเร็วรัวและสม่ำเสมอเป็นจังหวะเป๊ะ (Rapid & Regular — สงสัย PSVT/VT)';
-  else if (patient.palpitationRhythmPattern === 'rapid_irregular') rhythmTh = 'เต้นเร็วและไม่สม่ำเสมอเลย สะเปะสะปะ (Rapid & Irregular — สงสัย AF with RVR)';
-  else if (patient.palpitationRhythmPattern === 'ectopic_skipped') rhythmTh = 'เต้นสะดุดเป็นครั้งคราว ตุ๊บๆ หายๆ (Skipped / Extra beats — สงสัย PVCs/PACs)';
-  else if (patient.palpitationRhythmPattern === 'abnormally_slow') rhythmTh = 'เต้นช้ามากผิดปกติ จนเหนื่อยเพลีย (Abnormally Slow / Bradycardia)';
-  else if (patient.palpitationRhythmPattern === 'forceful_normal_rate') rhythmTh = 'เต้นแรงขึ้น ตึกๆ ในอก อัตราเร็วปกติ (Forceful beats)';
+  const nonCard = Array.isArray(patient.palpitationNonCardiacHistory) ? patient.palpitationNonCardiacHistory : [];
+  const nonCardPos = nonCard.filter(n => n !== 'none_noncardiac_pmh' && !impCond.includes(n)).map(n => nonCardiacMap[n]).filter(Boolean);
 
-  let onsetOffsetTh = patient.palpitationOnsetOffset === 'sudden_both'
-    ? 'เริ่มต้นเต้นเร็วขึ้นทันที และหยุดทันทีเหมือนเปิด-ปิดสวิตช์ไฟ (Sudden Onset & Offset)'
-    : (patient.palpitationOnsetOffset === 'gradual_both' ? 'ค่อยๆ เต้นเร็วขึ้นเรื่อยๆ และค่อยๆ ช้าลง (Gradual Onset & Offset)' : 'ไม่ระบุ');
-
-  let triggerListTh = [];
-  if (triggers.includes('valsalva_relieved')) triggerListTh.push('ทุเลาลงเมื่อกลั้นหายใจเบ่ง (Valsalva response)');
-  if (triggers.includes('exertional')) triggerListTh.push('กำเริบขณะออกแรงหรือออกกำลังกาย');
-  if (triggers.includes('rest_or_nocturnal')) triggerListTh.push('กำเริบขณะพักผ่อนหรือตื่นขึ้นมากลางดึก');
-  if (triggers.includes('anxiety_panic')) triggerListTh.push('สัมพันธ์กับความวิตกกังวลหรือตกใจกลัว');
-
-  let substText = substances.includes('none_substances') ? 'ปฏิเสธสารกระตุ้น' : 'ไม่ได้ระบุ';
-  if (substances.length > 0 && !substances.includes('none_substances')) {
-    substText = substances.map(s => {
-      if (s === 'energy_drinks') return 'เครื่องดื่มชูกำลัง';
-      if (s === 'caffeine_heavy') return 'กาแฟ/ชาเข้มข้น';
-      if (s === 'alcohol_binge') return 'ดื่มแอลกอฮอล์หนัก';
-      if (s === 'cannabis_kratom') return 'กัญชา/กระท่อม';
-      if (s === 'illicit_stimulants') return 'สารเสพติดกระตุ้นประสาท/ยาลดความอ้วน';
-      return s;
-    }).join(', ');
-  }
-
-  let medText = meds.includes('none_meds') ? 'ปฏิเสธยาประจำตัวกลุ่มเสี่ยง' : 'ไม่ได้ระบุ';
-  if (meds.length > 0 && !meds.includes('none_meds')) {
-    medText = meds.map(m => {
-      if (m === 'decongestants') return 'ยาลดน้ำมูก (Pseudoephedrine)';
-      if (m === 'asthma_inhalers') return 'ยาพ่นขยายหลอดลม';
-      if (m === 'thyroid_hormone') return 'ฮอร์โมนไทรอยด์';
-      if (m === 'antiarrhythmics') return 'ยารักษาหัวใจเต้นผิดจังหวะ';
-      if (m === 'diuretics') return 'ยาขับปัสสาวะ';
-      return m;
-    }).join(', ');
-  }
-
-  let cardHistText = cardiacHistory.includes('none_cardiac_pmh') ? 'ปฏิเสธประวัติโรคหัวใจเดิม' : 'ไม่ได้ระบุ';
-  if (cardiacHistory.length > 0 && !cardiacHistory.includes('none_cardiac_pmh')) {
-    cardHistText = cardiacHistory.map(c => {
-      if (c === 'cad_stent') return 'โรคหลอดเลือดหัวใจตีบ/ใส่ขดลวด (CAD/Stent)';
-      if (c === 'prior_arrhythmia') return 'ประวัติหัวใจเต้นผิดจังหวะเดิม';
-      if (c === 'prior_ablation') return 'เคยสวนจี้ไฟฟ้าหัวใจ';
-      if (c === 'heart_failure') return 'หัวใจล้มเหลว (Heart Failure)';
-      if (c === 'valvular_disease') return 'โรคลิ้นหัวใจ/เปลี่ยนลิ้นเทียม';
-      if (c === 'pacemaker_icd') return 'ใส่ Pacemaker หรือ ICD ในร่างกาย';
-      return c;
-    }).join(', ');
-  }
-
-  let famText = patient.palpitationFamilyHistory === 'sudden_death_under50'
-    ? 'มีคนในครอบครัวสายตรงเสียชีวิตกะทันหันก่อนอายุ 50 ปี หรือใหลตาย (Positive Family History of SCD)'
-    : (patient.palpitationFamilyHistory === 'no_family_sudden_death' ? 'ปฏิเสธประวัติคนในครอบครัวเสียชีวิตกะทันหันในวัยหนุ่มสาว' : 'ไม่ได้ระบุ');
-
-  const hemodynIssues = [];
-  if (warningSigns.includes('syncope')) hemodynIssues.push('วูบหมดสติ (Syncope) 🚩');
-  if (warningSigns.includes('presyncope_dizziness')) hemodynIssues.push('หน้ามืดวิงเวียนทรงตัวไม่อยู่');
-  if (warningSigns.includes('ischemic_chest_pain')) hemodynIssues.push('เจ็บแน่นหน้าอกรุนแรง 🚩');
-  if (warningSigns.includes('acute_heart_failure')) hemodynIssues.push('หอบเหนื่อยนอนราบไม่ได้ 🚩');
-  if (warningSigns.includes('cold_diaphoresis')) hemodynIssues.push('เหงื่อแตกตัวเย็นชืด 🚩');
-  if (warningSigns.includes('altered_mental')) hemodynIssues.push('ซึมลง สับสน 🚩');
-
-  // Calculate Pertinent Positives and Negatives for Patient Review & Core Summary
+  // Pertinent Positives (Zero 🚩)
   const positives = [];
+  if (warnPos.length > 0) positives.push(`อาการเตือนร่วม: ${warnPos.join(', ')}`);
+  if (trigPos.length > 0) positives.push(`ท่าทาง/สิ่งกระตุ้น: ${trigPos.join(', ')}`);
+  if (subPos.length > 0) positives.push(`สารกระตุ้นใน 24–48 ชม.: ${subPos.join(', ')}`);
+  if (medPos.length > 0) positives.push(`ยาที่ใช้/เพิ่งได้รับ: ${medPos.join(', ')}`);
+  if (patient.palpitationCustomTriggerCheck === 'has_custom_trigger' && patient.palpitationCustomTriggerText) {
+    positives.push(`ยา/อาหาร/สารสงสัยเพิ่มเติม: ${patient.palpitationCustomTriggerText}`);
+  }
+  const allPmhPos = [...impPos, ...nonCardPos];
+  if (allPmhPos.length > 0) {
+    const cStr = cardPos.length > 0 ? ` (${cardPos.join(', ')})` : '';
+    positives.push(`โรคประจำตัวสำคัญ: ${allPmhPos.join(', ')}${cStr}`);
+  } else if (cardPos.length > 0) {
+    positives.push(`ประวัติโรคหัวใจเดิม: ${cardPos.join(', ')}`);
+  }
+  if (patient.palpitationFamilyHistory === 'sudden_death_under50') {
+    positives.push('มีประวัติครอบครัวสายตรงเสียชีวิตกะทันหันก่อนอายุ 50 ปี');
+  }
+  if (patient.otherSymptomsFree) positives.push(`อื่นๆ: ${patient.otherSymptomsFree}`);
+
+  // Pertinent Negatives (Strictly derived from explicit user inputs)
   const negatives = [];
-  const warningAnswered = warningSigns.length > 0;
-
-  // Warning signs (ACLS)
-  if (warningSigns.includes('syncope')) positives.push('วูบหมดสติ (Syncope) 🚩');
-  else if (warningAnswered) negatives.push('ปฏิเสธวูบหมดสติ');
-
-  if (warningSigns.includes('presyncope_dizziness')) positives.push('หน้ามืด วิงเวียน ตาพร่ามัว');
-  else if (warningAnswered) negatives.push('ไม่มีหน้ามืดวิงเวียน');
-
-  if (warningSigns.includes('ischemic_chest_pain')) positives.push('เจ็บแน่นหน้าอกรุนแรง 🚩');
-  else if (warningAnswered) negatives.push('ปฏิเสธเจ็บแน่นหน้าอก');
-
-  if (warningSigns.includes('acute_heart_failure')) positives.push('หายใจหอบเหนื่อย นอนราบไม่ได้ 🚩');
-  else if (warningAnswered) negatives.push('ปฏิเสธหายใจหอบเหนื่อย');
-
-  if (warningSigns.includes('cold_diaphoresis')) positives.push('เหงื่อแตกท่วมตัว มือเท้าเย็นชืด 🚩');
-  else if (warningAnswered) negatives.push('ไม่มีเหงื่อแตกตัวเย็นชืด');
-
-  if (warningSigns.includes('altered_mental')) positives.push('ซึมลง สับสน 🚩');
-  else if (warningAnswered) negatives.push('รู้สึกตัวดี ถามตอบรู้เรื่อง');
-
-  if (warningSigns.includes('hyperventilation_tingling')) positives.push('มือเท้าชา หายใจเร็วตื้น นิ้วเกร็ง');
-
-  const importantConditions = Array.isArray(patient.palpitationImportantConditions) ? patient.palpitationImportantConditions : [];
-  if (importantConditions.includes('hyperthyroidism') || nonCardiac.includes('hyperthyroidism')) {
-    positives.push('อาการเข้าได้กับภาวะไทรอยด์เป็นพิษ (มือสั่น/ขี้ร้อน/น้ำหนักลด) 🚩');
+  if (warnings.includes('none_warning')) {
+    negatives.push('ปฏิเสธหน้ามืด วูบหมดสติ เจ็บแน่นหน้าอก หายใจหอบเหนื่อย หรือเหงื่อแตกตัวเย็น');
+  } else if (warnings.length > 0) {
+    if (!warnings.includes('syncope') && !warnings.includes('presyncope_dizziness')) negatives.push('ไม่มีหน้ามืดหรือวูบหมดสติ');
+    if (!warnings.includes('ischemic_chest_pain')) negatives.push('ไม่มีอาการเจ็บแน่นหน้าอก');
+    if (!warnings.includes('acute_heart_failure')) negatives.push('ไม่มีหายใจหอบเหนื่อยหรือนอนราบไม่ได้');
   }
-  if (patient.otherSymptomsFree) {
-    positives.push(patient.otherSymptomsFree);
+  if (substances.includes('none_substances')) negatives.push('ปฏิเสธเครื่องดื่มชูกำลัง คาเฟอีนจัด แอลกอฮอล์ หรือสารกระตุ้น');
+  if (meds.includes('none_meds')) negatives.push('ปฏิเสธยาลดน้ำมูก ยาพ่นขยายหลอดลม ฮอร์โมนไทรอยด์ หรือยาขับปัสสาวะ');
+  if (patient.palpitationCustomTriggerCheck === 'no_custom_trigger') negatives.push('ไม่มีสารหรือยาอื่นที่สงสัยกระตุ้นเพิ่มเติม');
+  if (impCond.includes('none_important_pmh')) negatives.push('ปฏิเสธประวัติโรคหัวใจ โรคไทรอยด์ และเบาหวาน');
+  if (patient.palpitationFamilyHistory === 'no_family_sudden_death') {
+    negatives.push('ปฏิเสธประวัติครอบครัวเสียชีวิตกะทันหันในวัยหนุ่มสาว');
   }
 
-  patient.pertinentPositives = positives.length > 0 ? positives : ['ผู้ป่วยไม่ได้ระบุอาการร่วมเพิ่มเติม'];
-  patient.pertinentNegatives = negatives.length > 0 ? negatives : ['ผู้ป่วยไม่ได้ระบุคำตอบยืนยันในหมวดอาการร่วม'];
+  patient.pertinentPositives = positives;
+  patient.pertinentNegatives = negatives;
 
-  const docNotes = patient.doctor_notes || {};
-  const medsText = (!patient.currentMeds || patient.currentMeds === 'ไม่ได้ระบุ') ? 'ไม่ได้ระบุ' : patient.currentMeds;
-  const udArr = Array.isArray(patient.underlying) ? patient.underlying.filter(u => u && !u.includes('ปฏิเสธ') && u !== 'ไม่มี' && u !== 'ไม่มีโรคประจำตัว') : [];
-  const udExplicitDeny = Array.isArray(patient.underlying) && patient.underlying.some(u => u && u.includes('ปฏิเสธ'));
-  const udText = udArr.length > 0 ? udArr.join(', ') : ((patient.hospRecordStatus === 'self' || patient.hospRecordStatus === 'additional' || udExplicitDeny) ? 'ปฏิเสธ' : 'ไม่ได้ระบุ');
-  const allergyText = (!patient.drugAllergy || patient.drugAllergy === 'ไม่ได้ระบุ') ? 'ไม่ได้ระบุ' : patient.drugAllergy;
+  const redFlags = evaluatePalpitationRedFlags(patient);
+  patient.redFlags = redFlags;
+
   const hospLabel = {
-    complete: 'มีประวัติกับ รพ.ราชบุรี ครบถ้วน (ดึงข้อมูลเดิมจากระบบ)',
-    additional: 'มีประวัติกับ รพ.ราชบุรี และขอให้ข้อมูลเพิ่มเติม',
-    self: 'ขอให้ข้อมูลด้วยตนเองทั้งหมด',
-    unspecified: 'ไม่ได้ระบุ'
+    self: 'ผู้ป่วยขอให้ข้อมูลด้วยตนเองทั้งหมด',
+    has_history: 'มีประวัติการรักษาเดิมที่ รพ.ราชบุรี',
+    first_time: 'มารับการตรวจที่ รพ.ราชบุรี ครั้งแรก'
   }[patient.hospRecordStatus] || 'ไม่ได้ระบุ';
 
-  // 1. Rapid Bullet Mode (Standardized: Primary arrhythmia descriptors at top, ACLS/associated signs in Pertinent only)
-  const defaultRapid =
-`[Chief Complaint (CC)]
-ใจสั่น / หัวใจเต้นผิดจังหวะ (Palpitations) มา ${durationStr}
+  const udArr = Array.isArray(patient.underlying)
+    ? patient.underlying.filter(u => u && !u.includes('ปฏิเสธ') && u !== 'ไม่มี' && u !== 'ไม่มีโรคประจำตัว')
+    : [];
+  const udExplicitDeny = Array.isArray(patient.underlying) && patient.underlying.some(u => u && u.includes('ปฏิเสธ'));
+  const udText = udArr.length > 0 ? udArr.join(', ') : ((patient.hospRecordStatus === 'self' || udExplicitDeny) ? 'ปฏิเสธ' : 'ไม่ได้ระบุ');
+  const medsText = (!patient.currentMeds || patient.currentMeds === 'ไม่ได้ระบุ') ? 'ไม่ได้ระบุ' : patient.currentMeds;
+  const allergyText = (!patient.drugAllergy || patient.drugAllergy === 'ไม่ได้ระบุ') ? 'ไม่ได้ระบุ' : patient.drugAllergy;
+  const docNotes = patient.doctor_notes || {};
 
-[History of Present Illness (HPI)]
-• สถานะปัจจุบัน: ${statusTh}
-• ลักษณะจังหวะการเต้น (Rhythm): ${rhythmTh}
-• รูปแบบการเริ่มและหยุด (Onset/Offset): ${onsetOffsetTh}
-• ปัจจัยกระตุ้น/บรรเทา: ${triggerListTh.join(', ') || 'ไม่ได้ระบุ'}
+  const hpiPatternSummary = [rhythmText, onsetOffsetText].filter(Boolean).join(', ');
+  const statusFreqSummary = [statusText, freqText, exactDt].filter(Boolean).join(', ');
 
-• Pertinent Positives:
-${positives.length > 0 ? positives.map(p => `  - ${p}`).join('\n') : '  - ผู้ป่วยไม่ได้ระบุอาการร่วมเพิ่มเติม'}
+  const defaultRapid = [
+    `[Chief Complaint (CC)]`,
+    `ใจสั่น (Palpitations) มา ${durStr}`,
+    ``,
+    `[History of Present Illness (HPI)]`,
+    `• สถานะและช่วงเวลา: ${statusFreqSummary || 'ไม่ได้ระบุ'}`,
+    `• ลักษณะจังหวะหัวใจ: ${hpiPatternSummary || 'ไม่ได้ระบุ'}`,
+    `• Pertinent Positives:`,
+    positives.length > 0 ? positives.map(p => `  - ${p}`).join('\n') : '  - ผู้ป่วยไม่ได้ระบุอาการร่วมเพิ่มเติม',
+    ``,
+    `• Pertinent Negatives:`,
+    negatives.length > 0 ? negatives.map(n => `  - ${n}`).join('\n') : '  - ยังไม่มีคำตอบปฏิเสธเฉพาะในหมวดอาการร่วม',
+    ``,
+    `[Past Medical History & Medications]`,
+    `• สถานะประวัติ รพ.ราชบุรี: ${hospLabel}`,
+    `• โรคประจำตัว (U/D): ${udText}`,
+    `• ยาประจำตัว (Current Meds): ${medsText}`,
+    `• ประวัติแพ้ยา/แพ้อาหาร (Allergies): ${allergyText}`,
+    ``,
+    `[Emergency Risk Assessment (Red Flags)]`,
+    redFlags.length > 0
+      ? `🚩 RED FLAGS DETECTED:\n${redFlags.map(rf => `  * ${rf.textTh}\n    ความเสี่ยง: ${rf.risk}`).join('\n')}`
+      : '✓ ไม่พบสัญญาณวิกฤต (No Immediate Red Flag)',
+    ``,
+    `[Doctor's Clinical Addendum & Exam]`,
+    `• ประวัติเพิ่มเติม/แก้ไขโดยแพทย์: ${docNotes.additional_hpi || '-'}`,
+    `• สัญญาณชีพและการตรวจร่างกาย: ${docNotes.physical_exam || '-'}`,
+    `• การวินิจฉัยเบื้องต้น (Impression): ${docNotes.preliminary_dx || '-'}`,
+    `• แผนการรักษา (Plan/Orders): ${docNotes.plan || '-'}`
+  ].join('\n');
 
-• Pertinent Negatives:
-${patient.pertinentNegatives.map(n => `  - ${n}`).join('\n')}
-
-[Past Medical History & Medications]
-• สถานะประวัติ รพ.ราชบุรี: ${hospLabel}
-• ประวัติโรคหัวใจเดิม: ${cardHistText}
-• ประวัติครอบครัว (Sudden Death): ${famText}
-• สารกระตุ้น/เครื่องดื่ม: ${substText}
-• ยาประจำตัวกลุ่มเสี่ยง: ${medText}
-• โรคประจำตัว (U/D): ${udText}
-• ยาประจำตัว (Current Meds): ${medsText}
-• ประวัติแพ้ยา/แพ้อาหาร (Allergies): ${allergyText}
-
-[Emergency Risk Assessment (Red Flags)]
-${rfs.length > 0
-  ? `🚩 RED FLAGS DETECTED:\n${rfs.map(rf => `  * ${rf.textTh}`).join('\n')}`
-  : '✓ ไม่พบสัญญาณเตือนวิกฤตเฉียบพลันเบื้องต้น'}
-
-[Doctor's Clinical Addendum & Exam]
-• ประวัติเพิ่มเติม/แก้ไขโดยแพทย์: ${docNotes.additional_hpi || '-'}
-• สัญญาณชีพและการตรวจร่างกาย: ${docNotes.physical_exam || '-'}
-• การวินิจฉัยเบื้องต้น (Impression): ${docNotes.preliminary_dx || '-'}
-• แผนการรักษา (Plan/Orders): ${docNotes.plan || '-'}`;
-
-  // 2. Narrative Note Mode
-  let narrative = `History of Present Illness (HPI):\n`;
-  narrative += `ผู้ป่วย${patient.gender === 'หญิง' ? 'หญิง' : (patient.gender === 'ชาย' ? 'ชาย' : '')} อายุ ${patient.age || '-'} ปี มาโรงพยาบาลด้วยอาการใจสั่น ${durationStr} ก่อนมาโรงพยาบาล `;
-  narrative += `ลักษณะการเต้นของหัวใจคือ ${rhythmTh} โดย${onsetOffsetTh} `;
-  
-  if (patient.palpitationCurrentStatus === 'currently_ongoing') {
-    narrative += `ขณะมาถึงห้องฉุกเฉินผู้ป่วยยังคงรู้สึกใจสั่นเต้นเร็วต่อเนื่องอยู่ตลอดเวลา `;
-  } else if (patient.palpitationCurrentStatus === 'intermittent_resolved') {
-    narrative += `อาการใจสั่นขณะนี้หยุดไปแล้วแต่มีอาการกำเริบเป็นๆ หายๆ `;
+  const genderLabel = (patient.gender && patient.gender !== 'ไม่ระบุ') ? patient.gender : '';
+  let defaultNarrative = `ผู้ป่วย${genderLabel} อายุ ${patient.age || 'ไม่ได้ระบุ'} ปี มาด้วยอาการใจสั่น มา ${durStr}`;
+  if (statusFreqSummary) defaultNarrative += ` (${statusFreqSummary})`;
+  if (hpiPatternSummary) defaultNarrative += ` ลักษณะ${hpiPatternSummary}`;
+  defaultNarrative += '.';
+  if (positives.length > 0) defaultNarrative += ` อาการร่วมและปัจจัยเสี่ยง: ${positives.join('; ')}.`;
+  if (negatives.length > 0) defaultNarrative += ` อาการปฏิเสธสำคัญ: ${negatives.join(', ')}.`;
+  defaultNarrative += `\nประวัติเดิม: ${hospLabel}, โรคประจำตัว: ${udText}, ยาประจำตัว: ${medsText}, แพ้ยา: ${allergyText}.`;
+  if (redFlags.length > 0) {
+    defaultNarrative += `\n[แจ้งเตือนความเสี่ยงสูง]: ${redFlags.map(rf => rf.textTh).join(', ')}`;
   }
 
-  if (triggers.length > 0) {
-    narrative += `มีประวัติเกี่ยวกับสิ่งกระตุ้นคือ ${triggerListTh.join(' และ ')} `;
-  }
-
-  const posWarn = [];
-  if (warningSigns.includes('syncope')) posWarn.push('มีอาการวูบหมดสติ (Syncope)');
-  if (warningSigns.includes('presyncope_dizziness')) posWarn.push('หน้ามืด วิงเวียน ตาพร่ามัว');
-  if (warningSigns.includes('ischemic_chest_pain')) posWarn.push('เจ็บแน่นหน้าอกรุนแรง');
-  if (warningSigns.includes('acute_heart_failure')) posWarn.push('หายใจหอบเหนื่อย นอนราบไม่ได้');
-  if (warningSigns.includes('cold_diaphoresis')) posWarn.push('เหงื่อแตกท่วมตัว มือเท้าเย็นจัด');
-  if (warningSigns.includes('altered_mental')) posWarn.push('ซึมลง สับสน');
-
-  if (posWarn.length > 0) {
-    narrative += `\nอาการร่วมที่ตรวจพบ: ผู้ป่วยมี ${posWarn.join(', ')} เข้าได้กับภาวะความไม่คงที่ของระบบไหลเวียนโลหิต `;
-  } else if (warningAnswered) {
-    narrative += `\nอาการร่วม: ปฏิเสธอาการวูบหมดสติ หน้ามืด เจ็บแน่นหน้าอก หรือหายใจหอบเหนื่อย `;
-  }
-
-  narrative += `\n\nExposures & Medical History:\n`;
-  narrative += `ประวัติการรับประทานสารกระตุ้น: ${substText}\n`;
-  narrative += `ประวัติยาประจำตัว: ${medText}\n`;
-  narrative += `ประวัติโรคหัวใจเดิม: ${cardHistText}\n`;
-  narrative += `ประวัติครอบครัว: ${famText}`;
-
-  // 3. JSON Schema v2.0
-  const jsonSchema = {
+  const jsonPayload = {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
     encounter: {
-      chief_complaint: 'palpitations',
-      chief_complaint_title_th: 'ใจสั่น',
-      triage_category: 'emergency_medicine',
-      calculated_triage_level: rfs.some(r => r.triageLevel === 1) ? 1 : (rfs.some(r => r.triageLevel === 2) ? 2 : 4),
-      door_to_ekg_target_minutes: 10,
-      entry_timestamp: patient.timestamp || new Date().toISOString()
+      hospital_site: 'Ratchaburi Hospital',
+      queue_id: patient.queue_number || '',
+      hn: patient.hn || '',
+      patient_name: patient.name || '',
+      age: patient.age !== undefined ? patient.age : null,
+      gender: patient.gender || '',
+      timestamp: patient.timestamp || '',
+      status: patient.status || 'waiting',
+      triage_urgency_flag: redFlags.length > 0,
+      red_flags_count: redFlags.length,
+      hospital_record_status: patient.hospRecordStatus || ''
     },
-    clinical_assessment: {
-      onset: {
-        duration_value: patient.durationVal || null,
-        duration_unit: patient.durationUnit || 'hours',
-        currently_ongoing: patient.palpitationCurrentStatus === 'currently_ongoing',
-        episode_frequency: patient.palpitationEpisodeFreq || 'unspecified',
-        exact_onset_date: patient.palpitationOnsetExactDate || null,
-        exact_onset_time: patient.palpitationOnsetExactTime || null
-      },
-      rhythm_profile: {
-        perceived_rhythm: patient.palpitationRhythmPattern || null,
-        onset_offset_pattern: patient.palpitationOnsetOffset || null,
-        valsalva_responsive: triggers.includes('valsalva_relieved'),
-        exertional_trigger: triggers.includes('exertional'),
-        nocturnal_trigger: triggers.includes('rest_or_nocturnal')
-      },
-      hemodynamic_instability: {
-        is_unstable: rfs.some(r => r.key === 'palpitation_rf_unstable_hemodynamics'),
-        syncope: warningSigns.includes('syncope'),
-        presyncope_dizziness: warningSigns.includes('presyncope_dizziness'),
-        ischemic_chest_pain: warningSigns.includes('ischemic_chest_pain'),
-        acute_heart_failure: warningSigns.includes('acute_heart_failure'),
-        cold_diaphoresis: warningSigns.includes('cold_diaphoresis'),
-        altered_mental_status: warningSigns.includes('altered_mental')
-      },
-      exposures_and_meds: {
-        caffeine_or_energy_drinks: substances.includes('caffeine_heavy') || substances.includes('energy_drinks'),
-        alcohol_binge: substances.includes('alcohol_binge'),
-        sympathomimetic_illicit: substances.includes('illicit_stimulants'),
-        takes_decongestants: meds.includes('decongestants'),
-        takes_antiarrhythmics: meds.includes('antiarrhythmics'),
-        suspected_custom_trigger: patient.palpitationCustomTriggerText || null
-      },
-      cardiac_history: {
-        has_cad_stent: cardiacHistory.includes('cad_stent'),
-        has_prior_arrhythmia: cardiacHistory.includes('prior_arrhythmia'),
-        has_heart_failure: cardiacHistory.includes('heart_failure'),
-        has_pacemaker_icd: cardiacHistory.includes('pacemaker_icd'),
-        has_prior_ablation: cardiacHistory.includes('prior_ablation'),
-        family_sudden_death: patient.palpitationFamilyHistory === 'sudden_death_under50'
-      },
-      red_flags: rfs.map(rf => ({
-        id: rf.key,
-        severity: rf.severity,
-        title: rf.textTh,
-        triage_level: rf.triageLevel
+    chief_complaint: 'palpitation',
+    chief_complaint_label: 'ใจสั่น',
+    schema_version: '2.1',
+    palpitation_profile: {
+      duration: { value: patient.durationVal || null, unit: patient.durationUnit || 'hours' },
+      current_status: patient.palpitationCurrentStatus || null,
+      episode_frequency: patient.palpitationEpisodeFreq || null,
+      onset_exact_date: patient.palpitationOnsetExactDate || null,
+      onset_exact_time: patient.palpitationOnsetExactTime || null,
+      rhythm_pattern: patient.palpitationRhythmPattern || null,
+      onset_offset_mode: patient.palpitationOnsetOffset || null,
+      triggers: triggers,
+      warning_signs: warnings,
+      substances: substances,
+      medications_risk: meds,
+      custom_trigger_check: patient.palpitationCustomTriggerCheck || null,
+      custom_trigger_text: patient.palpitationCustomTriggerText || null,
+      important_conditions: impCond,
+      cardiac_history: cardH,
+      non_cardiac_history: nonCard,
+      family_history: patient.palpitationFamilyHistory || null,
+      other_symptoms_free: patient.otherSymptomsFree || ''
+    },
+    clinical_summary: {
+      pertinent_positives: positives,
+      pertinent_negatives: negatives,
+      red_flags: redFlags.map(rf => ({
+        code: rf.key,
+        text_th: rf.textTh,
+        risk_rationale: rf.risk,
+        triage_level: rf.triageLevel || 2,
+        severity: rf.severity || 'HIGH'
       }))
+    },
+    doctor_clinical_addendum: {
+      additional_hpi: docNotes.additional_hpi || '',
+      physical_exam: docNotes.physical_exam || '',
+      preliminary_dx: docNotes.preliminary_dx || '',
+      plan: docNotes.plan || ''
     }
   };
 
-  // Render to Doctor dashboard DOM elements
-  const rapidBox = document.getElementById('rapidTextView');
-  if (rapidBox) rapidBox.value = patient.custom_rapid_note || defaultRapid;
-
-  const narrativeBox = document.getElementById('narrativeTextView');
-  if (narrativeBox) narrativeBox.value = patient.custom_narrative_note || narrative;
-
-  const jsonBox = document.getElementById('jsonViewer');
-  if (jsonBox) jsonBox.textContent = JSON.stringify(jsonSchema, null, 2);
+  return { defaultRapid, defaultNarrative, jsonPayload };
 }
 
-// --- Module Registration ---
-registerCcModule({
-  id: 'palpitation',
-  recordCc: 'palpitations',
-  titleTh: 'ใจสั่น',
-  sectionDomId: 'palpitationQuestionnaireSection',
-  headerTh: 'แบบฟอร์มซักประวัติ: ใจสั่น (Palpitations / Cardiac Arrhythmia)',
-  headerEn: '(Cardiac Arrhythmia & Hemodynamic Triage)',
-  patientBadgeHtml: '<i data-lucide="activity" class="w-5 h-5 sm:w-6 sm:h-6 flex-shrink-0 text-rose-500"></i><span class="whitespace-nowrap">ใจสั่น</span>',
-  doctorCcBadgeHtml: '<i data-lucide="activity" class="w-3.5 h-3.5 mr-1 text-rose-500"></i> CC: ใจสั่น',
-  pmhSectionNumber: 7,
-  dateFields: ['palpitationOnsetExactDate'],
-  timeFields: ['palpitationOnsetExactTime'],
-  branchIds: ['palpitationCustomTriggerWrap', 'palpitationHeartSubWrap'],
-  inputIdsToClear: ['palpitationDurationVal', 'palpitationOnsetExactDate', 'palpitationOnsetExactTime', 'palpitationCustomTriggerText', 'palpitation_other_free'],
+function updatePalpitationOutputs(patient) {
+  if (!patient) return { rapid: '', narrative: '', json: null };
+  const { defaultRapid, defaultNarrative, jsonPayload } = formatPalpitationOutputBundle(patient);
+  const finalRapid = patient.custom_rapid_note || defaultRapid;
+  const finalNarrative = patient.custom_narrative_note || defaultNarrative;
+  patient.rapidHpi = finalRapid;
+  patient.narrativeHpi = finalNarrative;
+  patient.medicalJson = jsonPayload;
 
-  algorithm: {
-    chiefComplaint: 'palpitations',
-    titleTh: 'ใจสั่น',
-    schemaCode: 'palpitations',
-    version: '2.0.0',
-    redFlagDefinitions: [
-      { key: 'palpitation_rf_unstable_hemodynamics', level: 1, textTh: 'หัวใจเต้นผิดจังหวะร่วมกับระบบไหลเวียนโลหิตไม่คงที่ (Unstable Arrhythmia)' },
-      { key: 'palpitation_rf_malignant_ventricular', level: 1, textTh: 'สงสัยภาวะหัวใจเต้นผิดจังหวะรุนแรงชนิดห้องล่าง (Suspected VT in CAD)' },
-      { key: 'palpitation_rf_channelopathy_scd', level: 2, textTh: 'เสี่ยงต่อโรคหัวใจเต้นผิดจังหวะทางพันธุกรรม/ใหลตาย (Brugada / Long QT)' },
-      { key: 'palpitation_rf_rapid_af_stroke', level: 2, textTh: 'สงสัยภาวะหัวใจห้องบนสั่นพลิ้วเต้นเร็ว (AF with RVR & Stroke Risk)' },
-      { key: 'palpitation_rf_thyroid_storm', level: 2, textTh: 'สงสัยภาวะต่อมไทรอยด์เป็นพิษวิกฤต (Suspected Thyroid Storm)' },
-      { key: 'palpitation_rf_sympathomimetic_toxicity', level: 2, textTh: 'ใจสั่นจากสารกระตุ้นประสาทซิมพาเทติก (Sympathomimetic Toxicity)' }
-    ]
-  },
+  if (typeof document !== 'undefined') {
+    const rapidView = getPalEl('rapidTextView');
+    const narrativeView = getPalEl('narrativeTextView');
+    const jsonView = getPalEl('jsonViewer');
+    if (rapidView) rapidView.value = finalRapid;
+    if (narrativeView) narrativeView.value = finalNarrative;
+    if (jsonView) jsonView.textContent = JSON.stringify(jsonPayload, null, 2);
+  }
+  return { rapid: finalRapid, narrative: finalNarrative, json: jsonPayload };
+}
 
-  formHtml: `
-    <div id="palpitationQuestionnaireSection" class="space-y-6 hidden">
-      <!-- Card 1: Onset & Duration -->
-      <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
-        <div class="flex items-center space-x-3 mb-4 pb-3 border-b border-slate-100">
-          <div class="bg-medical-100 text-medical-700 p-2 rounded-xl">
-            <i data-lucide="clock" class="w-5 h-5"></i>
-          </div>
-          <div>
-            <h2 class="text-base font-bold text-slate-900">1. ระยะเวลาและสถานะอาการใจสั่น (Onset & Duration)</h2>
-            <p class="text-xs text-slate-500">ประเมินระยะเวลาการเริ่มต้นและสถานะอาการใจสั่นในขณะนี้</p>
-          </div>
-        </div>
-        <div class="space-y-5">
-          <!-- 1.1 ระยะเวลาตั้งแต่เริ่มมีอาการ -->
-          <div>
-            <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
-              ระยะเวลาตั้งแต่เริ่มมีอาการใจสั่นในรอบปัจจุบัน <span class="text-rose-500">*</span>
-            </label>
-            <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              <div class="col-span-1 sm:col-span-2">
-                <input type="number" id="palpitationDurationVal" min="1" max="1000" placeholder="เช่น 2" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-slate-800 font-semibold focus:outline-none focus:ring-2 focus:ring-medical-500 focus:bg-white text-sm placeholder:text-slate-400 placeholder:font-normal">
-              </div>
-              <div class="col-span-1">
-                <select id="palpitationDurationUnit" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 text-slate-800 font-medium focus:outline-none focus:ring-2 focus:ring-medical-500 focus:bg-white text-sm">
-                  <option value="minutes">นาที</option>
-                  <option value="hours" selected>ชั่วโมง</option>
-                  <option value="days">วัน</option>
-                  <option value="weeks">สัปดาห์</option>
-                  <option value="months">เดือน</option>
-                  <option value="years">ปี</option>
-                </select>
-              </div>
-            </div>
-          </div>
-
-          <!-- 1.2 สถานะอาการใจสั่นในขณะนี้ -->
-          <div>
-            <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
-              สถานะอาการใจสั่นในขณะนี้
-            </label>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-              <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-                <input type="radio" name="palpitationCurrentStatus" value="currently_ongoing" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
-                <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800">ขณะนี้ยังคงมีอาการใจสั่น เต้นเร็ว ต่อเนื่องตลอดเวลา</span>
-              </label>
-              <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-                <input type="radio" name="palpitationCurrentStatus" value="intermittent_resolved" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
-                <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800">อาการใจสั่นหยุดไปแล้ว แต่มีอาการกำเริบเป็นพักๆ</span>
-              </label>
-            </div>
-          </div>
-
-          <!-- 1.3 ความถี่ในการเกิดอาการ -->
-          <div class="pt-3 border-t border-slate-100">
-            <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
-              ความถี่ในการเกิดอาการใจสั่น
-            </label>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-              <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-                <input type="radio" name="palpitationEpisodeFreq" value="first_time" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
-                <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800">เพิ่งเป็นครั้งนี้เป็นครั้งแรกในชีวิต</span>
-              </label>
-              <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-                <input type="radio" name="palpitationEpisodeFreq" value="recent_days_intermittent" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
-                <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800">เพิ่งเริ่มมีอาการภายในไม่กี่วันนี้ แต่เป็นๆ หายๆ</span>
-              </label>
-              <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-                <input type="radio" name="palpitationEpisodeFreq" value="daily" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
-                <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800">มีอาการบ่อยเกือบทุกวัน หรือวันละหลายครั้ง</span>
-              </label>
-              <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-                <input type="radio" name="palpitationEpisodeFreq" value="weekly" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
-                <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800">มีอาการสัปดาห์ละ 1–3 ครั้ง</span>
-              </label>
-              <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-                <input type="radio" name="palpitationEpisodeFreq" value="monthly" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
-                <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800">มีอาการเดือนละ 1–2 ครั้ง</span>
-              </label>
-              <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-                <input type="radio" name="palpitationEpisodeFreq" value="infrequent_yearly" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
-                <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800">นานๆ เป็นครั้งหนึ่ง (หลายเดือนหรือปีละ 1–2 ครั้ง)</span>
-              </label>
-            </div>
-          </div>
-        </div>
-
-        <!-- Universal Date & Time -->
-        <div id="palpitationOnsetExactWrap" class="mt-4 pt-3 border-t border-slate-100 grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label class="block text-xs font-medium text-slate-700 mb-1">วันที่เริ่มมีอาการใจสั่น (Universal Date: วว/ดด/ปปปป)</label>
-            <input type="text" id="palpitationOnsetExactDate" data-universal-date="true" placeholder="วว/ดด/ปปปป เช่น 26/10/2026" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-medical-500">
-          </div>
-          <div>
-            <label class="block text-xs font-medium text-slate-700 mb-1">เวลาที่เริ่มมีอาการ (Universal Time 24-hr: ชช:นน)</label>
-            <input type="text" id="palpitationOnsetExactTime" data-universal-time="true" placeholder="เช่น 10:15 (เวลา 24 ชม.)" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-medical-500">
+// --- Patient Form HTML Builder ---
+function buildPalpitationFormHtml() {
+  return `
+    <div id="palpitationQuestionnaireSection" class="hidden space-y-6">
+      <div data-cc-top-banner="palpitation">
+        <div class="p-4 bg-rose-50 border border-rose-200 rounded-2xl flex items-start space-x-3 shadow-sm">
+          <i data-lucide="heart-pulse" class="w-5 h-5 text-rose-600 flex-shrink-0 mt-0.5"></i>
+          <div class="text-xs sm:text-sm text-rose-900 leading-relaxed">
+            <span class="font-bold block mb-0.5">คำแนะนำเร่งด่วนสำหรับอาการใจสั่น:</span>
+            หากท่านมีอาการ <strong>วูบหมดสติ เจ็บแน่นหน้าอก หายใจหอบเหนื่อย หรือเหงื่อแตกตัวเย็น</strong> กรุณาแจ้งพยาบาลคัดกรองทันที เพื่อรับการตรวจคลื่นไฟฟ้าหัวใจด่วน และควรงดเครื่องดื่มคาเฟอีน/ชูกำลัง
           </div>
         </div>
       </div>
 
-      <!-- Card 2: Rhythm Pattern & Characteristics -->
-      <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
-        <div class="flex items-center space-x-3 mb-4 pb-3 border-b border-slate-100">
-          <div class="bg-medical-100 text-medical-700 p-2 rounded-xl">
-            <i data-lucide="activity" class="w-5 h-5"></i>
-          </div>
+      <!-- Card 1: Duration, Status & Rhythm Pattern -->
+      <div class="bg-white rounded-2xl p-5 sm:p-6 shadow-sm border border-slate-200 space-y-5">
+        <div class="flex items-center space-x-3 pb-3 border-b border-slate-100">
+          <div class="bg-medical-100 text-medical-700 p-2 rounded-xl"><i data-lucide="activity" class="w-5 h-5"></i></div>
           <div>
-            <h2 class="text-base font-bold text-slate-900">2. รูปแบบและลักษณะของจังหวะหัวใจ (Pattern & Rhythm Characteristics)</h2>
-            <p class="text-xs text-slate-500">ผู้ป่วยรู้สึกถึงลักษณะการเต้นของหัวใจแบบใดเด่นชัดที่สุด</p>
+            <h2 class="text-base font-bold text-slate-900">1. ระยะเวลา ความถี่ และจังหวะการเต้นของหัวใจ</h2>
+            <p class="text-xs text-slate-500">ระบุช่วงเวลาที่เกิดอาการและความรู้สึกถึงจังหวะหัวใจที่ผิดปกติ</p>
           </div>
-        </div>
-        
-        <div class="space-y-2">
-          <label class="selectable-card flex items-start p-3.5 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-            <input type="radio" name="palpitationRhythmPattern" value="rapid_regular" class="mt-0.5 text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
-            <div class="ml-3">
-              <span class="text-xs sm:text-sm font-semibold text-slate-800">เต้นเร็วรัวและสม่ำเสมอเป็นจังหวะเป๊ะ</span>
-              <p class="text-[11px] text-slate-500 mt-0.5">รู้สึกเหมือนมีเสียงกลองรัวสม่ำเสมอในอก หรือหัวใจเต้นเร็วมากแบบไม่สะดุด</p>
-            </div>
-          </label>
-          <label class="selectable-card flex items-start p-3.5 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-            <input type="radio" name="palpitationRhythmPattern" value="rapid_irregular" class="mt-0.5 text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
-            <div class="ml-3">
-              <span class="text-xs sm:text-sm font-semibold text-slate-800">เต้นเร็วและไม่สม่ำเสมอเลย</span>
-              <p class="text-[11px] text-slate-500 mt-0.5">จังหวะกระโดดไปมา เต้นกระตุกสลับเบาบ้างแรงบ้าง สะเปะสะปะจับจังหวะไม่ได้</p>
-            </div>
-          </label>
-          <label class="selectable-card flex items-start p-3.5 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-            <input type="radio" name="palpitationRhythmPattern" value="ectopic_skipped" class="mt-0.5 text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
-            <div class="ml-3">
-              <span class="text-xs sm:text-sm font-semibold text-slate-800">เต้นสะดุดเป็นครั้งคราว</span>
-              <p class="text-[11px] text-slate-500 mt-0.5">รู้สึกเหมือนหัวใจหยุดเต้นไป 1 จังหวะแล้วเต้นแรงตามมา หรือมีจังหวะสะดุดเป็นพักๆ</p>
-            </div>
-          </label>
-          <label class="selectable-card flex items-start p-3.5 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-            <input type="radio" name="palpitationRhythmPattern" value="abnormally_slow" class="mt-0.5 text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
-            <div class="ml-3">
-              <span class="text-xs sm:text-sm font-semibold text-slate-800">เต้นช้ามากผิดปกติ</span>
-              <p class="text-[11px] text-slate-500 mt-0.5">รู้สึกหัวใจเต้นช้ามากจนหมดแรง เหนื่อยล้า อ่อนเพลีย</p>
-            </div>
-          </label>
-          <label class="selectable-card flex items-start p-3.5 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-            <input type="radio" name="palpitationRhythmPattern" value="forceful_normal_rate" class="mt-0.5 text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
-            <div class="ml-3">
-              <span class="text-xs sm:text-sm font-semibold text-slate-800">เต้นแรงขึ้น ตึกๆ ในอก แต่อัตราเร็วยังดูปกติ</span>
-              <p class="text-[11px] text-slate-500 mt-0.5">รู้สึกหัวใจเต้นกระทบผนังอกแรงขึ้น แต่ไม่ได้เต้นรัวเร็วผิดปกติ</p>
-            </div>
-          </label>
         </div>
 
-        <div class="mt-4 pt-3 border-t border-slate-100 grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label class="block text-xs font-medium text-slate-700 mb-1">รูปแบบการเริ่มและหยุดของอาการใจสั่น:</label>
-            <div class="space-y-1.5">
-              <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-                <input type="radio" name="palpitationOnsetOffset" value="sudden_both" class="h-4 w-4 rounded flex-shrink-0 text-medical-600 focus:ring-medical-500">
-                <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800">เริ่มเต้นเร็วรัวทันที และหยุดทันที (เหมือนเปิด-ปิดสวิตช์ไฟ)</span>
-              </label>
-              <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-                <input type="radio" name="palpitationOnsetOffset" value="gradual_both" class="h-4 w-4 rounded flex-shrink-0 text-medical-600 focus:ring-medical-500">
-                <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800">ค่อยๆ เต้นเร็วขึ้นเรื่อยๆ และค่อยๆ ช้าลงช้าๆ</span>
-              </label>
+            <label class="block text-xs font-semibold text-slate-800 mb-1.5">เริ่มมีอาการใจสั่นมานานเท่าไรแล้ว</label>
+            <div class="flex items-center gap-2">
+              <input type="number" id="palpitationDurationVal" min="1" max="999" placeholder="เช่น 2" class="w-24 bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-sm text-slate-800 font-semibold focus:outline-none focus:ring-2 focus:ring-medical-500">
+              <select id="palpitationDurationUnit" class="bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-medical-500">
+                <option value="minutes">นาที</option>
+                <option value="hours" selected>ชั่วโมง</option>
+                <option value="days">วัน</option>
+                <option value="weeks">สัปดาห์</option>
+                <option value="months">เดือน</option>
+              </select>
             </div>
           </div>
-          <div>
-            <label class="block text-xs font-medium text-slate-700 mb-1">สิ่งกระตุ้นหรือท่าทางที่ส่งผลต่ออาการ (เลือกได้หลายข้อ):</label>
-            <div class="space-y-1.5">
-              <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-                <input type="checkbox" name="palpitationTriggers" value="valsalva_relieved" class="h-4 w-4 rounded flex-shrink-0 text-medical-600 focus:ring-medical-500">
-                <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800">หัวใจหยุดเต้นเร็วทันทีเมื่อกลั้นหายใจเบ่ง (Valsalva) หรือล้างหน้าน้ำเย็น</span>
-              </label>
-              <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-                <input type="checkbox" name="palpitationTriggers" value="exertional" class="h-4 w-4 rounded flex-shrink-0 text-medical-600 focus:ring-medical-500">
-                <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800">อาการมักกำเริบขณะออกแรง ออกกำลังกาย หรือทำงานหนัก</span>
-              </label>
-              <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-                <input type="checkbox" name="palpitationTriggers" value="rest_or_nocturnal" class="h-4 w-4 rounded flex-shrink-0 text-medical-600 focus:ring-medical-500">
-                <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800">อาการกำเริบขึ้นขณะนอนพักผ่อนเฉยๆ หรือสะดุ้งตื่นขึ้นมากลางดึก</span>
-              </label>
-              <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-                <input type="checkbox" name="palpitationTriggers" value="anxiety_panic" class="h-4 w-4 rounded flex-shrink-0 text-medical-600 focus:ring-medical-500">
-                <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800">สัมพันธ์กับความวิตกกังวล ความเครียด หรือตกใจกลัวอย่างรุนแรง</span>
-              </label>
+          <div id="palpitationOnsetExactWrap" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-semibold text-slate-800 mb-1">วันที่เริ่มมีอาการ (วว/ดด/ปปปป)</label>
+              <input type="text" id="palpitationOnsetExactDate" data-universal-date="true" placeholder="เช่น 26/10/2026" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs sm:text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-medical-500">
             </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-800 mb-1">เวลาที่เริ่มมีอาการ (24 ชม.)</label>
+              <input type="text" id="palpitationOnsetExactTime" data-universal-time="true" placeholder="เช่น 10:15" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs sm:text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-medical-500">
+            </div>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-semibold text-slate-800 mb-1.5">อาการในขณะนี้</label>
+            ${renderPalGrid('grid-cols-1', [
+              { kind: 'radio', name: 'palpitationCurrentStatus', value: 'currently_ongoing', title: ['ยังมีอาการใจสั่น', 'อยู่ในขณะนี้'], compact: true },
+              { kind: 'radio', name: 'palpitationCurrentStatus', value: 'resolved_recently', title: ['หายไปแล้ว', 'ก่อนมาโรงพยาบาล'], compact: true }
+            ])}
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-800 mb-1.5">ความถี่ที่เคยเป็น</label>
+            ${renderPalGrid('grid-cols-2', [
+              { kind: 'radio', name: 'palpitationEpisodeFreq', value: 'first_time', title: ['เป็นครั้งแรก'], compact: true },
+              { kind: 'radio', name: 'palpitationEpisodeFreq', value: 'weekly_frequent', title: ['สัปดาห์ละหลายครั้ง'], compact: true },
+              { kind: 'radio', name: 'palpitationEpisodeFreq', value: 'monthly', title: ['เดือนละ 1–2 ครั้ง'], compact: true },
+              { kind: 'radio', name: 'palpitationEpisodeFreq', value: 'infrequent_yearly', title: ['นานๆ ครั้ง', '(ปีละ 1–2 ครั้ง)'], compact: true }
+            ])}
+          </div>
+        </div>
+
+        <div class="pt-3 border-t border-slate-100">
+          ${renderPalSysHeader({ label: '1.1 ลักษณะจังหวะหัวใจที่รู้สึกได้เด่นชัดที่สุด', icon: 'heart', colorClass: 'bg-rose-100 text-rose-700' })}
+          ${renderPalGrid('grid-cols-1 sm:grid-cols-2', [
+            { kind: 'radio', name: 'palpitationRhythmPattern', value: 'rapid_regular', title: ['เต้นเร็วรัวสม่ำเสมอ', 'เป็นจังหวะ'], desc: 'เหมือนเสียงกลองรัวเร็วสม่ำเสมอไม่สะดุด' },
+            { kind: 'radio', name: 'palpitationRhythmPattern', value: 'rapid_irregular', title: ['เต้นเร็ว', 'และไม่สม่ำเสมอเลย'], desc: 'จังหวะกระโดดไปมา เบาบ้างแรงบ้าง' },
+            { kind: 'radio', name: 'palpitationRhythmPattern', value: 'ectopic_skipped', title: ['เต้นสะดุด', 'เป็นครั้งคราว'], desc: 'เหมือนหยุดไป 1 จังหวะแล้วเต้นแรงตามมา' },
+            { kind: 'radio', name: 'palpitationRhythmPattern', value: 'abnormally_slow', title: ['เต้นช้ามากผิดปกติ'], desc: 'รู้สึกหัวใจเต้นช้าจนอ่อนเพลียหมดแรง' },
+            { kind: 'radio', name: 'palpitationRhythmPattern', value: 'forceful_normal_rate', title: ['เต้นแรงตึกๆ ในอก', 'แต่อัตราเร็วปกติ'], colSpan2: true }
+          ])}
+        </div>
+
+        <div class="pt-3 border-t border-slate-100 grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-semibold text-slate-800 mb-1.5">รูปแบบการเริ่มและหยุด</label>
+            ${renderPalGrid('grid-cols-1', [
+              { kind: 'radio', name: 'palpitationOnsetOffset', value: 'sudden_both', title: ['เริ่มเร็วทันที', 'และหยุดทันที', '(เหมือนเปิด-ปิด', 'สวิตช์)'], compact: true },
+              { kind: 'radio', name: 'palpitationOnsetOffset', value: 'gradual_both', title: ['ค่อยๆ เร็วขึ้น', 'และค่อยๆ ช้าลง'], compact: true }
+            ])}
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-800 mb-1.5">ท่าทางหรือสิ่งกระตุ้นที่เกี่ยวข้อง (เลือกได้หลายข้อ)</label>
+            ${renderPalGrid('grid-cols-1 sm:grid-cols-2', [
+              { kind: 'checkbox', name: 'palpitationTriggers', value: 'valsalva_relieved', title: ['หยุดเมื่อกลั้นเบ่ง', 'หรือล้างหน้าน้ำเย็น'], compact: true },
+              { kind: 'checkbox', name: 'palpitationTriggers', value: 'exertional', title: ['กำเริบขณะออกแรง', 'หรือออกกำลังกาย'], compact: true },
+              { kind: 'checkbox', name: 'palpitationTriggers', value: 'rest_or_nocturnal', title: ['กำเริบขณะนอนพัก', 'หรือตื่นกลางดึก'], compact: true },
+              { kind: 'checkbox', name: 'palpitationTriggers', value: 'anxiety_panic', title: ['สัมพันธ์ความเครียด', 'หรือตกใจกลัว'], compact: true }
+            ])}
           </div>
         </div>
       </div>
 
-      <!-- Card 3: Red Flags & Perfusion Signs -->
-      <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+      <!-- Card 2: Emergency Warning Signs -->
+      <div class="bg-white rounded-2xl p-5 sm:p-6 shadow-sm border border-slate-200">
         <div class="flex items-center space-x-3 mb-4 pb-3 border-b border-slate-100">
-          <div class="bg-medical-100 text-medical-700 p-2 rounded-xl">
-            <i data-lucide="shield-alert" class="w-5 h-5"></i>
-          </div>
+          <div class="bg-red-100 text-red-700 p-2 rounded-xl"><i data-lucide="shield-alert" class="w-5 h-5"></i></div>
           <div>
-            <h2 class="text-base font-bold text-slate-900">3. สัญญาณอันตรายและระบบไหลเวียนโลหิต (Red Flags & Perfusion Signs)</h2>
-            <p class="text-xs text-slate-500">ผู้ป่วยมีอาการเตือนดังต่อไปนี้ร่วมด้วยหรือไม่ (เลือกได้มากกว่า 1 ข้อตามจริง)</p>
+            <h2 class="text-base font-bold text-slate-900">2. สัญญาณอันตรายฉุกเฉินและอาการร่วม</h2>
+            <p class="text-xs text-slate-500">เลือกอาการเตือนที่พบร่วมกับอาการใจสั่นในครั้งนี้ (เลือกได้หลายข้อ)</p>
           </div>
         </div>
-        
-        <div class="space-y-2">
-          <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-            <input type="checkbox" name="palpitationWarningSigns" value="presyncope_dizziness" class="h-4 w-4 rounded flex-shrink-0 text-medical-600 focus:ring-medical-500" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
-            <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800">มีอาการหน้ามืด วิงเวียนศีรษะ ตาพร่ามัว ทรงตัวไม่อยู่ (Pre-syncope / Lightheadedness)</span>
-          </label>
-          <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-            <input type="checkbox" name="palpitationWarningSigns" value="syncope" class="h-4 w-4 rounded flex-shrink-0 text-medical-600 focus:ring-medical-500" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
-            <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800">มีอาการเป็นลม วูบหมดสติ หรือล้มพับไปชั่วขณะ (Syncope)</span>
-          </label>
-          <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-            <input type="checkbox" name="palpitationWarningSigns" value="ischemic_chest_pain" class="h-4 w-4 rounded flex-shrink-0 text-medical-600 focus:ring-medical-500" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
-            <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800">มีอาการเจ็บแน่นหน้าอก (แน่นอึดอัด เหมือนมีของหนักทับ หายใจไม่สะดวก หรือร้าวไปกราม/แขน)</span>
-          </label>
-          <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-            <input type="checkbox" name="palpitationWarningSigns" value="acute_heart_failure" class="h-4 w-4 rounded flex-shrink-0 text-medical-600 focus:ring-medical-500" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
-            <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800">มีอาการหายใจหอบเหนื่อยรุนแรง นอนราบไม่ได้ หรือตื่นขึ้นมาไอหอบเหนื่อยกลางดึก</span>
-          </label>
-          <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-            <input type="checkbox" name="palpitationWarningSigns" value="cold_diaphoresis" class="h-4 w-4 rounded flex-shrink-0 text-medical-600 focus:ring-medical-500" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
-            <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800">เหงื่อแตกท่วมตัว ตัวเย็นชืด ซีด หรือปลายมือปลายเท้าเย็นเฉียบ (Diaphoresis / Cold extremities)</span>
-          </label>
-          <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-            <input type="checkbox" name="palpitationWarningSigns" value="altered_mental" class="h-4 w-4 rounded flex-shrink-0 text-medical-600 focus:ring-medical-500" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
-            <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800">รู้สึกซึมลง สับสน พูดคุยไม่รู้เรื่อง หรือตอบสนองช้าลง</span>
-          </label>
-          <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-            <input type="checkbox" name="palpitationWarningSigns" value="hyperventilation_tingling" class="h-4 w-4 rounded flex-shrink-0 text-medical-600 focus:ring-medical-500" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
-            <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800">มีอาการมือเท้าชา หายใจเร็วตื้น นิ้วมือเกร็งจีบ</span>
-          </label>
-          <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-            <input type="checkbox" name="palpitationWarningSigns" value="none_warning" onchange="handlePalpitationWarningNoneToggle(this)" class="h-4 w-4 rounded flex-shrink-0 text-medical-600 focus:ring-medical-500" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
-            <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800">ไม่มีอาการเหล่านี้เลย (สัญญาณชีพและระบบไหลเวียนปกติ)</span>
-          </label>
+
+        <div class="p-3.5 bg-slate-50 rounded-xl border border-slate-200">
+          ${renderPalSysHeader({
+            label: 'อาการเตือนระบบหัวใจและไหลเวียนโลหิต',
+            icon: 'alert-octagon',
+            colorClass: 'bg-red-100 text-red-700',
+            toggleId: 'palpitationWarningNoneCb',
+            toggleLabel: 'ไม่มีอาการในหมวดนี้',
+            toggleName: 'palpitationWarningSigns',
+            toggleValue: 'none_warning',
+            toggleOnchange: 'handlePalpitationWarningNoneToggle(this)'
+          })}
+          ${renderPalGrid('grid-cols-1 sm:grid-cols-2', [
+            { name: 'palpitationWarningSigns', value: 'presyncope_dizziness', title: ['หน้ามืด วิงเวียน', 'ตาพร่ามัว'], onchange: 'handlePalpitationWarningItemChange(this)' },
+            { name: 'palpitationWarningSigns', value: 'syncope', title: ['เป็นลม วูบหมดสติ', 'ชั่วขณะ'], onchange: 'handlePalpitationWarningItemChange(this)' },
+            { name: 'palpitationWarningSigns', value: 'ischemic_chest_pain', title: ['เจ็บแน่นหน้าอก', 'ร้าวกรามหรือแขน'], onchange: 'handlePalpitationWarningItemChange(this)' },
+            { name: 'palpitationWarningSigns', value: 'acute_heart_failure', title: ['หายใจหอบเหนื่อย', 'นอนราบไม่ได้'], onchange: 'handlePalpitationWarningItemChange(this)' },
+            { name: 'palpitationWarningSigns', value: 'cold_diaphoresis', title: ['เหงื่อแตกท่วมตัว', 'มือเท้าเย็นซีด'], onchange: 'handlePalpitationWarningItemChange(this)' },
+            { name: 'palpitationWarningSigns', value: 'altered_mental', title: ['ซึมลง สับสน', 'ตอบสนองช้า'], onchange: 'handlePalpitationWarningItemChange(this)' },
+            { name: 'palpitationWarningSigns', value: 'hyperventilation_tingling', title: ['มือเท้าชา', 'หายใจเร็วตื้น มือจีบ'], colSpan2: true, onchange: 'handlePalpitationWarningItemChange(this)' }
+          ])}
         </div>
       </div>
 
-      <!-- Card 4: Triggers, Beverages & Medications -->
-      <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
-        <div class="flex items-center space-x-3 mb-4 pb-3 border-b border-slate-100">
-          <div class="bg-medical-100 text-medical-700 p-2 rounded-xl">
-            <i data-lucide="coffee" class="w-5 h-5"></i>
-          </div>
+      <!-- Card 3: Stimulants, Medications & Custom Triggers -->
+      <div class="bg-white rounded-2xl p-5 sm:p-6 shadow-sm border border-slate-200 space-y-5">
+        <div class="flex items-center space-x-3 pb-3 border-b border-slate-100">
+          <div class="bg-amber-100 text-amber-700 p-2 rounded-xl"><i data-lucide="coffee" class="w-5 h-5"></i></div>
           <div>
-            <h2 class="text-base font-bold text-slate-900">4. สารกระตุ้น เครื่องดื่ม และประวัติการใช้ยา (Triggers & Medications)</h2>
-            <p class="text-xs text-slate-500">ตรวจสอบคาเฟอีน ยาลดน้ำมูก เครื่องดื่มชูกำลัง และยาประจำตัว</p>
-          </div>
-        </div>
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <!-- Stimulants & Beverages -->
-          <div class="p-3 bg-slate-50 rounded-xl border border-slate-200">
-            <label class="block text-xs font-semibold text-slate-800 mb-1.5">เครื่องดื่มหรือสารกระตุ้นในรอบ 24–48 ชม.:</label>
-            <div class="space-y-1.5">
-              <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-                <input type="checkbox" name="palpitationSubstances" value="energy_drinks" class="h-4 w-4 rounded flex-shrink-0 text-medical-600 focus:ring-medical-500">
-                <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800">เครื่องดื่มชูกำลัง (เช่น M-150, กระทิงแดง, คาราบาว, Monster)</span>
-              </label>
-              <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-                <input type="checkbox" name="palpitationSubstances" value="caffeine_heavy" class="h-4 w-4 rounded flex-shrink-0 text-medical-600 focus:ring-medical-500">
-                <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800">กาแฟสดเข้มข้น, ชาเข้มข้น, น้ำอัดลม หรือช็อกโกแลตปริมาณมาก</span>
-              </label>
-              <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-                <input type="checkbox" name="palpitationSubstances" value="alcohol_binge" class="h-4 w-4 rounded flex-shrink-0 text-medical-600 focus:ring-medical-500">
-                <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800">เครื่องดื่มแอลกอฮอล์ (เบียร์, เหล้า, ไวน์) หรือดื่มหนักติดต่อกัน</span>
-              </label>
-              <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-                <input type="checkbox" name="palpitationSubstances" value="cannabis_kratom" class="h-4 w-4 rounded flex-shrink-0 text-medical-600 focus:ring-medical-500">
-                <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800">กัญชา, พืชกระท่อม หรือสารสกัดจากสมุนไพร</span>
-              </label>
-              <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-                <input type="checkbox" name="palpitationSubstances" value="illicit_stimulants" class="h-4 w-4 rounded flex-shrink-0 text-medical-600 focus:ring-medical-500">
-                <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800">ยาลดความอ้วน, ยาบ้า, ยาไอซ์ หรือสารกระตุ้นประสาท</span>
-              </label>
-              <label class="flex items-center gap-2 text-xs text-slate-700 cursor-pointer pt-1 border-t border-slate-200">
-                <input type="checkbox" name="palpitationSubstances" value="none_substances" onchange="handlePalpitationSubstancesNoneToggle(this)" class="h-4 w-4 rounded flex-shrink-0 text-medical-600 focus:ring-medical-500">
-                <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800">ไม่ได้รับประทานสารหรือเครื่องดื่มกระตุ้นเหล่านี้</span>
-              </label>
-            </div>
-          </div>
-
-          <!-- Medications -->
-          <div class="p-3 bg-slate-50 rounded-xl border border-slate-200">
-            <label class="block text-xs font-semibold text-slate-800 mb-1.5">ประวัติการใช้ยาประจำตัว หรือยาที่เพิ่งได้รับ:</label>
-            <div class="space-y-1.5">
-              <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-                <input type="checkbox" name="palpitationMeds" value="decongestants" class="h-4 w-4 rounded flex-shrink-0 text-medical-600 focus:ring-medical-500">
-                <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800">ยาแก้หวัด ยาลดน้ำมูกกลุ่ม Pseudoephedrine หรือ Phenylephrine</span>
-              </label>
-              <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-                <input type="checkbox" name="palpitationMeds" value="asthma_inhalers" class="h-4 w-4 rounded flex-shrink-0 text-medical-600 focus:ring-medical-500">
-                <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800">ยาพ่นขยายหลอดลมรักษาโรคหอบหืด/ถุงลมโป่งพอง (Salbutamol)</span>
-              </label>
-              <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-                <input type="checkbox" name="palpitationMeds" value="thyroid_hormone" class="h-4 w-4 rounded flex-shrink-0 text-medical-600 focus:ring-medical-500">
-                <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800">ยารักษาโรคต่อมไทรอยด์ หรือฮอร์โมนไทรอยด์ (Levothyroxine)</span>
-              </label>
-              <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-                <input type="checkbox" name="palpitationMeds" value="antiarrhythmics" class="h-4 w-4 rounded flex-shrink-0 text-medical-600 focus:ring-medical-500">
-                <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800">ยารักษาโรคหัวใจเต้นผิดจังหวะ (Amiodarone, Digoxin, Beta-blockers)</span>
-              </label>
-              <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-                <input type="checkbox" name="palpitationMeds" value="diuretics" class="h-4 w-4 rounded flex-shrink-0 text-medical-600 focus:ring-medical-500">
-                <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800">ยาขับปัสสาวะ (Furosemide, HCTZ - เสี่ยงต่อเกลือแร่ต่ำ)</span>
-              </label>
-              <label class="flex items-center gap-2 text-xs text-slate-700 cursor-pointer pt-1 border-t border-slate-200">
-                <input type="checkbox" name="palpitationMeds" value="none_meds" onchange="handlePalpitationMedsNoneToggle(this)" class="h-4 w-4 rounded flex-shrink-0 text-medical-600 focus:ring-medical-500">
-                <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800">ไม่ได้รับประทานยากลุ่มเหล่านี้</span>
-              </label>
-            </div>
+            <h2 class="text-base font-bold text-slate-900">3. สารกระตุ้น เครื่องดื่ม และยาที่อาจเกี่ยวข้อง</h2>
+            <p class="text-xs text-slate-500">ตรวจสอบคาเฟอีน เครื่องดื่มชูกำลัง ยาลดน้ำมูก ยาพ่น หรือสารกระตุ้นอื่น</p>
           </div>
         </div>
 
-        <!-- Custom trigger branch -->
-        <div class="mt-3 pt-3 border-t border-slate-100">
-          <label class="block text-xs font-medium text-slate-700 mb-1">มีประวัติการใช้ ยา อาหาร หรือสาร อื่นๆ ที่สงสัยว่าเป็นสาเหตุหรือไม่:</label>
-          <div class="space-y-1">
-            <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-              <input type="radio" name="palpitationCustomTriggerCheck" value="no_custom_trigger" onchange="handlePalpitationCustomTriggerChange('no_custom_trigger')" class="h-4 w-4 rounded flex-shrink-0 text-medical-600 focus:ring-medical-500">
-              <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800">ไม่มี</span>
-            </label>
-            <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-              <input type="radio" name="palpitationCustomTriggerCheck" value="has_custom_trigger" onchange="handlePalpitationCustomTriggerChange('has_custom_trigger')" class="h-4 w-4 rounded flex-shrink-0 text-medical-600 focus:ring-medical-500">
-              <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800">มี (ระบุชื่อยา อาหาร หรือสารที่สงสัย)</span>
-            </label>
-          </div>
-          <div id="palpitationCustomTriggerWrap" class="hidden bg-slate-50 border border-slate-200 rounded-xl p-4 mt-3">
-            <input type="text" id="palpitationCustomTriggerText" placeholder="ระบุชื่อยา อาหาร หรือสารที่สงสัย" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-1.5 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-medical-500">
-          </div>
-        </div>
-      </div>
-
-      <!-- Card 5: PMH & Family History -->
-      <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
-        <div class="flex items-center space-x-3 mb-4 pb-3 border-b border-slate-100">
-          <div class="bg-medical-100 text-medical-700 p-2 rounded-xl">
-            <i data-lucide="file-text" class="w-5 h-5"></i>
-          </div>
-          <div>
-            <h2 class="text-base font-bold text-slate-900">5. ประวัติโรคประจำตัวที่สำคัญ และประวัติครอบครัว (PMH & Family History)</h2>
-            <p class="text-xs text-slate-500">ตรวจสอบประวัติโรคหัวใจ ไทรอยด์ และประวัติครอบครัวเสียชีวิตกะทันหัน</p>
-          </div>
-        </div>
-        <div class="space-y-4">
-          <!-- Important Chronic Conditions -->
-          <div class="p-3 bg-slate-50 rounded-xl border border-slate-200">
-            <label class="block text-xs font-semibold text-slate-800 mb-1.5">ประวัติโรคประจำตัวที่สำคัญ (เลือกได้ตามจริง):</label>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="p-3.5 bg-slate-50 rounded-xl border border-slate-200">
+            ${renderPalSysHeader({
+              label: '3.1 เครื่องดื่มหรือสารกระตุ้น (24–48 ชม.)',
+              icon: 'cup-soda',
+              colorClass: 'bg-amber-100 text-amber-700',
+              toggleId: 'palpitationSubNoneCb',
+              toggleLabel: 'ไม่มีในหมวดนี้',
+              toggleName: 'palpitationSubstances',
+              toggleValue: 'none_substances',
+              toggleOnchange: 'handlePalpitationSubstancesNoneToggle(this)'
+            })}
             <div class="space-y-2">
-              <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-                <input type="checkbox" name="palpitationImportantConditions" value="heart_disease" onchange="handlePalpitationHeartToggle(this)" class="h-4 w-4 rounded flex-shrink-0 text-medical-600 focus:ring-medical-500">
-                <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800">โรคหัวใจ</span>
-              </label>
-
-              <!-- Heart Disease Sub-branch -->
-              <div id="palpitationHeartSubWrap" class="hidden bg-slate-50 border border-slate-200 rounded-xl p-4 mt-3 space-y-2">
-                <label class="block text-[11px] font-semibold text-slate-800 mb-1">ระบุรายละเอียดโรคหัวใจเดิม:</label>
-                <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-                  <input type="checkbox" name="palpitationCardiacHistory" value="cad_stent" class="h-4 w-4 rounded flex-shrink-0 text-medical-600 focus:ring-medical-500">
-                  <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800">เคยมีประวัติโรคหลอดเลือดหัวใจตีบ หรือเคยใส่ขดลวดหัวใจ (CAD / Stent)</span>
-                </label>
-                <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-                  <input type="checkbox" name="palpitationCardiacHistory" value="prior_arrhythmia" class="h-4 w-4 rounded flex-shrink-0 text-medical-600 focus:ring-medical-500">
-                  <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800">เคยได้รับการวินิจฉัยโรคหัวใจเต้นผิดจังหวะ (เช่น AF, SVT, VT)</span>
-                </label>
-                <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-                  <input type="checkbox" name="palpitationCardiacHistory" value="prior_ablation" class="h-4 w-4 rounded flex-shrink-0 text-medical-600 focus:ring-medical-500">
-                  <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800">เคยได้รับการรักษาด้วยการสวนจี้ไฟฟ้าหัวใจ (Radiofrequency Catlation)</span>
-                </label>
-                <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-                  <input type="checkbox" name="palpitationCardiacHistory" value="heart_failure" class="h-4 w-4 rounded flex-shrink-0 text-medical-600 focus:ring-medical-500">
-                  <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800">โรคหัวใจล้มเหลว (Heart Failure) หรือหัวใจโต (Cardiomegaly)</span>
-                </label>
-                <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-                  <input type="checkbox" name="palpitationCardiacHistory" value="valvular_disease" class="h-4 w-4 rounded flex-shrink-0 text-medical-600 focus:ring-medical-500">
-                  <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800">มีโรคลิ้นหัวใจ หรือเคยผ่าตัดเปลี่ยนลิ้นหัวใจเทียม</span>
-                </label>
-                <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-                  <input type="checkbox" name="palpitationCardiacHistory" value="pacemaker_icd" class="h-4 w-4 rounded flex-shrink-0 text-medical-600 focus:ring-medical-500">
-                  <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800">ใส่เครื่องกระตุ้นหัวใจ (Pacemaker) หรือเครื่องกระตุกไฟฟ้าหัวใจ (ICD) ในร่างกาย</span>
-                </label>
-              </div>
-
-              <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-                <input type="checkbox" name="palpitationImportantConditions" value="hyperthyroidism" onchange="handlePalpitationImportantItemChange(this)" class="h-4 w-4 rounded flex-shrink-0 text-medical-600 focus:ring-medical-500">
-                <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800">โรคต่อมไทรอยด์ทำงานเกิน หรือคอพอกเป็นพิษ (Hyperthyroidism / Toxic Goiter)</span>
-              </label>
-
-              <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-                <input type="checkbox" name="palpitationImportantConditions" value="diabetes" onchange="handlePalpitationImportantItemChange(this)" class="h-4 w-4 rounded flex-shrink-0 text-medical-600 focus:ring-medical-500">
-                <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800">โรคเบาหวาน (เสี่ยงต่อน้ำตาลในเลือดต่ำ Hypoglycemia)</span>
-              </label>
-
-              <label class="flex items-center gap-2 text-xs text-slate-700 cursor-pointer pt-1 border-t border-slate-200">
-                <input type="checkbox" name="palpitationImportantConditions" value="none_important_pmh" onchange="handlePalpitationImportantNoneToggle(this)" class="h-4 w-4 rounded flex-shrink-0 text-medical-600 focus:ring-medical-500">
-                <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800">ไม่มีโรคประจำตัวเหล่านี้</span>
-              </label>
+              ${renderPalOption({ name: 'palpitationSubstances', value: 'energy_drinks', title: ['เครื่องดื่มชูกำลัง'], desc: 'เช่น M-150, กระทิงแดง, คาราบาว, Monster', onchange: 'handlePalpitationSubstancesItemChange(this)', compact: true })}
+              ${renderPalOption({ name: 'palpitationSubstances', value: 'caffeine_heavy', title: ['กาแฟเข้มข้น ชา', 'น้ำอัดลม ช็อกโกแลต'], onchange: 'handlePalpitationSubstancesItemChange(this)', compact: true })}
+              ${renderPalOption({ name: 'palpitationSubstances', value: 'alcohol_binge', title: ['ดื่มแอลกอฮอล์', 'ดื่มหนักต่อเนื่อง'], onchange: 'handlePalpitationSubstancesItemChange(this)', compact: true })}
+              ${renderPalOption({ name: 'palpitationSubstances', value: 'cannabis_kratom', title: ['กัญชา พืชกระท่อม', 'หรือสารสกัดสมุนไพร'], onchange: 'handlePalpitationSubstancesItemChange(this)', compact: true })}
+              ${renderPalOption({ name: 'palpitationSubstances', value: 'illicit_stimulants', title: ['ยาลดความอ้วน', 'หรือสารกระตุ้นประสาท'], onchange: 'handlePalpitationSubstancesItemChange(this)', compact: true })}
             </div>
-            <p class="text-[11px] text-slate-400 mt-2">* โรคประจำตัวอื่นๆ สามารถระบุได้ในขั้นตอนถัดไป (ประวัติสุขภาพและยาประจำตัว)</p>
           </div>
 
-          <!-- Family History -->
-          <div class="p-3 bg-slate-50 rounded-xl border border-slate-200">
-            <label class="block text-xs font-semibold text-slate-800 mb-1.5">ประวัติครอบครัวเกี่ยวกับการเสียชีวิตกะทันหัน:</label>
-            <div class="space-y-1.5">
-              <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-                <input type="radio" name="palpitationFamilyHistory" value="sudden_death_under50" class="h-4 w-4 rounded flex-shrink-0 text-medical-600 focus:ring-medical-500">
-                <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800">มีคนในครอบครัวสายตรง (พ่อ แม่ พี่ น้อง) เสียชีวิตกะทันหันก่อนอายุ 50 ปี หรือใหลตาย</span>
-              </label>
-              <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-                <input type="radio" name="palpitationFamilyHistory" value="no_family_sudden_death" class="h-4 w-4 rounded flex-shrink-0 text-medical-600 focus:ring-medical-500">
-                <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800">ไม่มีประวัติคนในครอบครัวเสียชีวิตกะทันหันในวัยหนุ่มสาว</span>
-              </label>
+          <div class="p-3.5 bg-slate-50 rounded-xl border border-slate-200">
+            ${renderPalSysHeader({
+              label: '3.2 ยาที่เพิ่งใช้หรือยาประจำตัว',
+              icon: 'pill',
+              colorClass: 'bg-blue-100 text-blue-700',
+              toggleId: 'palpitationMedsNoneCb',
+              toggleLabel: 'ไม่มีในหมวดนี้',
+              toggleName: 'palpitationMeds',
+              toggleValue: 'none_meds',
+              toggleOnchange: 'handlePalpitationMedsNoneToggle(this)'
+            })}
+            <div class="space-y-2">
+              ${renderPalOption({ name: 'palpitationMeds', value: 'decongestants', title: ['ยาแก้หวัด', '/ ยาลดน้ำมูก'], desc: 'เช่น Pseudoephedrine, Phenylephrine', onchange: 'handlePalpitationMedsItemChange(this)', compact: true })}
+              ${renderPalOption({ name: 'palpitationMeds', value: 'asthma_inhalers', title: ['ยาพ่นขยายหลอดลม'], desc: 'เช่น ยาพ่นหอบหืด Salbutamol', onchange: 'handlePalpitationMedsItemChange(this)', compact: true })}
+              ${renderPalOption({ name: 'palpitationMeds', value: 'thyroid_hormone', title: ['ยาหรือฮอร์โมนไทรอยด์'], desc: 'เช่น Levothyroxine', onchange: 'handlePalpitationMedsItemChange(this)', compact: true })}
+              ${renderPalOption({ name: 'palpitationMeds', value: 'antiarrhythmics', title: ['ยารักษาหัวใจ', 'เต้นผิดจังหวะ'], desc: 'เช่น Amiodarone, Digoxin, Beta-blockers', onchange: 'handlePalpitationMedsItemChange(this)', compact: true })}
+              ${renderPalOption({ name: 'palpitationMeds', value: 'diuretics', title: ['ยาขับปัสสาวะ'], desc: 'เช่น Furosemide, HCTZ', onchange: 'handlePalpitationMedsItemChange(this)', compact: true })}
             </div>
+          </div>
+        </div>
+
+        <div class="pt-2 border-t border-slate-100">
+          <label class="block text-xs font-semibold text-slate-800 mb-1.5">3.3 มียา อาหาร หรือสารอื่นๆ ที่สงสัยกระตุ้นอาการหรือไม่</label>
+          ${renderGiSafeTriggerGridPal()}
+          <div id="palpitationCustomTriggerWrap" class="hidden mt-2.5">
+            <input type="text" id="palpitationCustomTriggerText" placeholder="ระบุชื่อยา อาหารเสริม หรือสารที่สงสัย..." class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs sm:text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-medical-500">
           </div>
         </div>
       </div>
 
-      <!-- Card 6: อาการอื่นๆ ที่ต้องการแจ้งเพิ่มเติม -->
-      <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
-        <div class="flex items-center space-x-3 mb-3 pb-2 border-b border-slate-100">
-          <div class="bg-slate-100 text-slate-600 p-2 rounded-xl">
-            <i data-lucide="message-square-plus" class="w-5 h-5"></i>
-          </div>
+      <!-- Card 4: Important PMH & Family Sudden Death -->
+      <div class="bg-white rounded-2xl p-5 sm:p-6 shadow-sm border border-slate-200 space-y-5">
+        <div class="flex items-center space-x-3 pb-3 border-b border-slate-100">
+          <div class="bg-medical-100 text-medical-700 p-2 rounded-xl"><i data-lucide="file-text" class="w-5 h-5"></i></div>
           <div>
-            <h2 class="text-base font-bold text-slate-800">6. อาการอื่น ๆ หรือข้อความเพิ่มเติมถึงแพทย์ (Additional Notes)</h2>
-            <p class="text-xs text-slate-500">ระบุอาการอื่นๆ ที่ท่านมีหรือต้องการบอกแพทย์เพิ่มเติม (ถ้ามี)</p>
+            <h2 class="text-base font-bold text-slate-900">4. ประวัติโรคประจำตัวที่สำคัญ และประวัติครอบครัว</h2>
+            <p class="text-xs text-slate-500">ตรวจสอบโรคหัวใจเดิม โรคไทรอยด์ เบาหวาน และประวัติครอบครัวเสียชีวิตกะทันหัน</p>
+          </div>
+        </div>
+
+        <div class="p-3.5 bg-slate-50 rounded-xl border border-slate-200">
+          ${renderPalSysHeader({
+            label: '4.1 โรคประจำตัวที่สำคัญ',
+            icon: 'heart-handshake',
+            colorClass: 'bg-purple-100 text-purple-700',
+            toggleId: 'palpitationImportantNoneCb',
+            toggleLabel: 'ไม่มีในหมวดนี้',
+            toggleName: 'palpitationImportantConditions',
+            toggleValue: 'none_important_pmh',
+            toggleOnchange: 'handlePalpitationImportantNoneToggle(this)'
+          })}
+          ${renderPalGrid('grid-cols-1 sm:grid-cols-3', [
+            { id: 'palpitationHeartCb', name: 'palpitationImportantConditions', value: 'heart_disease', title: ['โรคหัวใจ'], onchange: 'handlePalpitationHeartToggle(this)' },
+            { name: 'palpitationImportantConditions', value: 'hyperthyroidism', title: ['ต่อมไทรอยด์ทำงานเกิน', '/ คอพอกเป็นพิษ'], onchange: 'handlePalpitationImportantItemChange(this)' },
+            { name: 'palpitationImportantConditions', value: 'diabetes', title: ['โรคเบาหวาน'], onchange: 'handlePalpitationImportantItemChange(this)' }
+          ])}
+          <div id="palpitationHeartSubWrap" class="hidden mt-3 pt-3 border-t border-slate-200 space-y-2">
+            <label class="block text-xs font-semibold text-slate-700 mb-1">ระบุรายละเอียดโรคหัวใจเดิม (เลือกได้หลายข้อ):</label>
+            ${renderPalGrid('grid-cols-1 sm:grid-cols-2', [
+              { name: 'palpitationCardiacHistory', value: 'cad_stent', title: ['หลอดเลือดหัวใจตีบ', 'หรือเคยใส่ขดลวด'], compact: true },
+              { name: 'palpitationCardiacHistory', value: 'prior_arrhythmia', title: ['เคยเป็นโรคหัวใจ', 'เต้นผิดจังหวะ'], compact: true },
+              { name: 'palpitationCardiacHistory', value: 'prior_ablation', title: ['เคยรักษาด้วย', 'การสวนจี้ไฟฟ้าหัวใจ'], compact: true },
+              { name: 'palpitationCardiacHistory', value: 'heart_failure', title: ['ภาวะหัวใจล้มเหลว', 'หรือหัวใจโต'], compact: true },
+              { name: 'palpitationCardiacHistory', value: 'valvular_disease', title: ['โรคลิ้นหัวใจ', '/ ผ่าตัดเปลี่ยนลิ้น'], compact: true },
+              { name: 'palpitationCardiacHistory', value: 'pacemaker_icd', title: ['ใส่เครื่องกระตุ้น', 'หัวใจในร่างกาย'], compact: true }
+            ])}
+          </div>
+          <p class="text-[11px] text-slate-500 mt-2">* โรคประจำตัวอื่นๆ สามารถระบุเพิ่มเติมได้ในหัวข้อประวัติสุขภาพและยาประจำตัวถัดไป</p>
+        </div>
+
+        <div class="p-3.5 bg-slate-50 rounded-xl border border-slate-200">
+          ${renderPalSysHeader({ label: '4.2 ประวัติครอบครัวเสียชีวิตกะทันหัน', icon: 'users', colorClass: 'bg-indigo-100 text-indigo-700' })}
+          ${renderPalGrid('grid-cols-1 sm:grid-cols-2', [
+            { kind: 'radio', name: 'palpitationFamilyHistory', value: 'sudden_death_under50', title: ['มีญาติเสียชีวิต', 'กะทันหัน', 'ก่อนอายุ 50 ปี'], desc: 'เช่น พ่อ แม่ พี่ น้อง หรือภาวะใหลตาย' },
+            { kind: 'radio', name: 'palpitationFamilyHistory', value: 'no_family_sudden_death', title: ['ไม่มีประวัติครอบครัว', 'เสียชีวิตกะทันหัน'] }
+          ])}
+        </div>
+      </div>
+
+      <!-- Unnumbered Card: Additional Notes -->
+      <div class="bg-white rounded-2xl p-5 sm:p-6 shadow-sm border border-slate-200">
+        <div class="flex items-center space-x-3 mb-3 pb-2 border-b border-slate-100">
+          <div class="bg-slate-100 text-slate-600 p-2 rounded-xl"><i data-lucide="message-square-plus" class="w-5 h-5"></i></div>
+          <div>
+            <h2 class="text-base font-bold text-slate-800">อาการอื่น ๆ หรือข้อความเพิ่มเติมถึงแพทย์</h2>
+            <p class="text-xs text-slate-500">ระบุอาการอื่นๆ ที่ท่านมีหรือต้องการแจ้งแพทย์เพิ่มเติม (ถ้ามี)</p>
           </div>
         </div>
         <textarea id="palpitation_other_free" rows="2" placeholder="ระบุอาการอื่นๆ เพิ่มเติม (ถ้ามี)..." class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs sm:text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-medical-500"></textarea>
       </div>
     </div>
-  `,
+  `;
+}
+
+function renderGiSafeTriggerGridPal() {
+  return renderPalGrid('grid-cols-1 sm:grid-cols-2', [
+    { kind: 'radio', name: 'palpitationCustomTriggerCheck', value: 'no_custom_trigger', title: ['ไม่มี'], onchange: "handlePalpitationCustomTriggerChange('no_custom_trigger')", compact: true },
+    { kind: 'radio', name: 'palpitationCustomTriggerCheck', value: 'has_custom_trigger', title: ['มี (ระบุยา/สาร', 'ที่สงสัย)'], onchange: "handlePalpitationCustomTriggerChange('has_custom_trigger')", compact: true }
+  ]);
+}
+
+// --- Register Chief Complaint Module ---
+registerCcModule({
+  id: 'palpitation',
+  recordCc: 'palpitations',
+  titleTh: 'ใจสั่น',
+  titleEn: 'Palpitations & Arrhythmia Triage',
+  sectionDomId: 'palpitationQuestionnaireSection',
+  doctorCcBadgeHtml: '<i data-lucide="heart-pulse" class="w-4 h-4 text-rose-500 mr-1.5 flex-shrink-0"></i><span class="font-bold text-slate-800">CC: ใจสั่น (Palpitations)</span>',
+  patientBadgeHtml: '<i data-lucide="heart-pulse" class="w-5 h-5 sm:w-6 sm:h-6 flex-shrink-0"></i><span><span class="inline-block whitespace-nowrap">ใจสั่น / </span><span class="inline-block whitespace-nowrap">หัวใจเต้นผิดจังหวะ</span></span>',
+  pmhSectionNumber: 5,
+  dateFields: ['palpitationOnsetExactDate'],
+  timeFields: ['palpitationOnsetExactTime'],
+  branchIds: [
+    'palpitationCustomTriggerWrap',
+    'palpitationHeartSubWrap'
+  ],
+  inputIdsToClear: [
+    'palpitationDurationVal',
+    'palpitationOnsetExactDate',
+    'palpitationOnsetExactTime',
+    'palpitationCustomTriggerText',
+    'palpitation_other_free'
+  ],
+  formHtml: buildPalpitationFormHtml(),
+
+  resetForm: function() {
+    (this.branchIds || []).forEach(id => {
+      const el = getPalEl(id);
+      if (el) el.classList.add('hidden');
+    });
+    (this.inputIdsToClear || []).forEach(id => {
+      const el = getPalEl(id);
+      if (el) el.value = '';
+    });
+    const durUnit = getPalEl('palpitationDurationUnit');
+    if (durUnit) durUnit.value = 'hours';
+    const root = getPalEl('palpitationQuestionnaireSection');
+    if (root) {
+      root.querySelectorAll('input[type="radio"], input[type="checkbox"]').forEach(inp => { inp.checked = false; });
+    }
+  },
+  clearForm: function() { this.resetForm(); },
 
   collectIntake: function(ctx) {
-    const _rawDur = parseFloat(document.getElementById('palpitationDurationVal')?.value); const durationVal = (!isNaN(_rawDur) && _rawDur > 0) ? _rawDur : null;
-    const durationUnit = document.getElementById('palpitationDurationUnit')?.value || 'hours';
+    const c = ctx || {};
+    const _rawDur = parseFloat(getPalEl('palpitationDurationVal')?.value);
+    const durationVal = (!isNaN(_rawDur) && _rawDur > 0) ? _rawDur : null;
+    const durationUnit = getPalEl('palpitationDurationUnit')?.value || 'hours';
 
-    const palpitationCurrentStatus = document.querySelector('input[name="palpitationCurrentStatus"]:checked')?.value || '';
-    const palpitationEpisodeFreq = document.querySelector('input[name="palpitationEpisodeFreq"]:checked')?.value || '';
-    const palpitationOnsetExactDate = document.getElementById('palpitationOnsetExactDate')?.value?.trim() || '';
-    const palpitationOnsetExactTime = document.getElementById('palpitationOnsetExactTime')?.value?.trim() || '';
+    const palpitationCurrentStatus = queryPalOne('input[name="palpitationCurrentStatus"]:checked')?.value || '';
+    const palpitationEpisodeFreq = queryPalOne('input[name="palpitationEpisodeFreq"]:checked')?.value || '';
+    const palpitationOnsetExactDate = getPalEl('palpitationOnsetExactDate')?.value?.trim() || '';
+    const palpitationOnsetExactTime = getPalEl('palpitationOnsetExactTime')?.value?.trim() || '';
 
-    const palpitationRhythmPattern = document.querySelector('input[name="palpitationRhythmPattern"]:checked')?.value || '';
-    const palpitationOnsetOffset = document.querySelector('input[name="palpitationOnsetOffset"]:checked')?.value || '';
-    const palpitationTriggers = Array.from(document.querySelectorAll('input[name="palpitationTriggers"]:checked')).map(el => el.value);
+    const palpitationRhythmPattern = queryPalOne('input[name="palpitationRhythmPattern"]:checked')?.value || '';
+    const palpitationOnsetOffset = queryPalOne('input[name="palpitationOnsetOffset"]:checked')?.value || '';
+    const palpitationTriggers = queryPalAll('input[name="palpitationTriggers"]:checked').map(el => el.value);
 
-    const palpitationWarningSigns = Array.from(document.querySelectorAll('input[name="palpitationWarningSigns"]:checked')).map(el => el.value);
-    const palpitationSubstances = Array.from(document.querySelectorAll('input[name="palpitationSubstances"]:checked')).map(el => el.value);
-    const palpitationMeds = Array.from(document.querySelectorAll('input[name="palpitationMeds"]:checked')).map(el => el.value);
+    const palpitationWarningSigns = queryPalAll('input[name="palpitationWarningSigns"]:checked').map(el => el.value);
+    const palpitationSubstances = queryPalAll('input[name="palpitationSubstances"]:checked').map(el => el.value);
+    const palpitationMeds = queryPalAll('input[name="palpitationMeds"]:checked').map(el => el.value);
 
-    const palpitationCustomTriggerCheck = document.querySelector('input[name="palpitationCustomTriggerCheck"]:checked')?.value || '';
-    const palpitationCustomTriggerText = document.getElementById('palpitationCustomTriggerText')?.value?.trim() || '';
+    const palpitationCustomTriggerCheck = queryPalOne('input[name="palpitationCustomTriggerCheck"]:checked')?.value || '';
+    const palpitationCustomTriggerText = getPalEl('palpitationCustomTriggerText')?.value?.trim() || '';
 
-    const palpitationImportantConditions = Array.from(document.querySelectorAll('input[name="palpitationImportantConditions"]:checked')).map(el => el.value);
-    const palpitationCardiacHistory = Array.from(document.querySelectorAll('input[name="palpitationCardiacHistory"]:checked')).map(el => el.value);
-    const palpitationNonCardiacHistory = palpitationImportantConditions.filter(c => c !== 'heart_disease');
-    const palpitationFamilyHistory = document.querySelector('input[name="palpitationFamilyHistory"]:checked')?.value || 'unspecified';
-    const otherSymptomsFree = document.getElementById('palpitation_other_free')?.value?.trim() || ctx.otherSymptomsFree || '';
+    const palpitationImportantConditions = queryPalAll('input[name="palpitationImportantConditions"]:checked').map(el => el.value);
+    const palpitationCardiacHistory = queryPalAll('input[name="palpitationCardiacHistory"]:checked').map(el => el.value);
+    const palpitationNonCardiacHistory = palpitationImportantConditions.filter(x => x !== 'heart_disease' && x !== 'none_important_pmh');
+    const palpitationFamilyHistory = queryPalOne('input[name="palpitationFamilyHistory"]:checked')?.value || '';
+    const otherSymptomsFree = getPalEl('palpitation_other_free')?.value?.trim() || c.otherSymptomsFree || '';
 
     return {
-      id: ctx.recordId,
-      queue_number: ctx.queueNumber,
-      hn: ctx.randomHn,
-      name: ctx.patientName,
-      age: ctx.patientAge,
-      gender: ctx.gender,
+      id: c.recordId || '',
+      queue_number: c.queueNumber || '',
+      hn: c.randomHn || '',
+      name: c.patientName || '',
+      age: c.patientAge !== undefined ? c.patientAge : null,
+      gender: c.gender || '',
       chief_complaint: 'palpitation',
       chief_complaint_title: 'ใจสั่น',
       timestamp: new Date().toISOString(),
-      status: ctx.recordStatus,
+      status: c.recordStatus || 'waiting',
       durationVal,
       durationUnit,
-      hospRecordStatus: ctx.hospRecordStatus,
-      underlying: ctx.underlying,
-      drugAllergy: ctx.drugAllergy,
-      currentMeds: ctx.currentMeds,
+      hospRecordStatus: c.hospRecordStatus || '',
+      underlying: Array.isArray(c.underlying) ? c.underlying : [],
+      drugAllergy: c.drugAllergy || '',
+      currentMeds: c.currentMeds || '',
       otherSymptomsFree,
-      doctor_notes: ctx.preservedDoctorNotes,
+      doctor_notes: c.preservedDoctorNotes || { additional_hpi: '', physical_exam: '', preliminary_dx: '', plan: '' },
 
       palpitationCurrentStatus,
       palpitationEpisodeFreq,
@@ -1015,16 +964,23 @@ registerCcModule({
 
   hydrateForm: function(patient) {
     if (!patient) return;
+    this.resetForm();
 
     const setVal = (id, val) => {
-      const el = document.getElementById(id);
-      if (el) el.value = val !== undefined && val !== null ? val : '';
+      const el = getPalEl(id);
+      if (el) el.value = (val !== undefined && val !== null) ? val : '';
     };
-
     const setRadio = (name, val) => {
       if (!val) return;
-      const el = document.querySelector(`input[name="${name}"][value="${val}"]`);
+      const el = queryPalOne(`input[name="${name}"][value="${val}"]`);
       if (el) el.checked = true;
+    };
+    const setCheckboxes = (name, arr) => {
+      if (!Array.isArray(arr)) return;
+      arr.forEach(val => {
+        const el = queryPalOne(`input[name="${name}"][value="${val}"]`);
+        if (el) el.checked = true;
+      });
     };
 
     setVal('palpitationDurationVal', patient.durationVal || '');
@@ -1037,168 +993,51 @@ registerCcModule({
 
     setRadio('palpitationRhythmPattern', patient.palpitationRhythmPattern);
     setRadio('palpitationOnsetOffset', patient.palpitationOnsetOffset);
-
-    if (Array.isArray(patient.palpitationTriggers)) {
-      patient.palpitationTriggers.forEach(val => {
-        const el = document.querySelector(`input[name="palpitationTriggers"][value="${val}"]`);
-        if (el) el.checked = true;
-      });
-    }
-
-    if (Array.isArray(patient.palpitationWarningSigns)) {
-      patient.palpitationWarningSigns.forEach(val => {
-        const el = document.querySelector(`input[name="palpitationWarningSigns"][value="${val}"]`);
-        if (el) el.checked = true;
-      });
-    }
-
-    if (Array.isArray(patient.palpitationSubstances)) {
-      patient.palpitationSubstances.forEach(val => {
-        const el = document.querySelector(`input[name="palpitationSubstances"][value="${val}"]`);
-        if (el) el.checked = true;
-      });
-    }
-
-    if (Array.isArray(patient.palpitationMeds)) {
-      patient.palpitationMeds.forEach(val => {
-        const el = document.querySelector(`input[name="palpitationMeds"][value="${val}"]`);
-        if (el) el.checked = true;
-      });
-    }
+    setCheckboxes('palpitationTriggers', patient.palpitationTriggers);
+    setCheckboxes('palpitationWarningSigns', patient.palpitationWarningSigns);
+    setCheckboxes('palpitationSubstances', patient.palpitationSubstances);
+    setCheckboxes('palpitationMeds', patient.palpitationMeds);
 
     setRadio('palpitationCustomTriggerCheck', patient.palpitationCustomTriggerCheck);
+    handlePalpitationCustomTriggerChange(patient.palpitationCustomTriggerCheck);
     setVal('palpitationCustomTriggerText', patient.palpitationCustomTriggerText || '');
-    if (patient.palpitationCustomTriggerCheck === 'has_custom_trigger') {
-      const wrap = document.getElementById('palpitationCustomTriggerWrap');
-      if (wrap) wrap.classList.remove('hidden');
-    }
 
-    if (Array.isArray(patient.palpitationImportantConditions)) {
-      patient.palpitationImportantConditions.forEach(val => {
-        const el = document.querySelector(`input[name="palpitationImportantConditions"][value="${val}"]`);
-        if (el) el.checked = true;
-      });
-      if (patient.palpitationImportantConditions.includes('heart_disease')) {
-        const wrap = document.getElementById('palpitationHeartSubWrap');
-        if (wrap) wrap.classList.remove('hidden');
-      }
-    } else {
-      if (Array.isArray(patient.palpitationCardiacHistory) && patient.palpitationCardiacHistory.length > 0 && !patient.palpitationCardiacHistory.includes('none_cardiac_pmh')) {
-        const hd = document.querySelector('input[name="palpitationImportantConditions"][value="heart_disease"]');
-        if (hd) hd.checked = true;
-        const wrap = document.getElementById('palpitationHeartSubWrap');
-        if (wrap) wrap.classList.remove('hidden');
-      }
-      if (Array.isArray(patient.palpitationNonCardiacHistory)) {
-        if (patient.palpitationNonCardiacHistory.includes('hyperthyroidism')) {
-          const ht = document.querySelector('input[name="palpitationImportantConditions"][value="hyperthyroidism"]');
-          if (ht) ht.checked = true;
-        }
-        if (patient.palpitationNonCardiacHistory.includes('diabetes')) {
-          const dm = document.querySelector('input[name="palpitationImportantConditions"][value="diabetes"]');
-          if (dm) dm.checked = true;
-        }
-      }
-    }
-
-    if (Array.isArray(patient.palpitationCardiacHistory)) {
-      patient.palpitationCardiacHistory.forEach(val => {
-        const el = document.querySelector(`input[name="palpitationCardiacHistory"][value="${val}"]`);
-        if (el) el.checked = true;
-      });
+    setCheckboxes('palpitationImportantConditions', patient.palpitationImportantConditions);
+    const hasHeart = Array.isArray(patient.palpitationImportantConditions) && patient.palpitationImportantConditions.includes('heart_disease');
+    if (hasHeart) {
+      handlePalpitationHeartToggle({ checked: true });
+      setCheckboxes('palpitationCardiacHistory', patient.palpitationCardiacHistory);
     }
 
     setRadio('palpitationFamilyHistory', patient.palpitationFamilyHistory);
     setVal('palpitation_other_free', patient.otherSymptomsFree || '');
   },
-
-  populateForm: function(patient) {
-    return this.hydrateForm(patient);
+  populateForm: function(patient) { this.hydrateForm(patient); },
+  onSelectForm: function() { this.resetForm(); },
+  onActivate: function() {
+    if (typeof lucide !== 'undefined' && typeof lucide.createIcons === 'function') lucide.createIcons();
   },
+  onMounted: function() { this.onActivate(); },
+  init: function() { this.onActivate(); },
 
-  isRedFlag: function(patient) {
-    return isPalpitationRedFlag(patient);
-  },
+  isRedFlag: function(patient) { return isPalpitationRedFlag(patient); },
+  evaluateRedFlags: function(patient) { return evaluatePalpitationRedFlags(patient); },
+  updateOutputs: function(patient) { return updatePalpitationOutputs(patient); },
 
-  evaluateRedFlags: function(patient) {
-    return evaluatePalpitationRedFlags(patient);
-  },
-
-  updateOutputs: function(patient) {
-    updatePalpitationOutputs(patient);
-  },
-
-  generateCds: function(patient, { rfs, ddxList, workupList, managementList }) {
-    if (!patient) return;
-
-    const rhythm = patient.palpitationRhythmPattern || '';
-    const warningSigns = Array.isArray(patient.palpitationWarningSigns) ? patient.palpitationWarningSigns : [];
-    const cardiacHistory = Array.isArray(patient.palpitationCardiacHistory) ? patient.palpitationCardiacHistory : [];
-    const substances = Array.isArray(patient.palpitationSubstances) ? patient.palpitationSubstances : [];
-    const nonCardiac = Array.isArray(patient.palpitationNonCardiacHistory) ? patient.palpitationNonCardiacHistory : [];
-
-    // 1. Differential Diagnoses
-    if (rfs.some(r => r.key === 'palpitation_rf_unstable_hemodynamics')) {
-      ddxList.push('1. 🚨 Unstable Tachyarrhythmia (Monomorphic Ventricular Tachycardia vs Fast PSVT with Hemodynamic Collapse)');
-      ddxList.push('2. Acute Coronary Syndrome (STEMI / NSTEMI with secondary malignant arrhythmia)');
-      ddxList.push('3. Cardiogenic Shock secondary to Acute Heart Failure');
-    } else if (rhythm === 'rapid_regular') {
-      if (cardiacHistory.includes('cad_stent') || cardiacHistory.includes('heart_failure')) {
-        ddxList.push('1. Ventricular Tachycardia (VT) in Structural Heart Disease / Prior Myocardial Infarction');
-        ddxList.push('2. Supraventricular Tachycardia with Aberrancy (SVT with BBB)');
-      } else {
-        ddxList.push('1. Paroxysmal Supraventricular Tachycardia (PSVT — AVNRT / AVRT / WPW Syndrome)');
-        ddxList.push('2. Atrial Flutter with 2:1 Regular AV Conduction');
-        ddxList.push('3. Sinus Tachycardia secondary to fever, dehydration, or anxiety');
-      }
-    } else if (rhythm === 'rapid_irregular') {
-      ddxList.push('1. Atrial Fibrillation (AF) with Rapid Ventricular Response (RVR)');
-      ddxList.push('2. Atrial Flutter with Variable AV Block');
-      ddxList.push('3. Multifocal Atrial Tachycardia (MAT — มักพบในผู้ป่วย COPD/โรคปอดเรื้อรัง)');
-    } else if (rhythm === 'ectopic_skipped') {
-      ddxList.push('1. Frequent Premature Ventricular Contractions (PVCs) / Premature Atrial Contractions (PACs)');
-      ddxList.push('2. Electrolyte Imbalance-induced ectopy (Hypokalemia, Hypomagnesemia)');
-    } else if (rhythm === 'abnormally_slow') {
-      ddxList.push('1. High-Grade Atrioventricular Block (Mobitz Type II / Complete Heart Block)');
-      ddxList.push('2. Sick Sinus Syndrome (Sinus Bradycardia / Sinus Arrest / Tachy-Brady Syndrome)');
-      ddxList.push('3. Drug-induced Bradycardia (Beta-blockers, Non-DHP CCB, Digoxin toxicity)');
-    } else {
-      if (substances.includes('energy_drinks') || substances.includes('caffeine_heavy')) {
-        ddxList.push('1. Stimulant-Induced Sinus Tachycardia (Caffeine / Energy Drink / Sympathomimetic)');
-      } else if (warningSigns.includes('hyperventilation_tingling')) {
-        ddxList.push('1. Panic Attack / Hyperventilation Syndrome with Sinus Tachycardia');
-      } else {
-        ddxList.push('1. Sinus Tachycardia / Benign Palpitations');
-      }
-    }
-
-    // 2. Workup Investigations
-    workupList.push('Stat 12-Lead EKG bedside within 10 minutes (Door-to-EKG <= 10 min benchmark)');
-    workupList.push('Continuous Cardiac Telemetry Monitor with non-invasive BP & Pulse Oximetry');
-    workupList.push('Stat Electrolytes (Potassium K+, Magnesium Mg2+, Sodium, Calcium)');
-    workupList.push('Cardiac Biomarkers: High-Sensitivity Troponin-T / Troponin-I and CBC, BUN, Cr');
-    if (nonCardiac.includes('hyperthyroidism') || rhythm === 'rapid_irregular') {
-      workupList.push('Thyroid Function Test: Stat Free T3, Free T4, TSH');
-    }
-    if (patient.palpitationFamilyHistory === 'sudden_death_under50') {
-      workupList.push('High-Precordial Leads EKG (V1-V2 in 2nd and 3rd intercostal spaces) to screen for Brugada pattern');
-    }
-
-    // 3. Management
-    if (rfs.some(r => r.key === 'palpitation_rf_unstable_hemodynamics')) {
-      managementList.push('Resuscitation: ย้ายเข้าห้อง Resuscitation, ให้ออกซิเจน, เตรียม Synchronized Cardioversion (เริ่ม 100-200 Joules) ทันที');
-      managementList.push('เตรียมยากลุ่ม Sedative (Midazolam / Fentanyl) สำหรับ Synchronized Cardioversion หากผู้ป่วยยังรู้สึกตัว');
-    } else if (rhythm === 'rapid_regular') {
-      managementList.push('Vagal Maneuvers: สอน Modified Valsalva Maneuver (เป่า syringe 10 mL นาน 15 วินาทีแล้วยกขาสูง 45 องศา)');
-      managementList.push('Pharmacologic Cardioversion: IV Adenosine 6 mg rapid push with 20 mL NSS flush (เพิ่มเป็น 12 mg หากไม่ตอบสนอง)');
-    } else if (rhythm === 'rapid_irregular') {
-      managementList.push('Rate Control: IV Metoprolol 2.5-5 mg หรือ IV Diltiazem 0.25 mg/kg bolus (ระวังในภาวะ Heart Failure หรือความดันต่ำ)');
-      managementList.push('Anticoagulation assessment: คำนวณ CHA2DS2-VASc Score เพื่อพิจารณา NOAC/Warfarin ป้องกันลิ่มเลือดอุดตัน');
-    }
-    if (substances.includes('illicit_stimulants') || substances.includes('energy_drinks')) {
-      managementList.push('Sedation: IV Diazepam 5-10 mg เพื่อลด Sympathetic stimulation (หลีกเลี่ยง Beta-blocker เดี่ยวๆ)');
-    }
-    managementList.push('Consult: ปรึกษาอายุรแพทย์โรคหัวใจ (Cardiologist) หรือ CCU Fellow ด่วน');
+  algorithm: {
+    ccId: 'palpitation',
+    schemaKey: 'palpitation',
+    titleTh: 'ใจสั่น',
+    titleEn: 'Palpitations / Cardiac Arrhythmia Assessment',
+    triageLevelDefault: 3,
+    redFlagCategories: [
+      'palpitation_rf_unstable_hemodynamics',
+      'palpitation_rf_malignant_ventricular',
+      'palpitation_rf_channelopathy_scd',
+      'palpitation_rf_rapid_af_stroke',
+      'palpitation_rf_thyroid_storm',
+      'palpitation_rf_sympathomimetic_toxicity'
+    ]
   },
 
   seedPatients: [
@@ -1206,8 +1045,8 @@ registerCcModule({
       id: 'case-140',
       queue_number: 'Q-001',
       hn: '6714012',
-      name: 'นายเกียรติศักดิ์ มั่นคง',
-      age: 62,
+      name: 'นายประยูร สุขสำราญ',
+      age: 67,
       gender: 'ชาย',
       chief_complaint: 'palpitation',
       chief_complaint_title: 'ใจสั่น',
@@ -1352,3 +1191,16 @@ registerCcModule({
     }
   ]
 });
+
+if (typeof window !== 'undefined') {
+  window.handlePalpitationWarningNoneToggle = handlePalpitationWarningNoneToggle;
+  window.handlePalpitationWarningItemChange = handlePalpitationWarningItemChange;
+  window.handlePalpitationSubstancesNoneToggle = handlePalpitationSubstancesNoneToggle;
+  window.handlePalpitationSubstancesItemChange = handlePalpitationSubstancesItemChange;
+  window.handlePalpitationMedsNoneToggle = handlePalpitationMedsNoneToggle;
+  window.handlePalpitationMedsItemChange = handlePalpitationMedsItemChange;
+  window.handlePalpitationCustomTriggerChange = handlePalpitationCustomTriggerChange;
+  window.handlePalpitationHeartToggle = handlePalpitationHeartToggle;
+  window.handlePalpitationImportantItemChange = handlePalpitationImportantItemChange;
+  window.handlePalpitationImportantNoneToggle = handlePalpitationImportantNoneToggle;
+}

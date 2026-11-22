@@ -1,21 +1,98 @@
 // =========================================================================
 // MODULAR CHIEF COMPLAINT MODULE: 22_hemoptysis.js
 // อาการนำ: ไอเป็นเลือด (Hemoptysis / Coughing Up Blood)
-// รองรับ Zero Default Bias, Progressive Disclosure, Universal Date/Time,
-// Rapid Note De-duplication, และ TDD Core Guard
+// ปรับปรุงตามมาตรฐาน plan_hemoptysis.md, plan-cc และ code-cc (กลุ่ม B1)
 // =========================================================================
 
-// --- Pain Score Touch State Tracking ---
+// --- Internal DOM & UI Helpers ---
+function getHemoEl(id) {
+  return typeof document !== 'undefined' ? document.getElementById(id) : null;
+}
+
+function queryHemoOne(selector) {
+  return typeof document !== 'undefined' ? document.querySelector(selector) : null;
+}
+
+function queryHemoAll(selector) {
+  return typeof document !== 'undefined' ? Array.from(document.querySelectorAll(selector)) : [];
+}
+
+function wrapHemoWords(chunks) {
+  if (!Array.isArray(chunks)) return chunks;
+  return chunks.map(c => `<span class="inline-block whitespace-nowrap">${c}</span>`).join(' ');
+}
+
+function renderHemoOption(cfg) {
+  const {
+    kind = 'checkbox',
+    id = '',
+    name = '',
+    value = '',
+    title,
+    desc = '',
+    onchange = '',
+    compact = false,
+    colSpan2 = false
+  } = cfg;
+  const idAttr = id ? `id="${id}" ` : '';
+  const nameAttr = name ? `name="${name}" ` : '';
+  const valAttr = value ? `value="${value}" ` : '';
+  const chgAttr = onchange ? `onchange="${onchange}" ` : '';
+  const alignCls = desc ? 'items-start' : 'items-center';
+  const padCls = compact ? 'p-2.5' : 'p-3';
+  const spanCls = colSpan2 ? ' sm:col-span-2' : '';
+  const roundCls = kind === 'checkbox' ? 'rounded ' : '';
+  const topCls = desc ? 'mt-0.5 ' : '';
+  const szCls = compact ? 'h-3.5 w-3.5' : 'h-4 w-4';
+  const titleHtml = Array.isArray(title) ? wrapHemoWords(title) : title;
+  const bodyHtml = desc
+    ? `<div class="ml-3 leading-snug"><span class="block text-xs sm:text-sm font-semibold text-slate-800">${titleHtml}</span><span class="block text-[11px] text-slate-500 font-normal mt-0.5">${desc}</span></div>`
+    : `<span class="ml-3 ${compact ? 'text-xs' : 'text-xs sm:text-sm'} font-semibold text-slate-800 leading-snug">${titleHtml}</span>`;
+  return `<label class="selectable-card bg-white flex ${alignCls} ${padCls} rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition${spanCls}"><input type="${kind}" ${idAttr}${nameAttr}${valAttr}${chgAttr}class="${topCls}${roundCls}text-medical-600 focus:ring-medical-500 ${szCls} flex-shrink-0">${bodyHtml}</label>`;
+}
+
+function renderHemoGrid(colsCls, items, shared = {}) {
+  return `<div class="grid ${colsCls} gap-2.5">${items.map(it => renderHemoOption({ ...shared, ...it })).join('\n')}</div>`;
+}
+
+function renderHemoSysHeader({
+  label,
+  icon,
+  colorClass,
+  toggleId = '',
+  toggleLabel = '',
+  toggleOnchange = '',
+  toggleName = '',
+  toggleValue = ''
+}) {
+  const nameAttr = toggleName ? `name="${toggleName}" ` : '';
+  const valAttr = toggleValue ? `value="${toggleValue}" ` : '';
+  const toggleHtml = toggleId
+    ? `<label class="inline-flex items-center px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 border border-slate-200 text-xs font-medium text-slate-700 cursor-pointer transition select-none flex-shrink-0">
+      <input type="checkbox" id="${toggleId}" ${nameAttr}${valAttr}onchange="${toggleOnchange}" class="text-medical-600 focus:ring-medical-500 h-3.5 w-3.5 rounded">
+      <span class="ml-1.5 whitespace-nowrap">${toggleLabel}</span>
+    </label>`
+    : '';
+  return `<div class="flex flex-wrap items-center justify-between gap-2 mb-2.5">
+    <label class="flex items-center text-xs sm:text-sm font-bold text-slate-800">
+      <span class="${colorClass} p-1.5 rounded-lg mr-2 inline-flex items-center justify-center"><i data-lucide="${icon}" class="w-4 h-4"></i></span>
+      <span>${label}</span>
+    </label>
+    ${toggleHtml}
+  </div>`;
+}
+
+// --- Pain Score Touch State Tracking (Matching 01_abdpain.js Emoji Pain Scale) ---
 let hemoPainScoreTouched = false;
 
 function clearHemoPainScore() {
   hemoPainScoreTouched = false;
-  const slider = document.getElementById('hemoPainScore');
+  const slider = getHemoEl('hemoPainScore');
   if (slider) slider.value = 0;
-  const emojiEl = document.getElementById('hemoPainScoreEmoji');
-  const textEl = document.getElementById('hemoPainScoreText');
-  const badgeEl = document.getElementById('hemoPainScoreBadge');
-  const clearBtn = document.getElementById('hemoPainScoreClearBtn');
+  const emojiEl = getHemoEl('hemoPainScoreEmoji');
+  const textEl = getHemoEl('hemoPainScoreText');
+  const badgeEl = getHemoEl('hemoPainScoreBadge');
+  const clearBtn = getHemoEl('hemoPainScoreClearBtn');
   if (emojiEl) emojiEl.textContent = '⚪';
   if (textEl) textEl.textContent = 'ยังไม่ได้ระบุ (แตะแถบเพื่อระบุ)';
   if (badgeEl) badgeEl.className = 'inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-600 border border-slate-300 self-start sm:self-auto transition-all';
@@ -24,88 +101,195 @@ function clearHemoPainScore() {
 
 function handleHemoPainScoreChange(val) {
   hemoPainScoreTouched = true;
-  const num = parseInt(val, 10);
-  const emojiEl = document.getElementById('hemoPainScoreEmoji');
-  const textEl = document.getElementById('hemoPainScoreText');
-  const badgeEl = document.getElementById('hemoPainScoreBadge');
-  const clearBtn = document.getElementById('hemoPainScoreClearBtn');
+  const parsed = parseInt(val, 10);
+  const num = isNaN(parsed) ? 0 : Math.min(10, Math.max(0, parsed));
+  const slider = getHemoEl('hemoPainScore');
+  if (slider && String(slider.value) !== String(num)) slider.value = num;
+  const emojiEl = getHemoEl('hemoPainScoreEmoji');
+  const textEl = getHemoEl('hemoPainScoreText');
+  const badgeEl = getHemoEl('hemoPainScoreBadge');
+  const clearBtn = getHemoEl('hemoPainScoreClearBtn');
   if (clearBtn) clearBtn.classList.remove('hidden');
   if (!emojiEl || !textEl || !badgeEl) return;
 
-  let emoji = '😐';
-  let label = 'ปวดปานกลาง';
-  let badgeClass = 'bg-amber-100 text-amber-800 border-amber-300';
-
-  if (num === 0) {
-    emoji = '😊';
-    label = 'สบายดี (ไม่เจ็บเลย)';
-    badgeClass = 'bg-emerald-100 text-emerald-800 border-emerald-300';
-  } else if (num <= 3) {
-    emoji = '🙂';
-    label = 'เจ็บเล็กน้อย (ทนได้)';
-    badgeClass = 'bg-lime-100 text-lime-800 border-lime-300';
-  } else if (num <= 6) {
-    emoji = '😐';
-    label = 'เจ็บปานกลาง (รบกวนการหายใจ)';
-    badgeClass = 'bg-amber-100 text-amber-800 border-amber-300';
-  } else if (num <= 8) {
-    emoji = '😣';
-    label = 'เจ็บรุนแรง (หายใจเข้าลึกไม่ได้)';
-    badgeClass = 'bg-orange-100 text-orange-800 border-orange-300';
-  } else {
-    emoji = '😫';
-    label = 'เจ็บรุนแรงมากที่สุด';
-    badgeClass = 'bg-rose-100 text-rose-800 border-rose-300';
-  }
+  let emoji = '😐', label = 'ปวดปานกลาง', badgeClass = 'bg-amber-100 text-amber-800 border-amber-300';
+  if (num === 0) { emoji = '😊'; label = 'สบายดี (ไม่ปวดเลย)'; badgeClass = 'bg-emerald-100 text-emerald-800 border-emerald-300'; }
+  else if (num <= 3) { emoji = '🙂'; label = 'ปวดเล็กน้อย (ทนได้)'; badgeClass = 'bg-lime-100 text-lime-800 border-lime-300'; }
+  else if (num <= 6) { emoji = '😐'; label = 'ปวดปานกลาง (รบกวนสมาธิ)'; badgeClass = 'bg-amber-100 text-amber-800 border-amber-300'; }
+  else if (num <= 9) { emoji = '😣'; label = 'ปวดมาก (ทนแทบไม่ไหว)'; badgeClass = 'bg-rose-100 text-rose-800 border-rose-300'; }
+  else { emoji = '😭'; label = 'เจ็บปวดรุนแรงที่สุดในชีวิต'; badgeClass = 'bg-red-200 text-red-900 border-red-400 animate-pulse'; }
 
   emojiEl.textContent = emoji;
-  textEl.textContent = `${num}/10 คะแนน - ${label}`;
-  badgeEl.className = `inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-bold border self-start sm:self-auto transition-all ${badgeClass}`;
+  textEl.textContent = `${num} / 10 (${label})`;
+  badgeEl.className = `inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-bold border transition ${badgeClass}`;
 }
 
-// --- Toggle UI Helper Functions ---
+function setHemoPainScore(score) {
+  hemoPainScoreTouched = true;
+  const slider = getHemoEl('hemoPainScore');
+  if (slider) slider.value = score;
+  handleHemoPainScoreChange(score);
+}
+
+// --- Progressive Disclosure & Corner-Toggle Handlers ---
+function clearHemoProdromeNone() {
+  const el = getHemoEl('hemo_prodrome_none');
+  if (el) el.checked = false;
+}
+
+function clearHemoWarnNone() {
+  const el = getHemoEl('hemo_warn_none');
+  if (el) el.checked = false;
+}
+
 function toggleHemoPreCoughSub(isVisible) {
-  const el = document.getElementById('hemoPreCoughSub');
-  if (el) {
-    el.classList.toggle('hidden', !isVisible);
-    if (!isVisible) {
-      const valInput = document.getElementById('hemoPreCoughDurVal');
-      if (valInput) valInput.value = '';
+  const el = getHemoEl('hemoPreCoughSub');
+  if (!el) return;
+  el.classList.toggle('hidden', !isVisible);
+  if (isVisible) {
+    clearHemoProdromeNone();
+  } else {
+    const valInput = getHemoEl('hemoPreCoughDurVal');
+    if (valInput) valInput.value = '';
+  }
+}
+
+function toggleHemoPriorSputumSub(isVisible) {
+  const el = getHemoEl('hemoPriorSputumSub');
+  if (!el) return;
+  el.classList.toggle('hidden', !isVisible);
+  if (isVisible) {
+    clearHemoProdromeNone();
+  } else {
+    el.querySelectorAll('input[type="radio"]').forEach(r => { r.checked = false; });
+  }
+}
+
+function toggleHemoProdromeGroup(groupId, isVisible) {
+  const el = getHemoEl(groupId);
+  if (!el) return;
+  el.classList.toggle('hidden', !isVisible);
+  if (isVisible) {
+    clearHemoProdromeNone();
+  } else {
+    el.querySelectorAll('input[type="checkbox"]').forEach(cb => { cb.checked = false; });
+    el.querySelectorAll('input[type="number"]').forEach(inp => { inp.value = ''; });
+    if (groupId === 'hemoWeightLossSub') {
+      const wlUnit = getHemoEl('hemoWeightLossDurUnit');
+      if (wlUnit) wlUnit.value = 'months';
     }
+  }
+}
+
+function handleHemoProdromeItemChange(clickedEl) {
+  if (clickedEl && clickedEl.checked) clearHemoProdromeNone();
+}
+
+function handleHemoProdromeNoneToggle(clickedEl) {
+  if (!clickedEl || !clickedEl.checked) return;
+  ['hemoPreCoughParent', 'hemoPriorSputumParent', 'hemoWarningFeverParent', 'hemoWeightLossParent'].forEach(id => {
+    const p = getHemoEl(id);
+    if (p) p.checked = false;
+  });
+  toggleHemoPreCoughSub(false);
+  toggleHemoPriorSputumSub(false);
+  toggleHemoProdromeGroup('hemoWarningFeverSub', false);
+  toggleHemoProdromeGroup('hemoWeightLossSub', false);
+  const hoarse = queryHemoOne('input[name="hemoWarningSigns"][value="warn_hoarseness_weeks"]');
+  if (hoarse) hoarse.checked = false;
+}
+
+function toggleHemoDyspneaSub(isVisible) {
+  const el = getHemoEl('hemoDyspneaSub');
+  if (!el) return;
+  el.classList.toggle('hidden', !isVisible);
+  if (isVisible) {
+    clearHemoWarnNone();
+  } else {
+    el.querySelectorAll('input[type="radio"]').forEach(r => { r.checked = false; });
   }
 }
 
 function toggleHemoChestPainSub(isVisible) {
-  const el = document.getElementById('hemoChestPainSub');
-  if (el) {
-    el.classList.toggle('hidden', !isVisible);
-    if (!isVisible) {
-      el.querySelectorAll('input[type="checkbox"]').forEach(cb => { cb.checked = false; });
-      clearHemoPainScore();
-    }
+  const el = getHemoEl('hemoChestPainSub');
+  if (!el) return;
+  el.classList.toggle('hidden', !isVisible);
+  if (isVisible) {
+    clearHemoWarnNone();
+  } else {
+    el.querySelectorAll('input[type="checkbox"]').forEach(cb => { cb.checked = false; });
+    clearHemoPainScore();
   }
 }
 
 function toggleHemoWarningGroup(groupId, isVisible) {
-  const el = document.getElementById(groupId);
-  if (el) {
-    el.classList.toggle('hidden', !isVisible);
-    if (!isVisible) {
-      el.querySelectorAll('input[type="checkbox"]').forEach(cb => { cb.checked = false; });
-    }
+  if (groupId === 'hemoDyspneaSub') return toggleHemoDyspneaSub(isVisible);
+  if (groupId === 'hemoWarningFeverSub') return toggleHemoProdromeGroup(groupId, isVisible);
+  const el = getHemoEl(groupId);
+  if (!el) return;
+  el.classList.toggle('hidden', !isVisible);
+  if (isVisible) {
+    clearHemoWarnNone();
+  } else {
+    el.querySelectorAll('input[type="checkbox"]').forEach(cb => { cb.checked = false; });
   }
 }
 
 function toggleHemoSmokingSub(isVisible) {
-  const el = document.getElementById('hemoSmokingSub');
-  if (el) {
-    el.classList.toggle('hidden', !isVisible);
-    if (!isVisible) {
-      const yrs = document.getElementById('hemoSmokingYears');
-      const pks = document.getElementById('hemoSmokingPacks');
-      if (yrs) yrs.value = '';
-      if (pks) pks.value = '';
+  const el = getHemoEl('hemoSmokingSub');
+  if (!el) return;
+  el.classList.toggle('hidden', !isVisible);
+  if (!isVisible) {
+    const yrs = getHemoEl('hemoSmokingYears');
+    const pks = getHemoEl('hemoSmokingPacks');
+    if (yrs) yrs.value = '';
+    if (pks) pks.value = '';
+  }
+}
+
+function handleHemoWarnItemChange(clickedEl) {
+  if (clickedEl && clickedEl.checked) clearHemoWarnNone();
+}
+
+function handleHemoWarnNoneToggle(clickedEl) {
+  if (!clickedEl || !clickedEl.checked) return;
+  ['hemoDyspneaParent', 'hemoChestPainParent', 'hemoWarningSyncopeParent', 'hemoWarningDvtPeParent'].forEach(id => {
+    const p = getHemoEl(id);
+    if (p) p.checked = false;
+  });
+  toggleHemoDyspneaSub(false);
+  toggleHemoChestPainSub(false);
+  toggleHemoWarningGroup('hemoWarningSyncopeSub', false);
+  toggleHemoWarningGroup('hemoWarningDvtPeSub', false);
+  const choke = queryHemoOne('input[name="hemoWarningSigns"][value="warn_choking_airway_threat"]');
+  if (choke) choke.checked = false;
+}
+
+function handleHemoPulmChange(clickedEl) {
+  if (!clickedEl) return;
+  if (clickedEl.value === 'pulm_none') {
+    if (clickedEl.checked) {
+      queryHemoAll('input[name="hemoPastPulmonary"]').forEach(cb => {
+        if (cb.value !== 'pulm_none') cb.checked = false;
+      });
     }
+  } else if (clickedEl.checked) {
+    const noneEl = getHemoEl('hemo_pulm_none');
+    if (noneEl) noneEl.checked = false;
+  }
+}
+
+function handleHemoMedChange(clickedEl) {
+  if (!clickedEl) return;
+  if (clickedEl.value === 'meds_none') {
+    if (clickedEl.checked) {
+      queryHemoAll('input[name="hemoBleedingMeds"]').forEach(cb => {
+        if (cb.value !== 'meds_none') cb.checked = false;
+      });
+    }
+  } else if (clickedEl.checked) {
+    const noneEl = getHemoEl('hemo_meds_none');
+    if (noneEl) noneEl.checked = false;
   }
 }
 
@@ -120,7 +304,6 @@ function evaluateHemoptysisRedFlags(patient) {
   const pastPulm = Array.isArray(patient.hemoPastPulmonary) ? patient.hemoPastPulmonary : [];
   const vs = patient.vital_signs || {};
 
-  // SBP and Shock Index calculation
   const sbp = typeof vs.sbp === 'number' ? vs.sbp : (parseInt(vs.sbp, 10) || null);
   const pr = typeof vs.pr === 'number' ? vs.pr : (parseInt(vs.pr, 10) || null);
   const spo2 = typeof vs.spo2 === 'number' ? vs.spo2 : (parseInt(vs.spo2, 10) || null);
@@ -215,7 +398,9 @@ function evaluateHemoptysisRedFlags(patient) {
   }
 
   // 9. Necrotizing Pneumonia / Lung Abscess with Sepsis (ESI 2)
-  if (patient.hemoPriorSputum === 'sputum_foul_abscess_green' || (warnSigns.includes('warn_high_fever_chills') && patient.hemoDyspnea !== 'dyspnea_none')) {
+  const hasHighFeverOrChills = warnSigns.includes('warn_high_fever_chills') || warnSigns.includes('warn_high_fever') || warnSigns.includes('warn_chills');
+  const hasActualDyspnea = patient.hemoDyspnea === 'dyspnea_exertional' || patient.hemoDyspnea === 'dyspnea_severe_rest_orthopnea' || !!patient.hemoDyspneaParent;
+  if (patient.hemoPriorSputum === 'sputum_foul_abscess_green' || (hasHighFeverOrChills && hasActualDyspnea)) {
     rfs.push({
       key: 'rf_necrotizing_abscess',
       level: 2,
@@ -241,182 +426,270 @@ function evaluateHemoptysisRedFlags(patient) {
   return rfs;
 }
 
-// --- Formatters for Doctor Rapid Note ---
+// --- Thai Dictionaries & Formatters (Zero Raw Enum Leaks / Zero Flag Icons) ---
+const HEMO_DUR_UNIT_MAP = {
+  minutes: 'นาที',
+  hours: 'ชั่วโมง',
+  days: 'วัน',
+  weeks: 'สัปดาห์',
+  months: 'เดือน',
+  years: 'ปี'
+};
+
+const HEMO_BLOOD_CHAR_MAP = {
+  char_true_frothy_red: 'เลือดสดสีแดง หรือมีฟองอากาศปน',
+  char_streaked_sputum: 'เสมหะปนเลือดเป็นเส้นๆ สีแดงเรื่อหรือน้ำตาล',
+  char_coffee_ground_vomit: 'ขย้อนหรืออาเจียนเป็นสีกาแฟ หรือมีเศษอาหารปน',
+  char_postnasal_epistaxis: 'เลือดกำเดาไหลลงคอแล้วบ้วนออกมา'
+};
+
+const HEMO_VOLUME_MAP = {
+  vol_streaks_sputum: 'เลือดออกเป็นเส้นๆ ปนในเสมหะ (น้อยกว่า 1 ช้อนชา)',
+  vol_tablespoon: 'ประมาณ 1–2 ช้อนโต๊ะ (10–30 มล.)',
+  vol_half_to_full_cup: 'ประมาณครึ่งแก้วถึงเต็มแก้วน้ำ (50–100 มล.)',
+  vol_massive_over_cup: 'เลือดสดทะลักมากกว่าแก้วน้ำ (มากกว่า 100–200 มล. หรือมีลิ่มเลือดต่อเนื่อง)'
+};
+
+const HEMO_FREQUENCY_MAP = {
+  episodes_single: 'เป็นเพียงครั้งเดียวแล้วหยุด',
+  episodes_two_four: 'เป็น 2–4 ครั้ง',
+  episodes_over_5: 'เป็นมากกว่า 5 ครั้งขึ้นไป',
+  episodes_frequent_continuous: 'ไอเป็นเลือดแทบทุกครั้ง หรือต่อเนื่องตลอด'
+};
+
+const HEMO_ACTIVE_MAP = {
+  status_active_bleeding: 'ยังมีอาการไอเป็นเลือดสดอยู่เรื่อยๆ',
+  status_streaks_only: 'เลือดหยุดแล้ว เหลือเพียงเสมหะปนเลือดจางๆ',
+  status_stopped_completely: 'เลือดหยุดไหลสนิทแล้ว'
+};
+
+const HEMO_DYSPNEA_MAP = {
+  dyspnea_none: 'หายใจปกติ ไม่เหนื่อย',
+  dyspnea_exertional: 'หายใจหอบเหนื่อยเวลาออกแรงหรือเดิน',
+  dyspnea_severe_rest_orthopnea: 'หายใจหอบเหนื่อยรุนแรงแม้ขณะพัก หรือนอนราบไม่ได้'
+};
+
+const HEMO_SPUTUM_MAP = {
+  sputum_none_dry_cough: 'ไอแห้งๆ ไม่มีเสมหะ',
+  sputum_normal_white_yellow: 'เสมหะสีขาวใสหรือสีเหลืองปกติ',
+  sputum_foul_abscess_green: 'เสมหะสีเขียวข้น หรือมีกลิ่นเหม็นเน่ารุนแรง',
+  sputum_pink_frothy_edema: 'เสมหะเป็นฟองสีชมพูจางๆ'
+};
+
+const HEMO_CHEST_PAIN_MAP = {
+  pleuritic_sharp: 'เจ็บแปล๊บเวลาหายใจเข้าลึกหรือไอ',
+  ischemic_pressure: 'เจ็บแน่นอึดอัดกลางหน้าอก',
+  tearing_ripping_back: 'เจ็บเหมือนฉีกขาดในอกร้าวทะลุหลัง'
+};
+
+const HEMO_WARN_MAP = {
+  warn_choking_airway_threat: 'ไอสำลักเลือด หายใจติดขัด กลืนไม่ลง',
+  warn_fainting_syncope: 'หน้ามืด วูบ หรือหมดสติไปชั่วขณะ',
+  warn_profuse_sweat_cold_shock: 'เหงื่อแตกท่วมตัว ตัวซีดเย็น ตัวสั่น',
+  warn_palpitation_tachycardia: 'ใจสั่น หัวใจเต้นรัวเร็ว',
+  warn_unilateral_leg_swelling: 'ขาบวมโต หรือปวดตึงน่องข้างใดข้างหนึ่งชัดเจน',
+  warn_bilateral_leg_swelling: 'ขาบวมทั้งสองข้าง',
+  warn_long_travel_immobility: 'เดินทางไกลนั่งรถยนต์หรือเครื่องบินต่อเนื่องเกิน 4–6 ชั่วโมง',
+  warn_post_op_bedridden: 'เพิ่งผ่าตัดใหญ่ หรือนอนพักรักษาตัวติดเตียงเกิน 3 วัน',
+  warn_history_dvt_pe: 'เคยมีประวัติลิ่มเลือดอุดตันที่แขนหรือขามาก่อน',
+  warn_low_grade_fever: 'มีไข้ตัวรุมๆ',
+  warn_high_fever: 'มีไข้สูง',
+  warn_chills: 'มีอาการหนาวสั่น',
+  warn_high_fever_chills: 'มีไข้สูง หนาวสั่นสะท้าน',
+  warn_fever_afternoon_night_sweat: 'เหงื่อออกท่วมตัวตอนกลางคืน หรือมีไข้ต่ำตอนบ่าย',
+  warn_unintentional_weight_loss: 'น้ำหนักตัวลดลงผิดปกติ หรือเบื่ออาหารมาก',
+  warn_hoarseness_weeks: 'มีอาการเสียงแหบลงผิดปกติต่อเนื่องหลายสัปดาห์'
+};
+
+const HEMO_PULM_MAP = {
+  tb_prior_or_contact: 'เคยป่วยเป็นวัณโรคปอด หรืออยู่ร่วมบ้านผู้ป่วยวัณโรค',
+  past_bronchiectasis: 'โรคถุงลมโป่งพอง หอบหืด หรือโรคปอดเรื้อรัง',
+  past_copd_asthma: 'โรคถุงลมโป่งพอง หอบหืด หรือโรคปอดเรื้อรัง',
+  past_lung_cancer: 'โรคมะเร็งปอด หรือมะเร็งอวัยวะอื่น',
+  past_heart_failure_valvular: 'โรคหัวใจ (ลิ้นหัวใจตีบ หรือหัวใจล้มเหลว)'
+};
+
+const HEMO_SMOKING_MAP = {
+  smoking_regular: 'สูบบุหรี่เป็นประจำ',
+  smoking_quit: 'เคยสูบแต่เลิกแล้ว',
+  smoking_never: 'ไม่เคยสูบบุหรี่'
+};
+
+const HEMO_MED_MAP = {
+  med_anticoagulant: 'รับประทานยาละลายลิ่มเลือด (เช่น Warfarin, Eliquis, Xarelto, Pradaxa)',
+  med_antiplatelet: 'รับประทานยาต้านเกล็ดเลือด (เช่น Aspirin, Clopidogrel, Plavix)',
+  med_unknown_prescribed: 'มียาประจำตัวที่มีผลต่อเลือดออก แต่ไม่ทราบชื่อยา'
+};
+
+const HEMO_HOSP_MAP = {
+  ratchaburi: 'มีประวัติการรักษาที่ รพ.ราชบุรี',
+  complete: 'มีประวัติกับ รพ.ราชบุรี ครบถ้วน (ดึงข้อมูลเดิมจากระบบ)',
+  additional: 'มีประวัติกับ รพ.ราชบุรี และขอให้ข้อมูลเพิ่มเติม',
+  self: 'ขอให้ข้อมูลด้วยตนเองทั้งหมด',
+  unspecified: 'ไม่ได้ระบุ'
+};
+
 function formatHemoBloodChar(patient) {
-  const map = {
-    char_true_frothy_red: 'เลือดสดสีแดง มีฟองอากาศปน ออกมาเวลาไออย่างรุนแรง (True hemoptysis)',
-    char_streaked_sputum: 'เสมหะปนเลือดเป็นเส้นๆ สีแดงเรื่อๆ หรือสีน้ำตาลปน (Blood-streaked)',
-    char_coffee_ground_vomit: 'ขย้อนหรืออาเจียนเป็นสีกาแฟ/มีเศษอาหารปน (Hematemesis risk)',
-    char_postnasal_epistaxis: 'เลือดกำเดาไหลลงคอแล้วบ้วนออกมา (Pseudohemoptysis risk)'
-  };
-  return map[patient.hemoBloodChar] || 'ไม่ได้ระบุ';
+  return HEMO_BLOOD_CHAR_MAP[patient.hemoBloodChar] || 'ไม่ได้ระบุ';
 }
 
 function formatHemoBloodVolume(patient) {
-  const map = {
-    vol_streaks_sputum: 'เลือดออกเป็นเส้นๆ ปนในเสมหะ (< 1 ช้อนชา)',
-    vol_tablespoon: 'ประมาณ 1-2 ช้อนโต๊ะ (10-30 มล.)',
-    vol_half_to_full_cup: 'ประมาณครึ่งแก้วถึงเต็มแก้วน้ำ (50-100 มล.)',
-    vol_massive_over_cup: 'เลือดสดทะลักมากกว่าแก้วน้ำ (> 100-200 มล. หรือก้อนลิ่มเลือดต่อเนื่อง) 🚩'
-  };
-  return map[patient.hemoBloodVolume] || 'ไม่ได้ระบุ';
+  return HEMO_VOLUME_MAP[patient.hemoBloodVolume] || 'ไม่ได้ระบุ';
 }
 
 function formatHemoFrequency(patient) {
-  const map = {
-    episodes_single: 'ครั้งเดียวแล้วหยุด',
-    episodes_two_four: '2-4 ครั้ง',
-    episodes_over_5: 'มากกว่า 5 ครั้งขึ้นไป',
-    episodes_frequent_continuous: 'แทบทุกครั้งที่ไอ / ต่อเนื่องตลอดเวลา 🚩'
-  };
-  return map[patient.hemoEpisodeCount] || 'ไม่ได้ระบุ';
+  return HEMO_FREQUENCY_MAP[patient.hemoEpisodeCount] || 'ไม่ได้ระบุ';
 }
 
 function formatHemoActiveStatus(patient) {
-  const map = {
-    status_active_bleeding: 'ยังมีอาการไอเป็นเลือดสดอยู่เรื่อยๆ (Active bleeding) 🚩',
-    status_streaks_only: 'เลือดหยุดแล้ว เหลือเพียงเสมหะปนเลือดจางๆ',
-    status_stopped_completely: 'เลือดหยุดสนิทแล้ว (Bleeding stopped)'
-  };
-  return map[patient.hemoActiveStatus] || 'ไม่ได้ระบุ';
+  return HEMO_ACTIVE_MAP[patient.hemoActiveStatus] || 'ไม่ได้ระบุ';
 }
 
 function formatHemoDyspnea(patient) {
-  const map = {
-    dyspnea_none: 'หายใจปกติ ไม่เหนื่อย',
-    dyspnea_exertional: 'หายใจหอบเหนื่อยเวลาออกแรงหรือเดิน',
-    dyspnea_severe_rest_orthopnea: 'หายใจหอบเหนื่อยรุนแรงเฉียบพลัน นอนราบไม่ได้ 🚩'
-  };
-  return map[patient.hemoDyspnea] || 'ไม่ได้ระบุ';
+  if (HEMO_DYSPNEA_MAP[patient.hemoDyspnea]) return HEMO_DYSPNEA_MAP[patient.hemoDyspnea];
+  if (patient.hemoDyspneaParent) return 'มีอาการเหนื่อยหอบ / หายใจลำบาก (ไม่ได้ระบุระดับ)';
+  if (patient.hemoWarnNone) return HEMO_DYSPNEA_MAP.dyspnea_none;
+  return 'ไม่ได้ระบุ';
 }
 
 function formatHemoSputum(patient) {
-  const map = {
-    sputum_none_dry_cough: 'ไอแห้งๆ ไม่มีเสมหะ',
-    sputum_normal_white_yellow: 'เสมหะสีขาวใสหรือเหลืองปกติ',
-    sputum_foul_abscess_green: 'เสมหะสีเขียวข้น หรือมีกลิ่นเหม็นเน่ารุนแรง 🚩',
-    sputum_pink_frothy_edema: 'เสมหะเป็นฟองสีชมพูจางๆ (Pink frothy) 🚩'
-  };
-  return map[patient.hemoPriorSputum] || 'ไม่ได้ระบุ';
+  if (HEMO_SPUTUM_MAP[patient.hemoPriorSputum]) return HEMO_SPUTUM_MAP[patient.hemoPriorSputum];
+  if (patient.hemoPriorSputumParent) return 'มีเสมหะนำมาก่อน (ไม่ได้ระบุลักษณะ)';
+  return 'ไม่ได้ระบุ';
+}
+
+function formatHemoWeightLossDetail(patient) {
+  const parts = [];
+  if (patient.hemoWeightLossKg) parts.push(`ลดลงประมาณ ${patient.hemoWeightLossKg} กก.`);
+  if (patient.hemoWeightLossDurVal) {
+    const unit = HEMO_DUR_UNIT_MAP[patient.hemoWeightLossDurUnit] || 'เดือน';
+    parts.push(`ในช่วง ${patient.hemoWeightLossDurVal} ${unit}`);
+  }
+  return parts.length > 0
+    ? `${HEMO_WARN_MAP.warn_unintentional_weight_loss} (${parts.join(' ')})`
+    : HEMO_WARN_MAP.warn_unintentional_weight_loss;
 }
 
 function formatHemoChestPain(patient) {
   if (patient.hemoChestPainMaster === 'no') return 'ปฏิเสธอาการเจ็บหน้าอก';
   if (patient.hemoChestPainMaster === 'yes') {
     const types = Array.isArray(patient.hemoChestPainType) ? patient.hemoChestPainType : [];
-    const typeMap = {
-      pleuritic_sharp: 'เจ็บแปล๊บเวลาหายใจเข้าลึก/ไอ (Pleuritic pain)',
-      ischemic_pressure: 'เจ็บแน่นอึดอัดกลางอกคล้ายของหนักทับ (Ischemia)',
-      tearing_ripping_back: 'เจ็บฉีกขาดในอกร้าวทะลุหลัง (Tearing dissection risk) 🚩'
-    };
-    const desc = types.map(t => typeMap[t] || t).join(', ') || 'มีอาการเจ็บหน้าอก';
+    const desc = types.map(t => HEMO_CHEST_PAIN_MAP[t] || t).join(', ') || 'มีอาการเจ็บหน้าอก';
     const scoreStr = (typeof patient.painScore === 'number') ? ` (Pain Score: ${patient.painScore}/10)` : '';
     return `${desc}${scoreStr}`;
   }
   return 'ไม่ได้ระบุ';
 }
 
+function formatHemoPastPulmDisplay(pastPulm) {
+  if (!Array.isArray(pastPulm) || pastPulm.length === 0) return 'ไม่ได้ระบุ';
+  if (pastPulm.includes('pulm_none')) return 'ปฏิเสธ';
+  const mapped = [...new Set(pastPulm.map(k => HEMO_PULM_MAP[k]).filter(Boolean))];
+  return mapped.length > 0 ? mapped.join(', ') : 'ไม่ได้ระบุ';
+}
+
 // --- Rapid Note Renderer (Doctor View) ---
 function renderHemoptysisRapidHpi(patient) {
   const durVal = patient.durationVal;
-  const durUnitMap = { minutes: 'นาที', hours: 'ชั่วโมง', days: 'วัน', weeks: 'สัปดาห์', months: 'เดือน', years: 'ปี' };
-  const durUnit = durUnitMap[patient.durationUnit] || 'วัน';
-  const durationStr = durVal ? `${durVal} ${durUnit}` : 'ไม่ระบุ';
+  const durUnit = HEMO_DUR_UNIT_MAP[patient.durationUnit] || 'ชั่วโมง';
+  const durationStr = durVal ? `${durVal} ${durUnit}` : 'ไม่ได้ระบุ';
 
   const warnSigns = Array.isArray(patient.hemoWarningSigns) ? patient.hemoWarningSigns : [];
   const meds = Array.isArray(patient.hemoBleedingMeds) ? patient.hemoBleedingMeds : [];
   const pastPulm = Array.isArray(patient.hemoPastPulmonary) ? patient.hemoPastPulmonary : [];
+  const prodParents = patient.hemoProdromeParents || {};
+  const warnParents = patient.hemoWarnParents || {};
+
+  const feverKeys = ['warn_low_grade_fever', 'warn_high_fever', 'warn_chills', 'warn_high_fever_chills', 'warn_fever_afternoon_night_sweat'];
+  const syncopeKeys = ['warn_fainting_syncope', 'warn_profuse_sweat_cold_shock', 'warn_palpitation_tachycardia'];
+  const dvtKeys = ['warn_unilateral_leg_swelling', 'warn_bilateral_leg_swelling', 'warn_long_travel_immobility', 'warn_post_op_bedridden', 'warn_history_dvt_pe'];
+  const card2SignKeys = [...feverKeys, 'warn_unintentional_weight_loss', 'warn_hoarseness_weeks'];
+  const card3SignKeys = ['warn_choking_airway_threat', ...syncopeKeys, ...dvtKeys];
 
   const posList = [];
   const negList = [];
 
-  // Positives evaluation
   if (patient.hemoPreCoughMaster === 'yes') {
     const preDurStr = patient.hemoPreCoughDurVal
-      ? `${patient.hemoPreCoughDurVal} ${durUnitMap[patient.hemoPreCoughDurUnit] || 'วัน'}`
-      : 'ระยะเวลาไม่ระบุ';
-    posList.push(`มีอาการไอนำมาก่อนหน้าเป็นเวลา ${preDurStr}`);
-  }
-  if (patient.hemoBloodVolume === 'vol_massive_over_cup') {
-    posList.push('ไอเลือดสดทะลักปริมาณมากกว่าแก้วน้ำ (> 100-200 มล.) 🚩');
-  } else if (patient.hemoBloodVolume === 'vol_half_to_full_cup') {
-    posList.push('ไอเลือดสดปริมาณครึ่งแก้วถึงหนึ่งแก้ว (50-100 มล.)');
-  }
-  if (patient.hemoActiveStatus === 'status_active_bleeding') {
-    posList.push('ยังมีอาการไอเป็นเลือดสดอยู่เรื่อยๆ (Active bleeding) 🚩');
-  }
-  if (patient.hemoDyspnea === 'dyspnea_severe_rest_orthopnea') {
-    posList.push('หายใจหอบเหนื่อยรุนแรงเฉียบพลัน นอนราบไม่ได้ 🚩');
-  } else if (patient.hemoDyspnea === 'dyspnea_exertional') {
-    posList.push('หายใจหอบเหนื่อยเวลาออกแรงหรือเดิน');
-  }
-  if (Array.isArray(patient.hemoChestPainType) && patient.hemoChestPainType.includes('pleuritic_sharp')) {
-    posList.push('เจ็บแปล๊บหน้าอกเวลาหายใจเข้าลึกๆ หรือเวลาไอ (Pleuritic chest pain)');
-  }
-  if (Array.isArray(patient.hemoChestPainType) && patient.hemoChestPainType.includes('tearing_ripping_back')) {
-    posList.push('เจ็บเหมือนอะไรฉีกขาดในอก ร้าวทะลุไปหลัง (Tearing dissection risk) 🚩');
+      ? `${patient.hemoPreCoughDurVal} ${HEMO_DUR_UNIT_MAP[patient.hemoPreCoughDurUnit] || 'สัปดาห์'}`
+      : 'ไม่ได้ระบุระยะเวลา';
+    posList.push(`มีอาการไอเรื้อรังนำมาก่อน (${preDurStr})`);
   }
 
-  // Warning signs positives
-  if (warnSigns.includes('warn_choking_airway_threat')) posList.push('ไอสำลักเลือด หายใจติดขัด กลืนไม่ลง (Airway threat) 🚩');
-  if (warnSigns.includes('warn_fainting_syncope')) posList.push('หน้ามืด วูบ หรือหมดสติไปชั่วขณะ 🚩');
-  if (warnSigns.includes('warn_profuse_sweat_cold_shock')) posList.push('เหงื่อแตกท่วมตัว ผิวหนังซีดเย็น ตัวสั่น (Shock sign) 🚩');
-  if (warnSigns.includes('warn_palpitation_tachycardia')) posList.push('ใจสั่น หัวใจเต้นรัวเร็ว รู้สึกเหนื่อยแทบขาดใจ');
-  if (warnSigns.includes('warn_unilateral_leg_swelling')) posList.push('ขาบวมโต หรือปวดตึงน่องข้างใดข้างหนึ่งชัดเจน (Suspected DVT) 🚩');
-  if (warnSigns.includes('warn_long_travel_immobility')) posList.push('ประวัตินั่งรถยนต์หรือเครื่องบินเดินทางไกลต่อเนื่องเกิน 4-6 ชม.');
-  if (warnSigns.includes('warn_post_op_bedridden')) posList.push('เพิ่งผ่านการผ่าตัดใหญ่หรือนอนพักรักษาตัวติดเตียงเกิน 3 วัน');
-  if (warnSigns.includes('warn_history_dvt_pe')) posList.push('มีประวัติเคยเป็นโรคลิ่มเลือดอุดตันในเส้นเลือดที่แขนหรือขามาก่อน');
-  if (warnSigns.includes('warn_high_fever_chills')) posList.push('มีไข้สูง หนาวสั่นสะท้านจับไข้');
-  if (warnSigns.includes('warn_fever_afternoon_night_sweat')) posList.push('มีไข้ต่ำๆ รุมๆ ตอนบ่าย ร่วมกับเหงื่อออกท่วมตัวตอนกลางคืน (B-symptoms / TB)');
-  if (warnSigns.includes('warn_unintentional_weight_loss')) posList.push('น้ำหนักตัวลดลงฮวบผิดปกติโดยไม่ได้ตั้งใจลด หรือเบื่ออาหารมาก');
-  if (warnSigns.includes('warn_hoarseness_weeks')) posList.push('มีอาการเสียงแหบลงผิดปกติ ต่อเนื่องหลายสัปดาห์');
+  warnSigns.forEach(k => {
+    if (k === 'warn_unintentional_weight_loss') {
+      posList.push(formatHemoWeightLossDetail(patient));
+    } else if (HEMO_WARN_MAP[k]) {
+      posList.push(HEMO_WARN_MAP[k]);
+    }
+  });
 
-  // Past pulmonary & Smoking positives
-  if (pastPulm.includes('tb_prior_or_contact')) posList.push('เคยป่วยเป็นวัณโรคปอด หรือมีคนในบ้านกำลังรักษาวัณโรค');
-  if (pastPulm.includes('past_bronchiectasis')) posList.push('มีโรคประจำตัวหลอดลมโป่งพอง (Bronchiectasis)');
-  if (pastPulm.includes('past_copd_asthma')) posList.push('มีโรคประจำตัวถุงลมโป่งพอง (COPD) หรือหอบหืด');
-  if (pastPulm.includes('past_lung_cancer')) posList.push('มีประวัติโรคมะเร็งปอด');
-  if (pastPulm.includes('past_heart_failure_valvular')) posList.push('มีโรคประจำตัวทางหัวใจ (ลิ้นหัวใจตีบ หรือหัวใจล้มเหลว)');
+  if (prodParents.fever && !warnSigns.some(k => feverKeys.includes(k))) {
+    posList.push('มีไข้หรือเหงื่อออกกลางคืน (ไม่ได้ระบุรายละเอียด)');
+  }
+  if (prodParents.weightLoss && !warnSigns.includes('warn_unintentional_weight_loss')) {
+    posList.push(formatHemoWeightLossDetail(patient));
+  }
+  if (warnParents.syncope && !warnSigns.some(k => syncopeKeys.includes(k))) {
+    posList.push('มีอาการหน้ามืด วูบ หรือใจสั่นเหงื่อแตก (ไม่ได้ระบุรายละเอียด)');
+  }
+  if (warnParents.dvtPe && !warnSigns.some(k => dvtKeys.includes(k))) {
+    posList.push('มีอาการขาบวมปวดน่อง หรือประวัติเดินทางไกล/ติดเตียง (ไม่ได้ระบุรายละเอียด)');
+  }
+
+  const dedupPulm = [...new Set(pastPulm.filter(k => k !== 'pulm_none').map(k => HEMO_PULM_MAP[k]).filter(Boolean))];
+  dedupPulm.forEach(txt => { posList.push(txt); });
+
   if (patient.hemoSmokingStatus === 'smoking_regular') {
-    posList.push(`ประวัติสูบบุหรี่เป็นประจำ (${patient.hemoSmokingYears || 0} ปี, ${patient.hemoSmokingPacks || 0} ซอง/วัน)`);
+    const yrs = patient.hemoSmokingYears ? `${patient.hemoSmokingYears} ปี` : 'ไม่ระบุปี';
+    const pks = patient.hemoSmokingPacks ? `, ${patient.hemoSmokingPacks} ซอง/วัน` : '';
+    posList.push(`สูบบุหรี่เป็นประจำ (${yrs}${pks})`);
+  } else if (patient.hemoSmokingStatus === 'smoking_quit') {
+    posList.push('เคยสูบบุหรี่แต่เลิกแล้ว');
   }
 
-  // Meds positives
-  if (meds.includes('med_anticoagulant')) posList.push('รับประทานยาต้านการแข็งตัวของเลือด (Warfarin/DOACs) 🚩');
-  if (meds.includes('med_antiplatelet')) posList.push('รับประทานยาต้านเกล็ดเลือด (Aspirin/Clopidogrel)');
-  if (meds.includes('med_unknown_prescribed')) posList.push('มียาประจำตัว แต่ไม่แน่ใจหรือจำชื่อยาไม่ได้ 🚩');
+  meds.filter(k => k !== 'meds_none').forEach(k => {
+    if (HEMO_MED_MAP[k]) posList.push(HEMO_MED_MAP[k]);
+  });
 
   if (patient.otherSymptomsFree) {
     posList.push(patient.otherSymptomsFree);
   }
 
-  // Negatives evaluation (เฉพาะข้อที่ผู้ป่วยระบุยืนยัน)
-  if (patient.hemoPreCoughMaster === 'no') negList.push('ไม่มีอาการไอนำมาก่อนหน้า (เพิ่งเริ่มไอและมีเลือดออกทันที)');
-  if (patient.hemoActiveStatus === 'status_stopped_completely') negList.push('เลือดหยุดไหลสนิทแล้ว (No active bleeding)');
-  if (patient.hemoDyspnea === 'dyspnea_none') negList.push('ปฏิเสธหายใจหอบเหนื่อย หายใจปกติ');
-  if (patient.hemoChestPainMaster === 'no') negList.push('ปฏิเสธอาการเจ็บหน้าอกทุกรูปแบบ');
-  if (warnSigns.length > 0) {
-    if (!warnSigns.includes('warn_choking_airway_threat')) negList.push('ปฏิเสธไอสำลักหรือรู้สึกมีก้อนเลือดขวางทางเดินหายใจ');
-    if (!warnSigns.includes('warn_fainting_syncope') && !warnSigns.includes('warn_profuse_sweat_cold_shock')) {
-      negList.push('ปฏิเสธหน้ามืด วูบ เป็นลม และไม่มีเหงื่อแตกตัวเย็น');
-    }
-    if (!warnSigns.includes('warn_unilateral_leg_swelling')) negList.push('ขาไม่อ่อนแรง ขาไม่บวมโตข้างเดียว ไม่ปวดน่อง (No DVT signs)');
-    if (!warnSigns.includes('warn_high_fever_chills') && !warnSigns.includes('warn_fever_afternoon_night_sweat')) {
-      negList.push('ปฏิเสธไข้หนาวสั่น และไม่มีไข้ต่ำเหงื่อออกตอนกลางคืน');
-    }
-    if (!warnSigns.includes('warn_unintentional_weight_loss')) negList.push('น้ำหนักตัวไม่ลดฮวบ เบื่ออาหารปฏิเสธ');
-    if (!warnSigns.includes('warn_hoarseness_weeks')) negList.push('ปฏิเสธเสียงแหบ');
+  // Confirmed negatives only (Zero Default Bias)
+  const hasCard2Pos = patient.hemoPreCoughMaster === 'yes' || !!patient.hemoPriorSputumParent || warnSigns.some(k => card2SignKeys.includes(k)) || !!prodParents.fever || !!prodParents.weightLoss;
+  const hasCard3Pos = warnSigns.some(k => card3SignKeys.includes(k)) || !!patient.hemoDyspneaParent || (!!patient.hemoDyspnea && patient.hemoDyspnea !== 'dyspnea_none') || patient.hemoChestPainMaster === 'yes' || !!warnParents.syncope || !!warnParents.dvtPe;
+
+  if (patient.hemoProdromeNone) {
+    negList.push('ปฏิเสธอาการไอนำ เสมหะนำ ไข้ เหงื่อออกกลางคืน น้ำหนักลด และเสียงแหบ');
+  } else if (hasCard2Pos) {
+    if (patient.hemoPreCoughMaster !== 'yes') negList.push('ปฏิเสธอาการไอนำมาก่อนหน้า');
+    if (!warnSigns.some(k => feverKeys.includes(k)) && !prodParents.fever) negList.push('ปฏิเสธอาการไข้ หนาวสั่น และเหงื่อออกกลางคืน');
+    if (!warnSigns.includes('warn_unintentional_weight_loss') && !prodParents.weightLoss) negList.push('ปฏิเสธน้ำหนักตัวลดฮวบหรือเบื่ออาหาร');
+    if (!warnSigns.includes('warn_hoarseness_weeks')) negList.push('ปฏิเสธเสียงแหบเรื้อรัง');
+  } else if (patient.hemoPreCoughMaster === 'no') {
+    negList.push('ปฏิเสธอาการไอนำมาก่อนหน้า');
   }
+
+  if (patient.hemoActiveStatus === 'status_stopped_completely') negList.push('เลือดหยุดไหลสนิทแล้ว');
+  if (patient.hemoSmokingStatus === 'smoking_never') negList.push('ไม่เคยสูบบุหรี่');
+
+  if (patient.hemoWarnNone) {
+    negList.push('ปฏิเสธอาการเหนื่อยหอบ เจ็บหน้าอก ไอสำลักเลือด หน้ามืดวูบ และอาการบ่งชี้ลิ่มเลือดอุดตันที่ขา');
+  } else {
+    if (patient.hemoDyspnea === 'dyspnea_none') negList.push('ปฏิเสธอาการหายใจหอบเหนื่อย');
+    if (patient.hemoChestPainMaster === 'no') negList.push('ปฏิเสธอาการเจ็บหน้าอก');
+    if (hasCard3Pos) {
+      if (!warnSigns.includes('warn_choking_airway_threat')) negList.push('ปฏิเสธอาการไอสำลักเลือดหรือขวางทางเดินหายใจ');
+      if (!warnSigns.some(k => syncopeKeys.includes(k)) && !warnParents.syncope) negList.push('ปฏิเสธหน้ามืด วูบ และเหงื่อแตกตัวเย็น');
+      if (!warnSigns.some(k => dvtKeys.includes(k)) && !warnParents.dvtPe) negList.push('ปฏิเสธอาการขาบวม ปวดตึงน่อง และประวัติเดินทางไกล/ติดเตียง');
+    }
+  }
+
   if (pastPulm.includes('pulm_none')) negList.push('ปฏิเสธโรคประจำตัวทางปอดและหัวใจ');
-  if (meds.includes('meds_none')) negList.push('ปฏิเสธยาต้านการแข็งตัวของเลือดและยาต้านเกล็ดเลือด');
+  if (meds.includes('meds_none')) negList.push('ปฏิเสธการใช้ยาละลายลิ่มเลือดและยาต้านเกล็ดเลือด');
 
-  const hospLabel = {
-    complete: 'มีประวัติกับ รพ.ราชบุรี ครบถ้วน (ดึงข้อมูลเดิมจากระบบ)',
-    additional: 'มีประวัติกับ รพ.ราชบุรี และขอให้ข้อมูลเพิ่มเติม',
-    self: 'ขอให้ข้อมูลด้วยตนเองทั้งหมด',
-    unspecified: 'ไม่ได้ระบุ'
-  }[patient.hospRecordStatus] || 'ไม่ได้ระบุ';
-
+  const hospLabel = HEMO_HOSP_MAP[patient.hospRecordStatus] || 'ไม่ได้ระบุ';
   const udArr = Array.isArray(patient.underlying) ? patient.underlying : (patient.underlying ? [patient.underlying] : []);
   const filteredUd = udArr.filter(u => u && !u.includes('ปฏิเสธ') && u !== 'ไม่มี' && u !== 'ไม่มีโรคประจำตัว' && u !== 'ไม่ได้ระบุ');
   const hasExplicitUdDeny = udArr.some(u => u && (u.includes('ปฏิเสธ') || u === 'ไม่มี' || u === 'ไม่มีโรคประจำตัว'));
@@ -433,15 +706,28 @@ function renderHemoptysisRapidHpi(patient) {
   const docNotes = patient.doctor_notes || {};
   const redFlags = evaluateHemoptysisRedFlags(patient);
 
-  const defaultRapid =
-`[Chief Complaint (CC)]
+  let preCoughLine = 'ไม่ได้ระบุ';
+  const hasPriorSputumInfo = !!patient.hemoPriorSputumParent || (!!patient.hemoPriorSputum && patient.hemoPriorSputum !== 'sputum_none_dry_cough');
+  if (patient.hemoPreCoughMaster === 'yes') {
+    const durPart = patient.hemoPreCoughDurVal
+      ? `${patient.hemoPreCoughDurVal} ${HEMO_DUR_UNIT_MAP[patient.hemoPreCoughDurUnit] || 'สัปดาห์'}`
+      : 'ไม่ระบุระยะเวลา';
+    const sputumPart = hasPriorSputumInfo ? `เสมหะเดิม: ${formatHemoSputum(patient)}` : 'ไอแห้งไม่มีเสมหะ';
+    preCoughLine = `มีไอนำมาก่อน ${durPart} (${sputumPart})`;
+  } else if (hasPriorSputumInfo) {
+    preCoughLine = `ไม่มีไอนำ แต่มี${formatHemoSputum(patient)}`;
+  } else if (patient.hemoProdromeNone || patient.hemoPreCoughMaster === 'no') {
+    preCoughLine = `ไม่มีไอนำและไม่มีเสมหะผิดปกติมาก่อน`;
+  }
+
+  return `[Chief Complaint (CC)]
 ไอเป็นเลือด (Hemoptysis) มา ${durationStr}
 
 [History of Present Illness (HPI)]
-• ระยะเวลาที่มีอาการ: ${durVal ? `ไอเป็นเลือดมา ${durationStr}` : 'ไม่ระบุ'} (สถานะ: ${formatHemoActiveStatus(patient)}, ความถี่: ${formatHemoFrequency(patient)})
+• ระยะเวลาที่มีอาการ: ${durVal ? `ไอเป็นเลือดมา ${durationStr}` : 'ไม่ได้ระบุ'} (สถานะ: ${formatHemoActiveStatus(patient)}, ความถี่: ${formatHemoFrequency(patient)})
 • ลักษณะของเลือด: ${formatHemoBloodChar(patient)}
 • ปริมาณเลือดในครั้งที่ออกมากที่สุด: ${formatHemoBloodVolume(patient)}
-• ประวัติไอนำมาก่อน: ${patient.hemoPreCoughMaster === 'yes' ? `มีไอนำมาก่อน ${patient.hemoPreCoughDurVal || ''} ${durUnitMap[patient.hemoPreCoughDurUnit] || 'วัน'} (เสมหะเดิม: ${formatHemoSputum(patient)})` : (patient.hemoPreCoughMaster === 'no' ? 'ไม่มีไอนำมาก่อนหน้า' : 'ไม่ได้ระบุ')}
+• ประวัติไอนำและเสมหะเดิม: ${preCoughLine}
 • อาการเหนื่อยหอบ: ${formatHemoDyspnea(patient)}
 • อาการเจ็บหน้าอก: ${formatHemoChestPain(patient)}
 
@@ -454,7 +740,7 @@ ${negList.length > 0 ? negList.map(n => `  - ${n}`).join('\n') : '  - ผู้�
 [Past Medical History & Medications]
 • สถานะประวัติ รพ.ราชบุรี: ${hospLabel}
 • โรคประจำตัว (U/D): ${udDisplay}
-• ประวัติโรคปอดเดิม: ${pastPulm.length > 0 && !pastPulm.includes('pulm_none') ? pastPulm.join(', ') : (pastPulm.includes('pulm_none') ? 'ปฏิเสธ' : 'ไม่ได้ระบุ')}
+• ประวัติโรคปอดเดิม: ${formatHemoPastPulmDisplay(pastPulm)}
 • ยาประจำตัว (Current Meds): ${medsText}
 • ประวัติแพ้ยา/แพ้อาหาร (Allergies): ${allergyDisplay}
 
@@ -468,16 +754,12 @@ ${redFlags.length > 0
 • สัญญาณชีพและการตรวจร่างกาย: ${docNotes.physical_exam || '-'}
 • การวินิจฉัยเบื้องต้น (Impression): ${docNotes.preliminary_dx || '-'}
 • แผนการรักษา (Plan/Orders): ${docNotes.plan || '-'}`;
-
-  return defaultRapid;
 }
 
 // --- Narrative Note Generator (Doctor View) ---
 function renderHemoptysisNarrative(patient) {
-  const durVal = patient.durationVal;
-  const durUnitMap = { minutes: 'นาที', hours: 'ชั่วโมง', days: 'วัน', weeks: 'สัปดาห์', months: 'เดือน', years: 'ปี' };
-  const durUnit = durUnitMap[patient.durationUnit] || 'วัน';
-  const durStr = durVal ? `${durVal} ${durUnit}` : 'ไม่ระบุระยะเวลา';
+  const durUnit = HEMO_DUR_UNIT_MAP[patient.durationUnit] || 'ชั่วโมง';
+  const durStr = patient.durationVal ? `${patient.durationVal} ${durUnit}` : 'ไม่ระบุระยะเวลา';
 
   const charStr = formatHemoBloodChar(patient);
   const volStr = formatHemoBloodVolume(patient);
@@ -487,21 +769,31 @@ function renderHemoptysisNarrative(patient) {
   const chestPainStr = formatHemoChestPain(patient);
 
   const warnSigns = Array.isArray(patient.hemoWarningSigns) ? patient.hemoWarningSigns : [];
+  const pastPulm = Array.isArray(patient.hemoPastPulmonary) ? patient.hemoPastPulmonary.filter(k => k !== 'pulm_none') : [];
+  const meds = Array.isArray(patient.hemoBleedingMeds) ? patient.hemoBleedingMeds.filter(k => k !== 'meds_none') : [];
 
   const genderLabel = (patient.gender && patient.gender !== 'ไม่ระบุ') ? patient.gender : '';
-  let note = `ผู้ป่วย${genderLabel} อายุ ${patient.age || 'ไม่ระบุ'} ปี มารับการตรวจที่ห้องฉุกเฉินด้วยอาการไอเป็นเลือด เป็นมา ${durStr} ก่อนมาโรงพยาบาล ลักษณะเลือดที่ไอออกมาคือ${charStr} ปริมาณในครั้งที่ออกมากที่สุดคือ${volStr} มีความถี่คือ${freqStr} และสถานะปัจจุบัน${activeStr} การหายใจประเมินได้ว่า${dyspneaStr} และ${chestPainStr}`;
+  let note = `ผู้ป่วย${genderLabel} อายุ ${patient.age || 'ไม่ได้ระบุ'} ปี มารับการตรวจด้วยอาการไอเป็นเลือด เป็นมา ${durStr} ก่อนมาโรงพยาบาล ลักษณะเลือดที่ไอออกมาคือ${charStr} ปริมาณในครั้งที่ออกมากที่สุดคือ${volStr} ความถี่${freqStr} สถานะปัจจุบัน${activeStr} การหายใจประเมินได้ว่า${dyspneaStr} อาการเจ็บหน้าอก: ${chestPainStr}`;
 
   if (warnSigns.length > 0) {
-    const warnTexts = [];
-    if (warnSigns.includes('warn_choking_airway_threat')) warnTexts.push('มีอาการไอสำลักเลือดทางเดินหายใจอุดกั้น');
-    if (warnSigns.includes('warn_fainting_syncope')) warnTexts.push('มีอาการหน้ามืดวูบหมดสติ');
-    if (warnSigns.includes('warn_profuse_sweat_cold_shock')) warnTexts.push('เหงื่อแตกตัวเย็นซีด');
-    if (warnSigns.includes('warn_unilateral_leg_swelling')) warnTexts.push('ขาบวมโตข้างเดียว');
-    if (warnSigns.includes('warn_long_travel_immobility')) warnTexts.push('มีประวัติต้องอยู่นิ่งหรือเดินทางไกล');
-    if (warnSigns.includes('warn_high_fever_chills')) warnTexts.push('มีไข้สูงหนาวสั่น');
-    if (warnSigns.includes('warn_fever_afternoon_night_sweat')) warnTexts.push('มีไข้ต่ำบ่ายเหงื่อแตกกลางคืน');
-    if (warnSigns.includes('warn_unintentional_weight_loss')) warnTexts.push('น้ำหนักตัวลดลงฮวบผิดปกติ');
-    if (warnTexts.length > 0) note += ` ร่วมกับมีอาการเตือนสำคัญ: ${warnTexts.join(', ')}`;
+    const warnTexts = warnSigns.map(k => (k === 'warn_unintentional_weight_loss' ? formatHemoWeightLossDetail(patient) : (HEMO_WARN_MAP[k] || k)));
+    note += ` ร่วมกับมีอาการสำคัญ ได้แก่ ${warnTexts.join(', ')}`;
+  }
+
+  if (pastPulm.length > 0) {
+    const pulmTexts = [...new Set(pastPulm.map(k => HEMO_PULM_MAP[k] || k))];
+    note += ` ประวัติโรคปอดและหัวใจเดิม: ${pulmTexts.join(', ')}`;
+  }
+
+  if (patient.hemoSmokingStatus && HEMO_SMOKING_MAP[patient.hemoSmokingStatus]) {
+    note += ` ประวัติสูบบุหรี่: ${HEMO_SMOKING_MAP[patient.hemoSmokingStatus]}`;
+    if (patient.hemoSmokingStatus === 'smoking_regular' && patient.hemoSmokingYears) {
+      note += ` (${patient.hemoSmokingYears} ปี, ${patient.hemoSmokingPacks || 0} ซอง/วัน)`;
+    }
+  }
+
+  if (meds.length > 0) {
+    note += ` ประวัติการใช้ยา: ${meds.map(k => HEMO_MED_MAP[k] || k).join(', ')}`;
   }
 
   return note;
@@ -513,14 +805,18 @@ function renderHemoptysisDoctorHpi(patient) {
 
 // --- Output Dispatcher ---
 function updateHemoptysisOutputs(rec) {
-  if (!rec) return;
+  if (!rec) return null;
   const rapidText = renderHemoptysisRapidHpi(rec);
   const narrativeText = renderHemoptysisNarrative(rec);
+  const finalRapid = rec.custom_rapid_note || rapidText;
+  const finalNarrative = rec.custom_narrative_note || narrativeText;
 
-  const rapidEl = document.getElementById('rapidTextView');
-  const narrativeEl = document.getElementById('narrativeTextView');
-  if (rapidEl) rapidEl.value = rec.custom_rapid_note || rapidText;
-  if (narrativeEl) narrativeEl.value = rec.custom_narrative_note || narrativeText;
+  if (typeof document !== 'undefined') {
+    const rapidEl = document.getElementById('rapidTextView');
+    const narrativeEl = document.getElementById('narrativeTextView');
+    if (rapidEl) rapidEl.value = finalRapid;
+    if (narrativeEl) narrativeEl.value = finalNarrative;
+  }
 
   const posMatch = rapidText.match(/• Pertinent Positives:\n((?:\s*-[^\n]+\n?)+)/);
   if (posMatch) {
@@ -533,7 +829,7 @@ function updateHemoptysisOutputs(rec) {
   if (negMatch) {
     rec.pertinentNegatives = negMatch[1].trim().split('\n').map(l => l.replace(/^[-*\s]+/, '').trim());
   } else {
-    rec.pertinentNegatives = [];
+    rec.pertinentNegatives = ['ผู้ป่วยไม่ได้ระบุคำตอบยืนยันในหมวดอาการร่วม'];
   }
 
   const redFlags = evaluateHemoptysisRedFlags(rec);
@@ -561,18 +857,23 @@ function updateHemoptysisOutputs(rec) {
       episode_frequency: rec.hemoEpisodeCount || null,
       active_bleeding_status: rec.hemoActiveStatus || null,
       pre_existing_cough: {
-        present: rec.hemoPreCoughMaster === 'yes',
+        present: rec.hemoPreCoughMaster === 'yes' ? true : (rec.hemoPreCoughMaster === 'no' ? false : null),
         duration_val: rec.hemoPreCoughDurVal || null,
-        duration_unit: rec.hemoPreCoughDurUnit || 'days',
+        duration_unit: rec.hemoPreCoughDurUnit || 'weeks',
         prior_sputum: rec.hemoPriorSputum || null
       },
       dyspnea_grade: rec.hemoDyspnea || null,
       chest_pain: {
-        present: rec.hemoChestPainMaster === 'yes',
-        types: rec.hemoChestPainType || [],
+        present: rec.hemoChestPainMaster === 'yes' ? true : (rec.hemoChestPainMaster === 'no' ? false : null),
+        types: Array.isArray(rec.hemoChestPainType) ? rec.hemoChestPainType : [],
         pain_score: rec.painScore !== null && rec.painScore !== undefined ? rec.painScore : null
       },
       warning_signs: Array.isArray(rec.hemoWarningSigns) ? rec.hemoWarningSigns : [],
+      weight_loss: {
+        kg: rec.hemoWeightLossKg || null,
+        duration_val: rec.hemoWeightLossDurVal || null,
+        duration_unit: rec.hemoWeightLossDurUnit || 'months'
+      },
       past_pulmonary_cardiac: Array.isArray(rec.hemoPastPulmonary) ? rec.hemoPastPulmonary : [],
       smoking: {
         status: rec.hemoSmokingStatus || null,
@@ -593,109 +894,187 @@ function updateHemoptysisOutputs(rec) {
       total_red_flags: redFlags.length
     }
   };
-  const jsonEl = document.getElementById('jsonViewer');
-  if (jsonEl) jsonEl.textContent = JSON.stringify(jsonOutput, null, 2);
-}
 
-// --- CDS Generator ---
-function generateHemoptysisCds(patient, { rfs, ddxList = [], workupList = [], managementList = [] } = {}) {
-  if (!patient) return '';
-  const redFlags = rfs || evaluateHemoptysisRedFlags(patient);
+  rec.rapidHpi = finalRapid;
+  rec.narrativeHpi = finalNarrative;
+  rec.medicalJson = jsonOutput;
 
-  const hasMassive = redFlags.some(r => r.key === 'rf_massive_asphyxiation' || r.key === 'rf_hemodynamic_shock' || r.key === 'rf_respiratory_failure');
-  const hasAortic = redFlags.some(r => r.key === 'rf_aortic_dissection_chest');
-  const hasPe = redFlags.some(r => r.key === 'rf_suspected_pe_dvt');
-  const hasTb = redFlags.some(r => r.key === 'rf_cavitary_tb');
-  const hasAnticoag = redFlags.some(r => r.key === 'rf_anticoagulant_bleeding');
-  const hasAbscess = redFlags.some(r => r.key === 'rf_necrotizing_abscess');
-  const hasMalignancy = redFlags.some(r => r.key === 'rf_lung_malignancy');
-
-  if (hasMassive) {
-    ddxList.push('1. 🚨 Massive Hemoptysis with Impending Asphyxiation & Airway Compromise');
-    ddxList.push('2. Ruptured Bronchial Artery Aneurysm / Rasmussen Aneurysm');
-    ddxList.push('3. Cavitary Tuberculosis or Bronchiectasis with Severe Bleeding');
-    workupList.push('Stat Endotracheal Intubation with large tube (Size 8.0-8.5) เตรียมพร้อม Rigid/Flexible Bronchoscopy');
-    workupList.push('Stat Type and Crossmatch PRC 4 units + FFP 2 units');
-    workupList.push('CBC, Coagulogram (PT, INR, PTT), BUN, Cr, Electrolytes, Arterial Blood Gas (ABG)');
-    workupList.push('Stat Urgent Interventional Radiology (IR) Consult for Bronchial Artery Embolization (BAE)');
-    managementList.push('Triage Level 1: ย้ายเข้า Resuscitation Room ทันที');
-    managementList.push('Dependent Positioning: จัดท่านอนตะแคงเอาปอดข้างที่สงสัยว่าเลือดออกลงด้านล่าง เพื่อป้องกันเลือดไหลท่วมปอดข้างดี');
-    managementList.push('Two Large-Bore IVs (18G x 2 เส้น) และให้ IV Fluid Resuscitation');
-    managementList.push('Hemostatic Agent: พิจารณา IV Tranexamic Acid (TXA) 1 g IV infuse over 10 mins หรือ Nebulized TXA 500 mg');
-  } else if (hasAortic) {
-    ddxList.push('1. 🚨 Thoracic Aortic Dissection / Aortobronchial Fistula');
-    ddxList.push('2. Massive Hemoptysis secondary to Vascular Rupture');
-    workupList.push('Stat CT Angiography of Chest (Aorta protocol)');
-    workupList.push('Stat Urgent Cardiothoracic Surgery Consultation');
-    workupList.push('12-lead ECG, Troponin-T, CBC, Coagulogram');
-    managementList.push('Triage Level 1: ควบคุมความดันโลหิตและอัตราการเต้นของหัวใจ (Target SBP 100-120 mmHg, HR < 60 bpm)');
-    managementList.push('งดให้ยาต้านการแข็งตัวของเลือดและยาละลายลิ่มเลือดโดยเด็ดขาด');
-  } else if (hasPe) {
-    ddxList.push('1. ⚠️ Acute Pulmonary Embolism (PE) with Pulmonary Infarction');
-    ddxList.push('2. Deep Vein Thrombosis (DVT) with Embolization');
-    workupList.push('Stat CT Pulmonary Angiography (CTPA) - Gold Standard');
-    workupList.push('Stat 12-lead ECG (ดู S1Q3T3, Sinus Tachycardia, RV Strain)');
-    workupList.push('D-dimer (หากมีความเสี่ยงปานกลาง), Troponin, Bedside Echocardiography');
-    workupList.push('Venous Duplex Ultrasound of Lower Extremities');
-    managementList.push('Triage Level 2: ให้ออกซิเจน cannula/mask เพื่อคุม SpO2 >= 95%');
-    managementList.push('Anticoagulation: หากไม่มีข้อห้ามเลือดออกปริมาณมาก พิจารณา Low Molecular Weight Heparin (Enoxaparin 1 mg/kg SC q 12h)');
-  } else if (hasTb) {
-    ddxList.push('1. ⚠️ Active Cavitary Pulmonary Tuberculosis (TB) with Hemoptysis');
-    ddxList.push('2. Rasmussen Aneurysm / Post-TB Bronchiectasis Bleeding');
-    workupList.push('Stat Chest X-ray (CXR)');
-    workupList.push('Sputum AFB x 3 days และ GeneXpert MTB/RIF');
-    workupList.push('CBC, Electrolytes, BUN, Cr, LFT');
-    managementList.push('Triage Level 2: แยกกักตัวผู้ป่วยในห้องความดันลบ (Negative Pressure Airborne Isolation Room) ทันที');
-    managementList.push('ให้ผู้ป่วยสวมหน้ากาก N95 ตลอดเวลา');
-    managementList.push('ปรึกษาอายุรแพทย์โรคปอดเพื่อพิจารณาเริ่มสูตรยารักษาวัณโรค (HRZE)');
-  } else if (hasAnticoag) {
-    ddxList.push('1. ⚠️ Anticoagulant-Induced Hemoptysis / Coagulopathy');
-    ddxList.push('2. Secondary Bronchial Bleeding in Anticoagulated Patient');
-    workupList.push('Stat Coagulogram (PT, INR, PTT, Thrombin Time)');
-    workupList.push('CBC (Hb, Hct, Platelet count), BUN, Cr');
-    workupList.push('Stat CXR');
-    managementList.push('Triage Level 2: หยุดยาต้านการแข็งตัวของเลือด/ยาต้านเกล็ดเลือดทันที');
-    managementList.push('Reversal Agent: หาก INR สูงผิดปกติ พิจารณาให้ IV Vitamin K1 10 mg ร่วมกับ Prothrombin Complex Concentrate (PCC) หรือ FFP');
-  } else if (hasAbscess) {
-    ddxList.push('1. ⚠️ Necrotizing Pneumonia / Lung Abscess with Hemoptysis');
-    ddxList.push('2. Severe Anaerobic Pulmonary Infection');
-    workupList.push('Stat Sputum Gram stain, Culture & Sensitivity, Blood culture x 2');
-    workupList.push('Stat CXR / CT Chest');
-    workupList.push('CBC, BUN, Cr, Electrolytes');
-    managementList.push('Triage Level 2: ให้ IV Broad-spectrum Antibiotics ครอบคลุมเชื้อแบคทีเรียกลุ่ม Anaerobes (เช่น IV Ceftriaxone + Clindamycin หรือ IV Piperacillin/Tazobactam)');
-  } else if (hasMalignancy) {
-    ddxList.push('1. ⚠️ Suspected Bronchogenic Carcinoma (Lung Cancer)');
-    ddxList.push('2. Chronic Lung Disease with Secondary Hemoptysis');
-    workupList.push('Stat CXR');
-    workupList.push('Contrast-enhanced CT Chest');
-    workupList.push('Sputum Cytology x 3');
-    managementList.push('Triage Level 3: ส่งตรวจประเมินทางรังสีวิทยา และส่งต่ออายุรแพทย์โรคปอดเพื่อตรวจส่องกล้อง Bronchoscopy');
-  } else {
-    ddxList.push('1. Acute Bronchitis / Tracheitis with Blood-Streaked Sputum');
-    ddxList.push('2. Post-tussive Airway Mucosal Erosion');
-    workupList.push('Chest X-ray (CXR) เพื่อคัดกรองก้อนหรือรอยโรคในปอด');
-    workupList.push('CBC (ตรวจดูการติดเชื้อและภาวะซีด)');
-    managementList.push('Triage Level 4: แนะนำยาแก้ไอ (Cough suppressant / Dextromethorphan), ยาละลายเสมหะ');
-    managementList.push('สังเกตอาการ: หากไอเป็นเลือดสดปริมาณเพิ่มขึ้น หรือมีเหนื่อยหอบให้รีบกลับมา รพ. ทันที');
+  if (typeof document !== 'undefined') {
+    const jsonEl = document.getElementById('jsonViewer');
+    if (jsonEl) jsonEl.textContent = JSON.stringify(jsonOutput, null, 2);
   }
 
-  let text = '[PROVISIONAL_DDX]\n';
-  text += ddxList.join('\n') + '\n\n';
-  text += '[ER_ORDERS]\n';
-  workupList.forEach(w => { text += `- [ ] ${w}\n`; });
-  managementList.forEach(m => { text += `- [ ] ${m}\n`; });
-  return text;
+  return { rapid: finalRapid, narrative: finalNarrative, json: jsonOutput };
 }
 
-// --- Module Definition Object ---
+// =========================================================================
+// UI TEMPLATE FRAGMENTS (Golden UI/UX — 4 Cards + Universal PMH Card 5)
+// =========================================================================
+const HEMO_PAIN_SCALE_HTML = `<div class="pt-2 border-t border-slate-200">
+  <div class="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 space-y-3">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+      <label class="block text-xs font-semibold text-slate-800 tracking-wider">ระดับความเจ็บแน่นหน้าอก (Pain Score: 0–10)</label>
+      <div class="flex items-center space-x-2">
+        <span id="hemoPainScoreBadge" class="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-600 border border-slate-300 self-start sm:self-auto transition-all">
+          <span id="hemoPainScoreEmoji" class="text-base">⚪</span>
+          <span id="hemoPainScoreText">ยังไม่ได้ระบุ (แตะแถบเพื่อระบุ)</span>
+        </span>
+        <button type="button" id="hemoPainScoreClearBtn" onclick="clearHemoPainScore()" class="text-xs text-slate-500 hover:text-slate-800 underline hidden transition" title="ล้างค่าเพื่อให้เป็นไม่ได้ระบุ">ล้างค่า</button>
+      </div>
+    </div>
+    <div class="px-1 pt-1">
+      <input type="range" id="hemoPainScore" min="0" max="10" value="0" step="1" oninput="handleHemoPainScoreChange(this.value)" class="w-full h-2.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-medical-600 focus:outline-none focus:ring-2 focus:ring-medical-500">
+    </div>
+    <div class="grid grid-cols-5 text-center text-[10px] sm:text-[11px] pt-1 gap-1 text-slate-500 font-medium">
+      <div class="cursor-pointer hover:text-medical-600 transition" onclick="setHemoPainScore(0)"><span class="text-lg sm:text-xl block">😊</span><span>0: สบายดี</span></div>
+      <div class="cursor-pointer hover:text-medical-600 transition" onclick="setHemoPainScore(2)"><span class="text-lg sm:text-xl block">🙂</span><span>1–3: เล็กน้อย</span></div>
+      <div class="cursor-pointer hover:text-medical-600 transition" onclick="setHemoPainScore(5)"><span class="text-lg sm:text-xl block">😐</span><span>4–6: ปานกลาง</span></div>
+      <div class="cursor-pointer hover:text-medical-600 transition" onclick="setHemoPainScore(8)"><span class="text-lg sm:text-xl block">😣</span><span>7–9: ปวดมาก</span></div>
+      <div class="cursor-pointer hover:text-medical-600 transition" onclick="setHemoPainScore(10)"><span class="text-lg sm:text-xl block">😭</span><span>10: ปวดที่สุด</span></div>
+    </div>
+  </div>
+</div>`;
+
+const HEMO_PRODROME_SUBS_HTML = [
+  `<div id="hemoPreCoughSub" class="hidden bg-slate-50 border border-slate-200 rounded-xl p-3.5 mt-3 space-y-2">
+    <span class="text-xs font-semibold text-slate-700 block">ระบุระยะเวลาที่มีอาการไอนำมาก่อนหน้านี้:</span>
+    <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+      <div class="col-span-1 sm:col-span-2">
+        <input type="number" id="hemoPreCoughDurVal" min="1" max="365"
+          class="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-xs font-semibold text-slate-800"
+          placeholder="เช่น 2">
+      </div>
+      <div class="col-span-1">
+        <select id="hemoPreCoughDurUnit"
+          class="w-full bg-white border border-slate-300 rounded-lg px-2 py-2 text-xs font-medium text-slate-800">
+          <option value="days">วัน</option>
+          <option value="weeks" selected>สัปดาห์</option>
+          <option value="months">เดือน</option>
+          <option value="years">ปี</option>
+        </select>
+      </div>
+    </div>
+  </div>`,
+  `<div id="hemoPriorSputumSub" class="hidden bg-slate-50 border border-slate-200 rounded-xl p-3.5 mt-3 space-y-2.5">
+    <div class="text-xs font-semibold text-slate-700">ลักษณะเสมหะเดิมก่อนมีเลือดปน</div>
+    ${renderHemoGrid('grid-cols-1 sm:grid-cols-2', [
+      { kind: 'radio', name: 'hemoPriorSputum', value: 'sputum_normal_white_yellow', title: ['เสมหะขาวใส /', 'เหลืองปกติ'] },
+      { kind: 'radio', name: 'hemoPriorSputum', value: 'sputum_foul_abscess_green', title: ['เสมหะเขียวข้น', 'กลิ่นเหม็นเน่า'] },
+      { kind: 'radio', name: 'hemoPriorSputum', value: 'sputum_pink_frothy_edema', title: ['เสมหะเป็นฟอง', 'สีชมพู'], colSpan2: true }
+    ], { compact: true })}
+  </div>`,
+  `<div id="hemoWarningFeverSub" class="hidden bg-slate-50 border border-slate-200 rounded-xl p-3.5 mt-3 space-y-2.5">
+    <div class="text-xs font-semibold text-slate-700">ลักษณะอาการไข้และเหงื่อออกกลางคืน (เลือกได้หลายข้อ)</div>
+    ${renderHemoGrid('grid-cols-1 sm:grid-cols-2', [
+      { name: 'hemoWarningSigns', value: 'warn_low_grade_fever', title: ['ตัวรุมๆ'], onchange: 'handleHemoProdromeItemChange(this)' },
+      { name: 'hemoWarningSigns', value: 'warn_high_fever', title: ['ไข้สูง'], onchange: 'handleHemoProdromeItemChange(this)' },
+      { name: 'hemoWarningSigns', value: 'warn_chills', title: ['หนาวสั่น'], onchange: 'handleHemoProdromeItemChange(this)' },
+      { name: 'hemoWarningSigns', value: 'warn_fever_afternoon_night_sweat', title: ['เหงื่อออกท่วม', 'ตอนกลางคืน'], onchange: 'handleHemoProdromeItemChange(this)' }
+    ], { compact: true })}
+  </div>`,
+  `<div id="hemoWeightLossSub" class="hidden bg-slate-50 border border-slate-200 rounded-xl p-3.5 mt-3 space-y-2">
+    <span class="text-xs font-semibold text-slate-700 block">ระบุน้ำหนักที่ลดลงโดยประมาณ และช่วงเวลา:</span>
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+      <div>
+        <label class="block text-[11px] font-medium text-slate-600 mb-1">ลดลงประมาณกี่ kg</label>
+        <input type="number" step="0.5" id="hemoWeightLossKg" min="0.5" max="100"
+          class="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-xs font-semibold text-slate-800"
+          placeholder="เช่น 5">
+      </div>
+      <div>
+        <label class="block text-[11px] font-medium text-slate-600 mb-1">ในช่วงเวลานาน</label>
+        <input type="number" id="hemoWeightLossDurVal" min="1" max="120"
+          class="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-xs font-semibold text-slate-800"
+          placeholder="เช่น 2">
+      </div>
+      <div>
+        <label class="block text-[11px] font-medium text-slate-600 mb-1">หน่วยเวลา</label>
+        <select id="hemoWeightLossDurUnit"
+          class="w-full bg-white border border-slate-300 rounded-lg px-2 py-2 text-xs font-medium text-slate-800">
+          <option value="weeks">สัปดาห์</option>
+          <option value="months" selected>เดือน</option>
+          <option value="years">ปี</option>
+        </select>
+      </div>
+    </div>
+  </div>`
+].join('\n');
+
+const HEMO_WARN_SUBS_HTML = [
+  `<div id="hemoDyspneaSub" class="hidden bg-slate-50 border border-slate-200 rounded-xl p-3.5 mt-3 space-y-2.5">
+    <div class="text-xs font-semibold text-slate-700">ระดับอาการเหนื่อยหอบ</div>
+    ${renderHemoGrid('grid-cols-1 sm:grid-cols-2', [
+      { kind: 'radio', name: 'hemoDyspnea', value: 'dyspnea_exertional', title: ['เหนื่อยเวลา', 'ออกแรง / เดิน'] },
+      { kind: 'radio', name: 'hemoDyspnea', value: 'dyspnea_severe_rest_orthopnea', title: ['เหนื่อยรุนแรงขณะพัก', '/ นอนราบไม่ได้'] }
+    ], { compact: true })}
+  </div>`,
+  `<div id="hemoChestPainSub" class="hidden bg-slate-50 border border-slate-200 rounded-xl p-4 mt-3 space-y-3">
+    <div>
+      <span class="text-xs font-semibold text-slate-700 block mb-2">ลักษณะอาการเจ็บหน้าอก (เลือกได้หลายข้อ):</span>
+      ${renderHemoGrid('grid-cols-1 sm:grid-cols-2', [
+        { name: 'hemoChestPainType', value: 'pleuritic_sharp', title: ['เจ็บแปล๊บเวลา', 'หายใจลึก / ไอ'], onchange: 'handleHemoWarnItemChange(this)' },
+        { name: 'hemoChestPainType', value: 'ischemic_pressure', title: ['เจ็บแน่นอึดอัด', 'กลางหน้าอก'], onchange: 'handleHemoWarnItemChange(this)' },
+        { name: 'hemoChestPainType', value: 'tearing_ripping_back', title: ['เจ็บเหมือนฉีกขาด', 'ร้าวทะลุหลัง'], onchange: 'handleHemoWarnItemChange(this)', colSpan2: true }
+      ], { compact: true })}
+    </div>
+    ${HEMO_PAIN_SCALE_HTML}
+  </div>`,
+  `<div id="hemoWarningSyncopeSub" class="hidden bg-slate-50 border border-slate-200 rounded-xl p-3.5 mt-3 space-y-2.5">
+    <div class="text-xs font-semibold text-slate-700">อาการหน้ามืด วูบ หรือใจสั่นเหงื่อแตก (เลือกได้หลายข้อ)</div>
+    ${renderHemoGrid('grid-cols-1 sm:grid-cols-2', [
+      { name: 'hemoWarningSigns', value: 'warn_fainting_syncope', title: ['หน้ามืด / วูบ', 'หรือหมดสติ'], onchange: 'handleHemoWarnItemChange(this)' },
+      { name: 'hemoWarningSigns', value: 'warn_profuse_sweat_cold_shock', title: ['เหงื่อแตกตัวเย็น /', 'ซีดสั่น'], onchange: 'handleHemoWarnItemChange(this)' },
+      { name: 'hemoWarningSigns', value: 'warn_palpitation_tachycardia', title: ['ใจสั่น /', 'หัวใจเต้นรัว'], onchange: 'handleHemoWarnItemChange(this)', colSpan2: true }
+    ], { compact: true })}
+  </div>`,
+  `<div id="hemoWarningDvtPeSub" class="hidden bg-slate-50 border border-slate-200 rounded-xl p-3.5 mt-3 space-y-2.5">
+    <div class="text-xs font-semibold text-slate-700">อาการที่ขาและการอยู่นิ่งๆ / เดินทางไกล (เลือกได้หลายข้อ)</div>
+    ${renderHemoGrid('grid-cols-1 sm:grid-cols-2', [
+      { name: 'hemoWarningSigns', value: 'warn_unilateral_leg_swelling', title: ['ขาบวมโต /', 'ปวดตึงน่องข้างเดียว'], onchange: 'handleHemoWarnItemChange(this)' },
+      { name: 'hemoWarningSigns', value: 'warn_bilateral_leg_swelling', title: ['ขาบวม 2 ข้าง'], onchange: 'handleHemoWarnItemChange(this)' },
+      { name: 'hemoWarningSigns', value: 'warn_long_travel_immobility', title: ['นั่งเดินทางไกลเกิน', '4–6 ชั่วโมง'], onchange: 'handleHemoWarnItemChange(this)' },
+      { name: 'hemoWarningSigns', value: 'warn_post_op_bedridden', title: ['เพิ่งผ่าตัดใหญ่ /', 'นอนติดเตียง', 'เกิน 3 วัน'], onchange: 'handleHemoWarnItemChange(this)' },
+      { name: 'hemoWarningSigns', value: 'warn_history_dvt_pe', title: ['เคยมีลิ่มเลือด', 'อุดตันที่แขนหรือขา'], onchange: 'handleHemoWarnItemChange(this)', colSpan2: true }
+    ], { compact: true })}
+  </div>`
+].join('\n');
+
+// =========================================================================
+// MODULE DEFINITION
+// =========================================================================
 const hemoptysisModule = {
   id: 'hemoptysis',
+  schemaCode: 'hemoptysis',
   recordCc: 'hemoptysis',
   titleTh: 'ไอเป็นเลือด',
   titleEn: 'Hemoptysis / Coughing up blood',
   icon: 'droplet',
   sectionDomId: 'hemoptysisQuestionnaireSection',
   doctorCcBadgeHtml: '<i data-lucide="droplet" class="w-3.5 h-3.5 mr-1 text-rose-500"></i> CC: ไอเป็นเลือด (Hemoptysis)',
+  pmhSectionNumber: 5,
+  getPmhSectionNumber: () => 5,
+  dateFields: [],
+  timeFields: [],
+  branchIds: [
+    'hemoPreCoughSub',
+    'hemoPriorSputumSub',
+    'hemoWarningFeverSub',
+    'hemoWeightLossSub',
+    'hemoDyspneaSub',
+    'hemoChestPainSub',
+    'hemoWarningSyncopeSub',
+    'hemoWarningDvtPeSub',
+    'hemoSmokingSub'
+  ],
+  inputIdsToClear: [
+    'hemoDurationVal',
+    'hemoPreCoughDurVal',
+    'hemoWeightLossKg',
+    'hemoWeightLossDurVal',
+    'hemoSmokingYears',
+    'hemoSmokingPacks',
+    'hemoptysis_other_free'
+  ],
 
   algorithm: {
     chiefComplaint: 'hemoptysis',
@@ -716,33 +1095,42 @@ const hemoptysisModule = {
     ]
   },
 
-  // --- HTML Form Intake Template ---
   formHtml: `
     <div id="hemoptysisQuestionnaireSection" class="hidden space-y-6">
+      <div data-cc-top-banner="hemoptysis">
+        <div class="bg-amber-50 border border-amber-200 rounded-2xl p-4 sm:p-5 flex items-start gap-3.5 shadow-xs">
+          <div class="bg-amber-100 text-amber-800 p-2.5 rounded-xl flex-shrink-0 mt-0.5">
+            <i data-lucide="alert-circle" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <h3 class="text-sm font-bold text-amber-900 mb-1">คำแนะนำเบื้องต้นและป้องกันการแพร่กระจายเชื้อระหว่างรอตรวจ</h3>
+            <p class="text-xs text-amber-800 leading-relaxed">
+              กรุณานั่งพักนิ่งๆ หลีกเลี่ยงการไอหรือขากแรงๆ <strong>สวมหน้ากากอนามัยตลอดเวลา</strong> และเก็บภาชนะหรือทิชชูเปื้อนเลือดไว้ให้แพทย์ประเมินปริมาณ หากไอเลือดสดมาก สำลักเลือด หอบเหนื่อย หรือหน้ามืดวูบ กรุณาแจ้งพยาบาลทันที
+            </p>
+          </div>
+        </div>
+      </div>
 
-      <!-- CARD 1: ระยะเวลา ลักษณะเลือด ปริมาณ และสถานะเลือดออก -->
+      <!-- CARD 1: ระยะเวลา ลักษณะ และปริมาณเลือดที่ไอออก -->
       <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
         <div class="flex items-center space-x-3 mb-4 pb-3 border-b border-slate-100">
           <div class="bg-medical-100 text-medical-700 p-2 rounded-xl">
             <i data-lucide="droplet" class="w-5 h-5"></i>
           </div>
-          <div>
-            <h2 class="text-base font-bold text-slate-900">1. ระยะเวลา ลักษณะของเลือด และปริมาณ (Bleeding Profile)</h2>
-            <p class="text-xs text-slate-500">ข้อมูลลักษณะเลือด ปริมาณที่ออก และสถานะความต่อเนื่องของการมีเลือดออก</p>
-          </div>
+          <h2 class="text-base font-bold text-slate-900">1. ระยะเวลา ลักษณะ และปริมาณเลือดที่ไอออก</h2>
         </div>
 
         <div class="space-y-4">
-          <!-- 1.1 ระยะเวลาตั้งแต่เริ่มไอเป็นเลือด -->
           <div>
-            <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
-              เริ่มมีอาการไอเป็นเลือดมานานเท่าไรแล้ว? <span class="text-rose-500">*</span>
-            </label>
+            ${renderHemoSysHeader({
+              label: '1.1 ระยะเวลาที่เริ่มมีอาการไอเป็นเลือด',
+              icon: 'clock',
+              colorClass: 'bg-sky-100 text-sky-700'
+            })}
             <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
               <div class="col-span-1 sm:col-span-2">
-                <input type="number" id="hemoDurationVal" min="1" max="1000"
-                  class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-slate-800 font-semibold focus:outline-none focus:ring-2 focus:ring-medical-500 focus:bg-white text-sm"
-                  placeholder="เช่น 2">
+                <input type="number" id="hemoDurationVal" min="1" max="1000" placeholder="ระบุตัวเลข เช่น 2"
+                  class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-slate-800 font-semibold focus:outline-none focus:ring-2 focus:ring-medical-500 focus:bg-white text-sm placeholder:text-slate-400 placeholder:font-normal">
               </div>
               <div class="col-span-1">
                 <select id="hemoDurationUnit"
@@ -758,513 +1146,161 @@ const hemoptysisModule = {
             </div>
           </div>
 
-          <!-- 1.2 ลักษณะของเลือดที่ออกมา -->
-          <div>
-            <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
-              ลักษณะของเลือดที่ออกมา (เลือกข้อที่ตรงที่สุด) <span class="text-rose-500">*</span>
-            </label>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
-              <label class="selectable-card relative flex items-start p-3 rounded-xl cursor-pointer border border-slate-200 bg-white hover:border-medical-300 transition">
-                <input type="radio" name="hemoBloodChar" value="char_true_frothy_red" class="mt-0.5 text-medical-600 focus:ring-medical-500 h-4 w-4">
-                <div class="ml-2.5">
-                  <span class="text-xs sm:text-sm font-semibold block text-slate-800">เลือดสดสีแดง หรือมีฟองอากาศปน</span>
-                  <span class="text-[11px] text-slate-500">ออกมาเวลาไออย่างรุนแรง ออกมาจากหลอดลมหรือปอดโดยตรง</span>
-                </div>
-              </label>
-
-              <label class="selectable-card relative flex items-start p-3 rounded-xl cursor-pointer border border-slate-200 bg-white hover:border-medical-300 transition">
-                <input type="radio" name="hemoBloodChar" value="char_streaked_sputum" class="mt-0.5 text-medical-600 focus:ring-medical-500 h-4 w-4">
-                <div class="ml-2.5">
-                  <span class="text-xs sm:text-sm font-semibold block text-slate-800">เสมหะปนเลือดเป็นเส้นๆ</span>
-                  <span class="text-[11px] text-slate-500">มีเส้นเลือดสีแดงเรื่อๆ หรือสีน้ำตาลปนในก้อนเสมหะ</span>
-                </div>
-              </label>
-
-              <label class="selectable-card relative flex items-start p-3 rounded-xl cursor-pointer border border-slate-200 bg-white hover:border-medical-300 transition">
-                <input type="radio" name="hemoBloodChar" value="char_coffee_ground_vomit" class="mt-0.5 text-medical-600 focus:ring-medical-500 h-4 w-4">
-                <div class="ml-2.5">
-                  <span class="text-xs sm:text-sm font-semibold block text-slate-800">ขย้อนหรืออาเจียนเป็นสีกาแฟ/มีเศษอาหาร</span>
-                  <span class="text-[11px] text-slate-500">สีน้ำตาลคล้ำ มีเศษอาหารปน อาจเกิดจากทางเดินอาหาร</span>
-                </div>
-              </label>
-
-              <label class="selectable-card relative flex items-start p-3 rounded-xl cursor-pointer border border-slate-200 bg-white hover:border-medical-300 transition">
-                <input type="radio" name="hemoBloodChar" value="char_postnasal_epistaxis" class="mt-0.5 text-medical-600 focus:ring-medical-500 h-4 w-4">
-                <div class="ml-2.5">
-                  <span class="text-xs sm:text-sm font-semibold block text-slate-800">เลือดกำเดาไหลลงคอแล้วบ้วนออกมา</span>
-                  <span class="text-[11px] text-slate-500">รู้สึกมีน้ำเลือดไหลจากหลังโพรงจมูกหยดลงคอหอย</span>
-                </div>
-              </label>
-            </div>
+          <div class="pt-4 border-t border-slate-100">
+            ${renderHemoSysHeader({
+              label: '1.2 ลักษณะของเลือดที่ออกมา',
+              icon: 'droplet',
+              colorClass: 'bg-sky-100 text-sky-700'
+            })}
+            ${renderHemoGrid('grid-cols-1 sm:grid-cols-2', [
+              { kind: 'radio', name: 'hemoBloodChar', value: 'char_true_frothy_red', title: ['เลือดสดสีแดง', 'หรือมีฟองปน'] },
+              { kind: 'radio', name: 'hemoBloodChar', value: 'char_streaked_sputum', title: ['เสมหะปนเลือด', 'เป็นเส้นๆ'], desc: 'มีเส้นสีแดงเรื่อๆ หรือสีน้ำตาลปนในก้อนเสมหะ' },
+              { kind: 'radio', name: 'hemoBloodChar', value: 'char_coffee_ground_vomit', title: ['ขย้อนสีกาแฟ /', 'มีเศษอาหาร'] },
+              { kind: 'radio', name: 'hemoBloodChar', value: 'char_postnasal_epistaxis', title: ['เลือดกำเดา', 'ไหลลงคอ'] }
+            ])}
           </div>
 
-          <!-- 1.3 ปริมาณเลือดในครั้งที่ออกมากที่สุด -->
-          <div>
-            <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
-              ปริมาณเลือดในครั้งที่ออกมากที่สุด (Volume Assessment) <span class="text-rose-500">*</span>
-            </label>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
-              <label class="selectable-card relative flex items-start p-3 rounded-xl cursor-pointer border border-slate-200 bg-white hover:border-medical-300 transition">
-                <input type="radio" name="hemoBloodVolume" value="vol_streaks_sputum" class="mt-0.5 text-medical-600 focus:ring-medical-500 h-4 w-4">
-                <div class="ml-2.5">
-                  <span class="text-xs sm:text-sm font-semibold block text-slate-800">เลือดออกเป็นเส้นๆ ปนเสมหะ</span>
-                  <span class="text-[11px] text-slate-500">ปริมาณเล็กน้อย (น้อยกว่า 1 ช้อนชา)</span>
-                </div>
-              </label>
-
-              <label class="selectable-card relative flex items-start p-3 rounded-xl cursor-pointer border border-slate-200 bg-white hover:border-medical-300 transition">
-                <input type="radio" name="hemoBloodVolume" value="vol_tablespoon" class="mt-0.5 text-medical-600 focus:ring-medical-500 h-4 w-4">
-                <div class="ml-2.5">
-                  <span class="text-xs sm:text-sm font-semibold block text-slate-800">ประมาณ 1 - 2 ช้อนโต๊ะ</span>
-                  <span class="text-[11px] text-slate-500">ประมาณ 10 - 30 มล. เป็นเลือดสดปนเสมหะ</span>
-                </div>
-              </label>
-
-              <label class="selectable-card relative flex items-start p-3 rounded-xl cursor-pointer border border-slate-200 bg-white hover:border-medical-300 transition">
-                <input type="radio" name="hemoBloodVolume" value="vol_half_to_full_cup" class="mt-0.5 text-medical-600 focus:ring-medical-500 h-4 w-4">
-                <div class="ml-2.5">
-                  <span class="text-xs sm:text-sm font-semibold block text-slate-800">ประมาณครึ่งแก้ว ถึงเต็มแก้วน้ำ</span>
-                  <span class="text-[11px] text-slate-500">ประมาณ 50 - 100 มล. ปริมาณปานกลาง</span>
-                </div>
-              </label>
-
-              <label class="selectable-card relative flex items-start p-3 rounded-xl cursor-pointer border border-slate-200 bg-white hover:border-medical-300 transition">
-                <input type="radio" name="hemoBloodVolume" value="vol_massive_over_cup" class="mt-0.5 text-medical-600 focus:ring-medical-500 h-4 w-4">
-                <div class="ml-2.5">
-                  <span class="text-xs sm:text-sm font-semibold block text-slate-800">ทะลักมากกว่าแก้วน้ำ / ลิ่มเลือดต่อเนื่อง</span>
-                  <span class="text-[11px] text-slate-500">เลือดสดทะลักปริมาณมาก (> 100-200 มล.) หรือไอลิ่มเลือดไม่หยุด</span>
-                </div>
-              </label>
-            </div>
+          <div class="pt-4 border-t border-slate-100">
+            ${renderHemoSysHeader({
+              label: '1.3 ปริมาณเลือดในครั้งที่ออกมากที่สุด',
+              icon: 'gauge',
+              colorClass: 'bg-sky-100 text-sky-700'
+            })}
+            ${renderHemoGrid('grid-cols-1 sm:grid-cols-2', [
+              { kind: 'radio', name: 'hemoBloodVolume', value: 'vol_streaks_sputum', title: ['เป็นเส้นปนเสมหะ', 'เล็กน้อย'], desc: 'น้อยกว่า 1 ช้อนชา' },
+              { kind: 'radio', name: 'hemoBloodVolume', value: 'vol_tablespoon', title: ['ประมาณ 1–2 ช้อนโต๊ะ'], desc: 'ประมาณ 10–30 มล.' },
+              { kind: 'radio', name: 'hemoBloodVolume', value: 'vol_half_to_full_cup', title: ['ครึ่งแก้ว –', 'เต็มแก้วน้ำ'], desc: 'ประมาณ 50–100 มล.' },
+              { kind: 'radio', name: 'hemoBloodVolume', value: 'vol_massive_over_cup', title: ['ทะลักเกิน 1 แก้ว /', 'ลิ่มเลือดมาก'], desc: 'มากกว่า 100–200 มล.' }
+            ])}
           </div>
 
-          <!-- 1.4 และ 1.5 ความถี่ และสถานะการมีเลือดออก -->
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
-            <div>
-              <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
-                1.4 จำนวนครั้งที่ไอเป็นเลือด
-              </label>
-              <div class="space-y-1.5 text-xs">
-                <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-                  <input type="radio" name="hemoEpisodeCount" value="episodes_single" class="text-medical-600 focus:ring-medical-500 h-4 w-4">
-                  <span class="text-xs text-slate-800">เป็นเพียงครั้งเดียวแล้วหยุด</span>
-                </label>
-                <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-                  <input type="radio" name="hemoEpisodeCount" value="episodes_two_four" class="text-medical-600 focus:ring-medical-500 h-4 w-4">
-                  <span class="text-xs text-slate-800">เป็น 2 - 4 ครั้ง</span>
-                </label>
-                <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-                  <input type="radio" name="hemoEpisodeCount" value="episodes_over_5" class="text-medical-600 focus:ring-medical-500 h-4 w-4">
-                  <span class="text-xs text-slate-800">เป็นมากกว่า 5 ครั้งขึ้นไป</span>
-                </label>
-                <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-                  <input type="radio" name="hemoEpisodeCount" value="episodes_frequent_continuous" class="text-medical-600 focus:ring-medical-500 h-4 w-4">
-                  <span class="text-xs font-semibold text-slate-800">ไอเป็นเลือดแทบทุกครั้ง / ต่อเนื่องตลอด</span>
-                </label>
-              </div>
-            </div>
+          <div class="pt-4 border-t border-slate-100">
+            ${renderHemoSysHeader({
+              label: '1.4 จำนวนครั้งที่ไอเป็นเลือด',
+              icon: 'repeat',
+              colorClass: 'bg-sky-100 text-sky-700'
+            })}
+            ${renderHemoGrid('grid-cols-1 sm:grid-cols-2', [
+              { kind: 'radio', name: 'hemoEpisodeCount', value: 'episodes_single', title: ['ครั้งเดียว', 'แล้วหยุด'] },
+              { kind: 'radio', name: 'hemoEpisodeCount', value: 'episodes_two_four', title: ['2–4 ครั้ง'] },
+              { kind: 'radio', name: 'hemoEpisodeCount', value: 'episodes_over_5', title: ['มากกว่า', '5 ครั้งขึ้นไป'] },
+              { kind: 'radio', name: 'hemoEpisodeCount', value: 'episodes_frequent_continuous', title: ['ไอเป็นเลือด', 'ต่อเนื่องตลอด'] }
+            ])}
+          </div>
 
-            <div>
-              <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
-                1.5 สถานะการมีเลือดออกในปัจจุบัน
-              </label>
-              <div class="space-y-1.5 text-xs">
-                <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-                  <input type="radio" name="hemoActiveStatus" value="status_active_bleeding" class="text-medical-600 focus:ring-medical-500 h-4 w-4">
-                  <span class="text-xs font-semibold text-slate-800">ยังมีอาการไอเป็นเลือดสดอยู่เรื่อยๆ</span>
-                </label>
-                <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-                  <input type="radio" name="hemoActiveStatus" value="status_streaks_only" class="text-medical-600 focus:ring-medical-500 h-4 w-4">
-                  <span class="text-xs text-slate-800">เลือดหยุดแล้ว เหลือเพียงเสมหะปนเลือดจางๆ</span>
-                </label>
-                <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-                  <input type="radio" name="hemoActiveStatus" value="status_stopped_completely" class="text-medical-600 focus:ring-medical-500 h-4 w-4">
-                  <span class="text-xs text-slate-800">เลือดหยุดไหลสนิทแล้ว</span>
-                </label>
-              </div>
-            </div>
+          <div class="pt-4 border-t border-slate-100">
+            ${renderHemoSysHeader({
+              label: '1.5 สถานะการมีเลือดออกในขณะนี้',
+              icon: 'activity',
+              colorClass: 'bg-sky-100 text-sky-700'
+            })}
+            ${renderHemoGrid('grid-cols-1 sm:grid-cols-2', [
+              { kind: 'radio', name: 'hemoActiveStatus', value: 'status_active_bleeding', title: ['ยังไอเป็น', 'เลือดสดอยู่'] },
+              { kind: 'radio', name: 'hemoActiveStatus', value: 'status_streaks_only', title: ['เหลือเสมหะ', 'ปนเลือดจางๆ'] },
+              { kind: 'radio', name: 'hemoActiveStatus', value: 'status_stopped_completely', title: ['เลือดหยุดสนิทแล้ว'], colSpan2: true }
+            ])}
           </div>
         </div>
       </div>
 
-      <!-- CARD 2: ประวัติไอนำมาก่อน เสมหะเดิม การหายใจ และอาการเจ็บหน้าอก -->
+      <!-- CARD 2: อาการนำก่อนไอเป็นเลือด -->
       <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
         <div class="flex items-center space-x-3 mb-4 pb-3 border-b border-slate-100">
           <div class="bg-medical-100 text-medical-700 p-2 rounded-xl">
             <i data-lucide="wind" class="w-5 h-5"></i>
           </div>
-          <div>
-            <h2 class="text-base font-bold text-slate-900">2. การหายใจ เสมหะเดิม และอาการเจ็บหน้าอก (Respiratory & Chest Profile)</h2>
-            <p class="text-xs text-slate-500">ประวัติการไอนำมาก่อน อาการหอบเหนื่อย และอาการเจ็บหน้าอก</p>
-          </div>
+          <h2 class="text-base font-bold text-slate-900">2. อาการนำก่อนไอเป็นเลือด</h2>
         </div>
 
-        <div class="space-y-4">
-          <!-- 2.1 ประวัติอาการไอนำมาก่อน -->
-          <div>
-            <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
-              2.1 ก่อนไอเป็นเลือด มีอาการไอเรื้อรังนำมาก่อนหรือไม่?
-            </label>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-              <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition"
-                onclick="toggleHemoPreCoughSub(false)">
-                <input type="radio" name="hemoPreCoughMaster" value="no" class="text-medical-600 h-4 w-4">
-                <span class="ml-2.5 text-xs font-semibold text-slate-800">ไม่มีอาการไอนำมาก่อน (เพิ่งเริ่มไอและมีเลือดทันที)</span>
-              </label>
-              <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition"
-                onclick="toggleHemoPreCoughSub(true)">
-                <input type="radio" name="hemoPreCoughMaster" value="yes" class="text-medical-600 h-4 w-4">
-                <span class="ml-2.5 text-xs font-semibold text-slate-800">มีอาการไอนำมาก่อนหน้านี้</span>
-              </label>
-            </div>
-
-            <!-- กล่องแตกกิ่ง: ระยะเวลาที่ไอนำมาก่อน -->
-            <div id="hemoPreCoughSub" class="hidden bg-slate-50 border border-slate-200 rounded-xl p-3.5 mt-3 space-y-2">
-              <span class="text-xs font-bold text-slate-800 block">ระบุระยะเวลาที่มีอาการไอนำมาก่อนหน้านี้:</span>
-              <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                <div class="col-span-1 sm:col-span-2">
-                  <input type="number" id="hemoPreCoughDurVal" min="1" max="365"
-                    class="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-xs font-semibold text-slate-800"
-                    placeholder="เช่น 2">
-                </div>
-                <div class="col-span-1">
-                  <select id="hemoPreCoughDurUnit"
-                    class="w-full bg-white border border-slate-300 rounded-lg px-2 py-2 text-xs font-medium text-slate-800">
-                    <option value="days">วัน</option>
-                    <option value="weeks" selected>สัปดาห์</option>
-                    <option value="months">เดือน</option>
-                    <option value="years">ปี</option>
-                  </select>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- 2.2 ลักษณะเสมหะเดิม (ก่อนมีเลือดปน) -->
-          <div>
-            <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
-              2.2 ลักษณะเสมหะเดิม (ก่อนมีเลือดปน)
-            </label>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-              <label class="selectable-card gap-2.5 flex items-center p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer">
-                <input type="radio" name="hemoPriorSputum" value="sputum_none_dry_cough" class="text-medical-600 ">
-                <span>ไอแห้งๆ ไม่มีเสมหะ</span>
-              </label>
-              <label class="selectable-card gap-2.5 flex items-center p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer">
-                <input type="radio" name="hemoPriorSputum" value="sputum_normal_white_yellow" class="text-medical-600 ">
-                <span>เสมหะสีขาวใส หรือสีเหลืองปกติ</span>
-              </label>
-              <label class="selectable-card gap-2.5 flex items-center p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer">
-                <input type="radio" name="hemoPriorSputum" value="sputum_foul_abscess_green" class="text-medical-600 ">
-                <span>เสมหะสีเขียวข้น หรือมีกลิ่นเหม็นเน่ารุนแรง</span>
-              </label>
-              <label class="selectable-card gap-2.5 flex items-center p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer">
-                <input type="radio" name="hemoPriorSputum" value="sputum_pink_frothy_edema" class="text-medical-600 ">
-                <span>เสมหะเป็นฟองสีชมพูจางๆ</span>
-              </label>
-            </div>
-          </div>
-
-          <!-- 2.3 อาการเหนื่อยหอบและการหายใจ -->
-          <div>
-            <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
-              2.3 อาการเหนื่อยหอบและการหายใจ
-            </label>
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
-              <label class="selectable-card flex items-start p-3 rounded-xl border border-slate-200 bg-white cursor-pointer">
-                <input type="radio" name="hemoDyspnea" value="dyspnea_none" class="text-medical-600 mt-0.5">
-                <div class="ml-2">
-                  <span class="font-semibold block text-slate-800">หายใจปกติ ไม่เหนื่อย</span>
-                  <span class="text-[11px] text-slate-500">สามารถพูดคุยและเดินได้ตามปกติ</span>
-                </div>
-              </label>
-              <label class="selectable-card flex items-start p-3 rounded-xl border border-slate-200 bg-white cursor-pointer">
-                <input type="radio" name="hemoDyspnea" value="dyspnea_exertional" class="text-medical-600 mt-0.5">
-                <div class="ml-2">
-                  <span class="font-semibold block text-slate-800">เหนื่อยเวลาออกแรง</span>
-                  <span class="text-[11px] text-slate-500">เดินหรือขยับตัวแล้วเหนื่อยหอบ</span>
-                </div>
-              </label>
-              <label class="selectable-card flex items-start p-3 rounded-xl border border-slate-200 bg-white cursor-pointer">
-                <input type="radio" name="hemoDyspnea" value="dyspnea_severe_rest_orthopnea" class="text-medical-600 mt-0.5">
-                <div class="ml-2">
-                  <span class="font-semibold block text-slate-800">เหนื่อยรุนแรงเฉียบพลัน</span>
-                  <span class="text-[11px] text-slate-500">แม้ขณะนั่งพัก หรือนอนราบไม่ได้</span>
-                </div>
-              </label>
-            </div>
-          </div>
-
-          <!-- 2.4 อาการเจ็บหน้าอก และระดับคะแนนความเจ็บ (กิ่งย่อย) -->
-          <div>
-            <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
-              2.4 อาการเจ็บหน้าอก
-            </label>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-              <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition"
-                onclick="toggleHemoChestPainSub(false)">
-                <input type="radio" name="hemoChestPainMaster" value="no" class="text-medical-600 h-4 w-4">
-                <span class="ml-2.5 text-xs font-semibold text-slate-800">ไม่มีอาการเจ็บหน้าอก</span>
-              </label>
-              <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition"
-                onclick="toggleHemoChestPainSub(true)">
-                <input type="radio" name="hemoChestPainMaster" value="yes" class="text-medical-600 h-4 w-4">
-                <span class="ml-2.5 text-xs font-semibold text-slate-800">มีอาการเจ็บหน้าอกร่วมด้วย</span>
-              </label>
-            </div>
-
-            <!-- กล่องแตกกิ่ง: ลักษณะเจ็บหน้าอก และ Pain Slider -->
-            <div id="hemoChestPainSub" class="hidden bg-slate-50 border border-slate-200 rounded-xl p-4 mt-3 space-y-3">
-              <div>
-                <span class="text-xs font-bold text-slate-800 block mb-1.5">ลักษณะอาการเจ็บหน้าอก (เลือกได้หลายข้อ):</span>
-                <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
-                  <label class="selectable-card gap-2.5 flex items-start p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer">
-                    <input type="checkbox" name="hemoChestPainType" value="pleuritic_sharp" class="text-medical-600 mt-0.5 rounded">
-                    <div>
-                      <span class="font-semibold block text-slate-800">เจ็บแปล๊บเวลาหายใจลึก</span>
-                      <span class="text-[11px] text-slate-500">หรือเจ็บแปล๊บเวลาไอ</span>
-                    </div>
-                  </label>
-                  <label class="selectable-card gap-2.5 flex items-start p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer">
-                    <input type="checkbox" name="hemoChestPainType" value="ischemic_pressure" class="text-medical-600 mt-0.5 rounded">
-                    <div>
-                      <span class="font-semibold block text-slate-800">เจ็บแน่นอึดอัดกลางอก</span>
-                      <span class="text-[11px] text-slate-500">คล้ายมีของหนักทับ</span>
-                    </div>
-                  </label>
-                  <label class="selectable-card gap-2.5 flex items-start p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer">
-                    <input type="checkbox" name="hemoChestPainType" value="tearing_ripping_back" class="text-medical-600 mt-0.5 rounded">
-                    <div>
-                      <span class="font-semibold block text-slate-800">เจ็บเหมือนฉีกขาด</span>
-                      <span class="text-[11px] text-slate-500">ร้าวทะลุหลังรุนแรง</span>
-                    </div>
-                  </label>
-                </div>
-              </div>
-
-              <!-- Nested Pain Slider -->
-              <div class="pt-2 border-t border-slate-200">
-                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-2">
-                  <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider">
-                    ระดับความเจ็บแน่นหน้าอก (Pain Score 0-10)
-                  </label>
-                  <div class="flex items-center space-x-2">
-                    <span id="hemoPainScoreBadge" class="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-600 border border-slate-300 self-start sm:self-auto transition-all">
-                      <span id="hemoPainScoreEmoji">⚪</span>
-                      <span id="hemoPainScoreText">ยังไม่ได้ระบุ (แตะแถบเพื่อระบุ)</span>
-                    </span>
-                    <button type="button" id="hemoPainScoreClearBtn" onclick="clearHemoPainScore()" class="hidden text-xs text-slate-400 hover:text-slate-600 underline">ล้างค่า</button>
-                  </div>
-                </div>
-                <div class="pt-1 px-1">
-                  <input type="range" id="hemoPainScore" min="0" max="10" value="0"
-                    oninput="handleHemoPainScoreChange(this.value)"
-                    class="w-full h-2.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-medical-600">
-                  <div class="flex justify-between text-[11px] text-slate-400 mt-1 font-medium">
-                    <span>0 ไม่เจ็บเลย</span>
-                    <span>5 เจ็บปานกลาง</span>
-                    <span>10 เจ็บมากที่สุด</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+        <div>
+          ${renderHemoSysHeader({
+            label: 'อาการนำก่อนไอเป็นเลือด (เลือกได้หลายข้อ)',
+            icon: 'history',
+            colorClass: 'bg-teal-100 text-teal-700',
+            toggleId: 'hemo_prodrome_none',
+            toggleLabel: 'ไม่มีอาการนำเหล่านี้',
+            toggleOnchange: 'handleHemoProdromeNoneToggle(this)'
+          })}
+          ${renderHemoGrid('grid-cols-1 sm:grid-cols-2', [
+            { id: 'hemoPreCoughParent', title: ['ไอเรื้อรัง', 'นำมาก่อน'], onchange: 'toggleHemoPreCoughSub(this.checked)' },
+            { id: 'hemoPriorSputumParent', title: ['มีเสมหะ', 'นำมาก่อน'], onchange: 'toggleHemoPriorSputumSub(this.checked)' },
+            { id: 'hemoWarningFeverParent', title: ['มีไข้ / เหงื่อออก', 'กลางคืน'], onchange: `toggleHemoProdromeGroup('hemoWarningFeverSub', this.checked)` },
+            { id: 'hemoWeightLossParent', title: ['น้ำหนักลด /', 'เบื่ออาหาร'], onchange: `toggleHemoProdromeGroup('hemoWeightLossSub', this.checked)` },
+            { name: 'hemoWarningSigns', value: 'warn_hoarseness_weeks', title: ['เสียงแหบต่อเนื่อง', 'หลายสัปดาห์'], onchange: 'handleHemoProdromeItemChange(this)', colSpan2: true }
+          ])}
+          ${HEMO_PRODROME_SUBS_HTML}
         </div>
       </div>
 
-      <!-- CARD 3: สัญญาณเตือนอันตรายในมุมมองคนไข้ (Warning Signs) -->
+      <!-- CARD 3: อาการผิดปกติร่วมในขณะนี้และสัญญาณเตือนสำคัญ -->
       <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
         <div class="flex items-center space-x-3 mb-4 pb-3 border-b border-slate-100">
           <div class="bg-medical-100 text-medical-700 p-2 rounded-xl">
             <i data-lucide="shield-alert" class="w-5 h-5"></i>
           </div>
-          <div>
-            <h2 class="text-base font-bold text-slate-900">3. สัญญาณเตือน สภาวะอันตราย / ความเสี่ยงสูง (Warning Signs)</h2>
-            <p class="text-xs text-slate-500">คัดกรองอาการทางระบบไหลเวียนโลหิต ลิ่มเลือด การติดเชื้อ และทางเดินหายใจ</p>
-          </div>
+          <h2 class="text-base font-bold text-slate-900">3. อาการผิดปกติร่วมในขณะนี้และสัญญาณเตือนสำคัญ</h2>
         </div>
 
-        <div class="space-y-3">
-          <!-- กลุ่ม 1: มีอาการวูบ หน้ามืด เวียนศีรษะ หรือจะเป็นลม -->
-          <div class="border border-slate-200 rounded-xl p-3 bg-white hover:border-medical-300 transition">
-            <label class="flex items-start cursor-pointer">
-              <input type="checkbox" id="hemoWarningSyncopeParent"
-                onchange="toggleHemoWarningGroup('hemoWarningSyncopeSub', this.checked)"
-                class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0 mt-0.5">
-              <div class="ml-3">
-                <span class="text-xs sm:text-sm font-semibold text-slate-800 block">มีอาการวูบ หน้ามืด เวียนศีรษะ หรือจะเป็นลม</span>
-                <span class="text-[11px] text-slate-500 font-normal block mt-0.5">คัดกรองภาวะความดันโลหิตตก เสียเลือด หรือร่างกายขาดออกซิเจน</span>
-              </div>
-            </label>
-            <div id="hemoWarningSyncopeSub" class="hidden pl-7 pt-2.5 mt-2 border-t border-slate-100 space-y-2 text-xs">
-              <label class="flex items-center p-2 rounded-lg bg-slate-50 hover:bg-slate-100 cursor-pointer">
-                <input type="checkbox" name="hemoWarningSigns" value="warn_fainting_syncope" class="text-medical-600 mr-2 rounded">
-                <span>หน้ามืด วูบ หรือหมดสติไปชั่วขณะ</span>
-              </label>
-              <label class="flex items-center p-2 rounded-lg bg-slate-50 hover:bg-slate-100 cursor-pointer">
-                <input type="checkbox" name="hemoWarningSigns" value="warn_profuse_sweat_cold_shock" class="text-medical-600 mr-2 rounded">
-                <span>เหงื่อแตกท่วมตัว ผิวหนังซีดเย็น ตัวสั่น</span>
-              </label>
-              <label class="flex items-center p-2 rounded-lg bg-slate-50 hover:bg-slate-100 cursor-pointer">
-                <input type="checkbox" name="hemoWarningSigns" value="warn_palpitation_tachycardia" class="text-medical-600 mr-2 rounded">
-                <span>ใจสั่น หัวใจเต้นรัวเร็ว รู้สึกเหนื่อยแทบขาดใจ</span>
-              </label>
-            </div>
-          </div>
-
-          <!-- กลุ่ม 2: มีอาการผิดปกติที่ขา หรือมีประวัติต้องอยู่นิ่งๆนานๆ / เดินทางไกล -->
-          <div class="border border-slate-200 rounded-xl p-3 bg-white hover:border-medical-300 transition">
-            <label class="flex items-start cursor-pointer">
-              <input type="checkbox" id="hemoWarningDvtPeParent"
-                onchange="toggleHemoWarningGroup('hemoWarningDvtPeSub', this.checked)"
-                class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0 mt-0.5">
-              <div class="ml-3">
-                <span class="text-xs sm:text-sm font-semibold text-slate-800 block">มีอาการผิดปกติที่ขา หรือมีประวัติต้องอยู่นิ่งๆนานๆ / เดินทางไกล</span>
-                <span class="text-[11px] text-slate-500 font-normal block mt-0.5">คัดกรองภาวะลิ่มเลือดในหลอดเลือดดำและหลอดเลือดปอด</span>
-              </div>
-            </label>
-            <div id="hemoWarningDvtPeSub" class="hidden pl-7 pt-2.5 mt-2 border-t border-slate-100 space-y-2 text-xs">
-              <label class="flex items-center p-2 rounded-lg bg-slate-50 hover:bg-slate-100 cursor-pointer">
-                <input type="checkbox" name="hemoWarningSigns" value="warn_unilateral_leg_swelling" class="text-medical-600 mr-2 rounded">
-                <span>ขาบวมโต หรือปวดตึงน่องข้างใดข้างหนึ่งชัดเจน</span>
-              </label>
-              <label class="flex items-center p-2 rounded-lg bg-slate-50 hover:bg-slate-100 cursor-pointer">
-                <input type="checkbox" name="hemoWarningSigns" value="warn_long_travel_immobility" class="text-medical-600 mr-2 rounded">
-                <span>นั่งรถยนต์หรือเครื่องบินเดินทางไกลต่อเนื่องเกิน 4-6 ชั่วโมง</span>
-              </label>
-              <label class="flex items-center p-2 rounded-lg bg-slate-50 hover:bg-slate-100 cursor-pointer">
-                <input type="checkbox" name="hemoWarningSigns" value="warn_post_op_bedridden" class="text-medical-600 mr-2 rounded">
-                <span>เพิ่งผ่านการผ่าตัดใหญ่ หรือต้องนอนพักรักษาตัวติดเตียงเกิน 3 วัน</span>
-              </label>
-              <label class="flex items-center p-2 rounded-lg bg-slate-50 hover:bg-slate-100 cursor-pointer">
-                <input type="checkbox" name="hemoWarningSigns" value="warn_history_dvt_pe" class="text-medical-600 mr-2 rounded">
-                <span>เคยมีประวัติเป็นโรคลิ่มเลือดอุดตันในเส้นเลือดที่แขนหรือขามาก่อน</span>
-              </label>
-            </div>
-          </div>
-
-          <!-- กลุ่ม 3: มีไข้ หรือเหงื่อออกผิดปกติ -->
-          <div class="border border-slate-200 rounded-xl p-3 bg-white hover:border-medical-300 transition">
-            <label class="flex items-start cursor-pointer">
-              <input type="checkbox" id="hemoWarningFeverParent"
-                onchange="toggleHemoWarningGroup('hemoWarningFeverSub', this.checked)"
-                class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0 mt-0.5">
-              <div class="ml-3">
-                <span class="text-xs sm:text-sm font-semibold text-slate-800 block">มีไข้ หรือเหงื่อออกผิดปกติ</span>
-                <span class="text-[11px] text-slate-500 font-normal block mt-0.5">คัดกรองการติดเชื้อในปอดและวัณโรค</span>
-              </div>
-            </label>
-            <div id="hemoWarningFeverSub" class="hidden pl-7 pt-2.5 mt-2 border-t border-slate-100 space-y-2 text-xs">
-              <label class="flex items-center p-2 rounded-lg bg-slate-50 hover:bg-slate-100 cursor-pointer">
-                <input type="checkbox" name="hemoWarningSigns" value="warn_high_fever_chills" class="text-medical-600 mr-2 rounded">
-                <span>มีไข้สูง หนาวสั่นสะท้านจับไข้</span>
-              </label>
-              <label class="flex items-center p-2 rounded-lg bg-slate-50 hover:bg-slate-100 cursor-pointer">
-                <input type="checkbox" name="hemoWarningSigns" value="warn_fever_afternoon_night_sweat" class="text-medical-600 mr-2 rounded">
-                <span>มีไข้ต่ำๆ รุมๆ ตอนบ่าย ร่วมกับเหงื่อออกท่วมตัวตอนกลางคืน</span>
-              </label>
-            </div>
-          </div>
-
-          <!-- กลุ่มอาการเดี่ยวสังเกตชัดเจน (Standalone) -->
-          <div class="space-y-2 pt-1 text-xs">
-            <label class="flex items-start p-3 bg-rose-50/50 hover:bg-rose-50 border border-rose-200 rounded-xl cursor-pointer">
-              <input type="checkbox" name="hemoWarningSigns" value="warn_choking_airway_threat" class="text-rose-600 mr-2.5 mt-0.5 rounded">
-              <div>
-                <span class="font-semibold text-slate-800 block">ไอสำลักเลือด หายใจติดขัด กลืนไม่ลง</span>
-                <span class="text-[11px] text-slate-500">รู้สึกเหมือนมีก้อนเลือดหรือเสมหะขวางหลอดลมแทบขาดใจ</span>
-              </div>
-            </label>
-
-            <label class="flex items-start p-3 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl cursor-pointer">
-              <input type="checkbox" name="hemoWarningSigns" value="warn_unintentional_weight_loss" class="text-medical-600 mr-2.5 mt-0.5 rounded">
-              <div>
-                <span class="font-semibold text-slate-800 block">น้ำหนักตัวลดลงฮวบผิดปกติ หรือเบื่ออาหารมาก</span>
-                <span class="text-[11px] text-slate-500">น้ำหนักลดลงโดยไม่ได้ตั้งใจลด หรือผอมลงอย่างเห็นได้ชัด</span>
-              </div>
-            </label>
-
-            <label class="flex items-start p-3 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl cursor-pointer">
-              <input type="checkbox" name="hemoWarningSigns" value="warn_hoarseness_weeks" class="text-medical-600 mr-2.5 mt-0.5 rounded">
-              <div>
-                <span class="font-semibold text-slate-800 block">มีอาการเสียงแหบลงผิดปกติ ต่อเนื่องหลายสัปดาห์</span>
-                <span class="text-[11px] text-slate-500">เสียงเปลี่ยนหรือแหบแห้งโดยไม่ทราบสาเหตุ</span>
-              </div>
-            </label>
-          </div>
+        <div>
+          ${renderHemoSysHeader({
+            label: 'อาการผิดปกติร่วมในขณะนี้ (เลือกได้หลายข้อ)',
+            icon: 'alert-triangle',
+            colorClass: 'bg-amber-100 text-amber-700',
+            toggleId: 'hemo_warn_none',
+            toggleLabel: 'ไม่มีอาการในหมวดนี้',
+            toggleOnchange: 'handleHemoWarnNoneToggle(this)'
+          })}
+          ${renderHemoGrid('grid-cols-1 sm:grid-cols-2', [
+            { id: 'hemoDyspneaParent', title: ['เหนื่อยหอบ /', 'หายใจลำบาก'], onchange: 'toggleHemoDyspneaSub(this.checked)' },
+            { name: 'hemoWarningSigns', value: 'warn_choking_airway_threat', title: ['ไอสำลักเลือด /', 'หายใจติดขัด'], onchange: 'handleHemoWarnItemChange(this)' },
+            { id: 'hemoChestPainParent', title: ['เจ็บหน้าอก /', 'แน่นหน้าอก'], onchange: 'toggleHemoChestPainSub(this.checked)' },
+            { id: 'hemoWarningSyncopeParent', title: ['หน้ามืด วูบ /', 'ใจสั่นเหงื่อแตก'], onchange: `toggleHemoWarningGroup('hemoWarningSyncopeSub', this.checked)` },
+            { id: 'hemoWarningDvtPeParent', title: ['ขาบวมปวดน่อง /', 'เดินทางไกล /', 'ติดเตียง'], onchange: `toggleHemoWarningGroup('hemoWarningDvtPeSub', this.checked)`, colSpan2: true }
+          ])}
+          ${HEMO_WARN_SUBS_HTML}
         </div>
       </div>
 
-      <!-- CARD 4: ประวัติโรคประจำตัว ปัจจัยเสี่ยง และยาที่ใช้ -->
+      <!-- CARD 4: ประวัติโรคปอด การสูบบุหรี่ และยาที่มีผลต่อเลือดออก -->
       <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
         <div class="flex items-center space-x-3 mb-4 pb-3 border-b border-slate-100">
           <div class="bg-medical-100 text-medical-700 p-2 rounded-xl">
             <i data-lucide="file-text" class="w-5 h-5"></i>
           </div>
-          <div>
-            <h2 class="text-base font-bold text-slate-900">4. ประวัติโรคปอด การสูบบุหรี่ และยาที่ใช้ (Risk Factors & Medications)</h2>
-            <p class="text-xs text-slate-500">คัดกรองวัณโรคเดิม มะเร็งปอด ประวัติการสูบบุหรี่ และยาต้านการแข็งตัวของเลือด</p>
-          </div>
+          <h2 class="text-base font-bold text-slate-900">4. ประวัติโรคปอด การสูบบุหรี่ และยาที่มีผลต่อเลือดออก</h2>
         </div>
 
         <div class="space-y-4">
-          <!-- 4.1 ประวัติโรคปอดและโรคประจำตัวเดิม -->
           <div>
-            <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
-              4.1 ประวัติโรคระบบทางเดินหายใจและหัวใจเดิม (เลือกได้หลายข้อ)
-            </label>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-              <label class="selectable-card gap-2.5 flex items-center p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer">
-                <input type="checkbox" name="hemoPastPulmonary" value="tb_prior_or_contact" class="text-medical-600 rounded">
-                <span>เคยป่วยเป็นวัณโรคปอด หรือมีคนในบ้านเป็นวัณโรค</span>
-              </label>
-              <label class="selectable-card gap-2.5 flex items-center p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer">
-                <input type="checkbox" name="hemoPastPulmonary" value="past_bronchiectasis" class="text-medical-600 rounded">
-                <span>โรคหลอดลมโป่งพอง (Bronchiectasis)</span>
-              </label>
-              <label class="selectable-card gap-2.5 flex items-center p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer">
-                <input type="checkbox" name="hemoPastPulmonary" value="past_copd_asthma" class="text-medical-600 rounded">
-                <span>โรคถุงลมโป่งพอง (COPD) หรือหอบหืด</span>
-              </label>
-              <label class="selectable-card gap-2.5 flex items-center p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer">
-                <input type="checkbox" name="hemoPastPulmonary" value="past_lung_cancer" class="text-medical-600 rounded">
-                <span>โรคมะเร็งปอด หรือมะเร็งอวัยวะอื่น</span>
-              </label>
-              <label class="selectable-card gap-2.5 flex items-center p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer">
-                <input type="checkbox" name="hemoPastPulmonary" value="past_heart_failure_valvular" class="text-medical-600 rounded">
-                <span>โรคหัวใจ (ลิ้นหัวใจตีบ หรือหัวใจล้มเหลว)</span>
-              </label>
-              <label class="selectable-card gap-2.5 flex items-center p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer">
-                <input type="checkbox" name="hemoPastPulmonary" value="pulm_none" class="text-medical-600 rounded">
-                <span>ปฏิเสธโรคประจำตัวทางปอดและหัวใจ</span>
-              </label>
-            </div>
+            ${renderHemoSysHeader({
+              label: '4.1 ประวัติโรคทางเดินหายใจและหัวใจเดิม (เลือกได้หลายข้อ)',
+              icon: 'heart-pulse',
+              colorClass: 'bg-sky-100 text-sky-700',
+              toggleId: 'hemo_pulm_none',
+              toggleName: 'hemoPastPulmonary',
+              toggleValue: 'pulm_none',
+              toggleLabel: 'ไม่มีประวัติในหมวดนี้',
+              toggleOnchange: 'handleHemoPulmChange(this)'
+            })}
+            ${renderHemoGrid('grid-cols-1 sm:grid-cols-2', [
+              { name: 'hemoPastPulmonary', value: 'tb_prior_or_contact', title: ['เคยป่วย /', 'สัมผัสผู้ป่วยวัณโรค'], onchange: 'handleHemoPulmChange(this)' },
+              { name: 'hemoPastPulmonary', value: 'past_copd_asthma', title: ['โรคถุงลมโป่งพอง /', 'หอบหืด /', 'โรคปอดเรื้อรัง'], onchange: 'handleHemoPulmChange(this)' },
+              { name: 'hemoPastPulmonary', value: 'past_lung_cancer', title: ['โรคมะเร็งปอด /', 'มะเร็งอื่น'], onchange: 'handleHemoPulmChange(this)' },
+              { name: 'hemoPastPulmonary', value: 'past_heart_failure_valvular', title: ['โรคหัวใจ /', 'ลิ้นหัวใจตีบ'], onchange: 'handleHemoPulmChange(this)' }
+            ])}
           </div>
 
-          <!-- 4.2 ประวัติการสูบบุหรี่ -->
-          <div>
-            <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
-              4.2 ประวัติการสูบบุหรี่
-            </label>
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
-              <label class="selectable-card gap-2.5 flex items-center p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer"
-                onclick="toggleHemoSmokingSub(true)">
-                <input type="radio" name="hemoSmokingStatus" value="smoking_regular" class="text-medical-600 ">
-                <span>สูบบุหรี่เป็นประจำ</span>
-              </label>
-              <label class="selectable-card gap-2.5 flex items-center p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer"
-                onclick="toggleHemoSmokingSub(false)">
-                <input type="radio" name="hemoSmokingStatus" value="smoking_quit" class="text-medical-600 ">
-                <span>เคยสูบแต่เลิกแล้ว</span>
-              </label>
-              <label class="selectable-card gap-2.5 flex items-center p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer"
-                onclick="toggleHemoSmokingSub(false)">
-                <input type="radio" name="hemoSmokingStatus" value="smoking_never" class="text-medical-600 ">
-                <span>ไม่เคยสูบบุหรี่</span>
-              </label>
-            </div>
-
-            <!-- กล่องแตกกิ่ง: ปริมาณและปีที่สูบ -->
+          <div class="pt-4 border-t border-slate-100">
+            ${renderHemoSysHeader({
+              label: '4.2 ประวัติการสูบบุหรี่',
+              icon: 'flame',
+              colorClass: 'bg-amber-100 text-amber-700'
+            })}
+            ${renderHemoGrid('grid-cols-1 sm:grid-cols-3', [
+              { kind: 'radio', name: 'hemoSmokingStatus', value: 'smoking_regular', title: ['สูบบุหรี่ประจำ'], onchange: 'toggleHemoSmokingSub(true)' },
+              { kind: 'radio', name: 'hemoSmokingStatus', value: 'smoking_quit', title: ['เคยสูบ', 'แต่เลิกแล้ว'], onchange: 'toggleHemoSmokingSub(false)' },
+              { kind: 'radio', name: 'hemoSmokingStatus', value: 'smoking_never', title: ['ไม่เคยสูบบุหรี่'], onchange: 'toggleHemoSmokingSub(false)' }
+            ])}
             <div id="hemoSmokingSub" class="hidden bg-slate-50 border border-slate-200 rounded-xl p-3.5 mt-2.5 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
               <div>
                 <label class="block font-medium text-slate-700 mb-1">สูบมานานกี่ปี?</label>
@@ -1281,29 +1317,22 @@ const hemoptysisModule = {
             </div>
           </div>
 
-          <!-- 4.3 การใช้ยาที่มีผลต่อการแข็งตัวของเลือด -->
-          <div>
-            <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
-              4.3 การรับประทานยาต้านการแข็งตัวของเลือด / ยาละลายลิ่มเลือด (เลือกได้หลายข้อ)
-            </label>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-              <label class="selectable-card gap-2.5 flex items-center p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer">
-                <input type="checkbox" name="hemoBleedingMeds" value="med_anticoagulant" class="text-medical-600 rounded">
-                <span>ยาต้านการแข็งตัวของเลือด (Warfarin, Eliquis, Xarelto, Pradaxa)</span>
-              </label>
-              <label class="selectable-card gap-2.5 flex items-center p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer">
-                <input type="checkbox" name="hemoBleedingMeds" value="med_antiplatelet" class="text-medical-600 rounded">
-                <span>ยาต้านเกล็ดเลือด (Aspirin, Clopidogrel / Plavix)</span>
-              </label>
-              <label class="selectable-card gap-2.5 flex items-center p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer">
-                <input type="checkbox" name="hemoBleedingMeds" value="med_unknown_prescribed" class="text-medical-600 rounded">
-                <span>มียาประจำตัว แต่ไม่แน่ใจ / ไม่ทราบชื่อยาที่ใช้</span>
-              </label>
-              <label class="selectable-card gap-2.5 flex items-center p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer">
-                <input type="checkbox" name="hemoBleedingMeds" value="meds_none" class="text-medical-600 rounded">
-                <span>ไม่ได้รับประทานยากลุ่มนี้</span>
-              </label>
-            </div>
+          <div class="pt-4 border-t border-slate-100">
+            ${renderHemoSysHeader({
+              label: '4.3 ยาที่มีผลต่อการแข็งตัวของเลือด (เลือกได้หลายข้อ)',
+              icon: 'pill',
+              colorClass: 'bg-indigo-100 text-indigo-700',
+              toggleId: 'hemo_meds_none',
+              toggleName: 'hemoBleedingMeds',
+              toggleValue: 'meds_none',
+              toggleLabel: 'ไม่มีประวัติในหมวดนี้',
+              toggleOnchange: 'handleHemoMedChange(this)'
+            })}
+            ${renderHemoGrid('grid-cols-1 sm:grid-cols-2', [
+              { name: 'hemoBleedingMeds', value: 'med_anticoagulant', title: ['ยาละลายลิ่มเลือด'], desc: 'เช่น Warfarin, Eliquis, Xarelto, Pradaxa', onchange: 'handleHemoMedChange(this)' },
+              { name: 'hemoBleedingMeds', value: 'med_antiplatelet', title: ['ยาต้านเกล็ดเลือด'], desc: 'เช่น Aspirin, Clopidogrel, Plavix', onchange: 'handleHemoMedChange(this)' },
+              { name: 'hemoBleedingMeds', value: 'med_unknown_prescribed', title: ['มียาโรคหัวใจ /', 'หลอดเลือด', 'ไม่ทราบชื่อยา'], onchange: 'handleHemoMedChange(this)', colSpan2: true }
+            ])}
           </div>
         </div>
       </div>
@@ -1312,15 +1341,11 @@ const hemoptysisModule = {
       <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
         <div class="flex items-center space-x-3 mb-3 pb-2 border-b border-slate-100">
           <div class="bg-slate-100 text-slate-600 p-2 rounded-xl"><i data-lucide="message-square-plus" class="w-5 h-5"></i></div>
-          <div>
-            <h2 class="text-base font-bold text-slate-800">อาการอื่นๆ ที่ต้องการแจ้งเพิ่มเติม</h2>
-            <p class="text-xs text-slate-500">ระบุอาการอื่นๆ ที่ท่านมีหรือต้องการบอกแพทย์เพิ่มเติม (ถ้ามี)</p>
-          </div>
+          <h2 class="text-base font-bold text-slate-800">อาการอื่นๆ ที่ต้องการแจ้งเพิ่มเติม</h2>
         </div>
         <textarea id="hemoptysis_other_free" rows="2" placeholder="พิมพ์ระบุอาการอื่นๆ ที่ท่านมีหรือต้องการบอกแพทย์เพิ่มเติม (ถ้ามี)..."
           class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-medical-500 focus:bg-white"></textarea>
       </div>
-
     </div>
   `,
 
@@ -1329,53 +1354,102 @@ const hemoptysisModule = {
     if (typeof lucide !== 'undefined') lucide.createIcons();
     clearHemoPainScore();
   },
+  onSelectForm: function() {},
+  onActivate: function() {},
+  onTitleChange: function() {},
 
-  collectIntake: function(ctx = {}) {
-    const durVal = parseInt(document.getElementById('hemoDurationVal')?.value, 10);
-    const durUnit = document.getElementById('hemoDurationUnit')?.value || 'hours';
+  collectIntake: function(ctx) {
+    ctx = ctx || {};
+    const rawDur = parseInt(getHemoEl('hemoDurationVal')?.value, 10);
+    const durVal = (!isNaN(rawDur) && rawDur > 0) ? rawDur : null;
+    const durUnit = getHemoEl('hemoDurationUnit')?.value || 'hours';
 
     const getRadio = (name) => {
-      const el = document.querySelector(`input[name="${name}"]:checked`);
+      const el = queryHemoOne(`input[name="${name}"]:checked`);
       return el ? el.value : null;
     };
-    const getChecks = (name) => {
-      return Array.from(document.querySelectorAll(`input[name="${name}"]:checked`)).map(el => el.value);
-    };
+    const getChecks = (name) => queryHemoAll(`input[name="${name}"]:checked`).map(el => el.value);
 
     const hemoBloodChar = getRadio('hemoBloodChar');
     const hemoBloodVolume = getRadio('hemoBloodVolume');
     const hemoEpisodeCount = getRadio('hemoEpisodeCount');
     const hemoActiveStatus = getRadio('hemoActiveStatus');
-    const hemoPreCoughMaster = getRadio('hemoPreCoughMaster') || '';
-    const hemoPreCoughDurVal = parseInt(document.getElementById('hemoPreCoughDurVal')?.value, 10) || null;
-    const hemoPreCoughDurUnit = document.getElementById('hemoPreCoughDurUnit')?.value || 'days';
-    const hemoPriorSputum = getRadio('hemoPriorSputum');
-    const hemoDyspnea = getRadio('hemoDyspnea');
-    const hemoChestPainMaster = getRadio('hemoChestPainMaster') || '';
-    const hemoChestPainType = getChecks('hemoChestPainType');
-    const hemoWarningSigns = getChecks('hemoWarningSigns');
+    const hemoProdromeNoneChecked = !!getHemoEl('hemo_prodrome_none')?.checked;
+    const preCoughParentChecked = !!getHemoEl('hemoPreCoughParent')?.checked;
+    const hemoPriorSputumParent = !!getHemoEl('hemoPriorSputumParent')?.checked;
+    const feverParentChecked = !!getHemoEl('hemoWarningFeverParent')?.checked;
+    const weightLossParentChecked = !!getHemoEl('hemoWeightLossParent')?.checked;
+
+    const hemoPreCoughMaster = preCoughParentChecked ? 'yes' : (hemoProdromeNoneChecked ? 'no' : '');
+    const rawPreDur = parseInt(getHemoEl('hemoPreCoughDurVal')?.value, 10);
+    const hemoPreCoughDurVal = (hemoPreCoughMaster === 'yes' && !isNaN(rawPreDur) && rawPreDur > 0) ? rawPreDur : null;
+    const hemoPreCoughDurUnit = getHemoEl('hemoPreCoughDurUnit')?.value || 'weeks';
+
+    const selectedPriorSputum = hemoPriorSputumParent ? getRadio('hemoPriorSputum') : null;
+    const hemoPriorSputum = selectedPriorSputum || ((hemoProdromeNoneChecked || (hemoPreCoughMaster === 'yes' && !hemoPriorSputumParent)) ? 'sputum_none_dry_cough' : null);
+
+    const rawWlKg = parseFloat(getHemoEl('hemoWeightLossKg')?.value);
+    const rawWlDur = parseInt(getHemoEl('hemoWeightLossDurVal')?.value, 10);
+    const hemoWeightLossKg = (weightLossParentChecked && !isNaN(rawWlKg) && rawWlKg > 0) ? rawWlKg : null;
+    const hemoWeightLossDurVal = (weightLossParentChecked && !isNaN(rawWlDur) && rawWlDur > 0) ? rawWlDur : null;
+    const hemoWeightLossDurUnit = getHemoEl('hemoWeightLossDurUnit')?.value || 'months';
+
+    const hemoWarnNoneChecked = !!getHemoEl('hemo_warn_none')?.checked;
+    const hemoDyspneaParent = !!getHemoEl('hemoDyspneaParent')?.checked;
+    const chestPainParentChecked = !!getHemoEl('hemoChestPainParent')?.checked;
+    const syncopeParentChecked = !!getHemoEl('hemoWarningSyncopeParent')?.checked;
+    const dvtParentChecked = !!getHemoEl('hemoWarningDvtPeParent')?.checked;
+
+    const selectedDyspnea = hemoDyspneaParent ? getRadio('hemoDyspnea') : null;
+    const hemoDyspnea = selectedDyspnea || (hemoWarnNoneChecked ? 'dyspnea_none' : null);
+
+    const hemoChestPainMaster = chestPainParentChecked ? 'yes' : (hemoWarnNoneChecked ? 'no' : '');
+    const hemoChestPainType = hemoChestPainMaster === 'yes' ? getChecks('hemoChestPainType') : [];
+    const painScore = (hemoChestPainMaster === 'yes' && hemoPainScoreTouched)
+      ? parseInt(getHemoEl('hemoPainScore')?.value || '0', 10)
+      : null;
+
+    const rawWarnChecks = getChecks('hemoWarningSigns');
+    const hemoWarningSigns = [...rawWarnChecks];
+    if (weightLossParentChecked && !hemoWarningSigns.includes('warn_unintentional_weight_loss')) {
+      hemoWarningSigns.push('warn_unintentional_weight_loss');
+    }
+
+    const hemoProdromeParents = { fever: feverParentChecked, weightLoss: weightLossParentChecked };
+    const hemoWarnParents = { syncope: syncopeParentChecked, dvtPe: dvtParentChecked };
+
+    const card2Active = preCoughParentChecked || hemoPriorSputumParent || feverParentChecked || weightLossParentChecked ||
+      rawWarnChecks.some(w => ['warn_low_grade_fever', 'warn_high_fever', 'warn_chills', 'warn_high_fever_chills', 'warn_fever_afternoon_night_sweat', 'warn_hoarseness_weeks'].includes(w));
+    const card3Active = hemoDyspneaParent || chestPainParentChecked || syncopeParentChecked || dvtParentChecked ||
+      rawWarnChecks.some(w => ['warn_choking_airway_threat', 'warn_fainting_syncope', 'warn_profuse_sweat_cold_shock', 'warn_palpitation_tachycardia', 'warn_unilateral_leg_swelling', 'warn_bilateral_leg_swelling', 'warn_long_travel_immobility', 'warn_post_op_bedridden', 'warn_history_dvt_pe'].includes(w));
+
+    const hemoProdromeNone = hemoProdromeNoneChecked && !card2Active;
+    const hemoWarnNone = hemoWarnNoneChecked && !card3Active;
+
     const hemoPastPulmonary = getChecks('hemoPastPulmonary');
     const hemoSmokingStatus = getRadio('hemoSmokingStatus') || '';
-    const hemoSmokingYears = parseInt(document.getElementById('hemoSmokingYears')?.value, 10) || null;
-    const hemoSmokingPacks = parseFloat(document.getElementById('hemoSmokingPacks')?.value) || null;
+    const rawSmokeYrs = parseInt(getHemoEl('hemoSmokingYears')?.value, 10);
+    const rawSmokePks = parseFloat(getHemoEl('hemoSmokingPacks')?.value);
+    const hemoSmokingYears = (hemoSmokingStatus === 'smoking_regular' && !isNaN(rawSmokeYrs) && rawSmokeYrs > 0) ? rawSmokeYrs : null;
+    const hemoSmokingPacks = (hemoSmokingStatus === 'smoking_regular' && !isNaN(rawSmokePks) && rawSmokePks > 0) ? rawSmokePks : null;
     const hemoBleedingMeds = getChecks('hemoBleedingMeds');
-    const otherSymptomsFree = document.getElementById('hemoptysis_other_free')?.value?.trim() || ctx.otherSymptomsFree || '';
+    const otherSymptomsFree = getHemoEl('hemoptysis_other_free')?.value?.trim() || ctx.otherSymptomsFree || '';
 
     const rec = {
-      id: ctx.recordId || ctx.id,
-      queue_number: ctx.queueNumber || ctx.queue_number,
-      hn: ctx.randomHn || ctx.hn,
-      name: ctx.patientName || ctx.name,
-      age: ctx.patientAge !== undefined ? ctx.patientAge : ctx.age,
-      gender: ctx.gender,
+      id: ctx.recordId || ctx.id || `case-${Date.now()}`,
+      queue_number: ctx.queueNumber || ctx.queue_number || 'ER-NEW',
+      hn: ctx.randomHn || ctx.hn || '-',
+      name: ctx.patientName || ctx.name || 'ไม่ระบุชื่อ',
+      age: ctx.patientAge !== undefined ? ctx.patientAge : (ctx.age !== undefined ? ctx.age : 'ไม่ได้ระบุ'),
+      gender: ctx.gender || 'ไม่ระบุ',
       chief_complaint: 'hemoptysis',
       chief_complaint_title: 'ไอเป็นเลือด',
       timestamp: new Date().toISOString(),
       status: ctx.recordStatus || ctx.status || 'waiting',
-      durationVal: !isNaN(durVal) ? durVal : null,
+      durationVal: durVal,
       durationUnit: durUnit,
       hospRecordStatus: ctx.hospRecordStatus || 'unspecified',
-      underlying: ctx.underlying || [],
+      underlying: Array.isArray(ctx.underlying) ? ctx.underlying : [],
       drugAllergy: ctx.drugAllergy || 'ไม่ได้ระบุ',
       currentMeds: ctx.currentMeds || 'ไม่ได้ระบุ',
       otherSymptomsFree,
@@ -1387,12 +1461,21 @@ const hemoptysisModule = {
       hemoPreCoughMaster,
       hemoPreCoughDurVal,
       hemoPreCoughDurUnit,
+      hemoPriorSputumParent,
       hemoPriorSputum,
+      hemoWeightLossKg,
+      hemoWeightLossDurVal,
+      hemoWeightLossDurUnit,
+      hemoProdromeParents,
+      hemoProdromeNone,
+      hemoDyspneaParent,
       hemoDyspnea,
       hemoChestPainMaster,
       hemoChestPainType,
-      painScore: hemoPainScoreTouched ? parseInt(document.getElementById('hemoPainScore')?.value || '0', 10) : null,
+      painScore,
       hemoWarningSigns,
+      hemoWarnParents,
+      hemoWarnNone,
       hemoPastPulmonary,
       hemoSmokingStatus,
       hemoSmokingYears,
@@ -1406,19 +1489,22 @@ const hemoptysisModule = {
 
   populateForm: function(patient) {
     if (!patient) return;
+    this.resetForm();
+
     const setVal = (id, val) => {
-      const el = document.getElementById(id);
+      const el = getHemoEl(id);
       if (el && val !== undefined && val !== null) el.value = val;
     };
     const setRadio = (name, val) => {
       if (!val) return;
-      const el = document.querySelector(`input[name="${name}"][value="${val}"]`);
+      const el = queryHemoOne(`input[name="${name}"][value="${val}"]`);
       if (el) el.checked = true;
     };
     const setChecks = (name, arr) => {
       if (!Array.isArray(arr)) return;
       arr.forEach(val => {
-        const el = document.querySelector(`input[name="${name}"][value="${val}"]`);
+        const mappedVal = (name === 'hemoPastPulmonary' && val === 'past_bronchiectasis') ? 'past_copd_asthma' : val;
+        const el = queryHemoOne(`input[name="${name}"][value="${mappedVal}"]`);
         if (el) el.checked = true;
       });
     };
@@ -1431,43 +1517,90 @@ const hemoptysisModule = {
     setRadio('hemoEpisodeCount', patient.hemoEpisodeCount);
     setRadio('hemoActiveStatus', patient.hemoActiveStatus);
 
-    setRadio('hemoPreCoughMaster', patient.hemoPreCoughMaster || (patient.hemoPreCoughDurVal ? 'yes' : 'no'));
-    toggleHemoPreCoughSub(patient.hemoPreCoughMaster === 'yes' || Boolean(patient.hemoPreCoughDurVal));
+    // Card 2: Prodrome
+    const warnSigns = Array.isArray(patient.hemoWarningSigns) ? [...patient.hemoWarningSigns] : [];
+    if (warnSigns.includes('warn_high_fever_chills')) {
+      if (!warnSigns.includes('warn_high_fever')) warnSigns.push('warn_high_fever');
+      if (!warnSigns.includes('warn_chills')) warnSigns.push('warn_chills');
+    }
+    setChecks('hemoWarningSigns', warnSigns);
+
+    const hasPreCough = patient.hemoPreCoughMaster === 'yes' || !!patient.hemoPreCoughDurVal;
+    const preCoughParent = getHemoEl('hemoPreCoughParent');
+    if (preCoughParent) preCoughParent.checked = hasPreCough;
+    toggleHemoPreCoughSub(hasPreCough);
     setVal('hemoPreCoughDurVal', patient.hemoPreCoughDurVal);
-    setVal('hemoPreCoughDurUnit', patient.hemoPreCoughDurUnit || 'days');
+    setVal('hemoPreCoughDurUnit', patient.hemoPreCoughDurUnit || 'weeks');
 
-    setRadio('hemoPriorSputum', patient.hemoPriorSputum);
-    setRadio('hemoDyspnea', patient.hemoDyspnea);
+    const hasPriorSputum = !!patient.hemoPriorSputumParent || (!!patient.hemoPriorSputum && patient.hemoPriorSputum !== 'sputum_none_dry_cough');
+    const priorSputumParent = getHemoEl('hemoPriorSputumParent');
+    if (priorSputumParent) priorSputumParent.checked = hasPriorSputum;
+    toggleHemoPriorSputumSub(hasPriorSputum);
+    if (patient.hemoPriorSputum && patient.hemoPriorSputum !== 'sputum_none_dry_cough') {
+      setRadio('hemoPriorSputum', patient.hemoPriorSputum);
+    }
 
-    setRadio('hemoChestPainMaster', patient.hemoChestPainMaster || (patient.hemoChestPainType?.length > 0 ? 'yes' : 'no'));
-    toggleHemoChestPainSub(patient.hemoChestPainMaster === 'yes' || patient.hemoChestPainType?.length > 0);
+    const feverKeys = ['warn_low_grade_fever', 'warn_high_fever', 'warn_chills', 'warn_high_fever_chills', 'warn_fever_afternoon_night_sweat'];
+    const prodParents = patient.hemoProdromeParents || {};
+    const hasFever = !!prodParents.fever || warnSigns.some(w => feverKeys.includes(w));
+    const feverParent = getHemoEl('hemoWarningFeverParent');
+    if (feverParent) feverParent.checked = hasFever;
+    toggleHemoProdromeGroup('hemoWarningFeverSub', hasFever);
+
+    const hasWeightLoss = !!prodParents.weightLoss || warnSigns.includes('warn_unintentional_weight_loss') || !!patient.hemoWeightLossKg || !!patient.hemoWeightLossDurVal;
+    const wlParent = getHemoEl('hemoWeightLossParent');
+    if (wlParent) wlParent.checked = hasWeightLoss;
+    toggleHemoProdromeGroup('hemoWeightLossSub', hasWeightLoss);
+    setVal('hemoWeightLossKg', patient.hemoWeightLossKg);
+    setVal('hemoWeightLossDurVal', patient.hemoWeightLossDurVal);
+    setVal('hemoWeightLossDurUnit', patient.hemoWeightLossDurUnit || 'months');
+
+    const hasHoarseness = warnSigns.includes('warn_hoarseness_weeks');
+    if ((patient.hemoProdromeNone || patient.hemoPreCoughMaster === 'no') && !hasPreCough && !hasPriorSputum && !hasFever && !hasWeightLoss && !hasHoarseness) {
+      const prodNoneEl = getHemoEl('hemo_prodrome_none');
+      if (prodNoneEl) prodNoneEl.checked = true;
+    }
+
+    // Card 3: Current Warning & Associated Symptoms
+    const hasDyspnea = !!patient.hemoDyspneaParent || (!!patient.hemoDyspnea && patient.hemoDyspnea !== 'dyspnea_none');
+    const dyspneaParent = getHemoEl('hemoDyspneaParent');
+    if (dyspneaParent) dyspneaParent.checked = hasDyspnea;
+    toggleHemoDyspneaSub(hasDyspnea);
+    if (patient.hemoDyspnea && patient.hemoDyspnea !== 'dyspnea_none') {
+      setRadio('hemoDyspnea', patient.hemoDyspnea);
+    }
+
+    const hasChestPain = patient.hemoChestPainMaster === 'yes' || (Array.isArray(patient.hemoChestPainType) && patient.hemoChestPainType.length > 0);
+    const chestPainParent = getHemoEl('hemoChestPainParent');
+    if (chestPainParent) chestPainParent.checked = hasChestPain;
+    toggleHemoChestPainSub(hasChestPain);
     setChecks('hemoChestPainType', patient.hemoChestPainType);
 
-    if (typeof patient.painScore === 'number' && patient.painScore >= 0) {
-      const slider = document.getElementById('hemoPainScore');
-      if (slider) slider.value = patient.painScore;
-      handleHemoPainScoreChange(patient.painScore);
+    if (hasChestPain && typeof patient.painScore === 'number' && patient.painScore >= 0) {
+      setHemoPainScore(patient.painScore);
     } else {
       clearHemoPainScore();
     }
 
-    setChecks('hemoWarningSigns', patient.hemoWarningSigns);
-    const warnSigns = Array.isArray(patient.hemoWarningSigns) ? patient.hemoWarningSigns : [];
-    const hasSyncope = warnSigns.some(w => ['warn_fainting_syncope', 'warn_profuse_sweat_cold_shock', 'warn_palpitation_tachycardia'].includes(w));
-    const hasDvt = warnSigns.some(w => ['warn_unilateral_leg_swelling', 'warn_long_travel_immobility', 'warn_post_op_bedridden', 'warn_history_dvt_pe'].includes(w));
-    const hasFever = warnSigns.some(w => ['warn_high_fever_chills', 'warn_fever_afternoon_night_sweat'].includes(w));
+    const syncopeKeys = ['warn_fainting_syncope', 'warn_profuse_sweat_cold_shock', 'warn_palpitation_tachycardia'];
+    const dvtKeys = ['warn_unilateral_leg_swelling', 'warn_bilateral_leg_swelling', 'warn_long_travel_immobility', 'warn_post_op_bedridden', 'warn_history_dvt_pe'];
+    const warnParents = patient.hemoWarnParents || {};
+    const hasSyncope = !!warnParents.syncope || warnSigns.some(w => syncopeKeys.includes(w));
+    const hasDvt = !!warnParents.dvtPe || warnSigns.some(w => dvtKeys.includes(w));
 
-    const syncopeParent = document.getElementById('hemoWarningSyncopeParent');
+    const syncopeParent = getHemoEl('hemoWarningSyncopeParent');
     if (syncopeParent) syncopeParent.checked = hasSyncope;
     toggleHemoWarningGroup('hemoWarningSyncopeSub', hasSyncope);
 
-    const dvtParent = document.getElementById('hemoWarningDvtPeParent');
+    const dvtParent = getHemoEl('hemoWarningDvtPeParent');
     if (dvtParent) dvtParent.checked = hasDvt;
     toggleHemoWarningGroup('hemoWarningDvtPeSub', hasDvt);
 
-    const feverParent = document.getElementById('hemoWarningFeverParent');
-    if (feverParent) feverParent.checked = hasFever;
-    toggleHemoWarningGroup('hemoWarningFeverSub', hasFever);
+    const hasCard3Sign = warnSigns.some(w => ['warn_choking_airway_threat', ...syncopeKeys, ...dvtKeys].includes(w));
+    if (patient.hemoWarnNone && !hasDyspnea && !hasChestPain && !hasSyncope && !hasDvt && !hasCard3Sign) {
+      const warnNoneEl = getHemoEl('hemo_warn_none');
+      if (warnNoneEl) warnNoneEl.checked = true;
+    }
 
     setChecks('hemoPastPulmonary', patient.hemoPastPulmonary);
     setRadio('hemoSmokingStatus', patient.hemoSmokingStatus);
@@ -1476,32 +1609,62 @@ const hemoptysisModule = {
     setVal('hemoSmokingPacks', patient.hemoSmokingPacks);
 
     setChecks('hemoBleedingMeds', patient.hemoBleedingMeds);
-    const otherFreeEl = document.getElementById('hemoptysis_other_free');
+    const otherFreeEl = getHemoEl('hemoptysis_other_free');
     if (otherFreeEl) otherFreeEl.value = patient.otherSymptomsFree || '';
   },
 
-  clearForm: function() {
-    ['hemoDurationVal', 'hemoPreCoughDurVal', 'hemoSmokingYears', 'hemoSmokingPacks', 'hemoptysis_other_free'].forEach(id => {
-      const el = document.getElementById(id);
+  resetForm: function() {
+    this.inputIdsToClear.forEach(id => {
+      const el = getHemoEl(id);
       if (el) el.value = '';
     });
 
-    const durUnit = document.getElementById('hemoDurationUnit');
+    const durUnit = getHemoEl('hemoDurationUnit');
     if (durUnit) durUnit.value = 'hours';
+    const preUnit = getHemoEl('hemoPreCoughDurUnit');
+    if (preUnit) preUnit.value = 'weeks';
+    const wlUnit = getHemoEl('hemoWeightLossDurUnit');
+    if (wlUnit) wlUnit.value = 'months';
 
-    const radios = document.querySelectorAll('#hemoptysisQuestionnaireSection input[type="radio"]');
-    radios.forEach(r => { r.checked = false; });
+    [
+      'hemoBloodChar', 'hemoBloodVolume', 'hemoEpisodeCount', 'hemoActiveStatus',
+      'hemoPriorSputum', 'hemoDyspnea', 'hemoSmokingStatus'
+    ].forEach(name => {
+      queryHemoAll(`input[name="${name}"]`).forEach(r => { r.checked = false; });
+    });
 
-    const checks = document.querySelectorAll('#hemoptysisQuestionnaireSection input[type="checkbox"]');
-    checks.forEach(c => { c.checked = false; });
+    ['hemoChestPainType', 'hemoWarningSigns', 'hemoPastPulmonary', 'hemoBleedingMeds'].forEach(name => {
+      queryHemoAll(`input[name="${name}"]`).forEach(cb => { cb.checked = false; });
+    });
 
-    ['hemoPreCoughSub', 'hemoChestPainSub', 'hemoWarningSyncopeSub', 'hemoWarningDvtPeSub',
-     'hemoWarningFeverSub', 'hemoSmokingSub'].forEach(id => {
-      const el = document.getElementById(id);
+    [
+      'hemo_prodrome_none',
+      'hemoPreCoughParent',
+      'hemoPriorSputumParent',
+      'hemoWarningFeverParent',
+      'hemoWeightLossParent',
+      'hemo_warn_none',
+      'hemoDyspneaParent',
+      'hemoChestPainParent',
+      'hemoWarningSyncopeParent',
+      'hemoWarningDvtPeParent',
+      'hemo_pulm_none',
+      'hemo_meds_none'
+    ].forEach(id => {
+      const el = getHemoEl(id);
+      if (el) el.checked = false;
+    });
+
+    this.branchIds.forEach(id => {
+      const el = getHemoEl(id);
       if (el) el.classList.add('hidden');
     });
 
     clearHemoPainScore();
+  },
+
+  clearForm: function() {
+    this.resetForm();
   },
 
   hydrateForm: function(patient) {
@@ -1515,7 +1678,6 @@ const hemoptysisModule = {
   renderNarrative: renderHemoptysisNarrative,
   renderDoctorHpi: renderHemoptysisDoctorHpi,
   evaluateRedFlags: evaluateHemoptysisRedFlags,
-  generateCds: generateHemoptysisCds,
 
   // --- Seed Patients Registry ---
   seedPatients: [
@@ -1534,8 +1696,8 @@ const hemoptysisModule = {
       durationVal: 2,
       durationUnit: 'hours',
       hospRecordStatus: 'complete',
-      underlying: ['ความดันสูง (HT)'],
-      drugAllergy: 'ปฏิเสธประวัติแพ้ยาและแพ้อาหาร',
+      underlying: ['ความดันโลหิตสูง'],
+      drugAllergy: 'ปฏิเสธ',
       currentMeds: 'Amlodipine (5 mg) 1 tab od pc',
       otherSymptomsFree: 'ไอสำลักเลือดสดทะลักพุ่งต่อเนื่อง หน้ามืด วูบ ตัวสั่น เหงื่อแตกท่วมตัว',
       doctor_notes: { additional_hpi: '', physical_exam: '', preliminary_dx: '', plan: '' },
@@ -1548,10 +1710,13 @@ const hemoptysisModule = {
       hemoActiveStatus: 'status_active_bleeding',
       hemoPreCoughMaster: 'no',
       hemoPriorSputum: 'sputum_none_dry_cough',
+      hemoProdromeNone: true,
+      hemoDyspneaParent: true,
       hemoDyspnea: 'dyspnea_severe_rest_orthopnea',
       hemoChestPainMaster: 'no',
       hemoChestPainType: [],
       hemoWarningSigns: ['warn_choking_airway_threat', 'warn_fainting_syncope', 'warn_profuse_sweat_cold_shock'],
+      hemoWarnNone: false,
       hemoPastPulmonary: ['pulm_none'],
       hemoSmokingStatus: 'smoking_quit',
       hemoBleedingMeds: ['meds_none']
@@ -1573,7 +1738,7 @@ const hemoptysisModule = {
       durationUnit: 'hours',
       hospRecordStatus: 'complete',
       underlying: [],
-      drugAllergy: 'ปฏิเสธประวัติแพ้ยาและแพ้อาหาร',
+      drugAllergy: 'ปฏิเสธ',
       currentMeds: 'ไม่มี',
       otherSymptomsFree: 'ไอเป็นเลือดสด เจ็บแปล๊บหน้าอกเวลาหายใจลึก น่องซ้ายบวมตึงมาก เพิ่งบินกลับจากต่างประเทศ',
       doctor_notes: { additional_hpi: '', physical_exam: '', preliminary_dx: '', plan: '' },
@@ -1586,11 +1751,14 @@ const hemoptysisModule = {
       hemoActiveStatus: 'status_active_bleeding',
       hemoPreCoughMaster: 'no',
       hemoPriorSputum: 'sputum_none_dry_cough',
+      hemoProdromeNone: true,
+      hemoDyspneaParent: true,
       hemoDyspnea: 'dyspnea_exertional',
       hemoChestPainMaster: 'yes',
       hemoChestPainType: ['pleuritic_sharp'],
       painScore: 7,
       hemoWarningSigns: ['warn_unilateral_leg_swelling', 'warn_long_travel_immobility'],
+      hemoWarnNone: false,
       hemoPastPulmonary: ['pulm_none'],
       hemoSmokingStatus: 'smoking_never',
       hemoBleedingMeds: ['meds_none']
@@ -1611,8 +1779,8 @@ const hemoptysisModule = {
       durationVal: 3,
       durationUnit: 'days',
       hospRecordStatus: 'complete',
-      underlying: ['ถุงลมโป่งพอง (COPD)'],
-      drugAllergy: 'ปฏิเสธประวัติแพ้ยาและแพ้อาหาร',
+      underlying: ['ถุงลมโป่งพอง'],
+      drugAllergy: 'ปฏิเสธ',
       currentMeds: 'Seretide accuhaler 1 puff bid, Ventolin inhaler 2 puffs prn',
       otherSymptomsFree: 'ไอเรื้อรังมา 1 เดือน วันนี้ไอเลือดสดออกมากกว่าครึ่งแก้ว มีไข้รุมๆ เหงื่อท่วมตอนกลางคืน น้ำหนักลด 7 กก.',
       doctor_notes: { additional_hpi: '', physical_exam: '', preliminary_dx: '', plan: '' },
@@ -1626,11 +1794,17 @@ const hemoptysisModule = {
       hemoPreCoughMaster: 'yes',
       hemoPreCoughDurVal: 1,
       hemoPreCoughDurUnit: 'months',
+      hemoPriorSputumParent: true,
       hemoPriorSputum: 'sputum_foul_abscess_green',
+      hemoDyspneaParent: true,
       hemoDyspnea: 'dyspnea_exertional',
       hemoChestPainMaster: 'no',
       hemoChestPainType: [],
       hemoWarningSigns: ['warn_fever_afternoon_night_sweat', 'warn_unintentional_weight_loss'],
+      hemoWeightLossKg: 7,
+      hemoWeightLossDurVal: 1,
+      hemoWeightLossDurUnit: 'months',
+      hemoWarnNone: false,
       hemoPastPulmonary: ['tb_prior_or_contact', 'past_copd_asthma'],
       hemoSmokingStatus: 'smoking_regular',
       hemoSmokingYears: 30,
@@ -1654,7 +1828,7 @@ const hemoptysisModule = {
       durationUnit: 'days',
       hospRecordStatus: 'self',
       underlying: [],
-      drugAllergy: 'ปฏิเสธประวัติแพ้ยาและแพ้อาหาร',
+      drugAllergy: 'ปฏิเสธ',
       currentMeds: 'ไม่มี',
       otherSymptomsFree: 'ไอมีเสมหะปนเส้นเลือดแดงเล็กน้อยหลังไอสะบัดแรงๆ 2 วัน ตอนนี้เลือดหยุดแล้ว ไม่เหนื่อย',
       doctor_notes: { additional_hpi: '', physical_exam: '', preliminary_dx: '', plan: '' },
@@ -1668,11 +1842,13 @@ const hemoptysisModule = {
       hemoPreCoughMaster: 'yes',
       hemoPreCoughDurVal: 3,
       hemoPreCoughDurUnit: 'days',
+      hemoPriorSputumParent: true,
       hemoPriorSputum: 'sputum_normal_white_yellow',
       hemoDyspnea: 'dyspnea_none',
       hemoChestPainMaster: 'no',
       hemoChestPainType: [],
       hemoWarningSigns: [],
+      hemoWarnNone: true,
       hemoPastPulmonary: ['pulm_none'],
       hemoSmokingStatus: 'smoking_never',
       hemoBleedingMeds: ['meds_none']
@@ -1685,6 +1861,28 @@ if (typeof registerCcModule === 'function') {
   registerCcModule(hemoptysisModule);
 } else if (typeof window !== 'undefined' && typeof window.registerCcModule === 'function') {
   window.registerCcModule(hemoptysisModule);
+}
+
+if (typeof window !== 'undefined') {
+  window.clearHemoPainScore = clearHemoPainScore;
+  window.handleHemoPainScoreChange = handleHemoPainScoreChange;
+  window.setHemoPainScore = setHemoPainScore;
+  window.toggleHemoPreCoughSub = toggleHemoPreCoughSub;
+  window.toggleHemoPreCough = toggleHemoPreCoughSub;
+  window.toggleHemoPriorSputumSub = toggleHemoPriorSputumSub;
+  window.toggleHemoProdromeGroup = toggleHemoProdromeGroup;
+  window.handleHemoProdromeItemChange = handleHemoProdromeItemChange;
+  window.handleHemoProdromeNoneToggle = handleHemoProdromeNoneToggle;
+  window.toggleHemoDyspneaSub = toggleHemoDyspneaSub;
+  window.toggleHemoChestPainSub = toggleHemoChestPainSub;
+  window.toggleHemoChestPain = toggleHemoChestPainSub;
+  window.toggleHemoWarningGroup = toggleHemoWarningGroup;
+  window.toggleHemoSmokingSub = toggleHemoSmokingSub;
+  window.toggleHemoSmoking = toggleHemoSmokingSub;
+  window.handleHemoWarnItemChange = handleHemoWarnItemChange;
+  window.handleHemoWarnNoneToggle = handleHemoWarnNoneToggle;
+  window.handleHemoPulmChange = handleHemoPulmChange;
+  window.handleHemoMedChange = handleHemoMedChange;
 }
 
 if (typeof module !== 'undefined' && module.exports) {

@@ -14,6 +14,7 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const { createDatabaseAdapter } = require('./server/db');
+const { createAiProxy } = require('./server/ai_proxy');
 
 const PORT = parseInt(process.env.PORT || '3001', 10);
 const HOST = process.env.HOST || '0.0.0.0';
@@ -57,8 +58,8 @@ function sendJson(res, statusCode, data) {
     'Content-Type': 'application/json; charset=utf-8',
     'Content-Length': Buffer.byteLength(payload),
     'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'Content-Type, x-doctor-pin',
-    'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, OPTIONS'
+    'Access-Control-Allow-Headers': 'Content-Type, x-doctor-pin, x-er-role, x-admin-token',
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS'
   });
   res.end(payload);
 }
@@ -125,6 +126,17 @@ async function startPilotServer() {
   const db = createDatabaseAdapter({ sqlitePath: SQLITE_PATH });
   await db.init();
   await migrateLegacyPatientsJson(db);
+  const aiProxy = createAiProxy(db, { sqlitePath: SQLITE_PATH });
+  const requiredAdminToken = String(process.env.ADMIN_API_TOKEN || '').trim();
+
+  function isAdminRequest(req) {
+    const role = String(req.headers['x-er-role'] || '').toLowerCase();
+    if (role !== 'admin') return false;
+    if (requiredAdminToken && String(req.headers['x-admin-token'] || '').trim() !== requiredAdminToken) {
+      return false;
+    }
+    return true;
+  }
 
   if (CLEANUP_INTERVAL_MIN > 0) {
     const timer = setInterval(() => {
@@ -137,8 +149,8 @@ async function startPilotServer() {
     if (req.method === 'OPTIONS') {
       res.writeHead(204, {
         'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'Content-Type, x-doctor-pin',
-        'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, OPTIONS'
+        'Access-Control-Allow-Headers': 'Content-Type, x-doctor-pin, x-er-role, x-admin-token',
+        'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS'
       });
       return res.end();
     }
@@ -150,14 +162,63 @@ async function startPilotServer() {
       // 1. Health Check (compatible with both sync_manager & storage_adapter)
       if (pathname === '/api/health' && req.method === 'GET') {
         const hc = await db.healthCheck();
+        const aiCfg = await aiProxy.getPublicAiConfig();
         return sendJson(res, 200, {
           ok: true,
           status: 'ok',
           service: 'er-intake-sync-server',
           version: 'v2.82-pilot',
           db: hc.db,
+          aiKeyConfigured: aiCfg.hasApiKey,
           time: new Date().toISOString()
         });
+      }
+
+      // 1b. Centralized AI Consultant Config & Server-Side Proxy
+      if (pathname === '/api/ai/config' && req.method === 'GET') {
+        const cfg = await aiProxy.getPublicAiConfig();
+        return sendJson(res, 200, cfg);
+      }
+
+      if (pathname === '/api/ai/config' && req.method === 'PUT') {
+        if (!isAdminRequest(req)) {
+          return sendJson(res, 403, { ok: false, error: 'Admin permission required to update AI configuration' });
+        }
+        const body = await parseJsonBody(req);
+        const updated = await aiProxy.saveAiConfig(body);
+        return sendJson(res, 200, updated);
+      }
+
+      if (pathname === '/api/ai/key' && req.method === 'DELETE') {
+        if (!isAdminRequest(req)) {
+          return sendJson(res, 403, { ok: false, error: 'Admin permission required to clear AI API key' });
+        }
+        const updated = await aiProxy.clearStoredAiKey();
+        return sendJson(res, 200, updated);
+      }
+
+      if (pathname === '/api/ai/templates' && req.method === 'PUT') {
+        if (!isAdminRequest(req)) {
+          return sendJson(res, 403, { ok: false, error: 'Admin permission required to update AI prompt templates' });
+        }
+        const body = await parseJsonBody(req);
+        const updated = await aiProxy.saveAiTemplates(body);
+        return sendJson(res, 200, updated);
+      }
+
+      if (pathname === '/api/ai/consult' && req.method === 'POST') {
+        const body = await parseJsonBody(req);
+        try {
+          const result = await aiProxy.executeServerAiConsult(body, { isAdminRequest: isAdminRequest(req) });
+          return sendJson(res, 200, result);
+        } catch (aiErr) {
+          const status = aiErr.statusCode && aiErr.statusCode >= 400 && aiErr.statusCode < 600 ? aiErr.statusCode : 502;
+          return sendJson(res, status, {
+            ok: false,
+            code: aiErr.code || 'AI_UPSTREAM_ERROR',
+            error: aiErr.message || 'ไม่สามารถเชื่อมต่อโมเดล AI ได้'
+          });
+        }
       }
 
       // 2. PIN Verification

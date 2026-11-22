@@ -1,6 +1,6 @@
 # 🕵️‍♂️ รายงานการตรวจสอบคุณภาพโค้ดและสถาปัตยกรรม (AUTOMATED & AI AUDIT REPORT)
 
-- **วันที่ตรวจสอบ:** `19/11/2026` เวลา `23:00` น. (24-Hour Format)
+- **วันที่ตรวจสอบ:** `22/11/2026` เวลา `22:21` น. (24-Hour Format)
 - **สถานะภาพรวม (Overall Verdict):** **✅ PASS (ผ่านการตรวจสอบครบทุกมิติ)**
 - **จำนวนหัวข้อที่ผ่าน (Passed Checks):** 9 รายการ
 - **จำนวนคำเตือน (Warnings):** 0 รายการ
@@ -16,39 +16,39 @@
 | `clinical_knowledge_core.js` | 995 | 1,000 | ✅ ปกติ (Safe) |
 | `ai_consultant_core.js` | 886 | 1,000 | ✅ ปกติ (Safe) |
 | `core_engine.js` | 2,588 | 3,200 | ✅ ปกติ (Safe) |
-| `cc_modules/01_abdpain.js` | 1,892 | 2,000 | ✅ ปกติ (Safe) |
+| `cc_modules/01_abdpain.js` | 1,867 | 2,000 | ✅ ปกติ (Safe) |
 | `cc_modules/02_chestpain.js` | 1,930 | 2,000 | ✅ ปกติ (Safe) |
-| `cc_modules/03_dyspnea.js` | 1,800 | 2,000 | ✅ ปกติ (Safe) |
+| `cc_modules/03_dyspnea.js` | 1,885 | 2,000 | ✅ ปกติ (Safe) |
 | `cc_modules/04_fever.js` | 1,842 | 2,000 | ✅ ปกติ (Safe) |
-| `cc_modules/05_dizziness.js` | 1,120 | 2,000 | ✅ ปกติ (Safe) |
-| `cc_modules/06_headache.js` | 1,700 | 2,000 | ✅ ปกติ (Safe) |
-| `cc_modules/07_stroke_deficit.js` | 1,654 | 2,000 | ✅ ปกติ (Safe) |
-| `cc_modules/08_seizure.js` | 1,903 | 2,000 | ✅ ปกติ (Safe) |
-| `cc_modules/09_syncope.js` | 1,713 | 2,000 | ✅ ปกติ (Safe) |
-| `cc_modules/10_altered_mental.js` | 1,749 | 2,000 | ✅ ปกติ (Safe) |
+| `cc_modules/05_dizziness.js` | 1,240 | 2,000 | ✅ ปกติ (Safe) |
+| `cc_modules/06_headache.js` | 1,752 | 2,000 | ✅ ปกติ (Safe) |
+| `cc_modules/07_stroke_deficit.js` | 1,398 | 2,000 | ✅ ปกติ (Safe) |
+| `cc_modules/08_seizure.js` | 1,858 | 2,000 | ✅ ปกติ (Safe) |
+| `cc_modules/09_syncope.js` | 1,727 | 2,000 | ✅ ปกติ (Safe) |
+| `cc_modules/10_altered_mental.js` | 1,808 | 2,000 | ✅ ปกติ (Safe) |
 | `cc_modules/11_vomiting.js` | 1,766 | 2,000 | ✅ ปกติ (Safe) |
-| `cc_modules/12_diarrhea.js` | 1,764 | 2,000 | ✅ ปกติ (Safe) |
-| `cc_modules/13_gi_bleed.js` | 1,949 | 2,000 | ✅ ปกติ (Safe) |
-| `cc_modules/14_palpitation.js` | 1,355 | 2,000 | ✅ ปกติ (Safe) |
-| `cc_modules/15_weakness.js` | 1,383 | 2,000 | ✅ ปกติ (Safe) |
-| `cc_modules/16_allergy.js` | 1,340 | 2,000 | ✅ ปกติ (Safe) |
-| `cc_modules/17_urinary_retention.js` | 1,429 | 2,000 | ✅ ปกติ (Safe) |
-| `cc_modules/18_dysuria.js` | 1,258 | 2,000 | ✅ ปกติ (Safe) |
-| `cc_modules/19_hematuria.js` | 1,669 | 2,000 | ✅ ปกติ (Safe) |
-| `cc_modules/20_back_pain.js` | 1,765 | 2,000 | ✅ ปกติ (Safe) |
-| `cc_modules/21_neck_shoulder_pain.js` | 1,686 | 2,000 | ✅ ปกติ (Safe) |
-| `cc_modules/22_hemoptysis.js` | 1,693 | 2,000 | ✅ ปกติ (Safe) |
-| `cc_modules/23_epistaxis.js` | 1,325 | 2,000 | ✅ ปกติ (Safe) |
-| `cc_modules/24_hypertension.js` | 1,550 | 2,000 | ✅ ปกติ (Safe) |
+| `cc_modules/12_diarrhea.js` | 1,454 | 2,000 | ✅ ปกติ (Safe) |
+| `cc_modules/13_gi_bleed.js` | 1,593 | 2,000 | ✅ ปกติ (Safe) |
+| `cc_modules/14_palpitation.js` | 1,207 | 2,000 | ✅ ปกติ (Safe) |
+| `cc_modules/15_weakness.js` | 1,646 | 2,000 | ✅ ปกติ (Safe) |
+| `cc_modules/16_allergy.js` | 1,389 | 2,000 | ✅ ปกติ (Safe) |
+| `cc_modules/17_urinary_retention.js` | 1,310 | 2,000 | ✅ ปกติ (Safe) |
+| `cc_modules/18_dysuria.js` | 1,197 | 2,000 | ✅ ปกติ (Safe) |
+| `cc_modules/19_hematuria.js` | 1,529 | 2,000 | ✅ ปกติ (Safe) |
+| `cc_modules/20_back_pain.js` | 1,615 | 2,000 | ✅ ปกติ (Safe) |
+| `cc_modules/21_neck_shoulder_pain.js` | 1,430 | 2,000 | ✅ ปกติ (Safe) |
+| `cc_modules/22_hemoptysis.js` | 1,891 | 2,000 | ✅ ปกติ (Safe) |
+| `cc_modules/23_epistaxis.js` | 1,400 | 2,000 | ✅ ปกติ (Safe) |
+| `cc_modules/24_hypertension.js` | 1,632 | 2,000 | ✅ ปกติ (Safe) |
 | `cc_modules/25_psychiatric_emergency.js` | 1,608 | 2,000 | ✅ ปกติ (Safe) |
-| `cc_modules/26_laceration_bleeding.js` | 1,915 | 2,000 | ✅ ปกติ (Safe) |
-| `cc_modules/27_fall_trauma.js` | 1,906 | 2,000 | ✅ ปกติ (Safe) |
-| `cc_modules/28_animal_bite.js` | 1,942 | 2,000 | ✅ ปกติ (Safe) |
-| `cc_modules/29_venomous_bite.js` | 1,869 | 2,000 | ✅ ปกติ (Safe) |
-| `cc_modules/30_physical_assault.js` | 1,681 | 2,000 | ✅ ปกติ (Safe) |
-| `cc_modules/31_traffic_accident.js` | 1,956 | 2,000 | ✅ ปกติ (Safe) |
-| `cc_modules/32_poisoning.js` | 1,989 | 2,000 | ✅ ปกติ (Safe) |
-| `cc_modules/33_self_harm.js` | 1,953 | 2,000 | ✅ ปกติ (Safe) |
+| `cc_modules/26_laceration_bleeding.js` | 1,892 | 2,000 | ✅ ปกติ (Safe) |
+| `cc_modules/27_fall_trauma.js` | 1,873 | 2,000 | ✅ ปกติ (Safe) |
+| `cc_modules/28_animal_bite.js` | 1,932 | 2,000 | ✅ ปกติ (Safe) |
+| `cc_modules/29_venomous_bite.js` | 1,925 | 2,000 | ✅ ปกติ (Safe) |
+| `cc_modules/30_physical_assault.js` | 1,783 | 2,000 | ✅ ปกติ (Safe) |
+| `cc_modules/31_traffic_accident.js` | 1,935 | 2,000 | ✅ ปกติ (Safe) |
+| `cc_modules/32_poisoning.js` | 1,432 | 2,000 | ✅ ปกติ (Safe) |
+| `cc_modules/33_self_harm.js` | 1,806 | 2,000 | ✅ ปกติ (Safe) |
 
 ---
 
@@ -89,12 +89,12 @@
 ✅ PASS: Universal Date descriptor converts ISO '2026-10-26' -> '26/10/2026' (dd/mm/yyyy)
 ✅ PASS: Universal Time descriptor converts '3:30 PM' -> '15:30' (24-hour HH:mm)
 
-=== มิติที่ (ง): DOCTOR UI RENDER, JSON SCHEMA & RED FLAGS (ALL 130 SEED CASES) ===
-✅ PASS: Seed database has all 130 clinical cases across 33 Chief Complaints (found 130)
-✅ PASS: All 130 seed cases render Rapid Note (including Addendum), Narrative Note & JSON Schema on Doctor Dashboard with 0 errors
-✅ PASS: All 130 seed cases evaluate Red Flags cleanly with 0 errors (Zero Built-in CDS dependency)
-✅ PASS: Zero Date/Time format violations across all 130 seed cases
-✅ PASS: Zero De-duplication, Clean Negative Syntax & Score Offloading violations across all 130 seed cases
+=== มิติที่ (ง): DOCTOR UI RENDER, JSON SCHEMA & RED FLAGS (ALL 132 SEED CASES) ===
+✅ PASS: Seed database has all 132 clinical cases across 33 Chief Complaints (found 132)
+✅ PASS: All 132 seed cases render Rapid Note (including Addendum), Narrative Note & JSON Schema on Doctor Dashboard with 0 errors
+✅ PASS: All 132 seed cases evaluate Red Flags cleanly with 0 errors (Zero Built-in CDS dependency)
+✅ PASS: Zero Date/Time format violations across all 132 seed cases
+✅ PASS: Zero De-duplication, Clean Negative Syntax & Score Offloading violations across all 132 seed cases
 
 === มิติที่ (ข): SAVE PERSISTENCE CHECK (PATIENT SUBMIT -> STATE & LOCALSTORAGE -> STATUS VIEW) ===
 ✅ PASS: Save Persistence verified across all 33 active Chief Complaints (State + localStorage + #patientStatusView)
@@ -112,7 +112,7 @@
 ✅ PASS: Empty patient submission records age='ไม่ระบุ' and durationVal=null instead of fake defaults (got age=ไม่ระบุ, durationVal=null)
 ✅ PASS: Empty patient submission displays "ไม่ระบุ" in Doctor Rapid Note without fabricated age or duration
 ✅ PASS: Built-in CDS execution helper (generateBuiltInCdsAnalysis) is cleanly deprecated from runtime
-✅ PASS: PDPA Shield & Audit 100% compliant: Zero leaks across all 130 patients (leaks: 0)
+✅ PASS: PDPA Shield & Audit 100% compliant: Zero leaks across all 132 patients (leaks: 0)
 ✅ PASS: Default System Instruction enforces [Provisional & Differential Diagnosis], ICD-10, External Cause & 2.1/2.2/2.3 ER Order structure
 ✅ PASS: parseAiConsultantResponse enforces [Provisional & Differential Diagnosis] header cleanly and isolates DDx
 ✅ PASS: normalizeDxOutputHeader avoids duplicating [Provisional & Differential Diagnosis] when already present
@@ -174,12 +174,12 @@
 ✅ PASS: Fall Case 4 (Minor Ankle Twist) triggers Zero Red Flags (Low-Risk ESI 4)
 ✅ PASS: Module animal_bite successfully registered
 ✅ PASS: Bite Case 1 triggers Severe Neck/Face Mauling Red Flag (ESI 1/2)
-✅ PASS: Bite Case 1 triggers WHO Cat III RIG Indicated Red Flag (ESI 2)
+✅ PASS: Bite Case 1 does not trigger routine Rabies Exposure Red Flag
 ✅ PASS: Bite Case 2 triggers High-Risk Hand Bite Red Flag (ESI 2)
 ✅ PASS: Bite Case 2 triggers Infected Bite Sepsis Red Flag (ESI 2)
-✅ PASS: Bite Case 2 triggers Booster Regimen Red Flag (ESI 3)
-✅ PASS: Bite Case 3 triggers WHO Cat III RIG Indicated Red Flag (ESI 2)
-✅ PASS: Bite Case 4 triggers WHO Cat II / Booster Regimen Red Flag (ESI 3/4)
+✅ PASS: Bite Case 2 does not trigger routine Rabies Booster Red Flag
+✅ PASS: Bite Case 3 (Routine Uncomplicated Exposure Needing Rabies PEP Only) triggers Zero Red Flags
+✅ PASS: Bite Case 4 (Minor Superficial Scratch, Booster Regimen) triggers Zero Red Flags
 ✅ PASS: Bite Red Flags have non-empty textTh and risk strings
 ✅ PASS: Fall Trauma Red Flags have non-empty textTh and risk strings
 ✅ PASS: Animal bite renders finger digit (นิ้วชี้) in Rapid Note

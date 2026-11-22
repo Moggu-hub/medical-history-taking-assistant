@@ -116,7 +116,7 @@ function runStage1BrowserFeedbackTests() {
   let m;
   const re = /<script\s+src=["']([^"']+)["']\s*><\/script>/gi;
   while ((m = re.exec(indexHtml)) !== null) {
-    if (!/^https?:\/\//i.test(m[1])) scriptSrcs.push(m[1]);
+    if (!/^https?:\/\//i.test(m[1]) && m[1] !== 'sync_manager.js') scriptSrcs.push(m[1]);
   }
 
   const elsById = new Map();
@@ -378,9 +378,264 @@ async function runStage2BackendIntegrationTests() {
     // 4. Security check: sensitive paths blocked with 403
     const sec1 = await fetch(`${baseUrl}/server/db.js`);
     const sec2 = await fetch(`${baseUrl}/.env`);
+    const sec3 = await fetch(`${baseUrl}/data/.ai_master.key`);
     assert.strictEqual(sec1.status, 403);
     assert.strictEqual(sec2.status, 403);
-    console.log('✅ PASS 2.4: Security guard blocks /server/db.js and /.env with HTTP 403');
+    assert.strictEqual(sec3.status, 403);
+    console.log('✅ PASS 2.4: Security guard blocks /server/db.js, /.env and /data/.ai_master.key with HTTP 403');
+  } finally {
+    if (srv) await srv.stop();
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+}
+
+function createSimulatedBrowserDevice(baseUrl) {
+  const indexHtml = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
+  const scriptSrcs = [];
+  let m;
+  const re = /<script\s+src=["']([^"']+)["']\s*><\/script>/gi;
+  while ((m = re.exec(indexHtml)) !== null) {
+    if (!/^https?:\/\//i.test(m[1]) && m[1] !== 'sync_manager.js') scriptSrcs.push(m[1]);
+  }
+
+  const elsById = new Map();
+  const allEls = [];
+  function parseInto(html) {
+    const tagRe = /<([a-zA-Z][a-zA-Z0-9]*)\b([^>]*)>/gi;
+    let tm;
+    while ((tm = tagRe.exec(html)) !== null) {
+      const attrs = {};
+      const apRe = /([a-zA-Z0-9_-]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'))?/g;
+      let am;
+      while ((am = apRe.exec(tm[2])) !== null) {
+        attrs[am[1]] = am[2] !== undefined ? am[2] : (am[3] !== undefined ? am[3] : '');
+      }
+      const el = makeDomNode(tm[1], attrs);
+      if (attrs['data-universal-date']) el.dataset.universalDate = attrs['data-universal-date'];
+      if (attrs['data-universal-time']) el.dataset.universalTime = attrs['data-universal-time'];
+      if (attrs['data-cc-top-banner']) el.dataset.ccTopBanner = attrs['data-cc-top-banner'];
+      allEls.push(el);
+      if (attrs.id && !elsById.has(attrs.id)) elsById.set(attrs.id, el);
+    }
+  }
+  parseInto(indexHtml);
+
+  const container = elsById.get('ccQuestionnairesContainer');
+  container.insertAdjacentHTML = (_, html) => parseInto(html);
+
+  const storage = new Map();
+  const sessStorage = new Map();
+  let domLoadedFn = null;
+  const bodyEl = makeDomNode('body');
+  const deviceFetch = (url, opts) => {
+    const resolved = String(url).startsWith('/') ? `${baseUrl}${url}` : url;
+    return fetch(resolved, opts);
+  };
+
+  const sandbox = {
+    console, URLSearchParams, AbortController,
+    JSON, Math, Date, Array, Object, String, Number, Boolean, RegExp, Map, Set, Promise,
+    setTimeout, clearTimeout,
+    fetch: deviceFetch,
+    btoa: s => Buffer.from(String(s), 'utf8').toString('base64'),
+    atob: s => Buffer.from(String(s), 'base64').toString('utf8'),
+    Event: class { constructor(t) { this.type = t; } },
+    HTMLInputElement: function () {},
+    location: { protocol: 'http:', origin: baseUrl, href: `${baseUrl}/` },
+    localStorage: {
+      getItem: k => (storage.has(k) ? storage.get(k) : null),
+      setItem: (k, v) => storage.set(k, String(v)),
+      removeItem: k => storage.delete(k)
+    },
+    sessionStorage: {
+      getItem: k => (sessStorage.has(k) ? sessStorage.get(k) : null),
+      setItem: (k, v) => sessStorage.set(k, String(v)),
+      removeItem: k => sessStorage.delete(k)
+    },
+    window: null,
+    document: {
+      body: bodyEl,
+      createElement: tag => makeDomNode(tag),
+      getElementById: id => elsById.get(id) || null,
+      querySelector: sel => {
+        if (sel && sel.startsWith('#')) return elsById.get(sel.slice(1)) || null;
+        const mc = sel && sel.match(/^input\[name=["']([^"']+)["']\]:checked$/);
+        if (mc) return allEls.find(e => e.name === mc[1] && e.checked) || null;
+        return null;
+      },
+      querySelectorAll: sel => {
+        if (sel === 'input[data-universal-date="true"]') return allEls.filter(e => e.dataset.universalDate === 'true');
+        if (sel === 'input[data-universal-time="true"]') return allEls.filter(e => e.dataset.universalTime === 'true');
+        const mc = sel && sel.match(/^input\[name=["']([^"']+)["']\]:checked$/);
+        if (mc) return allEls.filter(e => e.name === mc[1] && e.checked);
+        const ma = sel && sel.match(/^input\[name=["']([^"']+)["']\]$/);
+        if (ma) return allEls.filter(e => e.name === ma[1]);
+        return [];
+      },
+      addEventListener: (ev, fn) => {
+        if (ev === 'DOMContentLoaded') domLoadedFn = fn;
+      },
+      removeEventListener: () => {}
+    },
+    lucide: { createIcons: () => {} },
+    alert: msg => { throw new Error('alert: ' + msg); }
+  };
+  sandbox.window = sandbox;
+  sandbox.HTMLInputElement.prototype = { value: '' };
+
+  vm.createContext(sandbox);
+  for (const s of scriptSrcs) {
+    vm.runInContext(fs.readFileSync(path.join(ROOT, s), 'utf8'), sandbox, { filename: s });
+  }
+  domLoadedFn();
+  return { sandbox, elsById, storage };
+}
+
+async function runStage3CentralizedAiCrossDeviceTests() {
+  console.log('\n=== STAGE 3 TESTS: Centralized AI Key (Admin Once -> Any Doctor Device) ===');
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'er-ai-central-test-'));
+  const sqliteFile = path.join(tmpDir, 'central_ai.sqlite');
+  const SECRET_HOSPITAL_KEY = 'AIzaSyHospitalSecretTestKey987654321';
+  let upstreamCalls = [];
+
+  const mockUpstreamFetch = async (url, opts) => {
+    const body = opts?.body ? JSON.parse(opts.body) : {};
+    upstreamCalls.push({ url, headers: opts?.headers || {}, body });
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({
+        candidates: [{
+          content: {
+            parts: [{
+              text: '[PROVISIONAL_DDX]\n• 1. Acute Coronary Syndrome (ICD-10: I24.9): Central AI proxy test\n\n[ER_ORDERS]\n2.1 ประวัติ และการตรวจร่างกายเพิ่มเติม ที่ควรทำทันที:\n- [ ] Stat 12-lead EKG within 10 min'
+            }]
+          }
+        }],
+        usageMetadata: { promptTokenCount: 100, candidatesTokenCount: 60 }
+      })
+    };
+  };
+
+  let srv = null;
+  try {
+    srv = await createApiServer({
+      port: 0,
+      dbClient: 'sqlite',
+      sqlitePath: sqliteFile,
+      cleanupIntervalMin: 0,
+      envApiKey: '',
+      aiFetch: mockUpstreamFetch,
+      retryDelayScale: 0
+    });
+    const baseUrl = `http://127.0.0.1:${srv.port}`;
+
+    // 3.1 Fresh server reports no API key and enforces Admin role for config writes
+    const initCfg = await fetch(`${baseUrl}/api/ai/config`).then(r => r.json());
+    assert.strictEqual(initCfg.hasApiKey, false);
+    const nonAdminPut = await fetch(`${baseUrl}/api/ai/config`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'X-ER-Role': 'doctor' },
+      body: JSON.stringify({ apiKey: SECRET_HOSPITAL_KEY })
+    });
+    assert.strictEqual(nonAdminPut.status, 403, 'Doctor role must be blocked from updating centralized AI key');
+    const noKeyConsult = await fetch(`${baseUrl}/api/ai/consult`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-ER-Role': 'doctor' },
+      body: JSON.stringify({ promptText: 'Test clinical summary' })
+    });
+    assert.strictEqual(noKeyConsult.status, 400);
+    const noKeyBody = await noKeyConsult.json();
+    assert.strictEqual(noKeyBody.code, 'NO_API_KEY');
+    console.log('✅ PASS 3.1: Fresh server rejects unauthorized config writes (403) and returns NO_API_KEY before setup');
+
+    // 3.2 Admin on Device A saves API key & custom prompt templates ONCE
+    const deviceA = createSimulatedBrowserDevice(baseUrl);
+    await deviceA.sandbox.ErStorageAdapter.detectAndHydrateFromServer();
+    deviceA.sandbox.switchUserRole('admin', { silent: true });
+    deviceA.sandbox.navigateTo('doctor');
+    deviceA.sandbox.selectPatient('case-046');
+    await deviceA.sandbox.openAiConsultantModal();
+
+    deviceA.elsById.get('aiProviderSelect').value = 'gemini';
+    deviceA.elsById.get('aiApiEndpointInput').value = 'https://generativelanguage.googleapis.com';
+    deviceA.elsById.get('aiApiModelInput').value = 'gemini-3.8-flash';
+    deviceA.elsById.get('aiApiKeyInput').value = SECRET_HOSPITAL_KEY;
+    await deviceA.sandbox.saveAiAdminSettings();
+
+    deviceA.elsById.get('aiPromptSystemInput').value = 'HOSPITAL CENTRAL SYSTEM PROMPT';
+    deviceA.elsById.get('aiPromptHeaderInput').value = 'CENTRAL HEADER';
+    deviceA.elsById.get('aiPromptFooterInput').value = 'CENTRAL FOOTER';
+    await deviceA.sandbox.saveAiPromptTemplates();
+
+    // Verify encrypted at rest & NEVER exposed in GET /api/ai/config or browser localStorage
+    const rawRow = await srv.db.getAppSetting('ai_gateway_config');
+    assert(!JSON.stringify(rawRow).includes(SECRET_HOSPITAL_KEY), 'API key must be AES-256-GCM encrypted in DB, never plaintext');
+    const pubCfg = await fetch(`${baseUrl}/api/ai/config`).then(r => r.json());
+    assert.strictEqual(pubCfg.hasApiKey, true);
+    assert.strictEqual(pubCfg.keyMasked, 'AIza••••••4321');
+    assert(!JSON.stringify(pubCfg).includes(SECRET_HOSPITAL_KEY), 'GET /api/ai/config must NEVER expose plaintext API key');
+    assert(!Array.from(deviceA.storage.values()).some(v => v.includes(SECRET_HOSPITAL_KEY)), 'Admin browser localStorage must NOT retain plaintext API key');
+    console.log('✅ PASS 3.2: Admin Device A saves key once -> AES-256-GCM encrypted in DB, masked in API, zero browser leakage');
+
+    // 3.3 Doctor on Device B (completely separate device with ZERO AI API key in localStorage) triggers 1-Click AI immediately!
+    const deviceB = createSimulatedBrowserDevice(baseUrl);
+    assert(!deviceB.storage.has('er_ai_k_obf_v2') && !deviceB.storage.has('medhistory_ai_api_key_v1'), 'Doctor Device B starts with ZERO AI API key in localStorage');
+    deviceB.sandbox.switchUserRole('doctor', { silent: true });
+    deviceB.sandbox.navigateTo('doctor');
+    deviceB.sandbox.selectPatient('case-046');
+    await deviceB.sandbox.openAiConsultantModal();
+
+    assert.strictEqual(upstreamCalls.length, 1, 'Doctor Device B must invoke upstream AI via centralized server proxy');
+    assert.strictEqual(upstreamCalls[0].headers['x-goog-api-key'], SECRET_HOSPITAL_KEY, 'Server proxy must attach decrypted hospital API key');
+    assert.strictEqual(upstreamCalls[0].body.system_instruction.parts[0].text, 'HOSPITAL CENTRAL SYSTEM PROMPT', 'Doctor Device B must automatically use Admin central prompt templates');
+    assert(deviceB.elsById.get('aiResultDxBox').value.includes('I24.9'), 'Doctor Device B receives parsed AI Differential Diagnosis');
+    assert(deviceB.elsById.get('aiResultOrdersBox').value.includes('Stat 12-lead EKG'), 'Doctor Device B receives parsed AI ER Orders');
+    assert(!Array.from(deviceB.storage.values()).some(v => v.includes(SECRET_HOSPITAL_KEY)), 'Doctor Device B localStorage must NEVER contain the API key');
+    console.log('✅ PASS 3.3: Doctor on brand-new Device B (empty storage) gets instant 1-Click AI without entering any key');
+
+    // 3.4 Server Restart Persistence + Model Update Without Re-Entering Key + Doctor on Device C
+    await srv.stop();
+    srv = await createApiServer({
+      port: 0,
+      dbClient: 'sqlite',
+      sqlitePath: sqliteFile,
+      cleanupIntervalMin: 0,
+      envApiKey: '',
+      aiFetch: mockUpstreamFetch,
+      retryDelayScale: 0
+    });
+    const restartedUrl = `http://127.0.0.1:${srv.port}`;
+
+    // Admin updates model while leaving masked key intact -> key must persist!
+    const updRes = await fetch(`${restartedUrl}/api/ai/config`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'X-ER-Role': 'admin' },
+      body: JSON.stringify({ provider: 'gemini', endpoint: 'https://generativelanguage.googleapis.com', model: 'gemini-2.5-flash', apiKey: 'AIza••••••4321' })
+    }).then(r => r.json());
+    assert.strictEqual(updRes.hasApiKey, true);
+    assert.strictEqual(updRes.model, 'gemini-2.5-flash');
+
+    const deviceC = createSimulatedBrowserDevice(restartedUrl);
+    deviceC.sandbox.switchUserRole('doctor', { silent: true });
+    deviceC.sandbox.navigateTo('doctor');
+    deviceC.sandbox.selectPatient('case-046');
+    await deviceC.sandbox.openAiConsultantModal();
+    assert.strictEqual(upstreamCalls.length, 2);
+    assert(upstreamCalls[1].url.includes('gemini-2.5-flash'), 'Device C after server restart uses persisted key and updated model');
+    console.log('✅ PASS 3.4: Key & settings survive server restart and model updates; Doctor Device C works immediately');
+
+    // 3.5 Admin clears central key -> Doctor immediately blocked cleanly without Built-in CDS fallback
+    const deviceA2 = createSimulatedBrowserDevice(restartedUrl);
+    await deviceA2.sandbox.ErStorageAdapter.detectAndHydrateFromServer();
+    deviceA2.sandbox.switchUserRole('admin', { silent: true });
+    await deviceA2.sandbox.clearAiAdminApiKey();
+
+    await deviceC.sandbox.openAiConsultantModal();
+    assert.strictEqual(upstreamCalls.length, 2, 'No upstream call when central key is cleared');
+    assert.strictEqual(deviceC.elsById.get('aiResultDxBox').value, '');
+    assert(deviceC.elsById.get('aiApiStatusMsg').textContent.includes('ยังไม่ได้ตั้งค่า API Key'));
+    console.log('✅ PASS 3.5: Clearing central key revokes access across all devices immediately without Built-in CDS fallback');
   } finally {
     if (srv) await srv.stop();
     fs.rmSync(tmpDir, { recursive: true, force: true });
@@ -390,7 +645,8 @@ async function runStage2BackendIntegrationTests() {
 (async () => {
   runStage1BrowserFeedbackTests();
   await runStage2BackendIntegrationTests();
-  console.log('\n🎉 ALL FEEDBACK & BACKEND API TESTS PASSED 100%!');
+  await runStage3CentralizedAiCrossDeviceTests();
+  console.log('\n🎉 ALL FEEDBACK, BACKEND & CENTRALIZED AI TESTS PASSED 100%!');
 })().catch(err => {
   console.error('❌ Test Failed:', err);
   process.exit(1);

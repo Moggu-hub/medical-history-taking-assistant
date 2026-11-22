@@ -8,6 +8,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const { createDatabaseAdapter } = require('./db');
+const { createAiProxy } = require('./ai_proxy');
 
 const ROOT_DIR = path.resolve(__dirname, '..');
 
@@ -95,7 +96,7 @@ function buildFeedbackCsv(records) {
 function isSensitivePath(reqPath) {
   const lower = reqPath.toLowerCase();
   if (BLOCKED_EXACT.has(lower)) return true;
-  if (lower.endsWith('.sqlite') || lower.endsWith('.sqlite-wal') || lower.endsWith('.sqlite-shm')) return true;
+  if (lower.endsWith('.sqlite') || lower.endsWith('.sqlite-wal') || lower.endsWith('.sqlite-shm') || lower.endsWith('.key')) return true;
   return BLOCKED_PREFIXES.some(prefix => lower.startsWith(prefix) || lower === prefix.slice(0, -1));
 }
 
@@ -104,9 +105,20 @@ async function createApiServer(options = {}) {
   const completedTtlHours = Number(options.completedTtlHours ?? process.env.COMPLETED_TTL_HOURS ?? 12);
   const cleanupMode = (options.cleanupMode ?? process.env.CLEANUP_MODE ?? 'archive').toLowerCase();
   const cleanupIntervalMin = Number(options.cleanupIntervalMin ?? process.env.CLEANUP_INTERVAL_MIN ?? 30);
+  const requiredAdminToken = String(options.adminApiToken ?? process.env.ADMIN_API_TOKEN ?? '').trim();
 
   const db = createDatabaseAdapter(options);
   await db.init();
+  const aiProxy = createAiProxy(db, options);
+
+  function isAdminRequest(req) {
+    const role = String(req.headers['x-er-role'] || '').toLowerCase();
+    if (role !== 'admin') return false;
+    if (requiredAdminToken && String(req.headers['x-admin-token'] || '').trim() !== requiredAdminToken) {
+      return false;
+    }
+    return true;
+  }
 
   let cleanupTimer = null;
   if (cleanupIntervalMin > 0) {
@@ -124,7 +136,61 @@ async function createApiServer(options = {}) {
       // --- REST API ROUTES ---
       if (reqPath === '/api/health' && req.method === 'GET') {
         const hc = await db.healthCheck();
-        return sendJson(res, 200, { ...hc, version: 'v2.82', completedTtlHours, cleanupMode });
+        const aiCfg = await aiProxy.getPublicAiConfig();
+        return sendJson(res, 200, {
+          ...hc,
+          version: 'v2.82',
+          completedTtlHours,
+          cleanupMode,
+          aiKeyConfigured: aiCfg.hasApiKey
+        });
+      }
+
+      // --- CENTRALIZED AI CONSULTANT CONFIG & SERVER-SIDE PROXY ---
+      if (reqPath === '/api/ai/config' && req.method === 'GET') {
+        const cfg = await aiProxy.getPublicAiConfig();
+        return sendJson(res, 200, cfg);
+      }
+
+      if (reqPath === '/api/ai/config' && req.method === 'PUT') {
+        if (!isAdminRequest(req)) {
+          return sendJson(res, 403, { ok: false, error: 'Admin permission required to update AI configuration' });
+        }
+        const body = await readJsonBody(req);
+        const updated = await aiProxy.saveAiConfig(body);
+        return sendJson(res, 200, updated);
+      }
+
+      if (reqPath === '/api/ai/key' && req.method === 'DELETE') {
+        if (!isAdminRequest(req)) {
+          return sendJson(res, 403, { ok: false, error: 'Admin permission required to clear AI API key' });
+        }
+        const updated = await aiProxy.clearStoredAiKey();
+        return sendJson(res, 200, updated);
+      }
+
+      if (reqPath === '/api/ai/templates' && req.method === 'PUT') {
+        if (!isAdminRequest(req)) {
+          return sendJson(res, 403, { ok: false, error: 'Admin permission required to update AI prompt templates' });
+        }
+        const body = await readJsonBody(req);
+        const updated = await aiProxy.saveAiTemplates(body);
+        return sendJson(res, 200, updated);
+      }
+
+      if (reqPath === '/api/ai/consult' && req.method === 'POST') {
+        const body = await readJsonBody(req);
+        try {
+          const result = await aiProxy.executeServerAiConsult(body, { isAdminRequest: isAdminRequest(req) });
+          return sendJson(res, 200, result);
+        } catch (aiErr) {
+          const status = aiErr.statusCode && aiErr.statusCode >= 400 && aiErr.statusCode < 600 ? aiErr.statusCode : 502;
+          return sendJson(res, status, {
+            ok: false,
+            code: aiErr.code || 'AI_UPSTREAM_ERROR',
+            error: aiErr.message || 'ไม่สามารถเชื่อมต่อโมเดล AI ได้'
+          });
+        }
       }
 
       if (reqPath === '/api/patients' && req.method === 'GET') {
@@ -228,7 +294,10 @@ async function createApiServer(options = {}) {
           return;
         }
         const ext = path.extname(filePath).toLowerCase();
-        res.writeHead(200, { 'Content-Type': MIME_TYPES[ext] || 'application/octet-stream' });
+        res.writeHead(200, {
+          'Content-Type': MIME_TYPES[ext] || 'application/octet-stream',
+          'Cache-Control': 'no-cache'
+        });
         res.end(data);
       });
     } catch (err) {
