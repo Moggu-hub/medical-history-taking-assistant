@@ -8,6 +8,87 @@
 // --- Module-scoped State & Helpers ---
 let bitePainScoreTouched = false;
 
+function wrapBiteWords(chunks) {
+  if (!Array.isArray(chunks)) return chunks;
+  return chunks.map(c => `<span class="inline-block whitespace-nowrap">${c}</span>`).join(' ');
+}
+
+function renderBiteOption(cfg) {
+  const {
+    kind = 'checkbox',
+    id = '',
+    name = '',
+    value = '',
+    title,
+    desc = '',
+    onchange = '',
+    compact = false,
+    colSpan2 = false
+  } = cfg;
+  const idAttr = id ? `id="${id}" ` : '';
+  const nameAttr = name ? `name="${name}" ` : '';
+  const valAttr = value ? `value="${value}" ` : '';
+  const chgAttr = onchange ? `onchange="${onchange}" ` : '';
+  const alignCls = desc ? 'items-start' : 'items-center';
+  const padCls = compact ? 'p-2.5' : 'p-3';
+  const spanCls = colSpan2 ? ' sm:col-span-2' : '';
+  const roundCls = kind === 'checkbox' ? 'rounded ' : '';
+  const topCls = desc ? 'mt-0.5 ' : '';
+  const szCls = compact ? 'h-3.5 w-3.5' : 'h-4 w-4';
+  const titleHtml = Array.isArray(title) ? wrapBiteWords(title) : title;
+  const bodyHtml = desc
+    ? `<div class="ml-3 leading-snug"><span class="block text-xs sm:text-sm font-semibold text-slate-800">${titleHtml}</span><span class="block text-[11px] text-slate-500 font-normal mt-0.5">${desc}</span></div>`
+    : `<span class="ml-3 ${compact ? 'text-xs' : 'text-xs sm:text-sm'} font-semibold text-slate-800 leading-snug">${titleHtml}</span>`;
+  return `<label class="selectable-card bg-white flex ${alignCls} ${padCls} rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition${spanCls}"><input type="${kind}" ${idAttr}${nameAttr}${valAttr}${chgAttr}class="${topCls}${roundCls}text-medical-600 focus:ring-medical-500 ${szCls} flex-shrink-0">${bodyHtml}</label>`;
+}
+
+function renderBiteGrid(colsCls, items, shared = {}) {
+  return `<div class="grid ${colsCls} gap-2.5">${items.map(it => renderBiteOption({ ...shared, ...it })).join('\n')}</div>`;
+}
+
+function renderBiteSysHeader({
+  label,
+  icon,
+  colorClass,
+  toggleKind = 'checkbox',
+  toggleId = '',
+  toggleLabel = '',
+  toggleName = '',
+  toggleValue = '',
+  toggleOnchange = ''
+}) {
+  const nameAttr = toggleName ? `name="${toggleName}" ` : '';
+  const valAttr = toggleValue ? `value="${toggleValue}" ` : '';
+  const chgAttr = toggleOnchange ? `onchange="${toggleOnchange}" ` : '';
+  const roundCls = toggleKind === 'checkbox' ? ' rounded' : '';
+  const toggleHtml = toggleId
+    ? `<label class="inline-flex items-center px-2.5 py-1 rounded-lg bg-white hover:bg-slate-100 border border-slate-200 text-xs font-medium text-slate-700 cursor-pointer transition select-none flex-shrink-0">
+      <input type="${toggleKind}" id="${toggleId}" ${nameAttr}${valAttr}${chgAttr}class="text-medical-600 focus:ring-medical-500 h-3.5 w-3.5${roundCls}">
+      <span class="ml-1.5 whitespace-nowrap">${toggleLabel}</span>
+    </label>`
+    : '';
+  return `<div class="flex flex-wrap items-center justify-between gap-2 mb-2.5">
+    <label class="flex items-center text-xs sm:text-sm font-bold text-slate-800">
+      <span class="${colorClass} p-1.5 rounded-lg mr-2 inline-flex items-center justify-center"><i data-lucide="${icon}" class="w-4 h-4"></i></span>
+      <span>${label}</span>
+    </label>
+    ${toggleHtml}
+  </div>`;
+}
+
+function handleBiteGroupNoneToggle(noneEl, inputName) {
+  if (!noneEl || !noneEl.checked || typeof document === 'undefined') return;
+  document.querySelectorAll(`input[name="${inputName}"]`).forEach(cb => {
+    if (cb !== noneEl) cb.checked = false;
+  });
+}
+
+function handleBiteGroupItemChange(itemEl, noneId) {
+  if (!itemEl || !itemEl.checked || !noneId || typeof document === 'undefined') return;
+  const noneEl = document.getElementById(noneId);
+  if (noneEl) noneEl.checked = false;
+}
+
 function isBiteFemalePatient(p) {
   if (!p) return false;
   if (p.gender === 'หญิง' || p.gender === 'female') return true;
@@ -35,9 +116,8 @@ function toggleBiteFemaleSection(isFemale) {
   femSec.classList.toggle('hidden', !isFemale);
   if (!isFemale) {
     const lmpEl = document.getElementById('biteLmpDate');
-    const pregEl = document.getElementById('bitePregnancyStatus');
     if (lmpEl) lmpEl.value = '';
-    if (pregEl) { pregEl.selectedIndex = 0; pregEl.value = ''; }
+    document.querySelectorAll('input[name="bitePregnancyStatus"]').forEach(r => { r.checked = false; });
   }
 }
 
@@ -53,18 +133,89 @@ function checkAndDisplayBiteLmp(patient) {
 }
 
 function renderBitePart(id, label, hasCenter = false) {
-  const sides = [['left', 'ซ้าย'], ['right', 'ขวา']];
-  if (hasCenter) sides.push(['center', 'ตรงกลาง']);
-  const sHtml = sides.map(([v, th]) => `<label class="flex items-center"><input type="checkbox" name="${id}Sides" value="${v}" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">${th}</span></label>`).join('');
-  const iHtml = [['wound', 'มีแผล'], ['pain_swelling', 'ปวด/บวม'], ['deformity', 'ผิดรูป']].map(([v, th]) => `<label class="flex items-center"><input type="checkbox" name="${id}Injuries" value="${v}" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">${th}</span></label>`).join('');
-  return `<div class="flex flex-col sm:flex-row sm:items-center justify-between text-xs py-1 border-b border-slate-100 gap-2"><label class="flex items-center"><input type="checkbox" id="${id}" name="${id}" onchange="toggleBiteGroup('${id}SidesContainer', this.checked)" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-1.5 text-slate-800">${label}</span></label><div id="${id}SidesContainer" class="hidden flex flex-wrap items-center gap-2 bg-slate-50 border border-slate-200 px-2 py-1 rounded-lg text-xs"><span class="text-slate-500 font-medium">ด้าน:</span>${sHtml}<span class="text-slate-300 mx-1.5">|</span><span class="text-slate-500 font-medium">การบาดเจ็บ:</span>${iHtml}</div></div>`;
+  return `<div class="p-2.5 rounded-xl border border-slate-200 bg-white">
+  <label class="flex items-center cursor-pointer">
+    <input type="checkbox" id="${id}" name="${id}" onchange="toggleBiteGroup('${id}SidesContainer', this.checked)" class="text-medical-600 h-4 w-4 rounded flex-shrink-0">
+    <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800">${label}</span>
+  </label>
+  <div id="${id}SidesContainer" class="hidden mt-2 pl-6 flex flex-col gap-1.5 text-xs border-t border-slate-100 pt-2">
+    <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
+      <span class="text-[11px] font-semibold text-slate-500">ด้าน / ข้าง:</span>
+      <label class="inline-flex items-center cursor-pointer"><input type="checkbox" name="${id}Sides" value="left" class="mr-1 text-medical-600 rounded"> ซ้าย</label>
+      <label class="inline-flex items-center cursor-pointer"><input type="checkbox" name="${id}Sides" value="right" class="mr-1 text-medical-600 rounded"> ขวา</label>
+      ${hasCenter ? `<label class="inline-flex items-center cursor-pointer"><input type="checkbox" name="${id}Sides" value="center" class="mr-1 text-medical-600 rounded"> ตรงกลาง</label>` : ''}
+    </div>
+    <div class="flex flex-wrap items-center gap-x-3 gap-y-1 pt-1 border-t border-slate-50">
+      <span class="text-[11px] font-semibold text-slate-500">ลักษณะบาดเจ็บ:</span>
+      <label class="inline-flex items-center cursor-pointer"><input type="checkbox" name="${id}Injuries" value="wound" class="mr-1 text-medical-600 rounded"> มีแผล</label>
+      <label class="inline-flex items-center cursor-pointer"><input type="checkbox" name="${id}Injuries" value="pain_swelling" class="mr-1 text-medical-600 rounded"> ปวด/บวม</label>
+      <label class="inline-flex items-center cursor-pointer"><input type="checkbox" name="${id}Injuries" value="deformity" class="mr-1 text-medical-600 rounded"> ผิดรูป</label>
+    </div>
+  </div>
+</div>`;
 }
 
 function renderBiteDigits(id, label) {
-  const d = [['thumb', 'โป้ง'], ['index', 'ชี้'], ['middle', 'กลาง'], ['ring', 'นาง'], ['little', 'ก้อย']];
-  const row = (side, sl) => `<div class="flex flex-wrap items-center gap-2"><span class="font-medium text-slate-600 w-10">${sl}:</span>${d.map(([k, th]) => `<label class="flex items-center"><input type="checkbox" name="${id}${side}Digits" value="${k}" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">${th}</span></label>`).join('')}</div>`;
-  const inj = [['wound', 'มีแผล'], ['pain_swelling', 'ปวด/บวม'], ['deformity', 'ผิดรูป']].map(([v, th]) => `<label class="flex items-center"><input type="checkbox" name="${id}Injuries" value="${v}" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">${th}</span></label>`).join('');
-  return `<div class="space-y-1 py-1"><label class="flex items-center text-xs"><input type="checkbox" id="${id}" name="${id}" onchange="toggleBiteGroup('${id}SidesContainer', this.checked)" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-1.5 text-slate-800">${label}</span></label><div id="${id}SidesContainer" class="hidden ml-5 p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs space-y-1.5">${row('Left', 'ซ้าย')}${row('Right', 'ขวา')}<div class="flex flex-wrap items-center gap-2 pt-1 border-t border-slate-200"><span class="font-medium text-slate-600">การบาดเจ็บ:</span>${inj}</div></div></div>`;
+  const digits = [['thumb', 'โป้ง'], ['index', 'ชี้'], ['middle', 'กลาง'], ['ring', 'นาง'], ['little', 'ก้อย']];
+  const row = (side, sl) => `<div class="flex items-center flex-wrap gap-2"><span class="text-[11px] font-semibold text-slate-500 w-9">${sl}:</span>${digits.map(([k, th]) => `<label class="inline-flex items-center cursor-pointer"><input type="checkbox" name="${id}${side}Digits" value="${k}" class="mr-1 text-medical-600 rounded"> ${th}</label>`).join('')}</div>`;
+  return `<div class="p-2.5 rounded-xl border border-slate-200 bg-white">
+  <label class="flex items-center cursor-pointer">
+    <input type="checkbox" id="${id}" name="${id}" onchange="toggleBiteGroup('${id}SidesContainer', this.checked)" class="text-medical-600 h-4 w-4 rounded flex-shrink-0">
+    <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800">${label}</span>
+  </label>
+  <div id="${id}SidesContainer" class="hidden mt-2 pl-6 flex flex-col gap-1.5 text-xs border-t border-slate-100 pt-2">
+    ${row('Left', 'ซ้าย')}${row('Right', 'ขวา')}
+    <div class="flex items-center flex-wrap gap-x-3 gap-y-1 pt-1 border-t border-slate-50">
+      <span class="text-[11px] font-semibold text-slate-500">ลักษณะบาดเจ็บ:</span>
+      <label class="inline-flex items-center cursor-pointer"><input type="checkbox" name="${id}Injuries" value="wound" class="mr-1 text-medical-600 rounded"> มีแผล</label>
+      <label class="inline-flex items-center cursor-pointer"><input type="checkbox" name="${id}Injuries" value="pain_swelling" class="mr-1 text-medical-600 rounded"> ปวด/บวม</label>
+      <label class="inline-flex items-center cursor-pointer"><input type="checkbox" name="${id}Injuries" value="deformity" class="mr-1 text-medical-600 rounded"> ผิดรูป</label>
+    </div>
+  </div>
+</div>`;
+}
+
+function renderBiteRegionBox({
+  parentId,
+  subGroupId,
+  title,
+  desc,
+  partsHtml,
+  signsName,
+  signsNoneId,
+  signsCols = 'grid-cols-1 sm:grid-cols-2',
+  signs
+}) {
+  return `<div class="space-y-3">
+    <label class="selectable-card flex items-center p-3.5 rounded-xl border-2 border-slate-200 bg-slate-50 hover:border-medical-400 transition cursor-pointer">
+      <input type="checkbox" id="${parentId}" onchange="toggleBiteGroup('${subGroupId}', this.checked)" class="text-medical-600 focus:ring-medical-500 h-5 w-5 rounded flex-shrink-0">
+      <div class="ml-3 leading-snug">
+        <span class="text-sm font-bold text-slate-900">${Array.isArray(title) ? wrapBiteWords(title) : title}</span>
+        ${desc ? `<p class="text-xs text-slate-500 mt-0.5">${desc}</p>` : ''}
+      </div>
+    </label>
+    <div id="${subGroupId}" class="hidden pl-4 sm:pl-6 space-y-4 border-l-2 border-medical-200">
+      <div>
+        <p class="text-xs text-slate-600 font-semibold mb-2">จุดที่บาดเจ็บ (เลือกแล้วระบุด้านและลักษณะบาดเจ็บ):</p>
+        <div class="space-y-2">${partsHtml}</div>
+      </div>
+      <div class="p-3 bg-slate-50 rounded-xl border border-slate-200">
+        ${renderBiteSysHeader({
+          label: 'อาการสำคัญที่พบร่วมด้วย (เลือกได้หลายข้อ)',
+          icon: 'alert-circle',
+          colorClass: 'bg-amber-100 text-amber-700',
+          toggleId: signsNoneId,
+          toggleLabel: 'ไม่มีอาการร่วม',
+          toggleOnchange: `handleBiteGroupNoneToggle(this, '${signsName}')`
+        })}
+        ${renderBiteGrid(signsCols, signs, {
+          name: signsName,
+          compact: true,
+          onchange: `handleBiteGroupItemChange(this, '${signsNoneId}')`
+        })}
+      </div>
+    </div>
+  </div>`;
 }
 
 function toggleBiteGroup(subId, show) {
@@ -112,34 +263,36 @@ function clearBitePainScore() {
 
 function handleBitePainScoreChange(val) {
   bitePainScoreTouched = true;
-  const num = parseInt(val, 10);
+  const num = parseInt(val, 10) || 0;
   const slider = document.getElementById('bitePainScore');
-  if (slider) slider.value = num;
-  const emojiEl = document.getElementById('bitePainScoreEmoji');
-  const textEl = document.getElementById('bitePainScoreText');
-  const badgeEl = document.getElementById('bitePainScoreBadge');
-  const clearBtn = document.getElementById('bitePainScoreClearBtn');
+  if (slider && String(slider.value) !== String(num)) slider.value = num;
+  const emojiEl = document.getElementById('bitePainScoreEmoji'), textEl = document.getElementById('bitePainScoreText');
+  const badgeEl = document.getElementById('bitePainScoreBadge'), clearBtn = document.getElementById('bitePainScoreClearBtn');
   if (clearBtn) clearBtn.classList.remove('hidden');
   if (!emojiEl || !textEl || !badgeEl) return;
 
   let emoji = '😐', label = 'ปวดปานกลาง', badgeClass = 'bg-amber-100 text-amber-800 border-amber-300';
-  if (num === 0) {
-    emoji = '😊'; label = 'สบายดี (ไม่ปวดเลย)'; badgeClass = 'bg-emerald-100 text-emerald-800 border-emerald-300';
-  } else if (num <= 3) {
-    emoji = '🙂'; label = 'ปวดเล็กน้อย (ทนได้)'; badgeClass = 'bg-lime-100 text-lime-800 border-lime-300';
-  } else if (num <= 6) {
-    emoji = '😐'; label = 'ปวดปานกลาง (รบกวนสมาธิ)'; badgeClass = 'bg-amber-100 text-amber-800 border-amber-300';
-  } else if (num <= 8) {
-    emoji = '😣'; label = 'ปวดรุนแรง (ทนแทบไม่ไหว)'; badgeClass = 'bg-orange-100 text-orange-800 border-orange-300';
-  } else {
-    emoji = '😫'; label = 'ปวดรุนแรงที่สุดในชีวิต'; badgeClass = 'bg-rose-100 text-rose-800 border-rose-300';
-  }
+  if (num === 0) { emoji = '😊'; label = 'สบายดี (ไม่ปวดเลย)'; badgeClass = 'bg-emerald-100 text-emerald-800 border-emerald-300'; }
+  else if (num <= 3) { emoji = '🙂'; label = 'ปวดเล็กน้อย (ทนได้)'; badgeClass = 'bg-lime-100 text-lime-800 border-lime-300'; }
+  else if (num <= 6) { emoji = '😐'; label = 'ปวดปานกลาง (รบกวนสมาธิ)'; badgeClass = 'bg-amber-100 text-amber-800 border-amber-300'; }
+  else if (num <= 9) { emoji = '😣'; label = 'ปวดมาก (ทนแทบไม่ไหว)'; badgeClass = 'bg-rose-100 text-rose-800 border-rose-300'; }
+  else { emoji = '😭'; label = 'เจ็บปวดรุนแรงที่สุดในชีวิต'; badgeClass = 'bg-red-200 text-red-900 border-red-400 animate-pulse'; }
 
   emojiEl.textContent = emoji;
-  textEl.textContent = `${num}/10 คะแนน - ${label}`;
-  badgeEl.className = `inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-bold border self-start sm:self-auto transition-all ${badgeClass}`;
+  textEl.textContent = `${num} / 10 (${label})`;
+  badgeEl.className = `inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-bold border transition ${badgeClass}`;
 }
+function setBitePainScore(score) { bitePainScoreTouched = true; const s = document.getElementById('bitePainScore'); if (s) s.value = score; handleBitePainScoreChange(score); }
 const handleBitePainSliderTouch = handleBitePainScoreChange;
+if (typeof window !== 'undefined') {
+  window.toggleBiteGroup = toggleBiteGroup;
+  window.handleBiteBleedingContainerToggle = handleBiteBleedingContainerToggle;
+  window.handleBiteGroupNoneToggle = handleBiteGroupNoneToggle;
+  window.handleBiteGroupItemChange = handleBiteGroupItemChange;
+  window.clearBitePainScore = clearBitePainScore;
+  window.handleBitePainScoreChange = handleBitePainScoreChange;
+  window.setBitePainScore = setBitePainScore;
+}
 
 // --- Clinical Decision Support & Evaluation Functions ---
 function evaluateBiteRedFlags(patient) {
@@ -153,29 +306,13 @@ function evaluateBiteRedFlags(patient) {
   const bt = typeof vs.bt === 'number' ? vs.bt : (parseFloat(vs.bt) || null);
   const shockIndex = (sbp && pr) ? (pr / sbp) : 0;
 
-  const animalTypes = Array.isArray(patient.biteAnimalTypes) ? patient.biteAnimalTypes : [];
-  const exposures = Array.isArray(patient.biteExposures) ? patient.biteExposures : [];
   const bleedingStatus = patient.biteBleedingStatus || '';
-  const rabiesHx = patient.biteRabiesVaccineHx || '';
 
   const headSigns = Array.isArray(patient.biteHeadSigns) ? patient.biteHeadSigns : [];
   const neckSigns = Array.isArray(patient.biteNeckSigns) ? patient.biteNeckSigns : [];
-  const chestSigns = Array.isArray(patient.biteChestSigns) ? patient.biteChestSigns : [];
-  const abdSigns = Array.isArray(patient.biteAbdomenSigns) ? patient.biteAbdomenSigns : [];
   const upperSigns = Array.isArray(patient.biteUpperExtSigns) ? patient.biteUpperExtSigns : [];
-  const lowerSigns = Array.isArray(patient.biteLowerExtSigns) ? patient.biteLowerExtSigns : [];
   const infectionSigns = Array.isArray(patient.biteInfectionSigns) ? patient.biteInfectionSigns : [];
   const sysSigns = Array.isArray(patient.biteSystemicSigns) ? patient.biteSystemicSigns : [];
-
-  const hasBleeding = ['oozing_stopped', 'oozing_active', 'pulsatile_massive'].includes(bleedingStatus);
-  const hasMucosaExposure = exposures.includes('saliva_mucosa_wound') || headSigns.includes('saliva_splash_eye');
-  const hasBatExposure = animalTypes.includes('bat');
-  const isHighRiskSite = !!(patient.biteParentHeadFace || patient.biteParentNeck || patient.biteArmWrist || patient.biteArmFingers);
-
-  // Determine WHO Category:
-  // Cat III: Bite/scratch with bleeding, mucosa saliva, bat exposure, or transdermal bite
-  const isWhoCat3 = hasBleeding || hasMucosaExposure || hasBatExposure;
-  const isWhoCat2 = !isWhoCat3 && (exposures.includes('bruise_blunt') || (exposures.includes('scratch_wound') && bleedingStatus === 'no_bleeding'));
 
   // RED FLAG 1: Severe Neck/Face Mauling, Active Arterial Bleeding, Shock or Rabies Encephalitis (ESI 1 / 2)
   const isSevereAirwayOrShock = (bleedingStatus === 'pulsatile_massive') ||
@@ -189,13 +326,7 @@ function evaluateBiteRedFlags(patient) {
     addRf('rf_bite_severe_neck_face_hemorrhagic_shock', isEsi1 ? 'ESI 1' : 'ESI 2', 'แผลสัตว์กัดขย้ำรุนแรงบริเวณลำคอ/ใบหน้า เลือดออกพุ่งตามชีพจร หรือมีภาวะช็อก/สงสัยอาการทางสมอง (Severe Neck/Maxillofacial Mauling, Active Arterial Bleeding, Shock or Rabies Encephalitis)', 'ผู้ป่วยมีแผลฉีกขาดรุนแรงบริเวณใบหน้า/ลำคอ หรือมีเลือดไหลพุ่งตามชีพจร ความดันตกช็อก หรือมีอาการทางสมองกลัวน้ำกลัวลม เสี่ยงต่อการเสียชีวิตฉุกเฉิน', 'ประเมิน ABCDE ทันที, กดห้ามเลือดโดยตรง, ให้สารน้ำทางหลอดเลือดดำ, ตรวจทางเดินหายใจใกล้ชิด และปรึกษาศัลยแพทย์/ศัลยกรรมตกแต่งด่วน');
   }
 
-  // RED FLAG 2: WHO Category III Rabies Exposure Requiring ERIG/HRIG + Vaccine (ESI 2)
-  const isRabiesNaiveOrUnsure = rabiesHx === 'naive_or_incomplete' || rabiesHx === 'unknown_or_unsure';
-  if (isWhoCat3 && isRabiesNaiveOrUnsure) {
-    addRf('rf_bite_who_cat3_rig_indicated', 'ESI 2', 'บาดแผลสัมผัสโรคพิษสุนัขบ้าระดับรุนแรง (WHO Category III) ที่ต้องได้รับเซรุ่มอิมมูโนโกลบูลิน (RIG) รอบแผลร่วมกับวัคซีน (WHO Category III Rabies Exposure Requiring ERIG/HRIG + Vaccine)', 'เข้าเกณฑ์ WHO Category III (แผลมีเลือดออก น้ำลายเข้าเยื่อบุตา/ปาก แผลที่ใบหน้า/คอ/มือ/นิ้ว หรือสัมผัสค้างคาว) ในผู้ที่ไม่เคยฉีดวัคซีนครบมาก่อนหรือจำประวัติไม่ได้ เสี่ยงต่อการติดเชื้อไวรัสพิษสุนัขบ้าเข้าสู่ระบบประสาท', 'ล้างแผลด้วยน้ำสะอาดและสบู่ทันที, ให้ Rabies Immunoglobulin (ERIG 40 IU/kg หรือ HRIG 20 IU/kg) ฉีดแทรกซึมรอบบาดแผลทุกจุดให้มากที่สุด และเริ่มฉีดวัคซีนป้องกันโรคพิษสุนัขบ้าเข็มแรก (Day 0) ทันที');
-  }
-
-  // RED FLAG 3: High-Risk Hand Bite / Suspected Flexor Tenosynovitis / Tendon-Nerve Injury (ESI 2)
+  // RED FLAG 2: High-Risk Hand Bite / Suspected Flexor Tenosynovitis / Tendon-Nerve Injury (ESI 2)
   const isHandOrFingerWound = (patient.biteParentUpperExtremity && (patient.biteArmWrist || patient.biteArmFingers));
   const hasHandTendonOrNerveThreat = isHandOrFingerWound && (
     upperSigns.includes('finger_joint_swelling_cannot_flex_extend') ||
@@ -208,7 +339,7 @@ function evaluateBiteRedFlags(patient) {
     addRf('rf_bite_deep_hand_tendon_joint_infection', 'ESI 2', 'แผลถูกกัดบริเวณมือ/นิ้วมือร่วมกับสงสัยการติดเชื้อในเยื่อหุ้มเอ็น/ข้อต่อ หรือเส้นเอ็น/เส้นประสาทบาดเจ็บ (High-Risk Hand Bite / Suspected Flexor Tenosynovitis / Tendon-Nerve Injury)', 'เขี้ยวสัตว์เจาะลึกบริเวณฝ่ามือหรือนิ้วมือ มีอาการปวดบวมตามแนวเส้นเอ็น ขยับงอเหยียดนิ้วไม่ได้ หรือมีอาการชา เสี่ยงต่อภาวะ Flexor Tenosynovitis / Compartment Syndrome และสูญเสียการทำงานของมือถาวร', 'ตรวจ Kanavel cardinal signs, ห้ามเย็บปิดแผลที่มือเด็ดขาด (Avoid primary closure), ให้ยาปฏิชีวนะทางหลอดเลือดดำ และปรึกษาศัลยแพทย์กระดูกและข้อ/ศัลยศาสตร์ทางมือด่วน');
   }
 
-  // RED FLAG 4: Infected Animal Bite / Lymphangitis-Abscess / Sepsis Risk (ESI 2 / 3)
+  // RED FLAG 3: Infected Animal Bite / Lymphangitis-Abscess / Sepsis Risk (ESI 2 / 3)
   const hasLocalInfection = infectionSigns.includes('erythema_edema_throbbing_pain') ||
     infectionSigns.includes('pus_purulent_discharge') ||
     infectionSigns.includes('lymphangitis_lymphadenopathy');
@@ -217,15 +348,6 @@ function evaluateBiteRedFlags(patient) {
   if (hasLocalInfection || hasSystemicInfection) {
     const isSepsisLevel = hasSystemicInfection || infectionSigns.includes('lymphangitis_lymphadenopathy');
     addRf('rf_bite_infected_wound_sepsis_immunocompromised', isSepsisLevel ? 'ESI 2' : 'ESI 3', 'แผลสัตว์กัดมีการอักเสบติดเชื้อเป็นหนอง รอยแดงลามตามเส้นเลือด หรือมีไข้ (Infected Animal Bite / Lymphangitis-Abscess / Sepsis Risk)', 'พบสัญญาณการติดเชื้อแบคทีเรียเฉียบพลันจากช่องปากสัตว์ (เช่น Pasteurella multocida, Capnocytophaga, Staphylococcus aureus) เสี่ยงต่อการลุกลามเป็นฝีหนองลึกและภาวะติดเชื้อในกระแสเลือด', 'เปิดระบายหนองหากมีฝี (Incision & Drainage), เก็บหนองเพาะเชื้อ, ให้ยาปฏิชีวนะครอบคลุมเชื้อสัตว์กัด (Amoxicillin-Clavulanate เป็น First-line) และพิจารณารับตัวไว้รักษาในรพ.หากมีไข้สูง');
-  }
-
-  // RED FLAG 5: Rabies Booster Regimen or WHO Category II Exposure (ESI 3)
-  const isPreviouslyVaccinated = rabiesHx.startsWith('completed_last_');
-  if (isWhoCat2 || (isWhoCat3 && isPreviouslyVaccinated)) {
-    // Only add if not already flagged as severe Category III needing RIG
-    if (!rfs.some(r => r.key === 'rf_bite_who_cat3_rig_indicated')) {
-      addRf('rf_bite_who_cat2_or_booster_regimen', 'ESI 3', 'ผู้ป่วยสัมผัสโรคพิษสุนัขบ้าที่เคยได้รับวัคซีนครบมาก่อน (พิจารณาฉีดกระตุ้น 1–2 เข็มโดยไม่ต้องให้ RIG) หรือแผลระดับ WHO Category II (Rabies Booster Regimen or WHO Category II Exposure)', 'ผู้ป่วยเคยฉีดวัคซีนพิษสุนัขบ้าครบมาก่อน หรือมีบาดแผลระดับ Category II (ไม่มีเลือดออก) ไม่มีความจำเป็นต้องได้รับเซรุ่มอิมมูโนโกลบูลิน (RIG)', 'ล้างทำความสะอาดแผล, ฉีดวัคซีนพิษสุนัขบ้ากระตุ้น (1 เข็ม Day 0 หากเข็มล่าสุดไม่เกิน 6 เดือน หรือ 2 เข็ม Day 0, 3 หากเข็มล่าสุดเกิน 6 เดือน โดยไม่ต้องให้ RIG), ประเมินวัคซีนบาดทะยัก และพิจารณาให้ยาปฏิชีวนะป้องกันการติดเชื้อ');
-    }
   }
 
   return rfs;
@@ -319,6 +441,7 @@ function updateBiteOutputs(rec) {
 
   const jsonEl = document.getElementById('jsonViewer');
   if (jsonEl) jsonEl.textContent = JSON.stringify(jsonOutput, null, 2);
+  return { rapid: rapidText, narrative: narrativeText, json: jsonOutput };
 }
 
 // --- Text Formatter Helpers ---
@@ -600,7 +723,7 @@ ${negList.length > 0 ? negList.map(n => `  - ${n}`).join('\n') : '  - ผู้�
 • ยาประจำตัวที่รับประทานอยู่: ${medsDisplay}
 ${patient.otherSymptomsFree ? `• ข้อมูลเพิ่มเติมจากผู้ป่วย/ญาติ: ${patient.otherSymptomsFree}\n` : ''}
 [Emergency Risk Assessment (Red Flags)]
-${rfs.length > 0 ? rfs.map(rf => `🚩 ${rf.title}\n   ความเสี่ยง: ${rf.detail}\n   ข้อแนะนำการดูแลเร่งด่วน: ${rf.action}`).join('\n\n') : '✅ ไม่พบสัญญาณเตือนวิกฤตความเสี่ยงสูง (Non-Red Flag)'}`;
+${rfs.length > 0 ? `🚩 RED FLAGS DETECTED:\n${rfs.map(rf => `  * ${rf.title}\n    ความเสี่ยง: ${rf.detail}\n    ข้อแนะนำการดูแลเร่งด่วน: ${rf.action}`).join('\n\n')}` : '✅ ไม่พบสัญญาณเตือนวิกฤตความเสี่ยงสูง (Non-Red Flag)'}`;
 }
 
 // --- Narrative Note Generator ---
@@ -634,63 +757,6 @@ function renderBiteDoctorHpi(patient) {
   return renderBiteRapidHpi(patient);
 }
 
-// --- Built-in Clinical Decision Support (CDS) Generator ---
-function generateBiteCds(patient, ctx) {
-  const redFlags = (ctx && Array.isArray(ctx.rfs)) ? ctx.rfs : evaluateBiteRedFlags(patient);
-  const ddxList = ctx ? (Array.isArray(ctx.ddxList) ? ctx.ddxList : (ctx.ddxList = [])) : [];
-  const workupList = ctx ? (Array.isArray(ctx.workupList) ? ctx.workupList : (ctx.workupList = [])) : [];
-  const managementList = ctx ? (Array.isArray(ctx.managementList) ? ctx.managementList : (ctx.managementList = [])) : [];
-
-  if (redFlags.some(r => r.key === 'rf_bite_severe_neck_face_hemorrhagic_shock')) {
-    ddxList.push('1. 🚨 Active Arterial Bleeding / Carotid or Facial Vessel Injury');
-    ddxList.push('2. Impending Airway Obstruction secondary to Neck Expanding Hematoma');
-    ddxList.push('3. Severe Maxillofacial Soft Tissue Defect');
-    workupList.push('Stat CBC, Coagulogram, Type & Crossmatch');
-    workupList.push('CT Angiography Neck/Face if hemodynamically stable');
-    managementList.push('Direct pressure hemostasis, Do NOT clamp blindly in wound');
-    managementList.push('Large-bore IV access (16-18G) + Crystalloid fluid resuscitation');
-    managementList.push('Urgent Surgical / ENT / Plastic Consult');
-  } else if (redFlags.some(r => r.key === 'rf_bite_who_cat3_rig_indicated')) {
-    ddxList.push('1. 🚨 WHO Category III Rabies Exposure (High-Risk Bite with Bleeding/Mucosa Contact)');
-    ddxList.push('2. Tetanus-prone Contaminated Wound');
-    workupList.push('Wound inspection for foreign bodies/teeth fragments');
-    managementList.push('Copious irrigation with sterile normal saline & soap cleaning');
-    managementList.push('Rabies Immunoglobulin (ERIG 40 IU/kg or HRIG 20 IU/kg) infiltrate wound thoroughly');
-    managementList.push('Rabies Vaccine Day 0 intramuscularly (Deltoid) or intradermally');
-    managementList.push('Tetanus Toxoid / TIG as indicated');
-    managementList.push('Oral Amoxicillin-Clavulanate (Augmentin) 875/125 mg po bid x 3-5 days');
-  } else if (redFlags.some(r => r.key === 'rf_bite_deep_hand_tendon_joint_infection')) {
-    ddxList.push('1. 🚨 Acute Suppurative Flexor Tenosynovitis (Kanavel Signs)');
-    ddxList.push('2. Deep Space Hand Infection / Septic Arthritis of Finger');
-    ddxList.push('3. Tendon Transection / Digital Nerve Injury');
-    workupList.push('Plain Radiograph of Hand/Finger (AP & Lateral) rule out retained foreign body/osteomyelitis');
-    workupList.push('CBC, ESR/CRP, Wound Gram stain & aerobic/anaerobic culture');
-    managementList.push('AVOID primary wound closure (DO NOT SUTURE puncture bites to hands)');
-    managementList.push('IV Ampicillin-Sulbactam 1.5-3 g q 6h or Ceftriaxone + Metronidazole');
-    managementList.push('Hand splint in position of safety & Urgent Hand Surgery Consult');
-  } else if (redFlags.some(r => r.key === 'rf_bite_infected_wound_sepsis_immunocompromised')) {
-    ddxList.push('1. 🚨 Infected Animal Bite Wound (Pasteurella multocida / Capnocytophaga canimorsus)');
-    ddxList.push('2. Acute Cellulitis / Abscess Formation');
-    ddxList.push('3. Sepsis secondary to Bite Wound Infection');
-    workupList.push('CBC, Blood Sugar, Hemoculture x 2, Wound swab for Gram stain & Culture');
-    workupList.push('VBG/Lactate if febrile or abnormal vital signs');
-    managementList.push('Incision and drainage (I&D) if fluctuant abscess present');
-    managementList.push('IV Antibiotics (Ampicillin-Sulbactam or Ceftriaxone) if septic; Oral Augmentin if stable');
-    managementList.push('Rabies & Tetanus PEP as indicated');
-  } else {
-    ddxList.push('1. Mammalian Bite / Scratch Wound (WHO Category II or Category III in Vaccinated Host)');
-    ddxList.push('2. Superficial Abrasion / Contusion');
-    workupList.push('Careful wound cleansing and inspection');
-    managementList.push('Wound cleansing with soap and water');
-    managementList.push('Rabies Vaccine Booster (Day 0 if < 6m, or Day 0, 3 if > 6m; NO RIG needed)');
-    managementList.push('Tetanus booster if last dose > 5 years');
-    managementList.push('Prophylactic Amoxicillin-Clavulanate 3-5 days for moderate-risk wounds');
-  }
-
-  if (isBiteFemalePatient(patient)) workupList.push('Urine Pregnancy Test (UPT) if childbearing age prior to medications/imaging');
-  return ctx ? redFlags : ddxList.join('\n');
-}
-
 // --- FORM HTML TEMPLATE ---
 const ANIMAL_BITE_FORM_HTML = `
 <div id="cc-animal-bite-section" class="hidden space-y-6">
@@ -701,664 +767,590 @@ const ANIMAL_BITE_FORM_HTML = `
       <i data-lucide="info" class="w-5 h-5"></i>
     </div>
     <div class="space-y-1">
-      <div class="font-bold text-amber-950 flex items-center gap-1.5">
-        <span>ข้อแนะนำการดูแลบาดแผลเบื้องต้นหลังถูกสัตว์กัดหรือข่วน:</span>
-      </div>
+      <div class="font-bold text-amber-950">ข้อแนะนำระหว่างรอพบแพทย์:</div>
       <ul class="list-disc pl-4 space-y-1 text-amber-800 text-xs">
-        <li><strong>ล้างแผลด้วยน้ำสะอาดและสบู่ทันที:</strong> หากแผลไม่ได้มีเลือดไหลพุ่งรุนแรง ควรล้างบาดแผลด้วยน้ำสะอาดและฟอกสบู่หลายๆ ครั้ง เพื่อชะล้างเชื้อไวรัสพิษสุนัขบ้าและแบคทีเรียออกจากแผลให้มากที่สุด</li>
-        <li><strong>กรณียังมีเลือดออกมาก:</strong> ให้ใช้ผ้าสะอาดหรือผ้าก๊อซกดลงบนบาดแผลโดยตรงให้แน่นและต่อเนื่องจนกว่าเลือดจะหยุด</li>
-        <li><strong>ห้ามนำสมุนไพร ผงยา หรือสิ่งแปลกปลอมพอกแผล</strong> เพราะจะทำให้แผลติดเชื้อรุนแรงขึ้น</li>
+        <li><strong>ล้างแผลด้วยน้ำสะอาดและฟอกสบู่ทันที:</strong> หากแผลเลือดไม่ออกรุนแรง ให้ล้างฟอกสบู่หลายๆ ครั้งเพื่อลดโอกาสติดเชื้อ</li>
+        <li><strong>หากยังมีเลือดออกมาก:</strong> ใช้ผ้าสะอาดกดลงบนแผลโดยตรงให้แน่นต่อเนื่องจนเลือดหยุด</li>
+        <li><strong>ห้ามพอกสมุนไพร ผงยา หรือสิ่งแปลกปลอม</strong> ลงในแผล เพราะเสี่ยงติดเชื้อรุนแรง</li>
       </ul>
     </div>
   </div>
   </div></div>
 
-  <!-- CARD 1: ข้อมูลเหตุการณ์ ชนิดของสัตว์ ลักษณะแผล/เลือดออก และสถานะของสัตว์ -->
-  <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
-    <div class="flex items-center space-x-3 mb-4 pb-3 border-b border-slate-100">
+  <!-- CARD 1: ข้อมูลเหตุการณ์ ชนิดสัตว์ ลักษณะแผล และสถานะสัตว์ -->
+  <div class="bg-white rounded-2xl p-5 sm:p-6 shadow-sm border border-slate-200 space-y-5">
+    <div class="flex items-center space-x-3 pb-3 border-b border-slate-100">
       <div class="bg-medical-100 text-medical-700 p-2 rounded-xl">
         <i data-lucide="paw-print" class="w-5 h-5"></i>
       </div>
       <div>
-        <h2 class="text-base font-bold text-slate-900">1. ข้อมูลเหตุการณ์ ชนิดของสัตว์ ลักษณะแผล และสถานะของสัตว์</h2>
-        <p class="text-xs text-slate-500">ระยะเวลา ชนิดสัตว์ ลักษณะการสัมผัส สถานะเลือดออก และพฤติกรรมสัตว์</p>
+        <h2 class="text-base font-bold text-slate-900">1. ข้อมูลเหตุการณ์ ชนิดสัตว์ ลักษณะแผล และสถานะสัตว์</h2>
+        <p class="text-xs text-slate-500">ระยะเวลา ชนิดสัตว์ การสัมผัส สถานะเลือดออก พฤติกรรมสัตว์ และล้างแผล</p>
       </div>
     </div>
 
     <!-- 1.1 ระยะเวลาที่เกิดเหตุ -->
-    <div class="mb-5">
-      <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
-        1.1 เหตุการณ์ถูกสัตว์กัดหรือข่วนเกิดขึ้นมานานเท่าใด <span class="text-rose-500">*</span>
+    <div>
+      <label class="block text-xs font-semibold text-slate-800 mb-1.5">
+        1.1 ถูกสัตว์กัด ข่วน หรือสัมผัสน้ำลายมานานเท่าไรแล้ว <span class="text-rose-500">*</span>
       </label>
-      <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
-        <div class="col-span-1 sm:col-span-2">
-          <input type="number" id="biteDurationVal" min="1" max="365" placeholder="ระบุตัวเลข เช่น 30"
-            class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-medical-500 focus:bg-white transition">
-        </div>
-        <div class="col-span-1">
-          <select id="biteDurationUnit"
-            class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-medical-500 focus:bg-white transition">
-            <option value="minutes">นาที</option>
-            <option value="hours" selected>ชั่วโมง</option>
-            <option value="days">วัน</option>
-            <option value="weeks">สัปดาห์</option>
-            <option value="months">เดือน</option>
-            <option value="years">ปี</option>
-          </select>
-        </div>
+      <div class="flex items-center gap-2 max-w-sm">
+        <input type="number" id="biteDurationVal" min="1" max="365" placeholder="เช่น 30"
+          class="w-24 bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-sm font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-medical-500 focus:bg-white transition">
+        <select id="biteDurationUnit"
+          class="bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-medical-500 focus:bg-white transition">
+          <option value="minutes">นาที</option>
+          <option value="hours" selected>ชั่วโมง</option>
+          <option value="days">วัน</option>
+          <option value="weeks">สัปดาห์</option>
+          <option value="months">เดือน</option>
+          <option value="years">ปี</option>
+        </select>
       </div>
     </div>
 
     <!-- 1.2 ชนิดของสัตว์ -->
-    <div class="mb-5">
-      <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
+    <div class="pt-3 border-t border-slate-100">
+      <label class="block text-xs font-semibold text-slate-800 mb-2">
         1.2 ชนิดของสัตว์ที่กัด ข่วน หรือสัมผัสน้ำลาย (เลือกได้หลายข้อ):
       </label>
-      <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-        <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-          <input type="checkbox" name="biteAnimalTypes" value="dog"
-            class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
-          <span class="text-xs sm:text-sm text-slate-800">สุนัข</span>
-        </label>
-        <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-          <input type="checkbox" name="biteAnimalTypes" value="cat"
-            class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
-          <span class="text-xs sm:text-sm text-slate-800">แมว</span>
-        </label>
-        <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-          <input type="checkbox" name="biteAnimalTypes" value="bat"
-            class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
-          <span class="text-xs sm:text-sm text-slate-800">ค้างคาว</span>
-        </label>
-        <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-          <input type="checkbox" name="biteAnimalTypes" value="other_mammal"
-            onchange="toggleBiteGroup('biteAnimalOtherDetailContainer', this.checked)"
-            class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
-          <span class="text-xs sm:text-sm text-slate-800">สัตว์อื่นๆ</span>
-        </label>
-      </div>
-      <!-- ช่องพิมพ์ระบุสัตว์อื่นๆ -->
-      <div id="biteAnimalOtherDetailContainer" class="hidden mt-2.5">
+      ${renderBiteGrid('grid-cols-2 sm:grid-cols-4', [
+        { name: 'biteAnimalTypes', value: 'dog', title: ['สุนัข'], compact: true },
+        { name: 'biteAnimalTypes', value: 'cat', title: ['แมว'], compact: true },
+        { name: 'biteAnimalTypes', value: 'bat', title: ['ค้างคาว'], compact: true },
+        {
+          name: 'biteAnimalTypes',
+          value: 'other_mammal',
+          title: ['สัตว์อื่นๆ'],
+          onchange: "toggleBiteGroup('biteAnimalOtherDetailContainer', this.checked)",
+          compact: true
+        }
+      ])}
+      <div id="biteAnimalOtherDetailContainer" class="hidden mt-2.5 pl-3 border-l-2 border-medical-200">
         <input type="text" id="biteAnimalOtherDetail" placeholder="พิมพ์ระบุชนิดสัตว์ เช่น หนู, กระรอก, กระต่าย, ลิง, วัว, ม้า..."
           class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2 text-xs sm:text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-medical-500 focus:bg-white transition">
       </div>
     </div>
 
     <!-- 1.3 ลักษณะบาดแผล การสัมผัส และสถานะเลือดออก -->
-    <div class="mb-5">
-      <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
-        1.3 ลักษณะบาดแผล และการสัมผัส (เลือกได้หลายข้อ):
+    <div class="pt-3 border-t border-slate-100">
+      <label class="block text-xs font-semibold text-slate-800 mb-2">
+        1.3 ลักษณะบาดแผลและการสัมผัส (เลือกได้หลายข้อ):
       </label>
-      <div class="space-y-2">
-        <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-          <input type="checkbox" name="biteExposures" value="bite_wound"
-            onchange="handleBiteBleedingContainerToggle()"
-            class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
-          <span class="text-xs sm:text-sm text-slate-800">ถูกกัดหรือข่วนเป็นแผลฉีกขาด หรือแผลรอยเขี้ยวเจาะลึก</span>
-        </label>
-        <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-          <input type="checkbox" name="biteExposures" value="scratch_wound"
-            onchange="handleBiteBleedingContainerToggle()"
-            class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
-          <span class="text-xs sm:text-sm text-slate-800">ถูกกัดหรือข่วนเป็นรอยถลอก หรือรอยขีดข่วน</span>
-        </label>
+      <div class="space-y-2.5">
+        ${renderBiteGrid('grid-cols-1 sm:grid-cols-2', [
+          {
+            name: 'biteExposures',
+            value: 'bite_wound',
+            title: ['แผลฉีกขาด', '/ รอยเขี้ยว'],
+            desc: 'ถูกกัดเป็นแผลเปิดหรือเขี้ยวเจาะลึก',
+            onchange: 'handleBiteBleedingContainerToggle()'
+          },
+          {
+            name: 'biteExposures',
+            value: 'scratch_wound',
+            title: ['แผลถลอก / ขีดข่วน'],
+            desc: 'ถูกกัดหรือข่วนผิวหนังเป็นรอยถลอก',
+            onchange: 'handleBiteBleedingContainerToggle()'
+          }
+        ])}
 
         <!-- Nested Bleeding Status Container -->
-        <div id="biteBleedingStatusContainer" class="hidden ml-2 pl-3 border-l-2 border-medical-300 py-1 space-y-2">
-          <span class="block text-xs font-bold text-slate-700">สถานะเลือดออกของบาดแผลที่ถูกกัดหรือข่วน:</span>
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            <label class="selectable-card gap-2.5 flex items-center p-2.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-white transition cursor-pointer">
-              <input type="radio" name="biteBleedingStatus" value="no_bleeding"
-                class="text-medical-600 focus:ring-medical-500 h-4 w-4">
-              <span class="text-xs text-slate-800">ไม่มีเลือดออกเลย (เป็นเพียงรอยถลอกตื้นๆ)</span>
-            </label>
-            <label class="selectable-card gap-2.5 flex items-center p-2.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-white transition cursor-pointer">
-              <input type="radio" name="biteBleedingStatus" value="oozing_stopped"
-                class="text-medical-600 focus:ring-medical-500 h-4 w-4">
-              <span class="text-xs text-slate-800">มีเลือดออกซึม แต่ขณะนี้หยุดไหลแล้ว</span>
-            </label>
-            <label class="selectable-card gap-2.5 flex items-center p-2.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-white transition cursor-pointer">
-              <input type="radio" name="biteBleedingStatus" value="oozing_active"
-                class="text-medical-600 focus:ring-medical-500 h-4 w-4">
-              <span class="text-xs text-slate-800">ขณะนี้ยังมีเลือดไหลซึมออกจากแผลต่อเนื่อง</span>
-            </label>
-            <label class="selectable-card gap-2.5 flex items-center p-2.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-white transition cursor-pointer">
-              <input type="radio" name="biteBleedingStatus" value="pulsatile_massive"
-                class="text-medical-600 focus:ring-medical-500 h-4 w-4">
-              <span class="text-xs text-slate-800">มีเลือดไหลพุ่งเป็นจังหวะ หรือออกมากผิดปกติ</span>
-            </label>
+        <div id="biteBleedingStatusContainer" class="hidden ml-3 pl-3 border-l-2 border-medical-300 py-1">
+          <div class="p-3.5 bg-slate-50 rounded-xl border border-slate-200">
+            ${renderBiteSysHeader({
+              label: 'สถานะเลือดออกของบาดแผลที่ถูกกัด / ข่วน',
+              icon: 'droplet',
+              colorClass: 'bg-rose-100 text-rose-700',
+              toggleKind: 'radio',
+              toggleId: 'biteBleedNoneRb',
+              toggleName: 'biteBleedingStatus',
+              toggleValue: 'no_bleeding',
+              toggleLabel: 'ไม่มีเลือดออก'
+            })}
+            ${renderBiteGrid('grid-cols-1 sm:grid-cols-3', [
+              { kind: 'radio', name: 'biteBleedingStatus', value: 'oozing_stopped', title: ['มีเลือดซึม', 'แต่หยุดไหลแล้ว'], compact: true },
+              { kind: 'radio', name: 'biteBleedingStatus', value: 'oozing_active', title: ['ยังมีเลือดซึม', 'ต่อเนื่อง'], compact: true },
+              { kind: 'radio', name: 'biteBleedingStatus', value: 'pulsatile_massive', title: ['เลือดไหลพุ่ง', '/ ออกมากผิดปกติ'], compact: true }
+            ])}
           </div>
         </div>
 
-        <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-          <input type="checkbox" name="biteExposures" value="bruise_blunt"
-            class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
-          <span class="text-xs sm:text-sm text-slate-800">ถูกงับเป็นรอยช้ำ หรือรอยบุ๋มบนผิวหนัง (ไม่มีแผลเปิดและไม่มีเลือดออก)</span>
-        </label>
-        <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-          <input type="checkbox" name="biteExposures" value="saliva_mucosa_wound"
-            class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
-          <span class="text-xs sm:text-sm text-slate-800">ถูกสัตว์เลีย หรือน้ำลายกระเด็นเข้าตา ปาก จมูก หรือโดนแผลเปิดเดิม</span>
-        </label>
-        <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-          <input type="checkbox" name="biteExposures" value="saliva_intact_skin"
-            class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
-          <span class="text-xs sm:text-sm text-slate-800">ถูกสัตว์เลียบนผิวหนังปกติ (ไม่มีแผลหรือรอยถลอก)</span>
-        </label>
+        ${renderBiteGrid('grid-cols-1 sm:grid-cols-3', [
+          {
+            name: 'biteExposures',
+            value: 'bruise_blunt',
+            title: ['ถูกงับเป็นรอยช้ำ', 'ไม่มีแผลเปิด'],
+            desc: 'ไม่มีแผลถลอกและไม่มีเลือดออก',
+            compact: true
+          },
+          {
+            name: 'biteExposures',
+            value: 'saliva_mucosa_wound',
+            title: ['ถูกเลีย / น้ำลาย', 'เข้าเยื่อบุ หรือแผล'],
+            desc: 'ตา ปาก จมูก หรือโดนแผลเปิดเดิม',
+            compact: true
+          },
+          {
+            name: 'biteExposures',
+            value: 'saliva_intact_skin',
+            title: ['ถูกเลียผิวหนังปกติ'],
+            desc: 'ผิวหนังไม่มีแผลหรือรอยถลอก',
+            compact: true
+          }
+        ])}
       </div>
     </div>
 
     <!-- 1.4 ข้อมูลสถานะและพฤติกรรมของสัตว์ -->
-    <div class="mb-5">
-      <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
-        1.4 ข้อมูลสถานะและพฤติกรรมของสัตว์ที่กัด (เลือกได้หลายข้อ):
+    <div class="pt-3 border-t border-slate-100">
+      <label class="block text-xs font-semibold text-slate-800 mb-2">
+        1.4 สถานะและพฤติกรรมของสัตว์ที่กัด (เลือกได้หลายข้อ):
       </label>
-      <div class="space-y-2">
-        <label class="selectable-card gap-2.5 flex items-start p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-          <input type="checkbox" name="biteAnimalBehavior" value="owned_quarantine_10d"
-            class="text-medical-600 focus:ring-medical-500 mt-0.5 h-4 w-4 rounded flex-shrink-0">
-          <span class="text-xs sm:text-sm text-slate-800">เป็นสัตว์มีเจ้าของ เลี้ยงในบ้าน และสามารถกักขังเพื่อสังเกตอาการต่อหลังจากนี้ได้ครบ 10 วัน</span>
-        </label>
-        <label class="selectable-card gap-2.5 flex items-start p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-          <input type="checkbox" name="biteAnimalBehavior" value="stray_disappeared"
-            class="text-medical-600 focus:ring-medical-500 mt-0.5 h-4 w-4 rounded flex-shrink-0">
-          <span class="text-xs sm:text-sm text-slate-800">เป็นสัตว์จรจัด ไม่มีเจ้าของ หรือสัตว์หนีหายไปแล้วไม่สามารถติดตามดูอาการได้</span>
-        </label>
-        <label class="selectable-card gap-2.5 flex items-start p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-          <input type="checkbox" name="biteAnimalBehavior" value="unprovoked_abnormal"
-            class="text-medical-600 focus:ring-medical-500 mt-0.5 h-4 w-4 rounded flex-shrink-0">
-          <span class="text-xs sm:text-sm text-slate-800">สัตว์กัดโดยไม่มีสาเหตุจูงใจ (อยู่ดีๆ วิ่งเข้ามากัดเอง) หรือมีอาการดุร้ายผิดปกติ น้ำลายไหลยืด เดินโซเซ</span>
-        </label>
-        <label class="selectable-card gap-2.5 flex items-start p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-          <input type="checkbox" name="biteAnimalBehavior" value="animal_died_killed"
-            class="text-medical-600 focus:ring-medical-500 mt-0.5 h-4 w-4 rounded flex-shrink-0">
-          <span class="text-xs sm:text-sm text-slate-800">สัตว์ที่กัดตายแล้ว หรือถูกฆ่าตายหลังเกิดเหตุ</span>
-        </label>
-        <label class="selectable-card gap-2.5 flex items-start p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-          <input type="checkbox" name="biteAnimalBehavior" value="animal_vaccinated_criteria"
-            class="text-medical-600 focus:ring-medical-500 mt-0.5 h-4 w-4 rounded flex-shrink-0">
-          <div>
-            <span class="text-xs sm:text-sm text-slate-800 font-medium block">สัตว์เคยได้รับวัคซีนป้องกันโรคพิษสุนัขบ้าตามเกณฑ์ที่กำหนด</span>
-            <span class="text-[11px] text-slate-500 block mt-0.5">(ต้องเคยฉีดวัคซีนมาแล้วอย่างน้อย 2 ครั้ง และครั้งหลังสุดต้องฉีดมาแล้วไม่เกิน 1 ปี)</span>
-          </div>
-        </label>
-      </div>
+      ${renderBiteGrid('grid-cols-1 sm:grid-cols-2', [
+        {
+          name: 'biteAnimalBehavior',
+          value: 'owned_quarantine_10d',
+          title: ['มีเจ้าของ', 'กักขังสังเกตได้', 'ครบ 10 วัน'],
+          desc: 'เลี้ยงในบ้านและติดตามดูอาการต่อได้',
+          compact: true
+        },
+        {
+          name: 'biteAnimalBehavior',
+          value: 'stray_disappeared',
+          title: ['สัตว์จรจัด / หนีหาย', 'ติดตามอาการไม่ได้'],
+          desc: 'ไม่มีเจ้าของ หรือหนีหายหลังเกิดเหตุ',
+          compact: true
+        },
+        {
+          name: 'biteAnimalBehavior',
+          value: 'unprovoked_abnormal',
+          title: ['กัดไม่มีสาเหตุ', '/ มีอาการดุร้าย'],
+          desc: 'วิ่งเข้ากัดเอง น้ำลายไหลยืด เดินโซเซ',
+          compact: true
+        },
+        {
+          name: 'biteAnimalBehavior',
+          value: 'animal_died_killed',
+          title: ['สัตว์ที่กัดตายแล้ว', '/ ถูกฆ่าตาย'],
+          desc: 'ตายเองหรือถูกฆ่าตายหลังเกิดเหตุ',
+          compact: true
+        },
+        {
+          name: 'biteAnimalBehavior',
+          value: 'animal_vaccinated_criteria',
+          title: ['สัตว์ฉีดวัคซีน', 'ตามเกณฑ์กำหนด'],
+          desc: 'ฉีดป้องกันพิษสุนัขบ้า >= 2 ครั้ง และเข็มล่าสุด <= 1 ปี',
+          colSpan2: true,
+          compact: true
+        }
+      ])}
     </div>
 
     <!-- 1.5 การล้างแผลเบื้องต้น -->
-    <div>
-      <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
-        1.5 ได้ล้างแผลเบื้องต้นก่อนมาโรงพยาบาลหรือไม่:
+    <div class="pt-3 border-t border-slate-100">
+      <label class="block text-xs font-semibold text-slate-800 mb-2">
+        1.5 การล้างแผลเบื้องต้นก่อนมาโรงพยาบาล
       </label>
-      <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-        <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-          <input type="radio" name="biteWoundCleansing" value="cleaned_soap_water"
-            class="text-medical-600 focus:ring-medical-500 h-4 w-4">
-          <span class="text-xs sm:text-sm text-slate-800">ล้างด้วยน้ำสะอาดและฟอกสบู่แล้ว</span>
-        </label>
-        <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-          <input type="radio" name="biteWoundCleansing" value="cleaned_water_antiseptic_only"
-            class="text-medical-600 focus:ring-medical-500 h-4 w-4">
-          <span class="text-xs sm:text-sm text-slate-800">ล้างน้ำหรือทายาฆ่าเชื้อ แต่ไม่ได้ฟอกสบู่</span>
-        </label>
-        <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-          <input type="radio" name="biteWoundCleansing" value="not_cleaned"
-            class="text-medical-600 focus:ring-medical-500 h-4 w-4">
-          <span class="text-xs sm:text-sm text-slate-800">ยังไม่ได้ล้างแผลเลย</span>
-        </label>
-      </div>
+      ${renderBiteGrid('grid-cols-1 sm:grid-cols-3', [
+        { kind: 'radio', name: 'biteWoundCleansing', value: 'cleaned_soap_water', title: ['ล้างน้ำสะอาด', 'และฟอกสบู่แล้ว'], compact: true },
+        { kind: 'radio', name: 'biteWoundCleansing', value: 'cleaned_water_antiseptic_only', title: ['ล้างน้ำ / ทายา', 'แต่ไม่ได้ฟอกสบู่'], compact: true },
+        { kind: 'radio', name: 'biteWoundCleansing', value: 'not_cleaned', title: ['ยังไม่ได้ล้างแผลเลย'], compact: true }
+      ])}
     </div>
   </div>
 
-  <!-- CARD 2: ตำแหน่งของร่างกายที่ถูกกัด/ข่วน และอาการอักเสบติดเชื้อ -->
-  <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+  <!-- CARD 2: ตำแหน่งบาดเจ็บ อาการร่วม และการติดเชื้อเฉพาะที่ -->
+  <div class="bg-white rounded-2xl p-5 sm:p-6 shadow-sm border border-slate-200">
     <div class="flex items-center space-x-3 mb-4 pb-3 border-b border-slate-100">
       <div class="bg-medical-100 text-medical-700 p-2 rounded-xl">
         <i data-lucide="user-check" class="w-5 h-5"></i>
       </div>
       <div>
-        <h2 class="text-base font-bold text-slate-900">2. ตำแหน่งของร่างกายที่ได้รับบาดเจ็บและชนิดการบาดเจ็บ</h2>
-        <p class="text-xs text-slate-500">เลือกตำแหน่งที่ได้รับบาดเจ็บ ระบุข้างซ้าย/ขวา และอาการแทรกซ้อนเฉพาะที่</p>
+        <h2 class="text-base font-bold text-slate-900">2. ตำแหน่งบาดเจ็บ อาการร่วม และการติดเชื้อเฉพาะที่</h2>
+        <p class="text-xs text-slate-500">เลือกตำแหน่งที่ถูกกัด/ข่วน ระบุข้างซ้าย/ขวา และอาการเฉพาะจุด</p>
       </div>
     </div>
 
     <div class="space-y-4">
-      <!-- 2.1 ศีรษะ ใบหน้า ดวงตา หรือในช่องปาก -->
-      <div class="border border-slate-200 rounded-2xl p-4 bg-slate-50/50">
-        <label class="flex items-center space-x-2.5 cursor-pointer">
-          <input type="checkbox" id="biteParentHeadFace"
-            onchange="toggleBiteGroup('biteHeadSubGroup', this.checked)"
-            class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded">
-          <span class="text-xs sm:text-sm font-bold text-slate-900">2.1 บาดแผลที่ศีรษะ ใบหน้า ดวงตา หรือในช่องปาก</span>
-        </label>
+      ${renderBiteRegionBox({
+        parentId: 'biteParentHeadFace',
+        subGroupId: 'biteHeadSubGroup',
+        title: ['2.1 ศีรษะ ใบหน้า', 'ดวงตา หรือในปาก'],
+        desc: 'หนังศีรษะ หน้าผาก คิ้ว แก้ม คาง ตา หู จมูก ริมฝีปาก',
+        partsHtml: [
+          renderBitePart('biteHeadScalp', 'หนังศีรษะ / หน้าผาก / ท้ายทอย', true),
+          renderBitePart('biteHeadFace', 'ใบหน้า / คิ้ว / แก้ม / คาง', true),
+          renderBitePart('biteHeadEye', 'ดวงตา / เปลือกตา'),
+          renderBitePart('biteHeadEar', 'ใบหู'),
+          renderBitePart('biteHeadNoseMouth', 'จมูก / ริมฝีปาก / ในช่องปาก', true)
+        ].join(''),
+        signsName: 'biteHeadSigns',
+        signsNoneId: 'biteHeadSignsNoneCb',
+        signs: [
+          { value: 'large_laceration_tissue_defect', title: ['แผลฉีกขาดใหญ่', 'ลึกหรือเนื้อแหว่ง'], desc: 'ลึกถึงกะโหลก หรือชิ้นเนื้อหน้า/หู/ปากแหว่ง' },
+          { value: 'eye_injury_vision_loss', title: ['แผลถูกตาโดยตรง', 'ตาพร่า / มองไม่ชัด'], desc: 'หรือบวมจนลืมตาไม่ขึ้น' },
+          { value: 'saliva_splash_eye', title: ['น้ำลายสัตว์กระเด็น', 'หรือโดนเลียเข้าตา'] },
+          { value: 'head_trauma_loc_vomit', title: ['ศีรษะกระแทกร่วม', 'สลบ / อาเจียน'], desc: 'หรือปวดศีรษะรุนแรง' }
+        ]
+      })}
 
-        <div id="biteHeadSubGroup" class="hidden mt-3 pl-6 border-l-2 border-medical-200 space-y-3">
-          <span class="text-xs font-semibold text-slate-600 block">ระบุจุดย่อยและข้างที่มีแผล:</span>
-          <div class="space-y-2">
-            <!-- หนังศีรษะ -->
-            ${renderBitePart('biteHeadScalp', 'หนังศีรษะ / หน้าผาก / ท้ายทอย', true)}
-            <!-- ใบหน้า -->
-            ${renderBitePart('biteHeadFace', 'ใบหน้า / คิ้ว / แก้ม / คาง', true)}
-            <!-- ดวงตา -->
-            ${renderBitePart('biteHeadEye', 'ดวงตา / เปลือกตา')}
-            <!-- ใบหู -->
-            ${renderBitePart('biteHeadEar', 'ใบหู')}
-            <!-- จมูก/ปาก -->
-            ${renderBitePart('biteHeadNoseMouth', 'จมูก / ริมฝีปาก / ในช่องปาก', true)}
-          </div>
+      ${renderBiteRegionBox({
+        parentId: 'biteParentNeck',
+        subGroupId: 'biteNeckSubGroup',
+        title: ['2.2 บาดแผลที่ลำคอ'],
+        desc: 'คอด้านหน้า ด้านข้าง หรือต้นคอด้านหลัง',
+        partsHtml: [
+          renderBitePart('biteNeckFront', 'ลำคอด้านหน้า', true),
+          renderBitePart('biteNeckSide', 'ลำคอด้านข้าง'),
+          renderBitePart('biteNeckBack', 'ต้นคอด้านหลัง', true)
+        ].join(''),
+        signsName: 'biteNeckSigns',
+        signsNoneId: 'biteNeckSignsNoneCb',
+        signs: [
+          { value: 'deep_neck_wound_expanding_hematoma', title: ['ขย้ำลึกที่คอ', 'หรือก้อนบวมโตเร็ว'] },
+          { value: 'stridor_dysphagia_air_leak', title: ['หายใจ / กลืนลำบาก', 'เสียงแหบ / ลมออกคอ'] }
+        ]
+      })}
 
-          <!-- อาการสำคัญศีรษะ/ใบหน้า -->
-          <div class="pt-2 border-t border-slate-200">
-            <span class="text-xs font-semibold text-slate-700 block mb-1.5">อาการสำคัญที่พบร่วมด้วย:</span>
-            <div class="space-y-1.5">
-              <label class="flex items-start space-x-2 text-xs cursor-pointer text-slate-700">
-                <input type="checkbox" name="biteHeadSigns" value="large_laceration_tissue_defect" class="mt-0.5 text-medical-600 rounded">
-                <span>แผลฉีกขาดขนาดใหญ่ แผลลึกถึงกะโหลกศีรษะ หรือมีชิ้นเนื้อใบหน้า/ใบหู/ริมฝีปากแหว่งหายไป</span>
-              </label>
-              <label class="flex items-start space-x-2 text-xs cursor-pointer text-slate-700">
-                <input type="checkbox" name="biteHeadSigns" value="eye_injury_vision_loss" class="mt-0.5 text-medical-600 rounded">
-                <span>แผลถูกดวงตาโดยตรง ตาพร่ามัว มองไม่ชัด หรือลืมตาไม่ขึ้น</span>
-              </label>
-              <label class="flex items-start space-x-2 text-xs cursor-pointer text-slate-700">
-                <input type="checkbox" name="biteHeadSigns" value="saliva_splash_eye" class="mt-0.5 text-medical-600 rounded">
-                <span>โดนเลีย หรือน้ำลายสัตว์กระเด็นเข้าเยื่อบุตา</span>
-              </label>
-              <label class="flex items-start space-x-2 text-xs cursor-pointer text-slate-700">
-                <input type="checkbox" name="biteHeadSigns" value="head_trauma_loc_vomit" class="mt-0.5 text-medical-600 rounded">
-                <span>ศีรษะกระแทกพื้นร่วมด้วย มีอาการสลบ ปวดศีรษะรุนแรง หรืออาเจียน</span>
-              </label>
-            </div>
-          </div>
-        </div>
-      </div>
+      ${renderBiteRegionBox({
+        parentId: 'biteParentChest',
+        subGroupId: 'biteChestSubGroup',
+        title: ['2.3 หน้าอก', 'หรือหลังบน / สะบัก'],
+        desc: 'หน้าอก ราวนม แผ่นหลังช่วงบน หรือสะบัก',
+        partsHtml: [
+          renderBitePart('biteChestFront', 'หน้าอก / ราวนม', true),
+          renderBitePart('biteChestUpperBack', 'แผ่นหลังส่วนบน / สะบัก', true)
+        ].join(''),
+        signsName: 'biteChestSigns',
+        signsNoneId: 'biteChestSignsNoneCb',
+        signsCols: 'grid-cols-1',
+        signs: [
+          { value: 'deep_chest_mauling_dyspnea', title: ['แผลถูกขย้ำลึก', 'หอบเหนื่อย แน่นอก'] }
+        ]
+      })}
 
-      <!-- 2.2 ลำคอ -->
-      <div class="border border-slate-200 rounded-2xl p-4 bg-slate-50/50">
-        <label class="flex items-center space-x-2.5 cursor-pointer">
-          <input type="checkbox" id="biteParentNeck"
-            onchange="toggleBiteGroup('biteNeckSubGroup', this.checked)"
-            class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded">
-          <span class="text-xs sm:text-sm font-bold text-slate-900">2.2 บาดแผลที่ลำคอ</span>
-        </label>
+      ${renderBiteRegionBox({
+        parentId: 'biteParentAbdomen',
+        subGroupId: 'biteAbdomenSubGroup',
+        title: ['2.4 ช่องท้อง เอว', 'ก้น หรืออวัยวะเพศ'],
+        desc: 'หน้าท้อง สีข้าง บั้นเอว หลังล่าง สะโพก ก้น ขาหนีบ',
+        partsHtml: [
+          renderBitePart('biteAbdWall', 'หน้าท้อง', true),
+          renderBitePart('biteAbdFlank', 'สีข้าง / บั้นเอว'),
+          renderBitePart('biteAbdLowerBack', 'หลังส่วนล่าง', true),
+          renderBitePart('biteAbdGluteal', 'สะโพก / ก้น', true),
+          renderBitePart('biteAbdGenitalia', 'ขาหนีบ / อวัยวะเพศ', true)
+        ].join(''),
+        signsName: 'biteAbdomenSigns',
+        signsNoneId: 'biteAbdomenSignsNoneCb',
+        signs: [
+          { value: 'deep_abdominal_penetration', title: ['แผลกัด / ข่วนลึก', 'ฉีกขาดที่หน้าท้อง'] },
+          { value: 'genital_injury', title: ['บาดเจ็บ / มีแผล', 'บริเวณอวัยวะเพศ'] }
+        ]
+      })}
 
-        <div id="biteNeckSubGroup" class="hidden mt-3 pl-6 border-l-2 border-medical-200 space-y-3">
-          <span class="text-xs font-semibold text-slate-600 block">ระบุจุดย่อยและข้างที่มีแผล:</span>
-          <div class="space-y-2">
-            ${renderBitePart('biteNeckFront', 'ลำคอด้านหน้า', true)}
-            ${renderBitePart('biteNeckSide', 'ลำคอด้านข้าง')}
-            ${renderBitePart('biteNeckBack', 'ต้นคอด้านหลัง', true)}
-          </div>
+      ${renderBiteRegionBox({
+        parentId: 'biteParentUpperExtremity',
+        subGroupId: 'biteUpperExtSubGroup',
+        title: ['2.5 ไหล่ แขน ศอก', 'ข้อมือ หรือมือ/นิ้ว'],
+        desc: 'ต้นแขน ข้อศอก แขนท่อนล่าง ฝ่ามือ หรือนิ้วมือ',
+        partsHtml: [
+          renderBitePart('biteArmShoulder', 'หัวไหล่ / ต้นแขน'),
+          renderBitePart('biteArmElbow', 'ข้อศอก / แขนท่อนล่าง'),
+          renderBitePart('biteArmWrist', 'ข้อมือ / ฝ่ามือ / หลังมือ'),
+          renderBiteDigits('biteArmFingers', 'นิ้วมือ')
+        ].join(''),
+        signsName: 'biteUpperExtSigns',
+        signsNoneId: 'biteUpperExtSignsNoneCb',
+        signs: [
+          { value: 'finger_joint_swelling_cannot_flex_extend', title: ['บวมตามข้อนิ้วมือ', 'งอ / เหยียดไม่ได้'] },
+          { value: 'hand_numbness_loss_sensation', title: ['ชา ไร้ความรู้สึก', 'ฝ่ามือ / ปลายนิ้ว'] },
+          { value: 'tendon_bone_exposed_deformity', title: ['แผลลึกเห็นเอ็น', 'กระดูก / มือผิดรูป'] },
+          { value: 'digit_amputation', title: ['ชิ้นส่วนนิ้วมือ', 'ขาดออกจากกัน'] }
+        ]
+      })}
 
-          <div class="pt-2 border-t border-slate-200">
-            <span class="text-xs font-semibold text-slate-700 block mb-1.5">อาการสำคัญที่พบร่วมด้วย:</span>
-            <div class="space-y-1.5">
-              <label class="flex items-start space-x-2 text-xs cursor-pointer text-slate-700">
-                <input type="checkbox" name="biteNeckSigns" value="deep_neck_wound_expanding_hematoma" class="mt-0.5 text-medical-600 rounded">
-                <span>แผลถูกขย้ำลึกที่ลำคอ หรือมีก้อนเลือดบวมโตขึ้นอย่างรวดเร็วบริเวณคอ</span>
-              </label>
-              <label class="flex items-start space-x-2 text-xs cursor-pointer text-slate-700">
-                <input type="checkbox" name="biteNeckSigns" value="stridor_dysphagia_air_leak" class="mt-0.5 text-medical-600 rounded">
-                <span>หายใจลำบาก กลืนลำบาก เสียงแหบ หรือมีลม/ฟองอากาศปุดออกจากแผลที่คอ</span>
-              </label>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- 2.3 หน้าอก หรือแผ่นหลังส่วนบน/สะบัก -->
-      <div class="border border-slate-200 rounded-2xl p-4 bg-slate-50/50">
-        <label class="flex items-center space-x-2.5 cursor-pointer">
-          <input type="checkbox" id="biteParentChest"
-            onchange="toggleBiteGroup('biteChestSubGroup', this.checked)"
-            class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded">
-          <span class="text-xs sm:text-sm font-bold text-slate-900">2.3 บาดแผลที่หน้าอก หรือแผ่นหลังส่วนบน/สะบัก</span>
-        </label>
-
-        <div id="biteChestSubGroup" class="hidden mt-3 pl-6 border-l-2 border-medical-200 space-y-3">
-          <span class="text-xs font-semibold text-slate-600 block">ระบุจุดย่อยและข้างที่มีแผล:</span>
-          <div class="space-y-2">
-            ${renderBitePart('biteChestFront', 'หน้าอก / ราวนม', true)}
-            ${renderBitePart('biteChestUpperBack', 'แผ่นหลังส่วนบน / สะบัก', true)}
-          </div>
-
-          <div class="pt-2 border-t border-slate-200">
-            <span class="text-xs font-semibold text-slate-700 block mb-1.5">อาการสำคัญที่พบร่วมด้วย:</span>
-            <label class="flex items-start space-x-2 text-xs cursor-pointer text-slate-700">
-              <input type="checkbox" name="biteChestSigns" value="deep_chest_mauling_dyspnea" class="mt-0.5 text-medical-600 rounded">
-              <span>แผลถูกขย้ำลึก หรือหายใจหอบเหนื่อย แน่นหน้าอก</span>
-            </label>
-          </div>
-        </div>
-      </div>
-
-      <!-- 2.4 หน้าท้อง บั้นเอว หลังส่วนล่าง สะโพก หรืออวัยวะเพศ -->
-      <div class="border border-slate-200 rounded-2xl p-4 bg-slate-50/50">
-        <label class="flex items-center space-x-2.5 cursor-pointer">
-          <input type="checkbox" id="biteParentAbdomen"
-            onchange="toggleBiteGroup('biteAbdomenSubGroup', this.checked)"
-            class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded">
-          <span class="text-xs sm:text-sm font-bold text-slate-900">2.4 บาดแผลที่หน้าท้อง บั้นเอว หลังส่วนล่าง สะโพก หรืออวัยวะเพศ</span>
-        </label>
-
-        <div id="biteAbdomenSubGroup" class="hidden mt-3 pl-6 border-l-2 border-medical-200 space-y-3">
-          <span class="text-xs font-semibold text-slate-600 block">ระบุจุดย่อยและข้างที่มีแผล:</span>
-          <div class="space-y-2">
-            ${renderBitePart('biteAbdWall', 'หน้าท้อง', true)}
-            ${renderBitePart('biteAbdFlank', 'สีข้าง / บั้นเอว')}
-            ${renderBitePart('biteAbdLowerBack', 'หลังส่วนล่าง', true)}
-            ${renderBitePart('biteAbdGluteal', 'สะโพก / ก้น', true)}
-            ${renderBitePart('biteAbdGenitalia', 'ขาหนีบ / อวัยวะเพศ', true)}
-          </div>
-
-          <div class="pt-2 border-t border-slate-200">
-            <span class="text-xs font-semibold text-slate-700 block mb-1.5">อาการสำคัญที่พบร่วมด้วย:</span>
-            <div class="space-y-1.5">
-              <label class="flex items-start space-x-2 text-xs cursor-pointer text-slate-700">
-                <input type="checkbox" name="biteAbdomenSigns" value="deep_abdominal_penetration" class="mt-0.5 text-medical-600 rounded">
-                <span>แผลถูกกัดหรือข่วนฉีกขาดลึกที่หน้าท้อง</span>
-              </label>
-              <label class="flex items-start space-x-2 text-xs cursor-pointer text-slate-700">
-                <input type="checkbox" name="biteAbdomenSigns" value="genital_injury" class="mt-0.5 text-medical-600 rounded">
-                <span>บาดเจ็บหรือมีบาดแผลบริเวณอวัยวะเพศ</span>
-              </label>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- 2.5 ไหล่ แขน ข้อศอก ข้อมือ หรือมือ/นิ้วมือ -->
-      <div class="border border-slate-200 rounded-2xl p-4 bg-slate-50/50">
-        <label class="flex items-center space-x-2.5 cursor-pointer">
-          <input type="checkbox" id="biteParentUpperExtremity"
-            onchange="toggleBiteGroup('biteUpperExtSubGroup', this.checked)"
-            class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded">
-          <span class="text-xs sm:text-sm font-bold text-slate-900">2.5 บาดแผลที่ไหล่ แขน ข้อศอก ข้อมือ หรือมือ/นิ้วมือ</span>
-        </label>
-
-        <div id="biteUpperExtSubGroup" class="hidden mt-3 pl-6 border-l-2 border-medical-200 space-y-3">
-          <span class="text-xs font-semibold text-slate-600 block">ระบุจุดย่อยและข้างที่มีแผล:</span>
-          <div class="space-y-2">
-            ${renderBitePart('biteArmShoulder', 'หัวไหล่ / ต้นแขน')}
-            ${renderBitePart('biteArmElbow', 'ข้อศอก / แขนท่อนล่าง')}
-            ${renderBitePart('biteArmWrist', 'ข้อมือ / ฝ่ามือ / หลังมือ')}
-            ${renderBiteDigits('biteArmFingers', 'นิ้วมือ')}
-          </div>
-
-          <div class="pt-2 border-t border-slate-200">
-            <span class="text-xs font-semibold text-slate-700 block mb-1.5">อาการสำคัญที่พบร่วมด้วย:</span>
-            <div class="space-y-1.5">
-              <label class="flex items-start space-x-2 text-xs cursor-pointer text-slate-700">
-                <input type="checkbox" name="biteUpperExtSigns" value="finger_joint_swelling_cannot_flex_extend" class="mt-0.5 text-medical-600 rounded">
-                <span>ปวดบวมมากตามแนวข้อนิ้วมือ หรือขยับงอ/เหยียดนิ้วมือและข้อมือไม่ได้ตามปกติ</span>
-              </label>
-              <label class="flex items-start space-x-2 text-xs cursor-pointer text-slate-700">
-                <input type="checkbox" name="biteUpperExtSigns" value="hand_numbness_loss_sensation" class="mt-0.5 text-medical-600 rounded">
-                <span>มีอาการชา หรือไร้ความรู้สึกที่ฝ่ามือหรือปลายนิ้วมือ</span>
-              </label>
-              <label class="flex items-start space-x-2 text-xs cursor-pointer text-slate-700">
-                <input type="checkbox" name="biteUpperExtSigns" value="tendon_bone_exposed_deformity" class="mt-0.5 text-medical-600 rounded">
-                <span>แผลฉีกขาดลึกจนมองเห็นเส้นเอ็นหรือกระดูกโผล่ หรือแขน/มือผิดรูป</span>
-              </label>
-              <label class="flex items-start space-x-2 text-xs cursor-pointer text-slate-700">
-                <input type="checkbox" name="biteUpperExtSigns" value="digit_amputation" class="mt-0.5 text-medical-600 rounded">
-                <span>มีชิ้นส่วนของนิ้วมือขาดออกจากกัน</span>
-              </label>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- 2.6 ต้นขา เข่า หน้าแข้ง น่อง ข้อเท้า หรือเท้า/นิ้วเท้า -->
-      <div class="border border-slate-200 rounded-2xl p-4 bg-slate-50/50">
-        <label class="flex items-center space-x-2.5 cursor-pointer">
-          <input type="checkbox" id="biteParentLowerExtremity"
-            onchange="toggleBiteGroup('biteLowerExtSubGroup', this.checked)"
-            class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded">
-          <span class="text-xs sm:text-sm font-bold text-slate-900">2.6 บาดแผลที่ต้นขา เข่า หน้าแข้ง น่อง ข้อเท้า หรือเท้า/นิ้วเท้า</span>
-        </label>
-
-        <div id="biteLowerExtSubGroup" class="hidden mt-3 pl-6 border-l-2 border-medical-200 space-y-3">
-          <span class="text-xs font-semibold text-slate-600 block">ระบุจุดย่อยและข้างที่มีแผล:</span>
-          <div class="space-y-2">
-            ${renderBitePart('biteLegThigh', 'ต้นขา')}
-            ${renderBitePart('biteLegKneeShin', 'เข่า / หน้าแข้ง / น่อง')}
-            ${renderBitePart('biteLegAnkleFoot', 'ข้อเท้า / ฝ่าเท้า / หลังเท้า / ส้นเท้า')}
-            ${renderBiteDigits('biteLegToes', 'นิ้วเท้า')}
-          </div>
-
-          <div class="pt-2 border-t border-slate-200">
-            <span class="text-xs font-semibold text-slate-700 block mb-1.5">อาการสำคัญที่พบร่วมด้วย:</span>
-            <div class="space-y-1.5">
-              <label class="flex items-start space-x-2 text-xs cursor-pointer text-slate-700">
-                <input type="checkbox" name="biteLowerExtSigns" value="cannot_bear_weight_ankle_toe_deficit" class="mt-0.5 text-medical-600 rounded">
-                <span>ปวดมากจนเดินลงน้ำหนักไม่ได้ หรือกระดกข้อเท้า/ขยับนิ้วเท้าไม่ได้</span>
-              </label>
-              <label class="flex items-start space-x-2 text-xs cursor-pointer text-slate-700">
-                <input type="checkbox" name="biteLowerExtSigns" value="foot_numbness" class="mt-0.5 text-medical-600 rounded">
-                <span>มีอาการชาที่เท้าหรือปลายนิ้วเท้า</span>
-              </label>
-              <label class="flex items-start space-x-2 text-xs cursor-pointer text-slate-700">
-                <input type="checkbox" name="biteLowerExtSigns" value="leg_tendon_bone_exposed_deformity" class="mt-0.5 text-medical-600 rounded">
-                <span>แผลฉีกขาดลึกจนมองเห็นเส้นเอ็นหรือกระดูกโผล่ หรือขา/ข้อเท้าผิดรูป</span>
-              </label>
-            </div>
-          </div>
-        </div>
-      </div>
+      ${renderBiteRegionBox({
+        parentId: 'biteParentLowerExtremity',
+        subGroupId: 'biteLowerExtSubGroup',
+        title: ['2.6 ต้นขา เข่า', 'ข้อเท้า หรือเท้า'],
+        desc: 'ต้นขา เข่า หน้าแข้ง น่อง ข้อเท้า ฝ่าเท้า หรือนิ้วเท้า',
+        partsHtml: [
+          renderBitePart('biteLegThigh', 'ต้นขา'),
+          renderBitePart('biteLegKneeShin', 'เข่า / หน้าแข้ง / น่อง'),
+          renderBitePart('biteLegAnkleFoot', 'ข้อเท้า / ฝ่าเท้า / หลังเท้า / ส้นเท้า'),
+          renderBiteDigits('biteLegToes', 'นิ้วเท้า')
+        ].join(''),
+        signsName: 'biteLowerExtSigns',
+        signsNoneId: 'biteLowerExtSignsNoneCb',
+        signsCols: 'grid-cols-1 sm:grid-cols-3',
+        signs: [
+          { value: 'cannot_bear_weight_ankle_toe_deficit', title: ['เดินลงน้ำหนักไม่ได้', 'ขยับเท้าไม่ได้'] },
+          { value: 'foot_numbness', title: ['มีอาการชา', 'ที่เท้า / ปลายนิ้ว'] },
+          { value: 'leg_tendon_bone_exposed_deformity', title: ['แผลลึกเห็นเอ็น', 'กระดูก / ขาผิดรูป'] }
+        ]
+      })}
 
       <!-- 2.7 บาดแผลที่ตำแหน่งอื่นๆ (พิมพ์ระบุ) -->
-      <div class="border border-slate-200 rounded-2xl p-4 bg-slate-50/50">
-        <label class="flex items-center space-x-2.5 cursor-pointer">
+      <div class="border border-slate-200 rounded-2xl p-3.5 bg-slate-50/50">
+        <label class="selectable-card flex items-center cursor-pointer">
           <input type="checkbox" id="biteParentOther"
             onchange="toggleBiteGroup('biteOtherSubGroup', this.checked)"
-            class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded">
-          <span class="text-xs sm:text-sm font-bold text-slate-900">2.7 บาดแผลที่ตำแหน่งอื่นๆ (พิมพ์ระบุ)</span>
+            class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
+          <span class="ml-3 text-xs sm:text-sm font-bold text-slate-900">2.7 บาดแผลที่ตำแหน่งอื่นๆ (พิมพ์ระบุ)</span>
         </label>
         <div id="biteOtherSubGroup" class="hidden mt-3 pl-6 border-l-2 border-medical-200 space-y-2">
           <label class="text-xs font-semibold text-slate-600 block">ระบุตำแหน่งบาดแผลเพิ่มเติม:</label>
-          <input type="text" id="biteOtherLocationDetail" placeholder="เช่น บริเวณรักแร้, ซอกคอ, ก้นกบ..."
+          <input type="text" id="biteOtherLocationDetail" placeholder="เช่น รักแร้, ซอกคอ, ก้นกบ..."
             class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-medical-500">
         </div>
       </div>
 
       <!-- 2.8 อาการอักเสบติดเชื้อบริเวณบาดแผล -->
-      <div class="mt-4 pt-3 border-t border-slate-100">
-        <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
-          2.8 อาการอักเสบติดเชื้อบริเวณบาดแผลในขณะนี้ (เลือกได้หลายข้อ):
-        </label>
-        <div class="space-y-2">
-          <label class="selectable-card gap-2.5 flex items-start p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-            <input type="checkbox" name="biteInfectionSigns" value="erythema_edema_throbbing_pain"
-              class="text-medical-600 focus:ring-medical-500 mt-0.5 h-4 w-4 rounded flex-shrink-0">
-            <span class="text-xs sm:text-sm text-slate-800">รอบแผลบวม แดง ร้อน หรือปวดตุบๆ เพิ่มมากขึ้นเรื่อยๆ</span>
-          </label>
-          <label class="selectable-card gap-2.5 flex items-start p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-            <input type="checkbox" name="biteInfectionSigns" value="pus_purulent_discharge"
-              class="text-medical-600 focus:ring-medical-500 mt-0.5 h-4 w-4 rounded flex-shrink-0">
-            <span class="text-xs sm:text-sm text-slate-800">มีหนอง หรือน้ำเหลืองขุ่นมีกลิ่นเหม็นไหลซึมออกจากแผล</span>
-          </label>
-          <label class="selectable-card gap-2.5 flex items-start p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-            <input type="checkbox" name="biteInfectionSigns" value="lymphangitis_lymphadenopathy"
-              class="text-medical-600 focus:ring-medical-500 mt-0.5 h-4 w-4 rounded flex-shrink-0">
-            <span class="text-xs sm:text-sm text-slate-800">มีรอยแดงลามตามเส้นเลือดจากแผลขึ้นไปตามแขนหรือขา หรือมีก้อนนูนบวมเจ็บที่รักแร้/ขาหนีบ</span>
-          </label>
-          <label class="selectable-card gap-2.5 flex items-start p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-            <input type="checkbox" name="biteInfectionSigns" value="no_local_infection"
-              class="text-medical-600 focus:ring-medical-500 mt-0.5 h-4 w-4 rounded flex-shrink-0">
-            <span class="text-xs sm:text-sm text-slate-800">ไม่มีอาการบวมแดงร้อนหรือหนอง</span>
-          </label>
-        </div>
+      <div class="p-3.5 bg-slate-50 rounded-xl border border-slate-200">
+        ${renderBiteSysHeader({
+          label: '2.8 อาการอักเสบติดเชื้อบริเวณบาดแผล (เลือกได้หลายข้อ)',
+          icon: 'flame',
+          colorClass: 'bg-amber-100 text-amber-700',
+          toggleId: 'biteInfectionNoneCb',
+          toggleName: 'biteInfectionSigns',
+          toggleValue: 'no_local_infection',
+          toggleLabel: 'ไม่มีอาการในหมวดนี้',
+          toggleOnchange: "handleBiteGroupNoneToggle(this, 'biteInfectionSigns')"
+        })}
+        ${renderBiteGrid('grid-cols-1 sm:grid-cols-3', [
+          {
+            name: 'biteInfectionSigns',
+            value: 'erythema_edema_throbbing_pain',
+            title: ['รอบแผลบวมแดงร้อน', 'ปวดตุบๆ เพิ่มขึ้น'],
+            onchange: "handleBiteGroupItemChange(this, 'biteInfectionNoneCb')",
+            compact: true
+          },
+          {
+            name: 'biteInfectionSigns',
+            value: 'pus_purulent_discharge',
+            title: ['มีหนอง / น้ำเหลือง', 'ขุ่นมีกลิ่นเหม็นซึม'],
+            onchange: "handleBiteGroupItemChange(this, 'biteInfectionNoneCb')",
+            compact: true
+          },
+          {
+            name: 'biteInfectionSigns',
+            value: 'lymphangitis_lymphadenopathy',
+            title: ['รอยแดงลาม', 'ตามแนวเส้นเลือด /', 'ก้อนบวมเจ็บขาหนีบ', '/ รักแร้'],
+            onchange: "handleBiteGroupItemChange(this, 'biteInfectionNoneCb')",
+            compact: true
+          }
+        ])}
       </div>
     </div>
   </div>
 
   <!-- CARD 3: อาการผิดปกติของร่างกาย และระดับความปวด -->
-  <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
-    <div class="flex items-center space-x-3 mb-4 pb-3 border-b border-slate-100">
+  <div class="bg-white rounded-2xl p-5 sm:p-6 shadow-sm border border-slate-200 space-y-5">
+    <div class="flex items-center space-x-3 pb-3 border-b border-slate-100">
       <div class="bg-medical-100 text-medical-700 p-2 rounded-xl">
         <i data-lucide="activity" class="w-5 h-5"></i>
       </div>
       <div>
         <h2 class="text-base font-bold text-slate-900">3. อาการผิดปกติของร่างกาย และระดับความปวด</h2>
-        <p class="text-xs text-slate-500">ประเมินภาวะไข้ การติดเชื้อในกระแสเลือด และระดับความปวดบริเวณแผล</p>
+        <p class="text-xs text-slate-500">ประเมินภาวะไข้ ติดเชื้อในกระแสเลือด และระดับความปวดบริเวณแผล</p>
       </div>
     </div>
 
     <!-- 3.1 อาการผิดปกติทางระบบร่างกาย -->
-    <div class="mb-5">
-      <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
-        3.1 อาการผิดปกติของร่างกายที่พบร่วมด้วยในขณะนี้ (เลือกได้หลายข้อ):
-      </label>
-      <div class="space-y-2">
-        <label class="selectable-card gap-2.5 flex items-start p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-          <input type="checkbox" name="biteSystemicSigns" value="fever_chills"
-            class="text-medical-600 focus:ring-medical-500 mt-0.5 h-4 w-4 rounded flex-shrink-0">
-          <span class="text-xs sm:text-sm text-slate-800">มีไข้ หนาวสั่น หรือครั่นเนื้อครั่นตัว</span>
-        </label>
-        <label class="selectable-card gap-2.5 flex items-start p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-          <input type="checkbox" name="biteSystemicSigns" value="dizziness_presyncope_shock"
-            class="text-medical-600 focus:ring-medical-500 mt-0.5 h-4 w-4 rounded flex-shrink-0">
-          <span class="text-xs sm:text-sm text-slate-800">หน้ามืด เวียนศีรษะ วูบ หรือใจสั่นเหงื่อแตกตัวเย็น</span>
-        </label>
-        <label class="selectable-card gap-2.5 flex items-start p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-          <input type="checkbox" name="biteSystemicSigns" value="hydrophobia_aerophobia_agitation"
-            class="text-medical-600 focus:ring-medical-500 mt-0.5 h-4 w-4 rounded flex-shrink-0">
-          <span class="text-xs sm:text-sm text-slate-800">มีอาการกลืนน้ำลำบาก กลัวน้ำ กลัวลม หรือกระสับกระส่ายผิดปกติ</span>
-        </label>
-        <label class="selectable-card gap-2.5 flex items-start p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-          <input type="checkbox" name="biteSystemicSigns" value="no_systemic_signs"
-            class="text-medical-600 focus:ring-medical-500 mt-0.5 h-4 w-4 rounded flex-shrink-0">
-          <span class="text-xs sm:text-sm text-slate-800">ไม่มีอาการผิดปกติของร่างกายดังกล่าว</span>
-        </label>
-      </div>
+    <div class="p-3.5 bg-slate-50 rounded-xl border border-slate-200">
+      ${renderBiteSysHeader({
+        label: '3.1 อาการผิดปกติของร่างกายที่พบร่วม (เลือกได้หลายข้อ)',
+        icon: 'shield-alert',
+        colorClass: 'bg-rose-100 text-rose-700',
+        toggleId: 'biteSystemicNoneCb',
+        toggleName: 'biteSystemicSigns',
+        toggleValue: 'no_systemic_signs',
+        toggleLabel: 'ไม่มีอาการในหมวดนี้',
+        toggleOnchange: "handleBiteGroupNoneToggle(this, 'biteSystemicSigns')"
+      })}
+      ${renderBiteGrid('grid-cols-1 sm:grid-cols-3', [
+        {
+          name: 'biteSystemicSigns',
+          value: 'fever_chills',
+          title: ['มีไข้ หนาวสั่น', 'ครั่นเนื้อครั่นตัว'],
+          onchange: "handleBiteGroupItemChange(this, 'biteSystemicNoneCb')",
+          compact: true
+        },
+        {
+          name: 'biteSystemicSigns',
+          value: 'dizziness_presyncope_shock',
+          title: ['หน้ามืด เวียนหัว', 'ใจสั่น เหงื่อแตก'],
+          onchange: "handleBiteGroupItemChange(this, 'biteSystemicNoneCb')",
+          compact: true
+        },
+        {
+          name: 'biteSystemicSigns',
+          value: 'hydrophobia_aerophobia_agitation',
+          title: ['กลืนน้ำลำบาก', 'กลัวน้ำ กลัวลม'],
+          desc: 'หรือกระสับกระส่ายผิดปกติ',
+          onchange: "handleBiteGroupItemChange(this, 'biteSystemicNoneCb')",
+          compact: true
+        }
+      ])}
     </div>
 
     <!-- 3.2 ระดับความปวดบริเวณบาดแผล -->
-    <div>
-      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-2">
-        <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider">
-          3.2 ระดับความปวดบริเวณบาดแผลในขณะนี้ (Pain Score 0–10):
-        </label>
+    <div class="bg-slate-50/80 border border-slate-200 rounded-2xl p-4 sm:p-5 space-y-3">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+        <label class="block text-xs font-semibold text-slate-800 uppercase tracking-wider">3.2 ระดับความปวดบริเวณบาดแผลในขณะนี้ (0 – 10)</label>
         <div class="flex items-center space-x-2">
           <span id="bitePainScoreBadge" class="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-600 border border-slate-300 self-start sm:self-auto transition-all">
             <span id="bitePainScoreEmoji" class="text-base">⚪</span>
             <span id="bitePainScoreText">ยังไม่ได้ระบุ (แตะแถบเพื่อระบุ)</span>
           </span>
-          <button type="button" id="bitePainScoreClearBtn" onclick="clearBitePainScore()" class="hidden text-xs text-slate-400 hover:text-slate-600 underline">ล้างค่า</button>
+          <button type="button" id="bitePainScoreClearBtn" onclick="clearBitePainScore()" class="text-xs text-slate-400 hover:text-rose-600 underline hidden transition" title="ล้างค่าเพื่อให้เป็นไม่ได้ระบุ">ล้างค่า</button>
         </div>
       </div>
-      <div class="pt-2 px-1">
-        <input type="range" id="bitePainScore" min="0" max="10" value="0"
-          oninput="handleBitePainScoreChange(this.value)"
-          class="w-full h-2.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-medical-600">
-        <div class="flex justify-between text-[11px] text-slate-400 mt-1 font-medium">
-          <span>0 ไม่ปวดเลย</span>
-          <span>5 ปวดปานกลาง</span>
-          <span>10 ปวดมากที่สุด</span>
-        </div>
+      <div class="px-1 pt-1"><input type="range" id="bitePainScore" min="0" max="10" value="0" step="1" oninput="handleBitePainScoreChange(this.value)" class="w-full h-2.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-medical-600 focus:outline-none focus:ring-2 focus:ring-medical-500"></div>
+      <div class="grid grid-cols-5 text-center text-[10px] sm:text-[11px] pt-1 gap-1 text-slate-500 font-medium">
+        <div class="cursor-pointer hover:text-medical-600 transition" onclick="setBitePainScore(0)"><span class="text-lg sm:text-xl block">😊</span><span>0: สบายดี</span></div>
+        <div class="cursor-pointer hover:text-medical-600 transition" onclick="setBitePainScore(2)"><span class="text-lg sm:text-xl block">🙂</span><span>1–3: เล็กน้อย</span></div>
+        <div class="cursor-pointer hover:text-medical-600 transition" onclick="setBitePainScore(5)"><span class="text-lg sm:text-xl block">😐</span><span>4–6: ปานกลาง</span></div>
+        <div class="cursor-pointer hover:text-medical-600 transition" onclick="setBitePainScore(8)"><span class="text-lg sm:text-xl block">😣</span><span>7–9: ปวดมาก</span></div>
+        <div class="cursor-pointer hover:text-medical-600 transition" onclick="setBitePainScore(10)"><span class="text-lg sm:text-xl block">😭</span><span>10: ปวดที่สุด</span></div>
       </div>
     </div>
   </div>
 
-  <!-- CARD 4: ประวัติวัคซีนพิษสุนัขบ้า และวัคซีนป้องกันโรคบาดทะยัก -->
-  <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
-    <div class="flex items-center space-x-3 mb-4 pb-3 border-b border-slate-100">
+  <!-- CARD 4: ประวัติวัคซีนพิษสุนัขบ้า วัคซีนบาดทะยัก และข้อมูลสตรี -->
+  <div class="bg-white rounded-2xl p-5 sm:p-6 shadow-sm border border-slate-200 space-y-5">
+    <div class="flex items-center space-x-3 pb-3 border-b border-slate-100">
       <div class="bg-medical-100 text-medical-700 p-2 rounded-xl">
         <i data-lucide="shield-plus" class="w-5 h-5"></i>
       </div>
       <div>
         <h2 class="text-base font-bold text-slate-900">4. ประวัติวัคซีนพิษสุนัขบ้า และวัคซีนป้องกันโรคบาดทะยัก</h2>
-        <p class="text-xs text-slate-500">ข้อมูลประวัติวัคซีนเดิมในตัวผู้ป่วย เพื่อวางแผนการฉีดวัคซีนและเซรุ่ม RIG</p>
+        <p class="text-xs text-slate-500">ข้อมูลประวัติวัคซีนเดิมในตัวผู้ป่วย เพื่อวางแผนการฉีดวัคซีนและเซรุ่มป้องกันโรค</p>
       </div>
     </div>
 
     <!-- 4.1 ประวัติวัคซีนพิษสุนัขบ้า -->
-    <div class="mb-5">
-      <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
-        4.1 ประวัติการฉีดวัคซีนป้องกันโรคพิษสุนัขบ้าในตัวผู้ป่วยเอง:
+    <div>
+      <label class="block text-xs font-semibold text-slate-800 mb-2">
+        4.1 ประวัติวัคซีนป้องกันโรคพิษสุนัขบ้าในตัวผู้ป่วยเอง
       </label>
-      <div class="space-y-2">
-        <label class="selectable-card gap-2.5 flex items-start p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-          <input type="radio" name="biteRabiesVaccineHx" value="naive_or_incomplete"
-            class="text-medical-600 focus:ring-medical-500 mt-0.5 h-4 w-4">
-          <span class="text-xs sm:text-sm text-slate-800">ไม่เคยฉีดวัคซีนพิษสุนัขบ้ามาก่อนเลย หรือเคยฉีดไม่ครบ (< 3 เข็ม)</span>
-        </label>
-        <label class="selectable-card gap-2.5 flex items-start p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-          <input type="radio" name="biteRabiesVaccineHx" value="completed_last_within_3m"
-            class="text-medical-600 focus:ring-medical-500 mt-0.5 h-4 w-4">
-          <span class="text-xs sm:text-sm text-slate-800">เคยฉีดวัคซีนพิษสุนัขบ้าครบคอร์ส (>= 3 เข็ม) โดยเข็มสุดท้าย หรือได้รับวัคซีนกระตุ้นมา ไม่เกิน 3 เดือน</span>
-        </label>
-        <label class="selectable-card gap-2.5 flex items-start p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-          <input type="radio" name="biteRabiesVaccineHx" value="completed_last_3_to_6m"
-            class="text-medical-600 focus:ring-medical-500 mt-0.5 h-4 w-4">
-          <span class="text-xs sm:text-sm text-slate-800">เคยฉีดวัคซีนพิษสุนัขบ้าครบคอร์ส (>= 3 เข็ม) โดยเข็มสุดท้าย หรือได้รับวัคซีนกระตุ้นมา ในช่วง 3 – 6 เดือน</span>
-        </label>
-        <label class="selectable-card gap-2.5 flex items-start p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-          <input type="radio" name="biteRabiesVaccineHx" value="completed_last_over_6m"
-            class="text-medical-600 focus:ring-medical-500 mt-0.5 h-4 w-4">
-          <span class="text-xs sm:text-sm text-slate-800">เคยฉีดวัคซีนพิษสุนัขบ้าครบคอร์ส (>= 3 เข็ม) โดยเข็มสุดท้าย หรือได้รับวัคซีนกระตุ้นมา นานเกิน 6 เดือนแล้ว</span>
-        </label>
-        <label class="selectable-card gap-2.5 flex items-start p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-          <input type="radio" name="biteRabiesVaccineHx" value="unknown_or_unsure"
-            class="text-medical-600 focus:ring-medical-500 mt-0.5 h-4 w-4">
-          <span class="text-xs sm:text-sm text-slate-800">จำประวัติการฉีดวัคซีนพิษสุนัขบ้าไม่ได้ / ไม่แน่ใจ</span>
-        </label>
-      </div>
+      ${renderBiteGrid('grid-cols-1 sm:grid-cols-2', [
+        {
+          kind: 'radio',
+          name: 'biteRabiesVaccineHx',
+          value: 'naive_or_incomplete',
+          title: ['ไม่เคยฉีดวัคซีน', '/ ฉีดไม่ครบ 3 เข็ม'],
+          desc: 'ไม่เคยฉีดพิษสุนัขบ้ามาก่อนเลย หรือฉีดไม่ครบ (< 3 เข็ม)',
+          compact: true
+        },
+        {
+          kind: 'radio',
+          name: 'biteRabiesVaccineHx',
+          value: 'completed_last_within_3m',
+          title: ['ฉีดครบ (>= 3 เข็ม)', 'ไม่เกิน 3 เดือนก่อน'],
+          desc: 'เคยฉีดครบคอร์ส และเข็มสุดท้ายหรือกระตุ้น <= 3 เดือน',
+          compact: true
+        },
+        {
+          kind: 'radio',
+          name: 'biteRabiesVaccineHx',
+          value: 'completed_last_3_to_6m',
+          title: ['ฉีดครบ (>= 3 เข็ม)', 'ช่วง 3–6 เดือนก่อน'],
+          desc: 'เคยฉีดครบคอร์ส และเข็มสุดท้ายหรือกระตุ้นในช่วง 3–6 เดือน',
+          compact: true
+        },
+        {
+          kind: 'radio',
+          name: 'biteRabiesVaccineHx',
+          value: 'completed_last_over_6m',
+          title: ['ฉีดครบ (>= 3 เข็ม)', 'นานเกิน 6 เดือนแล้ว'],
+          desc: 'เคยฉีดครบคอร์ส แต่เข็มสุดท้ายหรือกระตุ้นนานเกิน 6 เดือน',
+          compact: true
+        },
+        {
+          kind: 'radio',
+          name: 'biteRabiesVaccineHx',
+          value: 'unknown_or_unsure',
+          title: ['จำประวัติไม่ได้', '/ ไม่แน่ใจ'],
+          desc: 'ไม่แน่ใจจำนวนเข็มหรือวันที่ฉีดครั้งล่าสุด',
+          colSpan2: true,
+          compact: true
+        }
+      ])}
     </div>
 
-    <!-- 4.2 ประวัติการได้รับวัคซีนป้องกันบาดทะยัก -->
-    <div class="space-y-2 pt-3 border-t border-slate-100">
-      <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
-        4.2 ประวัติการได้รับวัคซีนป้องกันบาดทะยัก (Tetanus Vaccine)
+    <!-- 4.2 ประวัติการได้รับวัคซีนป้องกันบาดทะยัก (Locked Tetanus Standard) -->
+    <div class="pt-3 border-t border-slate-100">
+      <label class="block text-xs sm:text-sm font-semibold text-slate-800 mb-2">
+        4.2 ประวัติการได้รับวัคซีนป้องกันบาดทะยัก
       </label>
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-        <label class="selectable-card flex items-start p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-          <input type="radio" name="biteTetanusHx" value="within_5_years" class="mt-0.5 text-medical-600 focus:ring-medical-500 h-4 w-4">
-          <div class="ml-3"><span class="block text-xs sm:text-sm font-semibold text-slate-800">เคยฉีดเข็มกระตุ้นภายใน 5 ปีที่ผ่านมา</span><span class="block text-[11px] text-slate-500 font-normal mt-0.5">เคยฉีดครบ (3 เข็ม) มาก่อน และเข็มสุดท้ายหรือเข็มกระตุ้น &lt; 5 ปี</span></div>
-        </label>
-        <label class="selectable-card flex items-start p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-          <input type="radio" name="biteTetanusHx" value="5_to_10_years" class="mt-0.5 text-medical-600 focus:ring-medical-500 h-4 w-4">
-          <div class="ml-3"><span class="block text-xs sm:text-sm font-semibold text-slate-800">เคยฉีดในช่วง 5 ถึง 10 ปีที่ผ่านมา</span><span class="block text-[11px] text-slate-500 font-normal mt-0.5">เคยฉีดครบ (3 เข็ม) มาก่อน และเข็มสุดท้ายหรือเข็มกระตุ้นห่างมาแล้ว 5–10 ปี</span></div>
-        </label>
-        <label class="selectable-card flex items-start p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-          <input type="radio" name="biteTetanusHx" value="more_than_10_years" class="mt-0.5 text-medical-600 focus:ring-medical-500 h-4 w-4">
-          <div class="ml-3"><span class="block text-xs sm:text-sm font-semibold text-slate-800">เคยฉีดครบ แต่เกิน 10 ปีแล้ว</span><span class="block text-[11px] text-slate-500 font-normal mt-0.5">เคยฉีดครบ (3 เข็ม) มาก่อน แต่เข็มสุดท้ายมานานเกิน 10 ปีแล้ว</span></div>
-        </label>
-        <label class="selectable-card flex items-start p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-          <input type="radio" name="biteTetanusHx" value="never_or_unsure" class="mt-0.5 text-medical-600 focus:ring-medical-500 h-4 w-4">
-          <div class="ml-3"><span class="block text-xs sm:text-sm font-semibold text-slate-800">ไม่เคยฉีด หรือจำประวัติไม่ได้</span><span class="block text-[11px] text-slate-500 font-normal mt-0.5">ไม่เคยฉีด เคยฉีดไม่ครบ 3 เข็ม หรือจำประวัติไม่ได้</span></div>
-        </label>
-      </div>
+      ${renderBiteGrid('grid-cols-1 sm:grid-cols-2', [
+        {
+          kind: 'radio',
+          name: 'biteTetanusHx',
+          value: 'within_5_years',
+          title: ['ฉีดกระตุ้น', 'ภายใน 5 ปี'],
+          desc: 'เคยฉีดครบ (3 เข็ม) มาก่อน และเข็มสุดท้ายหรือกระตุ้นไม่เกิน 5 ปี',
+          compact: true
+        },
+        {
+          kind: 'radio',
+          name: 'biteTetanusHx',
+          value: '5_to_10_years',
+          title: ['ฉีดล่าสุด', '5–10 ปีก่อน'],
+          desc: 'เคยฉีดครบ (3 เข็ม) มาก่อน และเข็มสุดท้ายหรือกระตุ้นอยู่ในช่วง 5–10 ปี',
+          compact: true
+        },
+        {
+          kind: 'radio',
+          name: 'biteTetanusHx',
+          value: 'more_than_10_years',
+          title: ['ฉีดครบ', 'เกิน 10 ปีแล้ว'],
+          desc: 'เคยฉีดครบ (3 เข็ม) มาก่อน แต่เข็มสุดท้ายนานเกิน 10 ปีแล้ว',
+          compact: true
+        },
+        {
+          kind: 'radio',
+          name: 'biteTetanusHx',
+          value: 'never_or_unsure',
+          title: ['ไม่เคยฉีด', '/ จำไม่ได้'],
+          desc: 'ไม่เคยได้รับวัคซีนบาดทะยัก ฉีดไม่ครบ 3 เข็ม หรือไม่ทราบประวัติ',
+          compact: true
+        }
+      ])}
     </div>
 
     <!-- 4.3 ส่วนเฉพาะผู้ป่วยสตรี (Hidden by default - C-AP13) -->
-    <div id="biteFemaleSection" class="hidden pt-3 border-t border-slate-100 space-y-3">
-      <div class="flex items-center space-x-2">
-        <span class="px-2 py-0.5 text-[10px] font-bold bg-pink-100 text-pink-700 rounded-md">เฉพาะสตรี</span>
-        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider">4.3 ประจำเดือนและการตั้งครรภ์ (LMP &amp; Pregnancy)</label>
-      </div>
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-pink-50/50 p-3.5 rounded-xl border border-pink-200">
-        <div class="min-w-0">
-          <span class="block text-xs font-semibold text-slate-700 mb-1">วันแรกของประจำเดือนครั้งสุดท้าย (LMP):</span>
-          <input type="text" id="biteLmpDate" data-universal-date="true" placeholder="วว/ดด/ปปปป เช่น 28/10/2026" class="w-full min-w-0 text-xs sm:text-sm border-slate-300 rounded-lg p-2 focus:ring-medical-500 focus:border-medical-500 bg-white">
-        </div>
-        <div class="min-w-0">
-          <span class="block text-xs font-semibold text-slate-700 mb-1">สถานะการตั้งครรภ์:</span>
-          <select id="bitePregnancyStatus" class="w-full min-w-0 text-xs sm:text-sm border-slate-300 rounded-lg p-2 focus:ring-medical-500 focus:border-medical-500 bg-white">
-            <option value="">-- ไม่ระบุ --</option>
-            <option value="not_pregnant">ไม่ได้ตั้งครรภ์ / ประจำเดือนมาปกติ</option>
-            <option value="suspected_or_missed">ขาดประจำเดือน / สงสัยอาจตั้งครรภ์</option>
-            <option value="confirmed_pregnant">ได้รับการยืนยันว่ากำลังตั้งครรภ์</option>
-            <option value="menopause_or_hysterectomy">วัยหมดประจำเดือน / ผ่าตัดมดลูกแล้ว</option>
-            <option value="unknown">ไม่ทราบ</option>
-          </select>
+    <div id="biteFemaleSection" class="hidden pt-3 border-t border-slate-100">
+      <div class="p-3.5 bg-pink-50/40 rounded-xl border border-pink-100 space-y-3">
+        ${renderBiteSysHeader({
+          label: '4.3 ประจำเดือนและการตั้งครรภ์ (เฉพาะสตรี)',
+          icon: 'heart-pulse',
+          colorClass: 'bg-pink-100 text-pink-700',
+          toggleKind: 'radio',
+          toggleId: 'bitePregNotPregRb',
+          toggleName: 'bitePregnancyStatus',
+          toggleValue: 'not_pregnant',
+          toggleLabel: 'ไม่ได้ตั้งครรภ์'
+        })}
+        ${renderBiteGrid('grid-cols-1 sm:grid-cols-2', [
+          { kind: 'radio', name: 'bitePregnancyStatus', value: 'suspected_or_missed', title: ['ขาดประจำเดือน', '/ สงสัยตั้งครรภ์'], compact: true },
+          { kind: 'radio', name: 'bitePregnancyStatus', value: 'confirmed_pregnant', title: ['ยืนยัน', 'กำลังตั้งครรภ์'], compact: true },
+          { kind: 'radio', name: 'bitePregnancyStatus', value: 'menopause_or_hysterectomy', title: ['หมดประจำเดือน', '/ ผ่าตัดมดลูกแล้ว'], compact: true },
+          { kind: 'radio', name: 'bitePregnancyStatus', value: 'unknown', title: ['ไม่ทราบ'], compact: true }
+        ])}
+        <div class="max-w-xs">
+          <label class="block text-[11px] font-semibold text-slate-700 mb-1">วันแรกของประจำเดือนครั้งสุดท้าย (ถ้าจำได้):</label>
+          <input type="text" id="biteLmpDate" data-universal-date="true" placeholder="วว/ดด/ปปปป เช่น 28/10/2026" class="w-full min-w-0 text-xs sm:text-sm border border-slate-300 rounded-xl px-3 py-1.5 focus:ring-medical-500 focus:border-medical-500 bg-white">
         </div>
       </div>
     </div>
   </div>
 
   <!-- อาการอื่นๆ เป็นช่องกรอกอิสระ -->
-  <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+  <div class="bg-white rounded-2xl p-5 sm:p-6 shadow-sm border border-slate-200">
     <div class="flex items-center space-x-3 mb-3 pb-2 border-b border-slate-100">
       <div class="bg-slate-100 text-slate-600 p-2 rounded-xl"><i data-lucide="message-square-plus" class="w-5 h-5"></i></div>
       <div>
@@ -1381,6 +1373,8 @@ const animalBiteModule = {
   titleEn: 'Animal / Dog / Cat bites (Rabies risk)',
   icon: 'paw-print',
   doctorCcBadgeHtml: '<i data-lucide="paw-print" class="w-3.5 h-3.5 mr-1 text-amber-500"></i> CC: สุนัข แมว สัตว์เลี้ยงลูกด้วยนมกัด (Animal Bites)',
+  pmhSectionNumber: 5,
+  dateFields: ['biteLmpDate'],
   algorithm: 'animal-bite-protocol',
   sectionDomId: 'cc-animal-bite-section',
   formHtml: ANIMAL_BITE_FORM_HTML,
@@ -1405,8 +1399,8 @@ const animalBiteModule = {
     toggleBiteFemaleSection(isFemale);
   },
 
-  onSelectForm: function() { checkAndDisplayBiteLmp(); },
-  onActivate: function(patient) { checkAndDisplayBiteLmp(patient); },
+  onSelectForm: function() { checkAndDisplayBiteLmp({}); },
+  onActivate: function(patient) { checkAndDisplayBiteLmp(patient || {}); },
 
   // --- Collect Intake Hook ---
   collectIntake: function(ctx = {}) {
@@ -1521,7 +1515,7 @@ const animalBiteModule = {
       status: ctx.recordStatus || ctx.status || 'waiting',
       durationVal: durationVal,
       durationUnit: durationUnit,
-      hospRecordStatus: ctx.hospRecordStatus || 'unspecified',
+      hospRecordStatus: ctx.hospRecordStatus || '',
       underlying: ctx.underlying || [],
       drugAllergy: ctx.drugAllergy || 'ไม่ได้ระบุ',
       currentMeds: ctx.currentMeds || 'ไม่ได้ระบุ',
@@ -1633,7 +1627,7 @@ const animalBiteModule = {
       })(),
       ...(isBiteFemaleCtx(ctx) ? {
         biteLmpDate: document.getElementById('biteLmpDate')?.value?.trim() || '',
-        bitePregnancyStatus: document.getElementById('bitePregnancyStatus')?.value || ''
+        bitePregnancyStatus: getRadio('bitePregnancyStatus') || ''
       } : {})
     };
 
@@ -1779,8 +1773,7 @@ const animalBiteModule = {
     if (isFem) {
       const lmpEl = document.getElementById('biteLmpDate');
       if (lmpEl) lmpEl.value = data.biteLmpDate || '';
-      const pregEl = document.getElementById('bitePregnancyStatus');
-      if (pregEl) pregEl.value = data.bitePregnancyStatus || '';
+      setRadio('bitePregnancyStatus', data.bitePregnancyStatus);
     }
     checkAndDisplayBiteLmp(data);
   },
@@ -1808,8 +1801,6 @@ const animalBiteModule = {
       'biteLowerExtSubGroup', 'biteLegThighSidesContainer', 'biteLegKneeShinSidesContainer', 'biteLegAnkleFootSidesContainer', 'biteLegToesSidesContainer',
       'biteOtherSubGroup', 'biteFemaleSection'
     ].forEach(id => { const el = document.getElementById(id); if (el) el.classList.add('hidden'); });
-    const pregEl = document.getElementById('bitePregnancyStatus');
-    if (pregEl) { pregEl.selectedIndex = 0; pregEl.value = ''; }
 
     const radios = document.querySelectorAll('#cc-animal-bite-section input[type="radio"]');
     radios.forEach(r => { r.checked = false; });
@@ -1832,7 +1823,6 @@ const animalBiteModule = {
   renderRapidHpi: renderBiteRapidHpi,
   renderNarrative: renderBiteNarrative,
   renderDoctorHpi: renderBiteDoctorHpi,
-  generateCds: generateBiteCds,
 
   // --- Seed Patients Registry ---
   seedPatients: [

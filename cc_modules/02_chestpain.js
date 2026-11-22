@@ -734,7 +734,7 @@ ${rfs.length > 0
 อาการสำคัญที่ปฏิเสธ: ${patient.pertinentNegatives.join(', ')}
 ประวัติสุขภาพ: [${hospLabel}], CAD เดิม: ${cadSummary}, โรคประจำตัว: ${udText}, ยาประจำตัว: ${medsText}, แพ้ยา: ${allergyText}
 คัดกรองยาฉุกเฉิน: Absolute CI [${absCiText}], Relative CI [${relCiText}], Nitroglycerin [${ntgSafetyText}]
-${rfs.length > 0 ? `[🚩 แจ้งเตือนสัญญาณวิกฤต (Red Flags)]: ${rfs.map(rf => rf.textTh).join('; ')}` : ''}
+${rfs.length > 0 ? `[แจ้งเตือนความเสี่ยงสูง]: ${rfs.map(rf => rf.textTh).join('; ')}` : ''}
 
 [บันทึกการตรวจและการประเมินโดยแพทย์]:
 ${docNotes.additional_hpi ? `• ประวัติเพิ่มเติม: ${docNotes.additional_hpi}\n` : ''}${docNotes.physical_exam ? `• การตรวจร่างกาย: ${docNotes.physical_exam}\n` : ''}${docNotes.preliminary_dx ? `• การวินิจฉัย: ${docNotes.preliminary_dx}\n` : ''}${docNotes.plan ? `• แผนการรักษา: ${docNotes.plan}` : ''}`;

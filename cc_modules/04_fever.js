@@ -731,7 +731,7 @@ ${rfs.length > 0
 ข้อมูลไข้: [${patternStr}] ยาลดไข้ [${antipyreticStr}] วัดไข้เอง [${tempStr}]${(patient.gender === 'หญิง' && femaleSummaryStr) ? ` ประวัติสตรี [${femaleSummaryStr}]` : ''}
 อาการร่วมที่พบ: ${patient.pertinentPositives.join(', ')}
 อาการสำคัญที่ปฏิเสธ: ${patient.pertinentNegatives.join(', ')}
-ประวัติสุขภาพและปัจจัยเสี่ยง: [${hospLabel}], ความเสี่ยงจำเพาะ: ${hostRiskText}, โรคประจำตัว: ${udDisplay}, ยาประจำตัว: ${medsText}, แพ้ยา: ${allergyDisplay}${rfs.length > 0 ? `\n[🚩 แจ้งเตือนสัญญาณวิกฤต (Red Flags)]: ${rfs.map(rf => rf.textTh).join('; ')}` : ''}
+ประวัติสุขภาพและปัจจัยเสี่ยง: [${hospLabel}], ความเสี่ยงจำเพาะ: ${hostRiskText}, โรคประจำตัว: ${udDisplay}, ยาประจำตัว: ${medsText}, แพ้ยา: ${allergyDisplay}${rfs.length > 0 ? `\n[แจ้งเตือนความเสี่ยงสูง]: ${rfs.map(rf => rf.textTh).join('; ')}` : ''}
 
 [บันทึกการตรวจและการประเมินโดยแพทย์]:
 ${docNotes.additional_hpi ? `• ประวัติเพิ่มเติม: ${docNotes.additional_hpi}\n` : ''}${docNotes.physical_exam ? `• การตรวจร่างกาย: ${docNotes.physical_exam}\n` : ''}${docNotes.preliminary_dx ? `• การวินิจฉัย: ${docNotes.preliminary_dx}\n` : ''}${docNotes.plan ? `• แผนการรักษา: ${docNotes.plan}` : ''}`;

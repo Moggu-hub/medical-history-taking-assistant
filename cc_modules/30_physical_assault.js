@@ -9,6 +9,87 @@
 // --- Module-scoped State & Helpers ---
 let assaultPainScoreTouched = false;
 
+function wrapAssaultWords(chunks) {
+  if (!Array.isArray(chunks)) return chunks;
+  return chunks.map(c => `<span class="inline-block whitespace-nowrap">${c}</span>`).join(' ');
+}
+
+function renderAssaultOption(cfg) {
+  const {
+    kind = 'checkbox',
+    id = '',
+    name = '',
+    value = '',
+    title,
+    desc = '',
+    onchange = '',
+    compact = false,
+    colSpan2 = false
+  } = cfg;
+  const idAttr = id ? `id="${id}" ` : '';
+  const nameAttr = name ? `name="${name}" ` : '';
+  const valAttr = value ? `value="${value}" ` : '';
+  const chgAttr = onchange ? `onchange="${onchange}" ` : '';
+  const alignCls = desc ? 'items-start' : 'items-center';
+  const padCls = compact ? 'p-2.5' : 'p-3';
+  const spanCls = colSpan2 ? ' sm:col-span-2' : '';
+  const roundCls = kind === 'checkbox' ? 'rounded ' : '';
+  const topCls = desc ? 'mt-0.5 ' : '';
+  const szCls = compact ? 'h-3.5 w-3.5' : 'h-4 w-4';
+  const titleHtml = Array.isArray(title) ? wrapAssaultWords(title) : title;
+  const bodyHtml = desc
+    ? `<div class="ml-3 leading-snug"><span class="block text-xs sm:text-sm font-semibold text-slate-800">${titleHtml}</span><span class="block text-xs text-slate-500 font-normal mt-0.5">${desc}</span></div>`
+    : `<span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800 leading-snug">${titleHtml}</span>`;
+  return `<label class="selectable-card bg-white flex ${alignCls} ${padCls} rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition${spanCls}"><input type="${kind}" ${idAttr}${nameAttr}${valAttr}${chgAttr}class="${topCls}${roundCls}text-medical-600 focus:ring-medical-500 ${szCls} flex-shrink-0">${bodyHtml}</label>`;
+}
+
+function renderAssaultGrid(colsCls, items, shared = {}) {
+  return `<div class="grid ${colsCls} gap-2.5">${items.map(it => renderAssaultOption({ ...shared, ...it })).join('\n')}</div>`;
+}
+
+function renderAssaultSysHeader({
+  label,
+  icon,
+  colorClass,
+  toggleKind = 'checkbox',
+  toggleId = '',
+  toggleLabel = '',
+  toggleName = '',
+  toggleValue = '',
+  toggleOnchange = ''
+}) {
+  const nameAttr = toggleName ? `name="${toggleName}" ` : '';
+  const valAttr = toggleValue ? `value="${toggleValue}" ` : '';
+  const chgAttr = toggleOnchange ? `onchange="${toggleOnchange}" ` : '';
+  const roundCls = toggleKind === 'checkbox' ? ' rounded' : '';
+  const toggleHtml = toggleId
+    ? `<label class="inline-flex items-center px-2.5 py-1 rounded-lg bg-white hover:bg-slate-100 border border-slate-200 text-xs font-medium text-slate-700 cursor-pointer transition select-none flex-shrink-0">
+      <input type="${toggleKind}" id="${toggleId}" ${nameAttr}${valAttr}${chgAttr}class="text-medical-600 focus:ring-medical-500 h-3.5 w-3.5${roundCls}">
+      <span class="ml-1.5 whitespace-nowrap">${toggleLabel}</span>
+    </label>`
+    : '';
+  return `<div class="flex flex-wrap items-center justify-between gap-2 mb-2.5">
+    <label class="flex items-center text-xs sm:text-sm font-bold text-slate-800">
+      <span class="${colorClass} p-1.5 rounded-lg mr-2 inline-flex items-center justify-center"><i data-lucide="${icon}" class="w-4 h-4"></i></span>
+      <span>${label}</span>
+    </label>
+    ${toggleHtml}
+  </div>`;
+}
+
+function handleAssaultGroupNoneToggle(noneEl, inputName) {
+  if (!noneEl || !noneEl.checked || typeof document === 'undefined') return;
+  document.querySelectorAll(`input[name="${inputName}"]`).forEach(cb => {
+    if (cb !== noneEl) cb.checked = false;
+  });
+}
+
+function handleAssaultGroupItemChange(itemEl, noneId) {
+  if (!itemEl || !itemEl.checked || !noneId || typeof document === 'undefined') return;
+  const noneEl = document.getElementById(noneId);
+  if (noneEl) noneEl.checked = false;
+}
+
 function isAssaultFemalePatient(p) {
   if (!p) return false;
   if (p.gender === 'หญิง' || p.gender === 'female') return true;
@@ -36,9 +117,8 @@ function toggleAssaultFemaleSection(isFemale) {
   femSec.classList.toggle('hidden', !isFemale);
   if (!isFemale) {
     const lmpEl = document.getElementById('assaultLmpDate');
-    const pregEl = document.getElementById('assaultPregnancyStatus');
     if (lmpEl) lmpEl.value = '';
-    if (pregEl) { pregEl.selectedIndex = 0; pregEl.value = ''; }
+    document.querySelectorAll('input[name="assaultPregnancyStatus"]').forEach(r => { r.checked = false; });
   }
 }
 
@@ -54,18 +134,89 @@ function checkAndDisplayAssaultLmp(patient) {
 }
 
 function renderAssaultPart(id, label, hasCenter = false) {
-  const sides = [['left', 'ซ้าย'], ['right', 'ขวา']];
-  if (hasCenter) sides.push(['center', 'ตรงกลาง']);
-  const sHtml = sides.map(([v, th]) => `<label class="flex items-center"><input type="checkbox" name="${id}Sides" value="${v}" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">${th}</span></label>`).join('');
-  const iHtml = [['wound', 'มีแผล'], ['pain_swelling', 'ปวด/บวม'], ['deformity', 'ผิดรูป']].map(([v, th]) => `<label class="flex items-center"><input type="checkbox" name="${id}Injuries" value="${v}" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">${th}</span></label>`).join('');
-  return `<div class="flex flex-col sm:flex-row sm:items-center justify-between text-xs py-1 border-b border-slate-100 gap-2"><label class="flex items-center"><input type="checkbox" id="${id}" name="${id}" onchange="toggleAssaultGroup('${id}SidesContainer', this.checked)" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-1.5 text-slate-800">${label}</span></label><div id="${id}SidesContainer" class="hidden flex flex-wrap items-center gap-2 bg-slate-50 border border-slate-200 px-2 py-1 rounded-lg text-xs"><span class="text-slate-500 font-medium">ด้าน:</span>${sHtml}<span class="text-slate-300 mx-1.5">|</span><span class="text-slate-500 font-medium">การบาดเจ็บ:</span>${iHtml}</div></div>`;
+  return `<div class="p-2.5 rounded-xl border border-slate-200 bg-white">
+  <label class="flex items-center cursor-pointer">
+    <input type="checkbox" id="${id}" name="${id}" onchange="toggleAssaultGroup('${id}SidesContainer', this.checked)" class="text-medical-600 h-4 w-4 rounded flex-shrink-0">
+    <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800">${label}</span>
+  </label>
+  <div id="${id}SidesContainer" class="hidden mt-2 pl-6 flex flex-col gap-1.5 text-xs border-t border-slate-100 pt-2">
+    <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
+      <span class="text-xs font-semibold text-slate-500">ด้าน / ข้าง:</span>
+      <label class="inline-flex items-center cursor-pointer"><input type="checkbox" name="${id}Sides" value="left" class="mr-1 text-medical-600 rounded"> ซ้าย</label>
+      <label class="inline-flex items-center cursor-pointer"><input type="checkbox" name="${id}Sides" value="right" class="mr-1 text-medical-600 rounded"> ขวา</label>
+      ${hasCenter ? `<label class="inline-flex items-center cursor-pointer"><input type="checkbox" name="${id}Sides" value="center" class="mr-1 text-medical-600 rounded"> ตรงกลาง</label>` : ''}
+    </div>
+    <div class="flex flex-wrap items-center gap-x-3 gap-y-1 pt-1 border-t border-slate-50">
+      <span class="text-xs font-semibold text-slate-500">ลักษณะบาดเจ็บ:</span>
+      <label class="inline-flex items-center cursor-pointer"><input type="checkbox" name="${id}Injuries" value="wound" class="mr-1 text-medical-600 rounded"> มีแผล</label>
+      <label class="inline-flex items-center cursor-pointer"><input type="checkbox" name="${id}Injuries" value="pain_swelling" class="mr-1 text-medical-600 rounded"> ปวด/บวม</label>
+      <label class="inline-flex items-center cursor-pointer"><input type="checkbox" name="${id}Injuries" value="deformity" class="mr-1 text-medical-600 rounded"> ผิดรูป</label>
+    </div>
+  </div>
+</div>`;
 }
 
 function renderAssaultDigits(id, label) {
-  const d = [['thumb', 'โป้ง'], ['index', 'ชี้'], ['middle', 'กลาง'], ['ring', 'นาง'], ['little', 'ก้อย']];
-  const row = (side, sl) => `<div class="flex flex-wrap items-center gap-2"><span class="font-medium text-slate-600 w-10">${sl}:</span>${d.map(([k, th]) => `<label class="flex items-center"><input type="checkbox" name="${id}${side}Digits" value="${k}" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">${th}</span></label>`).join('')}</div>`;
-  const inj = [['wound', 'มีแผล'], ['pain_swelling', 'ปวด/บวม'], ['deformity', 'ผิดรูป']].map(([v, th]) => `<label class="flex items-center"><input type="checkbox" name="${id}Injuries" value="${v}" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">${th}</span></label>`).join('');
-  return `<div class="space-y-1 py-1"><label class="flex items-center text-xs"><input type="checkbox" id="${id}" name="${id}" onchange="toggleAssaultGroup('${id}SidesContainer', this.checked)" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-1.5 text-slate-800">${label}</span></label><div id="${id}SidesContainer" class="hidden ml-5 p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs space-y-1.5">${row('Left', 'ซ้าย')}${row('Right', 'ขวา')}<div class="flex flex-wrap items-center gap-2 pt-1 border-t border-slate-200"><span class="font-medium text-slate-600">การบาดเจ็บ:</span>${inj}</div></div></div>`;
+  const digits = [['thumb', 'โป้ง'], ['index', 'ชี้'], ['middle', 'กลาง'], ['ring', 'นาง'], ['little', 'ก้อย']];
+  const row = (side, sl) => `<div class="flex items-center flex-wrap gap-2"><span class="text-xs font-semibold text-slate-500 w-9">${sl}:</span>${digits.map(([k, th]) => `<label class="inline-flex items-center cursor-pointer"><input type="checkbox" name="${id}${side}Digits" value="${k}" class="mr-1 text-medical-600 rounded"> ${th}</label>`).join('')}</div>`;
+  return `<div class="p-2.5 rounded-xl border border-slate-200 bg-white">
+  <label class="flex items-center cursor-pointer">
+    <input type="checkbox" id="${id}" name="${id}" onchange="toggleAssaultGroup('${id}SidesContainer', this.checked)" class="text-medical-600 h-4 w-4 rounded flex-shrink-0">
+    <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800">${label}</span>
+  </label>
+  <div id="${id}SidesContainer" class="hidden mt-2 pl-6 flex flex-col gap-1.5 text-xs border-t border-slate-100 pt-2">
+    ${row('Left', 'ซ้าย')}${row('Right', 'ขวา')}
+    <div class="flex items-center flex-wrap gap-x-3 gap-y-1 pt-1 border-t border-slate-50">
+      <span class="text-xs font-semibold text-slate-500">ลักษณะบาดเจ็บ:</span>
+      <label class="inline-flex items-center cursor-pointer"><input type="checkbox" name="${id}Injuries" value="wound" class="mr-1 text-medical-600 rounded"> มีแผล</label>
+      <label class="inline-flex items-center cursor-pointer"><input type="checkbox" name="${id}Injuries" value="pain_swelling" class="mr-1 text-medical-600 rounded"> ปวด/บวม</label>
+      <label class="inline-flex items-center cursor-pointer"><input type="checkbox" name="${id}Injuries" value="deformity" class="mr-1 text-medical-600 rounded"> ผิดรูป</label>
+    </div>
+  </div>
+</div>`;
+}
+
+function renderAssaultRegionBox({
+  parentId,
+  subGroupId,
+  title,
+  desc,
+  partsHtml,
+  signsName,
+  signsNoneId,
+  signsCols = 'grid-cols-1 sm:grid-cols-2',
+  signs
+}) {
+  return `<div class="space-y-3">
+    <label class="selectable-card flex items-center p-3.5 rounded-xl border-2 border-slate-200 bg-slate-50 hover:border-medical-400 transition cursor-pointer">
+      <input type="checkbox" id="${parentId}" onchange="toggleAssaultGroup('${subGroupId}', this.checked)" class="text-medical-600 focus:ring-medical-500 h-5 w-5 rounded flex-shrink-0">
+      <div class="ml-3 leading-snug">
+        <span class="text-xs sm:text-sm font-bold text-slate-900">${Array.isArray(title) ? wrapAssaultWords(title) : title}</span>
+        ${desc ? `<p class="text-xs text-slate-500 mt-0.5">${desc}</p>` : ''}
+      </div>
+    </label>
+    <div id="${subGroupId}" class="hidden pl-4 sm:pl-6 space-y-4 border-l-2 border-medical-200">
+      <div>
+        <p class="text-xs sm:text-sm text-slate-700 font-semibold mb-2">จุดที่บาดเจ็บ (เลือกแล้วระบุด้านและลักษณะบาดเจ็บ):</p>
+        <div class="space-y-2">${partsHtml}</div>
+      </div>
+      <div class="p-3 bg-slate-50 rounded-xl border border-slate-200">
+        ${renderAssaultSysHeader({
+          label: 'อาการสำคัญที่พบร่วมด้วย (เลือกได้หลายข้อ)',
+          icon: 'alert-circle',
+          colorClass: 'bg-amber-100 text-amber-700',
+          toggleId: signsNoneId,
+          toggleLabel: 'ไม่มีอาการร่วม',
+          toggleOnchange: `handleAssaultGroupNoneToggle(this, '${signsName}')`
+        })}
+        ${renderAssaultGrid(signsCols, signs, {
+          name: signsName,
+          compact: true,
+          onchange: `handleAssaultGroupItemChange(this, '${signsNoneId}')`
+        })}
+      </div>
+    </div>
+  </div>`;
 }
 
 function toggleAssaultGroup(subId, show) {
@@ -112,34 +263,36 @@ function clearAssaultPainScore() {
 
 function handleAssaultPainScoreChange(val) {
   assaultPainScoreTouched = true;
-  const num = parseInt(val, 10);
+  const num = parseInt(val, 10) || 0;
   const slider = document.getElementById('assaultPainScore');
-  if (slider) slider.value = num;
-  const emojiEl = document.getElementById('assaultPainScoreEmoji');
-  const textEl = document.getElementById('assaultPainScoreText');
-  const badgeEl = document.getElementById('assaultPainScoreBadge');
-  const clearBtn = document.getElementById('assaultPainScoreClearBtn');
+  if (slider && String(slider.value) !== String(num)) slider.value = num;
+  const emojiEl = document.getElementById('assaultPainScoreEmoji'), textEl = document.getElementById('assaultPainScoreText');
+  const badgeEl = document.getElementById('assaultPainScoreBadge'), clearBtn = document.getElementById('assaultPainScoreClearBtn');
   if (clearBtn) clearBtn.classList.remove('hidden');
   if (!emojiEl || !textEl || !badgeEl) return;
 
   let emoji = '😐', label = 'ปวดปานกลาง', badgeClass = 'bg-amber-100 text-amber-800 border-amber-300';
-  if (num === 0) {
-    emoji = '😊'; label = 'สบายดี (ไม่ปวดเลย)'; badgeClass = 'bg-emerald-100 text-emerald-800 border-emerald-300';
-  } else if (num <= 3) {
-    emoji = '🙂'; label = 'ปวดเล็กน้อย (ทนได้)'; badgeClass = 'bg-lime-100 text-lime-800 border-lime-300';
-  } else if (num <= 6) {
-    emoji = '😐'; label = 'ปวดปานกลาง (รบกวนสมาธิ)'; badgeClass = 'bg-amber-100 text-amber-800 border-amber-300';
-  } else if (num <= 8) {
-    emoji = '😣'; label = 'ปวดรุนแรง (ทนแทบไม่ไหว)'; badgeClass = 'bg-orange-100 text-orange-800 border-orange-300';
-  } else {
-    emoji = '😫'; label = 'ปวดรุนแรงที่สุดในชีวิต'; badgeClass = 'bg-rose-100 text-rose-800 border-rose-300';
-  }
+  if (num === 0) { emoji = '😊'; label = 'สบายดี (ไม่ปวดเลย)'; badgeClass = 'bg-emerald-100 text-emerald-800 border-emerald-300'; }
+  else if (num <= 3) { emoji = '🙂'; label = 'ปวดเล็กน้อย (ทนได้)'; badgeClass = 'bg-lime-100 text-lime-800 border-lime-300'; }
+  else if (num <= 6) { emoji = '😐'; label = 'ปวดปานกลาง (รบกวนสมาธิ)'; badgeClass = 'bg-amber-100 text-amber-800 border-amber-300'; }
+  else if (num <= 9) { emoji = '😣'; label = 'ปวดมาก (ทนแทบไม่ไหว)'; badgeClass = 'bg-rose-100 text-rose-800 border-rose-300'; }
+  else { emoji = '😭'; label = 'เจ็บปวดรุนแรงที่สุดในชีวิต'; badgeClass = 'bg-red-200 text-red-900 border-red-400 animate-pulse'; }
 
   emojiEl.textContent = emoji;
-  textEl.textContent = `${num}/10 คะแนน - ${label}`;
-  badgeEl.className = `inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-bold border self-start sm:self-auto transition-all ${badgeClass}`;
+  textEl.textContent = `${num} / 10 (${label})`;
+  badgeEl.className = `inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-bold border transition ${badgeClass}`;
 }
+function setAssaultPainScore(score) { assaultPainScoreTouched = true; const s = document.getElementById('assaultPainScore'); if (s) s.value = score; handleAssaultPainScoreChange(score); }
 const handleAssaultPainSliderTouch = handleAssaultPainScoreChange;
+if (typeof window !== 'undefined') {
+  window.toggleAssaultGroup = toggleAssaultGroup;
+  window.handleAssaultGroupNoneToggle = handleAssaultGroupNoneToggle;
+  window.handleAssaultGroupItemChange = handleAssaultGroupItemChange;
+  window.handleAssaultMechanismChange = handleAssaultMechanismChange;
+  window.clearAssaultPainScore = clearAssaultPainScore;
+  window.handleAssaultPainScoreChange = handleAssaultPainScoreChange;
+  window.setAssaultPainScore = setAssaultPainScore;
+}
 
 // --- Clinical Decision Support & Evaluation Functions ---
 function evaluateAssaultRedFlags(patient) {
@@ -211,7 +364,7 @@ function evaluateAssaultRedFlags(patient) {
                       headSigns.includes('severe_headache_vomiting') ||
                       headSigns.includes('blood_csf_ear_nose_deformity');
   const hasAnticoagHead = isHeadTrauma && (anticoag === 'anticoagulant_antiplatelet' || anticoag === 'bleeding_disorder');
-  const hasBlowout = headSigns.includes('diplopia_blurred_vision') || headSigns.includes('malocclusion_tooth_avulsion');
+  const hasBlowout = headSigns.includes('diplopia_blurred_vision') || headSigns.includes('malocclusion_jaw_locked') || headSigns.includes('malocclusion_tooth_avulsion');
 
   if ((isHeadTrauma && (hasTbiSigns || hasAnticoagHead)) || hasBlowout) {
     addRf(
@@ -308,6 +461,52 @@ function updateAssaultOutputs(rec) {
 
   const redFlags = evaluateAssaultRedFlags(rec);
   rec.redFlags = redFlags;
+
+  const jsonOutput = {
+    encounter: {
+      chief_complaint: 'physical_assault',
+      schema_code: 'physical_assault',
+      chief_complaint_title_th: 'ถูกทำร้ายร่างกาย',
+      timestamp: rec.timestamp || new Date().toISOString(),
+      duration_val: rec.durationVal || null,
+      duration_unit: rec.durationUnit || 'hours'
+    },
+    patient_identification: {
+      id: rec.id || null,
+      queue_number: rec.queue_number || null,
+      hn: rec.hn || null,
+      name: rec.name || null,
+      age: rec.age || null,
+      gender: rec.gender || null
+    },
+    triage_assessment: {
+      mechanisms: Array.isArray(rec.assaultMechanisms) ? rec.assaultMechanisms : [],
+      bleeding_status: rec.assaultBleedingStatus || null,
+      systemic_signs: Array.isArray(rec.assaultSystemicSigns) ? rec.assaultSystemicSigns : [],
+      pain_score: rec.painScore,
+      oscc_screen: rec.assaultOsccScreen || null,
+      anticoagulant_hx: rec.assaultAnticoagulantHx || null,
+      tetanus_history: rec.assaultTetanusHx || null,
+      other_symptoms_free: rec.otherSymptomsFree || ''
+    },
+    safety_and_red_flags: {
+      red_flags_detected: redFlags.map(rf => ({
+        key: rf.key,
+        level: rf.level,
+        title_th: rf.textTh || rf.title,
+        clinical_risk: rf.risk || rf.detail,
+        action: rf.suggestedAction || rf.action
+      })),
+      total_red_flags: redFlags.length
+    }
+  };
+  rec.rapidHpi = rapidText;
+  rec.narrativeHpi = narrativeText;
+  rec.medicalJson = jsonOutput;
+
+  const jsonEl = document.getElementById('jsonViewer');
+  if (jsonEl) jsonEl.textContent = JSON.stringify(jsonOutput, null, 2);
+  return { rapid: rapidText, narrative: narrativeText, json: jsonOutput };
 }
 
 function formatAssaultMechanism(patient) {
@@ -450,7 +649,8 @@ function renderAssaultRapidHpi(patient) {
   if (headSigns.includes('severe_headache_vomiting')) positives.push('ปวดศีรษะรุนแรง มึนงง หรืออาเจียน');
   if (headSigns.includes('diplopia_blurred_vision')) positives.push('ตาพร่ามัว มองเห็นภาพซ้อน หรือตาบวมปิด');
   if (headSigns.includes('blood_csf_ear_nose_deformity')) positives.push('เลือด/น้ำใสออกหูจมูก หรือดั้งจมูกเบี้ยวผิดรูป');
-  if (headSigns.includes('malocclusion_tooth_avulsion')) positives.push('ขากรรไกรค้าง สบฟันไม่สนิท หรือฟันโยกหัก');
+  if (headSigns.includes('malocclusion_jaw_locked') || headSigns.includes('malocclusion_tooth_avulsion')) positives.push('ขากรรไกรค้าง อ้าปากไม่ขึ้น หรือสบฟันไม่สนิท');
+  if (headSigns.includes('broken_loose_tooth')) positives.push('ฟันหัก บิ่น หรือฟันโยกคลอน');
 
   if (neckSigns.includes('strangulation_dysphonia_dysphagia')) positives.push('แน่นคอ กลืนลำบาก หรือเสียงแหบหลังถูกบีบคอ');
   if (neckSigns.includes('penetrating_neck_rapid_swelling')) positives.push('มีแผลแทง/ปาดที่คอ หรือคอบวมโตเร็ว');
@@ -543,6 +743,11 @@ function renderAssaultRapidHpi(patient) {
     ? 'ไม่ได้ระบุ'
     : (patient.currentMeds === 'ไม่มี' ? 'ไม่มี' : patient.currentMeds);
 
+  const rfs = evaluateAssaultRedFlags(patient);
+  const rfText = rfs.length > 0
+    ? `🚩 RED FLAGS DETECTED:\n${rfs.map(rf => `  * ${rf.title}\n    ความเสี่ยง: ${rf.detail}\n    ข้อแนะนำการดูแลเร่งด่วน: ${rf.action}`).join('\n\n')}`
+    : '✅ ไม่พบสัญญาณเตือนวิกฤตความเสี่ยงสูง (Non-Red Flag)';
+
   return `[Chief Complaint (CC)]
 ถูกทำร้ายร่างกาย เป็นมา ${durStr}
 
@@ -564,7 +769,10 @@ ${negatives.length > 0 ? negatives.map(n => `  - ${n}`).join('\n') : '  - ผู
 • ประวัติยาละลายลิ่มเลือด/โรคเลือดออกง่าย: ${anticoagStr}
 • ประวัติวัคซีนบาดทะยัก: ${tetanusStr}${femStr ? `\n• ประวัติสตรี: ${femStr}` : ''}
 • โรคประจำตัว (U/D): ${udDisplay}
-• ยาประจำตัว: ${medsDisplay} | แพ้ยา: ${allergyDisplay}`;
+• ยาประจำตัว: ${medsDisplay} | แพ้ยา: ${allergyDisplay}
+
+[Emergency Risk Assessment (Red Flags)]
+${rfText}`;
 }
 
 function renderAssaultNarrativeHpi(patient) {
@@ -605,81 +813,6 @@ function renderAssaultNarrativeHpi(patient) {
   return text;
 }
 
-function generateAssaultCds(patient, ctx) {
-  const rfs = (ctx && Array.isArray(ctx.rfs)) ? ctx.rfs : evaluateAssaultRedFlags(patient);
-  let highestEsi = 4;
-  if (rfs.some(r => r.level.includes('ESI 1'))) highestEsi = 1;
-  else if (rfs.some(r => r.level.includes('ESI 2'))) highestEsi = 2;
-  else if (rfs.some(r => r.level.includes('ESI 3'))) highestEsi = 3;
-
-  const ddx = [];
-  const plan = [];
-  const setPlan = (d, p) => { ddx.push(d); plan.push(...p); };
-
-  if (rfs.some(r => r.key === 'rf_assault_penetrating_torso_neck_shock')) {
-    setPlan('Penetrating Assault (Stab/Gunshot Wound) with Potential Hemorrhagic Shock / Torso Trauma', [
-      'ATLS Primary Survey: Airway with C-spine, Breathing, Circulation with Hemorrhage control',
-      'เปิด IV line เบอร์ 18 จำนวน 2 เส้น, จอง PRC 2-4 ยูนิต stat, ตรวจ Bedside eFAST ทันที',
-      'Film Chest AP portable, Pelvis AP, ปรึกษา Trauma Surgeon ด่วนเพื่อประเมินผ่าตัดฉุกเฉิน'
-    ]);
-  }
-
-  if (rfs.some(r => r.key === 'rf_assault_strangulation_airway_compromise')) {
-    setPlan('Strangulation Injury with Impending Upper Airway Compromise / Laryngeal Trauma', [
-      'เฝ้าระวังทางเดินหายใจใกล้ชิด, เตรียมอุปกรณ์ใส่ท่อช่วยหายใจยาก (Difficult Airway Cart / Video Laryngoscope)',
-      'ส่งตรวจ Soft tissue neck X-ray (AP/Lateral) หรือ CTA Neck เพื่อ Rule out Laryngotracheal fracture & Carotid dissection',
-      'สังเกตอาการทางเดินหายใจที่ ER หรือ Admit เพื่อเฝ้าระวัง Delayed Laryngeal Edema อย่างน้อย 12-24 ชม.'
-    ]);
-  }
-
-  if (rfs.some(r => r.key === 'rf_assault_tbi_anticoagulant_maxillofacial')) {
-    setPlan('Assault Head & Maxillofacial Trauma with Traumatic Brain Injury / Orbital Blowout', [
-      'ส่งตรวจ Stat Non-contrast CT Brain (+/- CT Facial bones 3D reconstruction)',
-      'ประเมิน Serial Neurological Observation (GCS, Pupillary light reflex) ทุก 1 ชม.',
-      'งดใส่สาย NG tube ทางจมูกหากสงสัย Basilar skull fracture, ปรึกษาจักษุแพทย์หากมี Diplopia/Enophthalmos'
-    ]);
-  }
-
-  if (rfs.some(r => r.key === 'rf_assault_chemical_eye_or_sexual_oscc')) {
-    setPlan('Specialized Trauma Care: Chemical Burn / Sexual Assault / Domestic Violence (OSCC Protocol)', [
-      'กรณีสารเคมีเข้าตา: ล้างตาด้วย 0.9% NaCl ปริมาณมากทันที (Copious eye irrigation) อย่างน้อย 1,000-2,000 mL',
-      'กรณีล่วงละเมิดทางเพศ/ความรุนแรง: เปิดระบบศูนย์พึ่งได้ (OSCC), จัดห้องตรวจมิดชิด, เก็บหลักฐานทางนิติเวช',
-      'ส่งตรวจ CBC, Anti-HIV, HBsAg, VDRL, UPT, ให้ยาต้านไวรัส HIV PEP ภายใน 72 ชม. และยาคุมฉุกเฉิน'
-    ]);
-  }
-
-  if (ddx.length === 0) {
-    setPlan('Contusion / Superficial Soft Tissue Injury from Physical Assault without Red Flags', [
-      'ทำความสะอาดบาดแผลด้วยน้ำเกลือและสบู่, เย็บปิดแผลฉีกขาดหากมีข้อบ่งชี้',
-      'ให้ยาแก้ปวด (Paracetamol หรือ NSAIDs), ประคบเย็นบริเวณฟกช้ำใน 24-48 ชม. แรก',
-      'พิจารณาฉีด Tetanus toxoid booster หากเข็มล่าสุดเกิน 5-10 ปี และออกใบชันสูตรบาดแผลตามระเบียบ'
-    ]);
-  }
-
-  const workupItems = plan.filter(p => p.includes('ตรวจ') || p.includes('CT') || p.includes('Film') || p.includes('eFAST'));
-  if (workupItems.length === 0) workupItems.push('ประเมินสัญญาณชีพ ตรวจร่างกายละเอียด และบันทึกภาพ/ขนาดบาดแผลเพื่อนิติเวช');
-  if (isAssaultFemalePatient(patient)) workupItems.push('Urine Pregnancy Test (UPT) หากสงสัยตั้งครรภ์ก่อนส่ง X-ray/CT หรือให้ยา');
-  const mgmtItems = plan.filter(p => !p.includes('ตรวจ') && !p.includes('CT') && !p.includes('Film') && !p.includes('eFAST'));
-  if (mgmtItems.length === 0) mgmtItems.push('ดูแลบาดแผล พิจารณาวัคซีนบาดทะยัก และคัดกรองความปลอดภัย (OSCC)');
-  if (ctx) {
-    if (!Array.isArray(ctx.ddxList)) ctx.ddxList = [];
-    if (!Array.isArray(ctx.workupList)) ctx.workupList = [];
-    if (!Array.isArray(ctx.managementList)) ctx.managementList = [];
-    ctx.ddxList.push(...ddx);
-    ctx.workupList.push(...workupItems);
-    ctx.managementList.push(...mgmtItems);
-    return rfs;
-  }
-  return {
-    chiefComplaint: 'physical_assault',
-    calculatedEsi: highestEsi,
-    redFlags: rfs,
-    differentialDiagnosis: ddx,
-    suggestedInvestigations: workupItems,
-    suggestedManagement: mgmtItems
-  };
-}
-
 // --- FORM HTML TEMPLATE ---
 const PHYSICAL_ASSAULT_FORM_HTML = `
 <div id="cc-physical-assault-section" class="space-y-6">
@@ -688,41 +821,41 @@ const PHYSICAL_ASSAULT_FORM_HTML = `
   <div class="bg-amber-50 border border-amber-300 rounded-2xl p-4 text-xs sm:text-sm text-amber-900 flex items-start space-x-3 shadow-xs">
     <i data-lucide="shield-alert" class="w-5 h-5 text-amber-600 shrink-0 mt-0.5"></i>
     <div class="space-y-1">
-      <strong class="font-bold block text-amber-950 text-sm sm:text-base">ข้อแนะนำการดูแลตนเองเบื้องต้นระหว่างรอพบแพทย์:</strong>
-      <ol class="list-decimal list-inside space-y-0.5 text-amber-800">
-        <li><strong>กรณีมีบาดแผลเลือดออก:</strong> ให้ใช้ผ้าสะอาดหรือผ้าก๊อซกดลงบนบาดแผลโดยตรงให้แน่นและต่อเนื่องเพื่อห้ามเลือด</li>
-        <li><strong>กรณีถูกสาดสารเคมีหรือของเหลวเข้าตา/ผิวหนัง:</strong> กรุณาแจ้งพยาบาลทันทีเพื่อล้างด้วยน้ำสะอาดหรือน้ำเกลือปริมาณมากโดยด่วน</li>
-        <li><strong>ควรงดน้ำและอาหารไว้ก่อน:</strong> หากมีอาการปวดท้อง ปวดศีรษะรุนแรง หรือมีบาดแผลฉกรรจ์ ควรงดน้ำและอาหารชั่วคราวเผื่อกรณีต้องตรวจพิเศษหรือผ่าตัดฉุกเฉิน (ข้อมูลทั้งหมดของท่านจะได้รับการดูแลและบันทึกทางการแพทย์อย่างเป็นความลับ)</li>
-      </ol>
+      <strong class="font-bold block text-amber-950 text-sm">คำแนะนำเบื้องต้นระหว่างรอตรวจ:</strong>
+      <ul class="list-disc list-inside space-y-0.5 text-amber-800 text-xs sm:text-sm">
+        <li><strong>กรณีมีแผลเลือดออก:</strong> ใช้ผ้าสะอาดกดบนแผลโดยตรงให้แน่นต่อเนื่องเพื่อห้ามเลือด</li>
+        <li><strong>กรณีถูกสาดสารเคมีเข้าตา/ผิวหนัง:</strong> รีบแจ้งพยาบาลทันทีเพื่อล้างด้วยน้ำสะอาดปริมาณมากโดยด่วน</li>
+        <li><strong>ควรงดน้ำ/อาหารชั่วคราว:</strong> หากปวดท้อง ปวดศีรษะรุนแรง หรือแผลฉกรรจ์ (ข้อมูลของท่านเป็นความลับทางการแพทย์)</li>
+      </ul>
     </div>
   </div>
   </div></div>
 
   <!-- CARD 1: ข้อมูลเหตุการณ์ กลไกการถูกทำร้าย และสถานะเลือดออก -->
-  <div class="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-xs space-y-5">
-    <div class="flex items-center space-x-2 border-b border-slate-100 pb-3">
+  <div class="bg-white rounded-2xl p-5 sm:p-6 shadow-sm border border-slate-200 space-y-5">
+    <div class="flex items-center space-x-3 pb-3 border-b border-slate-100">
       <div class="p-2 rounded-xl bg-medical-100 text-medical-700">
         <i data-lucide="shield-alert" class="w-5 h-5"></i>
       </div>
       <div>
-        <h3 class="text-sm sm:text-base font-bold text-slate-900">1. ข้อมูลเหตุการณ์ กลไกการถูกทำร้าย และสถานะเลือดออก</h3>
-        <p class="text-xs text-slate-500">ระบุลักษณะการถูกทำร้าย อาวุธที่ใช้ และสถานะเลือดออกในขณะนี้</p>
+        <h2 class="text-base font-bold text-slate-900">1. ข้อมูลเหตุการณ์ กลไกการถูกทำร้าย และสถานะเลือดออก</h2>
+        <p class="text-xs text-slate-500">ลักษณะการถูกทำร้าย อาวุธที่ใช้ และสถานะเลือดออกในขณะนี้</p>
       </div>
     </div>
 
-    <!-- 1.1 เหตุการณ์ถูกทำร้ายร่างกายเกิดขึ้นมานานเท่าใด -->
+    <!-- 1.1 เหตุการณ์เกิดขึ้นมานานเท่าใด -->
     <div>
       <label class="block text-xs sm:text-sm font-semibold text-slate-800 mb-2">
         1.1 เหตุการณ์ถูกทำร้ายร่างกายเกิดขึ้นมานานเท่าใด:
       </label>
-      <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+      <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 max-w-md">
         <div class="col-span-1 sm:col-span-2">
           <input type="number" id="assaultDurationVal" min="1" max="365" placeholder="ระบุตัวเลข เช่น 30"
-            class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-medical-500 focus:bg-white transition">
+            class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2 text-slate-900 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-medical-500 focus:bg-white transition">
         </div>
         <div class="col-span-1">
           <select id="assaultDurationUnit"
-            class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-medical-500 focus:bg-white transition">
+            class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-slate-900 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-medical-500 focus:bg-white transition">
             <option value="minutes">นาที</option>
             <option value="hours" selected>ชั่วโมง</option>
             <option value="days">วัน</option>
@@ -734,420 +867,391 @@ const PHYSICAL_ASSAULT_FORM_HTML = `
     </div>
 
     <!-- 1.2 ลักษณะการถูกทำร้าย หรือสิ่งที่ใช้ทำร้าย -->
-    <div>
-      <label class="block text-xs sm:text-sm font-semibold text-slate-800 mb-2">1.2 ลักษณะการถูกทำร้าย หรือสิ่งที่ใช้ทำร้าย (เลือกได้หลายข้อตามเหตุการณ์จริง):</label>
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs sm:text-sm">
-        <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50">
-          <input type="checkbox" name="assaultMechanisms" value="physical_force" onchange="handleAssaultMechanismChange()" class="rounded text-medical-600 h-4 w-4">
-          <span class="ml-2.5 text-slate-800">ถูกทำร้ายด้วยร่างกาย (เช่น ชก ต่อย ตบ เตะ กระทืบ หรือผลักล้มกระแทก)</span>
-        </label>
+    <div class="pt-3 border-t border-slate-100 space-y-2.5">
+      <label class="block text-xs sm:text-sm font-semibold text-slate-800">1.2 ลักษณะการถูกทำร้าย หรือสิ่งที่ใช้ทำร้าย (เลือกได้หลายข้อ):</label>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+        ${renderAssaultOption({ name: 'assaultMechanisms', value: 'physical_force', title: ['ทำร้ายด้วยร่างกาย'], desc: 'ชก ต่อย ตบ เตะ กระทืบ หรือผลักล้มกระแทก', onchange: 'handleAssaultMechanismChange()' })}
         <div>
-          <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50">
-            <input type="checkbox" name="assaultMechanisms" value="blunt_weapon" onchange="handleAssaultMechanismChange()" class="rounded text-medical-600 h-4 w-4">
-            <span class="ml-2.5 text-slate-800">ถูกตีหรือฟาดด้วยของแข็งไม่มีคม (เช่น ท่อนไม้ ท่อนเหล็ก ขวด หมวกกันน็อก เก้าอี้ หรือก้อนหิน)</span>
-          </label>
-          <div id="assaultBluntDetailContainer" class="hidden mt-2">
-            <input type="text" id="assaultBluntDetail" placeholder="พิมพ์ระบุสิ่งของที่ใช้ตี เช่น ขวดแก้ว, ท่อนเหล็ก..." class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs sm:text-sm text-slate-800 placeholder:text-slate-400 focus:ring-2 focus:ring-medical-500">
+          ${renderAssaultOption({ name: 'assaultMechanisms', value: 'blunt_weapon', title: ['ถูกตีด้วยของแข็ง', 'ไม่มีคม'], desc: 'ท่อนไม้ เหล็ก ขวด หมวกกันน็อก เก้าอี้ ก้อนหิน', onchange: 'handleAssaultMechanismChange()' })}
+          <div id="assaultBluntDetailContainer" class="hidden mt-2 pl-3 border-l-2 border-medical-200">
+            <input type="text" id="assaultBluntDetail" placeholder="พิมพ์ระบุสิ่งของที่ใช้ตี เช่น ขวดแก้ว, ท่อนเหล็ก..." class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-1.5 text-xs sm:text-sm text-slate-800 placeholder:text-slate-400 focus:ring-2 focus:ring-medical-500">
           </div>
         </div>
         <div>
-          <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50">
-            <input type="checkbox" name="assaultMechanisms" value="sharp_weapon" onchange="handleAssaultMechanismChange()" class="rounded text-medical-600 h-4 w-4">
-            <span class="ml-2.5 text-slate-800">ถูกแทง ฟัน หรือบาดด้วยของมีคม (เช่น มีด คัตเตอร์ ปากฉลาม เศษแก้ว หรือเหล็กแหลม)</span>
-          </label>
-          <div id="assaultSharpDetailContainer" class="hidden mt-2">
-            <input type="text" id="assaultSharpDetail" placeholder="พิมพ์ระบุชนิดของมีคม เช่น มีดพก, เศษขวดแก้ว..." class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs sm:text-sm text-slate-800 placeholder:text-slate-400 focus:ring-2 focus:ring-medical-500">
+          ${renderAssaultOption({ name: 'assaultMechanisms', value: 'sharp_weapon', title: ['ถูกแทง / ฟัน / บาด', 'ด้วยของมีคม'], desc: 'มีด คัตเตอร์ ปากฉลาม เศษแก้ว เหล็กแหลม', onchange: 'handleAssaultMechanismChange()' })}
+          <div id="assaultSharpDetailContainer" class="hidden mt-2 pl-3 border-l-2 border-medical-200">
+            <input type="text" id="assaultSharpDetail" placeholder="พิมพ์ระบุชนิดของมีคม เช่น มีดพก, เศษขวดแก้ว..." class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-1.5 text-xs sm:text-sm text-slate-800 placeholder:text-slate-400 focus:ring-2 focus:ring-medical-500">
           </div>
         </div>
-        <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50">
-          <input type="checkbox" name="assaultMechanisms" value="gunshot" onchange="handleAssaultMechanismChange()" class="rounded text-medical-600 h-4 w-4">
-          <span class="ml-2.5 text-slate-800">ถูกยิงด้วยอาวุธปืน หรือสิ่งเทียมอาวุธปืน</span>
-        </label>
-        <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50">
-          <input type="checkbox" name="assaultMechanisms" value="strangulation_choking" onchange="handleAssaultMechanismChange()" class="rounded text-medical-600 h-4 w-4">
-          <span class="ml-2.5 text-slate-800">ถูกบีบคอ รัดคอ ล็อกคอ หรือกดทับใบหน้าจนหายใจไม่ออก</span>
-        </label>
-        <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50">
-          <input type="checkbox" name="assaultMechanisms" value="human_bite_scratch" onchange="handleAssaultMechanismChange()" class="rounded text-medical-600 h-4 w-4">
-          <span class="ml-2.5 text-slate-800">ถูกกัด หรือถูกข่วนโดยบุคคลอื่น</span>
-        </label>
+        ${renderAssaultOption({ name: 'assaultMechanisms', value: 'gunshot', title: ['ถูกยิงด้วยอาวุธปืน'], desc: 'อาวุธปืนหรือสิ่งเทียมอาวุธปืน', onchange: 'handleAssaultMechanismChange()' })}
+        ${renderAssaultOption({ name: 'assaultMechanisms', value: 'strangulation_choking', title: ['ถูกบีบคอ / รัดคอ', 'กดทับทางเดินหายใจ'], desc: 'ล็อกคอ หรือกดทับใบหน้าจนหายใจไม่ออก', onchange: 'handleAssaultMechanismChange()' })}
+        ${renderAssaultOption({ name: 'assaultMechanisms', value: 'human_bite_scratch', title: ['ถูกกัด หรือถูกข่วน', 'โดยบุคคลอื่น'], onchange: 'handleAssaultMechanismChange()' })}
         <div>
-          <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50">
-            <input type="checkbox" name="assaultMechanisms" value="chemical_thermal_burn" onchange="handleAssaultMechanismChange()" class="rounded text-medical-600 h-4 w-4">
-            <span class="ml-2.5 text-slate-800">ถูกสาดด้วยน้ำร้อน น้ำกรด น้ำด่าง สารเคมี หรือถูกพ่นสเปรย์พริกไทย</span>
-          </label>
-          <div id="assaultChemicalDetailContainer" class="hidden mt-2">
-            <input type="text" id="assaultChemicalDetail" placeholder="พิมพ์ระบุสิ่งที่ถูกสาดหรือพ่น เช่น น้ำร้อน, น้ำกรด..." class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs sm:text-sm text-slate-800 placeholder:text-slate-400 focus:ring-2 focus:ring-medical-500">
+          ${renderAssaultOption({ name: 'assaultMechanisms', value: 'chemical_thermal_burn', title: ['ถูกสาดน้ำร้อน /', 'สารเคมี'], desc: 'น้ำกรด น้ำด่าง หรือสารเคมีอื่น', onchange: 'handleAssaultMechanismChange()' })}
+          <div id="assaultChemicalDetailContainer" class="hidden mt-2 pl-3 border-l-2 border-medical-200">
+            <input type="text" id="assaultChemicalDetail" placeholder="พิมพ์ระบุสิ่งที่ถูกสาดหรือพ่น เช่น น้ำร้อน, น้ำกรด..." class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-1.5 text-xs sm:text-sm text-slate-800 placeholder:text-slate-400 focus:ring-2 focus:ring-medical-500">
           </div>
         </div>
         <div>
-          <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50">
-            <input type="checkbox" name="assaultMechanisms" value="other_mechanism" onchange="handleAssaultMechanismChange()" class="rounded text-medical-600 h-4 w-4">
-            <span class="ml-2.5 text-slate-800">ลักษณะอื่นๆ (พิมพ์ระบุ)</span>
-          </label>
-          <div id="assaultOtherMechDetailContainer" class="hidden mt-2">
-            <input type="text" id="assaultOtherMechDetail" placeholder="พิมพ์ระบุลักษณะการถูกทำร้ายเพิ่มเติม..." class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs sm:text-sm text-slate-800 placeholder:text-slate-400 focus:ring-2 focus:ring-medical-500">
+          ${renderAssaultOption({ name: 'assaultMechanisms', value: 'other_mechanism', title: ['ลักษณะอื่นๆ', '(พิมพ์ระบุ)'], onchange: 'handleAssaultMechanismChange()' })}
+          <div id="assaultOtherMechDetailContainer" class="hidden mt-2 pl-3 border-l-2 border-medical-200">
+            <input type="text" id="assaultOtherMechDetail" placeholder="พิมพ์ระบุลักษณะการถูกทำร้ายเพิ่มเติม..." class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-1.5 text-xs sm:text-sm text-slate-800 placeholder:text-slate-400 focus:ring-2 focus:ring-medical-500">
           </div>
         </div>
       </div>
     </div>
 
     <!-- 1.3 สถานะเลือดออกภายนอก -->
-    <div class="pt-3 border-t border-slate-100">
-      <label class="block text-xs sm:text-sm font-semibold text-slate-800 mb-2">1.3 มีบาดแผลเปิดหรือเลือดออกภายนอกร่วมด้วยหรือไม่:</label>
-      <div class="space-y-2 text-xs sm:text-sm">
-        <label class="selectable-card flex items-center p-2.5 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50">
-          <input type="radio" name="assaultBleedingStatus" value="none_or_contusion" class="text-medical-600 h-4 w-4">
-          <span class="ml-2 text-slate-800">ไม่มีบาดแผลเปิดหรือเลือดออก (มีเฉพาะอาการปวด บวม หรือรอยฟกช้ำ)</span>
-        </label>
-        <label class="selectable-card flex items-center p-2.5 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50">
-          <input type="radio" name="assaultBleedingStatus" value="abrasion_or_stopped" class="text-medical-600 h-4 w-4">
-          <span class="ml-2 text-slate-800">มีแผลถลอก รอยข่วน หรือแผลแตกแต่ขณะนี้เลือดหยุดไหลแล้ว</span>
-        </label>
-        <label class="selectable-card flex items-center p-2.5 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50">
-          <input type="radio" name="assaultBleedingStatus" value="active_oozing" class="text-medical-600 h-4 w-4">
-          <span class="ml-2 text-slate-800">มีบาดแผลและเลือดยังไหลซึมออกมาต่อเนื่อง</span>
-        </label>
-        <label class="selectable-card flex items-center p-2.5 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50">
-          <input type="radio" name="assaultBleedingStatus" value="active_spurting_profuse" class="text-medical-600 h-4 w-4">
-          <span class="ml-2 text-slate-800">มีบาดแผลเลือดไหลพุ่ง หรือไหลออกมามากผิดปกติ (กดห้ามเลือดแล้วยังชุ่มผ้าอย่างรวดเร็ว)</span>
-        </label>
-      </div>
+    <div class="p-3.5 bg-slate-50 rounded-xl border border-slate-200">
+      ${renderAssaultSysHeader({
+        label: '1.3 สถานะบาดแผลเปิดหรือเลือดออกภายนอก <span class="text-rose-500">*</span>',
+        icon: 'droplets',
+        colorClass: 'bg-rose-100 text-rose-700',
+        toggleKind: 'radio',
+        toggleId: 'assaultBleedNoneRb',
+        toggleName: 'assaultBleedingStatus',
+        toggleValue: 'none_or_contusion',
+        toggleLabel: 'ไม่มีแผลเปิด'
+      })}
+      ${renderAssaultGrid('grid-cols-1 sm:grid-cols-3', [
+        { kind: 'radio', name: 'assaultBleedingStatus', value: 'abrasion_or_stopped', title: ['แผลถลอก / แผลแตก', 'เลือดหยุดไหลแล้ว'], compact: true },
+        { kind: 'radio', name: 'assaultBleedingStatus', value: 'active_oozing', title: ['มีบาดแผลและเลือด', 'ยังไหลซึมต่อเนื่อง'], compact: true },
+        { kind: 'radio', name: 'assaultBleedingStatus', value: 'active_spurting_profuse', title: ['เลือดไหลพุ่ง /', 'ไหลออกมากผิดปกติ'], desc: 'กดห้ามเลือดแล้วยังชุ่มผ้าอย่างรวดเร็ว', compact: true }
+      ])}
     </div>
   </div>
 
   <!-- CARD 2: ตำแหน่งของร่างกายที่ได้รับบาดเจ็บ (7 ส่วนร่างกาย) -->
-  <div class="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-xs space-y-5">
-    <div class="flex items-center space-x-2 border-b border-slate-100 pb-3">
+  <div class="bg-white rounded-2xl p-5 sm:p-6 shadow-sm border border-slate-200 space-y-5">
+    <div class="flex items-center space-x-3 pb-3 border-b border-slate-100">
       <div class="p-2 rounded-xl bg-medical-100 text-medical-700">
         <i data-lucide="user-check" class="w-5 h-5"></i>
       </div>
       <div>
-        <h3 class="text-sm sm:text-base font-bold text-slate-900">2. ตำแหน่งของร่างกายที่ได้รับบาดเจ็บและชนิดการบาดเจ็บ</h3>
-        <p class="text-xs text-slate-500">เลือกตำแหน่งร่างกายที่มีบาดแผลหรือปวดบวม และระบุข้างอย่างละเอียด</p>
+        <h2 class="text-base font-bold text-slate-900">2. ตำแหน่งของร่างกายที่ได้รับบาดเจ็บและชนิดการบาดเจ็บ</h2>
+        <p class="text-xs text-slate-500">เลือกโซนร่างกายที่มีแผลหรือปวดบวม จากนั้นระบุด้านและลักษณะบาดเจ็บ</p>
       </div>
     </div>
 
-    <!-- 2.1 ศีรษะ ใบหน้า ดวงตา -->
-    <div class="border border-slate-200 rounded-xl p-3 sm:p-4 space-y-3">
-      <label class="flex items-center cursor-pointer">
-        <input type="checkbox" id="assaultParentHeadFace" onchange="toggleAssaultGroup('assaultHeadFaceSubGroup', this.checked)" class="rounded text-medical-600 h-4 w-4">
-        <span class="ml-2 text-xs sm:text-sm font-bold text-slate-900">2.1 บาดเจ็บที่ศีรษะ ใบหน้า ดวงตา หู จมูก หรือในช่องปาก</span>
-      </label>
-      <div id="assaultHeadFaceSubGroup" class="hidden space-y-3 pl-6 pt-2 border-t border-slate-100 text-xs sm:text-sm">
-        <div class="space-y-2">
-          ${renderAssaultPart('assaultHeadScalp', 'หนังศีรษะ/หน้าผาก/ท้ายทอย', true)}
-          ${renderAssaultPart('assaultHeadFace', 'ใบหน้า/คิ้ว/โหนกแก้ม/ขากรรไกร/คาง', true)}
-          ${renderAssaultPart('assaultHeadEye', 'ดวงตา/เปลือกตา/เบ้าตา')}
-          ${renderAssaultPart('assaultHeadEar', 'ใบหู/กกหู')}
-          ${renderAssaultPart('assaultHeadNoseMouth', 'จมูก/ริมฝีปาก/ฟัน/ในช่องปาก', true)}
-        </div>
-        <div class="pt-2 border-t border-slate-100 space-y-1.5">
-          <span class="font-semibold text-slate-700 block">อาการสำคัญที่พบร่วมด้วย:</span>
-          <label class="flex items-center"><input type="checkbox" name="assaultHeadSigns" value="loc_amnesia" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">มีอาการสลบ หมดสติไปชั่วขณะ หรือจำเหตุการณ์ก่อน/หลังถูกทำร้ายไม่ได้</span></label>
-          <label class="flex items-center"><input type="checkbox" name="assaultHeadSigns" value="severe_headache_vomiting" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">ปวดศีรษะรุนแรง มึนงงสับสน ง่วงซึมลง หรือมีอาเจียน</span></label>
-          <label class="flex items-center"><input type="checkbox" name="assaultHeadSigns" value="diplopia_blurred_vision" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">ตาพร่ามัว มองเห็นภาพซ้อน เลือดออกในตา หรือตาบวมปิดจนลืมตาไม่ขึ้น</span></label>
-          <label class="flex items-center"><input type="checkbox" name="assaultHeadSigns" value="blood_csf_ear_nose_deformity" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">มีเลือดหรือน้ำใสไหลออกจากรูหู หูอื้อได้ยินลดลง หรือดั้งจมูกบวมเบี้ยวผิดรูป</span></label>
-          <label class="flex items-center"><input type="checkbox" name="assaultHeadSigns" value="malocclusion_tooth_avulsion" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">อ้าปากไม่ได้ ขากรรไกรค้าง/สบฟันไม่สนิท หรือมีฟันหัก/ฟันโยก</span></label>
-        </div>
-      </div>
-    </div>
+    ${renderAssaultRegionBox({
+      parentId: 'assaultParentHeadFace',
+      subGroupId: 'assaultHeadFaceSubGroup',
+      title: ['2.1 ศีรษะ ใบหน้า', 'ดวงตา หู จมูก ปาก'],
+      partsHtml: [
+        renderAssaultPart('assaultHeadScalp', 'หนังศีรษะ / หน้าผาก / ท้ายทอย', true),
+        renderAssaultPart('assaultHeadFace', 'ใบหน้า / คิ้ว / โหนกแก้ม / ขากรรไกร / คาง', true),
+        renderAssaultPart('assaultHeadEye', 'ดวงตา / เปลือกตา / เบ้าตา'),
+        renderAssaultPart('assaultHeadEar', 'ใบหู / กกหู'),
+        renderAssaultPart('assaultHeadNoseMouth', 'จมูก / ริมฝีปาก / ฟัน / ในช่องปาก', true)
+      ].join('\n'),
+      signsName: 'assaultHeadSigns',
+      signsNoneId: 'assaultHeadSignsNoneCb',
+      signs: [
+        { value: 'loc_amnesia', title: ['สลบ หมดสติชั่วขณะ', 'จำเหตุการณ์ไม่ได้'] },
+        { value: 'severe_headache_vomiting', title: ['ปวดศีรษะรุนแรง', 'มึนงง ซึม อาเจียน'] },
+        { value: 'diplopia_blurred_vision', title: ['ตาพร่ามัว ภาพซ้อน', 'หรือตาบวมปิด'], desc: 'มีเลือดออกในตา หรือลืมตาไม่ขึ้น' },
+        { value: 'blood_csf_ear_nose_deformity', title: ['เลือด/น้ำใสออกหู', 'หรือดั้งจมูกเบี้ยว'], desc: 'หูอื้อได้ยินลดลง หรือจมูกบวมผิดรูป' },
+        { value: 'malocclusion_jaw_locked', title: ['ขากรรไกรค้าง /', 'สบไม่สนิท'], desc: 'อ้าปากไม่ขึ้น หรือสบฟันไม่ตรง' },
+        { value: 'broken_loose_tooth', title: ['ฟันหัก / โยก'], desc: 'ฟันแตก บิ่น หลุด หรือโยกคลอน' }
+      ]
+    })}
 
-    <!-- 2.2 ลำคอ -->
-    <div class="border border-slate-200 rounded-xl p-3 sm:p-4 space-y-3">
-      <label class="flex items-center cursor-pointer">
-        <input type="checkbox" id="assaultParentNeck" onchange="toggleAssaultGroup('assaultNeckSubGroup', this.checked)" class="rounded text-medical-600 h-4 w-4">
-        <span class="ml-2 text-xs sm:text-sm font-bold text-slate-900">2.2 บาดเจ็บที่ลำคอ หรือต้นคอ</span>
-      </label>
-      <div id="assaultNeckSubGroup" class="hidden space-y-3 pl-6 pt-2 border-t border-slate-100 text-xs sm:text-sm">
-        <div class="space-y-2">
-          ${renderAssaultPart('assaultNeckFront', 'ลำคอด้านหน้า (ลูกกระเดือก / หลอดลม)', true)}
-          ${renderAssaultPart('assaultNeckSide', 'ลำคอด้านข้าง')}
-          ${renderAssaultPart('assaultNeckBack', 'ต้นคอด้านหลัง (แนวกระดูกต้นคอ)', true)}
-        </div>
-        <div class="pt-2 border-t border-slate-100 space-y-1.5">
-          <span class="font-semibold text-slate-700 block">อาการสำคัญที่พบร่วมด้วย:</span>
-          <label class="flex items-center"><input type="checkbox" name="assaultNeckSigns" value="strangulation_dysphonia_dysphagia" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">หายใจลำบาก อึดอัดแน่นคอ กลืนน้ำลายลำบาก เจ็บคอมากเวลาพูด/กลืน หรือเสียงแหบเปลี่ยนไป</span></label>
-          <label class="flex items-center"><input type="checkbox" name="assaultNeckSigns" value="penetrating_neck_rapid_swelling" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">มีแผลถูกแทง/ปาดที่ลำคอ หรือบริเวณลำคอบวมโตขึ้นอย่างรวดเร็ว</span></label>
-          <label class="flex items-center"><input type="checkbox" name="assaultNeckSigns" value="cspine_tenderness_radicular_deficit" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">ปวดตึงแนวกระดูกต้นคอมาก หรือมีอาการชา/อ่อนแรงร้าวลงไปที่แขนหรือขา</span></label>
-        </div>
-      </div>
-    </div>
+    ${renderAssaultRegionBox({
+      parentId: 'assaultParentNeck',
+      subGroupId: 'assaultNeckSubGroup',
+      title: ['2.2 ลำคอ / ต้นคอ'],
+      partsHtml: [
+        renderAssaultPart('assaultNeckFront', 'ลำคอด้านหน้า (ลูกกระเดือก / หลอดลม)', true),
+        renderAssaultPart('assaultNeckSide', 'ลำคอด้านข้าง'),
+        renderAssaultPart('assaultNeckBack', 'ต้นคอด้านหลัง (แนวกระดูกต้นคอ)', true)
+      ].join('\n'),
+      signsName: 'assaultNeckSigns',
+      signsNoneId: 'assaultNeckSignsNoneCb',
+      signsCols: 'grid-cols-1 sm:grid-cols-3',
+      signs: [
+        { value: 'strangulation_dysphonia_dysphagia', title: ['หายใจ / กลืนลำบาก', 'แน่นคอ หรือเสียงแหบ'], desc: 'เจ็บคอมากเวลาพูดหรือกลืน' },
+        { value: 'penetrating_neck_rapid_swelling', title: ['แผลแทง/ปาดลำคอ', 'หรือคอบวมโตเร็ว'] },
+        { value: 'cspine_tenderness_radicular_deficit', title: ['ปวดตึงต้นคอมาก', 'ชา/อ่อนแรงแขนขา'], desc: 'ปวดแนวกระดูกต้นคอ หรือชาร้าวลงแขนขา' }
+      ]
+    })}
 
-    <!-- 2.3 หน้าอก / หลังบน -->
-    <div class="border border-slate-200 rounded-xl p-3 sm:p-4 space-y-3">
-      <label class="flex items-center cursor-pointer">
-        <input type="checkbox" id="assaultParentChest" onchange="toggleAssaultGroup('assaultChestSubGroup', this.checked)" class="rounded text-medical-600 h-4 w-4">
-        <span class="ml-2 text-xs sm:text-sm font-bold text-slate-900">2.3 บาดเจ็บที่หน้าอก ซี่โครง ไหปลาร้า หรือแผ่นหลังส่วนบน/สะบัก</span>
-      </label>
-      <div id="assaultChestSubGroup" class="hidden space-y-3 pl-6 pt-2 border-t border-slate-100 text-xs sm:text-sm">
-        <div class="space-y-2">
-          ${renderAssaultPart('assaultChestFront', 'หน้าอก/ซี่โครง/ราวนม', true)}
-          ${renderAssaultPart('assaultChestClavicle', 'ไหปลาร้า')}
-          ${renderAssaultPart('assaultChestBack', 'แผ่นหลังส่วนบน/สะบัก', true)}
-        </div>
-        <div class="pt-2 border-t border-slate-100 space-y-1.5">
-          <span class="font-semibold text-slate-700 block">อาการสำคัญที่พบร่วมด้วย:</span>
-          <label class="flex items-center"><input type="checkbox" name="assaultChestSigns" value="dyspnea_chest_tightness" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">หายใจหอบเหนื่อย แน่นหน้าอก หรือรู้สึกหายใจเข้าได้ไม่สุด</span></label>
-          <label class="flex items-center"><input type="checkbox" name="assaultChestSigns" value="pleuritic_rib_pain" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">เจ็บแปล๊บที่หน้าอกหรือซี่โครงมากเวลาหายใจเข้าลึกๆ ไอ หรือขยับตัว</span></label>
-          <label class="flex items-center"><input type="checkbox" name="assaultChestSigns" value="penetrating_chest_wound" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">มีแผลถูกแทง ถูกฟัน หรือถูกยิง บริเวณหน้าอกหรือแผ่นหลัง</span></label>
-        </div>
-      </div>
-    </div>
+    ${renderAssaultRegionBox({
+      parentId: 'assaultParentChest',
+      subGroupId: 'assaultChestSubGroup',
+      title: ['2.3 หน้าอก ซี่โครง', 'ไหปลาร้า / หลังบน'],
+      partsHtml: [
+        renderAssaultPart('assaultChestFront', 'หน้าอก / ซี่โครง / ราวนม', true),
+        renderAssaultPart('assaultChestClavicle', 'ไหปลาร้า'),
+        renderAssaultPart('assaultChestBack', 'แผ่นหลังส่วนบน / สะบัก', true)
+      ].join('\n'),
+      signsName: 'assaultChestSigns',
+      signsNoneId: 'assaultChestSignsNoneCb',
+      signsCols: 'grid-cols-1 sm:grid-cols-3',
+      signs: [
+        { value: 'dyspnea_chest_tightness', title: ['หายใจหอบเหนื่อย', 'แน่นหน้าอก'], desc: 'รู้สึกหายใจเข้าได้ไม่สุด' },
+        { value: 'pleuritic_rib_pain', title: ['เจ็บแปล๊บหน้าอก /', 'ซี่โครงเวลาหายใจ'], desc: 'เจ็บเวลาหายใจเข้าลึกๆ ไอ หรือขยับตัว' },
+        { value: 'penetrating_chest_wound', title: ['แผลถูกแทง ฟัน ยิง', 'บริเวณหน้าอก/หลัง'] }
+      ]
+    })}
 
-    <!-- 2.4 หน้าท้อง / เอว / ก้น -->
-    <div class="border border-slate-200 rounded-xl p-3 sm:p-4 space-y-3">
-      <label class="flex items-center cursor-pointer">
-        <input type="checkbox" id="assaultParentAbdomen" onchange="toggleAssaultGroup('assaultAbdomenSubGroup', this.checked)" class="rounded text-medical-600 h-4 w-4">
-        <span class="ml-2 text-xs sm:text-sm font-bold text-slate-900">2.4 บาดเจ็บที่หน้าท้อง บั้นเอว หลังส่วนล่าง สะโพก หรืออวัยวะเพศ</span>
-      </label>
-      <div id="assaultAbdomenSubGroup" class="hidden space-y-3 pl-6 pt-2 border-t border-slate-100 text-xs sm:text-sm">
-        <div class="space-y-2">
-          ${renderAssaultPart('assaultAbdFront', 'หน้าท้อง/ชายโครง', true)}
-          ${renderAssaultPart('assaultAbdFlank', 'สีข้าง/บั้นเอว')}
-          ${renderAssaultPart('assaultAbdLowBack', 'หลังส่วนล่าง', true)}
-          ${renderAssaultPart('assaultAbdButtock', 'สะโพก/ก้น', true)}
-          ${renderAssaultPart('assaultAbdGroinGenitalia', 'ขาหนีบ/อวัยวะเพศ/ทวารหนัก', true)}
-        </div>
-        <div class="pt-2 border-t border-slate-100 space-y-1.5">
-          <span class="font-semibold text-slate-700 block">อาการสำคัญที่พบร่วมด้วย:</span>
-          <label class="flex items-center"><input type="checkbox" name="assaultAbdSigns" value="severe_abd_pain_distension" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">ปวดท้องรุนแรง ท้องอืดตึง หรือกดเจ็บทั่วหน้าท้อง</span></label>
-          <label class="flex items-center"><input type="checkbox" name="assaultAbdSigns" value="penetrating_abd_wound" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">มีแผลถูกแทง ถูกฟัน หรือถูกยิง บริเวณหน้าท้อง สีข้าง หรือบั้นเอว</span></label>
-          <label class="flex items-center"><input type="checkbox" name="assaultAbdSigns" value="hematuria_anuria" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">ปัสสาวะเป็นเลือด หรือปัสสาวะไม่ออก</span></label>
-          <label class="flex items-center"><input type="checkbox" name="assaultAbdSigns" value="genital_trauma_bleeding" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">มีบาดแผล เลือดออก หรือปวดบวมมากบริเวณอวัยวะเพศหรือทวารหนัก</span></label>
-        </div>
-      </div>
-    </div>
+    ${renderAssaultRegionBox({
+      parentId: 'assaultParentAbdomen',
+      subGroupId: 'assaultAbdomenSubGroup',
+      title: ['2.4 หน้าท้อง เอว', 'หลังล่าง สะโพก เพศ'],
+      partsHtml: [
+        renderAssaultPart('assaultAbdFront', 'หน้าท้อง / ชายโครง', true),
+        renderAssaultPart('assaultAbdFlank', 'สีข้าง / บั้นเอว'),
+        renderAssaultPart('assaultAbdLowBack', 'หลังส่วนล่าง', true),
+        renderAssaultPart('assaultAbdButtock', 'สะโพก / ก้น', true),
+        renderAssaultPart('assaultAbdGroinGenitalia', 'ขาหนีบ / อวัยวะเพศ / ทวารหนัก', true)
+      ].join('\n'),
+      signsName: 'assaultAbdSigns',
+      signsNoneId: 'assaultAbdSignsNoneCb',
+      signs: [
+        { value: 'severe_abd_pain_distension', title: ['ปวดท้องรุนแรง', 'ท้องอืดตึง / กดเจ็บ'] },
+        { value: 'penetrating_abd_wound', title: ['แผลถูกแทง ฟัน ยิง', 'หน้าท้อง / บั้นเอว'] },
+        { value: 'hematuria_anuria', title: ['ปัสสาวะเป็นเลือด', 'หรือปัสสาวะไม่ออก'] },
+        { value: 'genital_trauma_bleeding', title: ['แผล/เลือดออก', 'อวัยวะเพศ / ก้น'], desc: 'บาดแผล เลือดออก หรือปวดบวมมาก' }
+      ]
+    })}
 
-    <!-- 2.5 ไหล่ แขน มือ นิ้วมือ (แผลป้องกันตัว) -->
-    <div class="border border-slate-200 rounded-xl p-3 sm:p-4 space-y-3">
-      <label class="flex items-center cursor-pointer">
-        <input type="checkbox" id="assaultParentUpperExtremity" onchange="toggleAssaultGroup('assaultUpperExtSubGroup', this.checked)" class="rounded text-medical-600 h-4 w-4">
-        <span class="ml-2 text-xs sm:text-sm font-bold text-slate-900">2.5 บาดเจ็บที่ไหล่ แขน ข้อศอก ข้อมือ หรือมือ/นิ้วมือ (รวมแผลป้องกันตัว)</span>
-      </label>
-      <div id="assaultUpperExtSubGroup" class="hidden space-y-3 pl-6 pt-2 border-t border-slate-100 text-xs sm:text-sm">
-        <div class="space-y-2">
-          ${renderAssaultPart('assaultArmShoulder', 'หัวไหล่/ต้นแขน')}
-          ${renderAssaultPart('assaultArmElbowForearm', 'ข้อศอก/แขนท่อนล่าง')}
-          ${renderAssaultPart('assaultArmWristHand', 'ข้อมือ/ฝ่ามือ/หลังมือ')}
-          ${renderAssaultDigits('assaultArmFingers', 'นิ้วมือ')}
-        </div>
-        <div class="pt-2 border-t border-slate-100 space-y-1.5">
-          <span class="font-semibold text-slate-700 block">อาการสำคัญที่พบร่วมด้วย:</span>
-          <label class="flex items-center"><input type="checkbox" name="assaultUpperExtSigns" value="arm_deformity_suspected_fracture" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">ไหล่ แขน ข้อมือ หรือนิ้วมือ บวมโต ผิดรูป บิดเบี้ยว หรือสงสัยกระดูกหัก/ข้อหลุด</span></label>
-          <label class="flex items-center"><input type="checkbox" name="assaultUpperExtSigns" value="tendon_injury_inability_to_move" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">ขยับข้อมือ กำมือ หรือเหยียด/งอนิ้วมือไม่ได้ตามปกติ</span></label>
-          <label class="flex items-center"><input type="checkbox" name="assaultUpperExtSigns" value="numbness_pallor_cold_finger" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">มีอาการชา ไร้ความรู้สึก หรือปลายนิ้วมือซีดขาว/เย็นเฉียบ</span></label>
-        </div>
-      </div>
-    </div>
+    ${renderAssaultRegionBox({
+      parentId: 'assaultParentUpperExtremity',
+      subGroupId: 'assaultUpperExtSubGroup',
+      title: ['2.5 ไหล่ แขน มือ', 'และนิ้วมือ'],
+      desc: 'รวมแผลป้องกันตัวบริเวณแขนและมือ',
+      partsHtml: [
+        renderAssaultPart('assaultArmShoulder', 'หัวไหล่ / ต้นแขน'),
+        renderAssaultPart('assaultArmElbowForearm', 'ข้อศอก / แขนท่อนล่าง'),
+        renderAssaultPart('assaultArmWristHand', 'ข้อมือ / ฝ่ามือ / หลังมือ'),
+        renderAssaultDigits('assaultArmFingers', 'นิ้วมือ')
+      ].join('\n'),
+      signsName: 'assaultUpperExtSigns',
+      signsNoneId: 'assaultUpperExtSignsNoneCb',
+      signsCols: 'grid-cols-1 sm:grid-cols-3',
+      signs: [
+        { value: 'arm_deformity_suspected_fracture', title: ['แขน มือ นิ้วผิดรูป', 'บวมโตบิดเบี้ยว'] },
+        { value: 'tendon_injury_inability_to_move', title: ['ขยับข้อมือ กำมือ', 'และนิ้วมือไม่ได้'], desc: 'เหยียดหรือกำนิ้วมือไม่ได้ตามปกติ' },
+        { value: 'numbness_pallor_cold_finger', title: ['ชา ไร้ความรู้สึก', 'ปลายนิ้วมือซีดเย็น'] }
+      ]
+    })}
 
-    <!-- 2.6 ขา ข้อเท้า เท้า นิ้วเท้า -->
-    <div class="border border-slate-200 rounded-xl p-3 sm:p-4 space-y-3">
-      <label class="flex items-center cursor-pointer">
-        <input type="checkbox" id="assaultParentLowerExtremity" onchange="toggleAssaultGroup('assaultLowerExtSubGroup', this.checked)" class="rounded text-medical-600 h-4 w-4">
-        <span class="ml-2 text-xs sm:text-sm font-bold text-slate-900">2.6 บาดเจ็บที่ต้นขา เข่า หน้าแข้ง น่อง ข้อเท้า หรือเท้า/นิ้วเท้า</span>
-      </label>
-      <div id="assaultLowerExtSubGroup" class="hidden space-y-3 pl-6 pt-2 border-t border-slate-100 text-xs sm:text-sm">
-        <div class="space-y-2">
-          ${renderAssaultPart('assaultLegThigh', 'ต้นขา')}
-          ${renderAssaultPart('assaultLegKneeShinCalf', 'เข่า/หน้าแข้ง/น่อง')}
-          ${renderAssaultPart('assaultLegAnkleFoot', 'ข้อเท้า/ส้นเท้า/ฝ่าเท้า/หลังเท้า')}
-          ${renderAssaultDigits('assaultLegToes', 'นิ้วเท้า')}
-        </div>
-        <div class="pt-2 border-t border-slate-100 space-y-1.5">
-          <span class="font-semibold text-slate-700 block">อาการสำคัญที่พบร่วมด้วย:</span>
-          <label class="flex items-center"><input type="checkbox" name="assaultLowerExtSigns" value="leg_deformity_suspected_fracture" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">ขา เข่า หรือข้อเท้า บวมโต ผิดรูป หรือบิดเบี้ยว</span></label>
-          <label class="flex items-center"><input type="checkbox" name="assaultLowerExtSigns" value="inability_to_bear_weight" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">เดินหรือยืนลงน้ำหนักที่ขา/เท้าข้างที่เจ็บไม่ได้เลย</span></label>
-          <label class="flex items-center"><input type="checkbox" name="assaultLowerExtSigns" value="foot_drop_numbness_pallor" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">มีอาการชา กระดกข้อเท้าไม่ได้ หรือปลายเท้าซีดขาว/เย็นเฉียบ</span></label>
-        </div>
-      </div>
-    </div>
+    ${renderAssaultRegionBox({
+      parentId: 'assaultParentLowerExtremity',
+      subGroupId: 'assaultLowerExtSubGroup',
+      title: ['2.6 ต้นขา เข่า', 'ข้อเท้าและนิ้วเท้า'],
+      partsHtml: [
+        renderAssaultPart('assaultLegThigh', 'ต้นขา'),
+        renderAssaultPart('assaultLegKneeShinCalf', 'เข่า / หน้าแข้ง / น่อง'),
+        renderAssaultPart('assaultLegAnkleFoot', 'ข้อเท้า / ส้นเท้า / ฝ่าเท้า / หลังเท้า'),
+        renderAssaultDigits('assaultLegToes', 'นิ้วเท้า')
+      ].join('\n'),
+      signsName: 'assaultLowerExtSigns',
+      signsNoneId: 'assaultLowerExtSignsNoneCb',
+      signsCols: 'grid-cols-1 sm:grid-cols-3',
+      signs: [
+        { value: 'leg_deformity_suspected_fracture', title: ['ขา เข่า ข้อเท้า', 'บวมโต / ผิดรูป'] },
+        { value: 'inability_to_bear_weight', title: ['เดินหรือยืน', 'ลงน้ำหนักไม่ได้เลย'] },
+        { value: 'foot_drop_numbness_pallor', title: ['ชา กระดกเท้าไม่ได้', 'ปลายเท้าซีดเย็น'] }
+      ]
+    })}
 
     <!-- 2.7 ตำแหน่งอื่นๆ -->
-    <div class="border border-slate-200 rounded-xl p-3 sm:p-4 space-y-3">
-      <label class="flex items-center cursor-pointer">
-        <input type="checkbox" id="assaultParentOther" onchange="toggleAssaultGroup('assaultOtherSubGroup', this.checked)" class="rounded text-medical-600 h-4 w-4">
-        <span class="ml-2 text-xs sm:text-sm font-bold text-slate-900">2.7 บาดแผลที่ตำแหน่งอื่นๆ (พิมพ์ระบุ)</span>
+    <div class="space-y-3">
+      <label class="selectable-card flex items-center p-3.5 rounded-xl border-2 border-slate-200 bg-slate-50 hover:border-medical-400 transition cursor-pointer">
+        <input type="checkbox" id="assaultParentOther" onchange="toggleAssaultGroup('assaultOtherSubGroup', this.checked)" class="text-medical-600 focus:ring-medical-500 h-5 w-5 rounded flex-shrink-0">
+        <span class="ml-3 text-xs sm:text-sm font-bold text-slate-900">2.7 ตำแหน่งอื่นๆ (พิมพ์ระบุ)</span>
       </label>
-      <div id="assaultOtherSubGroup" class="hidden pl-6 pt-2 border-t border-slate-100">
-        <input type="text" id="assaultOtherLocationDetail" placeholder="ระบุตำแหน่งของร่างกายที่ได้รับบาดเจ็บ เช่น ซอกคอ, ใต้รักแร้..." class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2 text-xs sm:text-sm text-slate-800 placeholder:text-slate-400 focus:ring-2 focus:ring-medical-500">
+      <div id="assaultOtherSubGroup" class="hidden pl-4 sm:pl-6 border-l-2 border-medical-200">
+        <input type="text" id="assaultOtherLocationDetail" placeholder="ระบุตำแหน่งของร่างกายที่ได้รับบาดเจ็บ เช่น ซอกคอ, ใต้รักแร้..." class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2 text-xs sm:text-sm text-slate-800 placeholder:text-slate-400 focus:ring-2 focus:ring-medical-500 focus:bg-white">
       </div>
     </div>
   </div>
 
   <!-- CARD 3: อาการผิดปกติของร่างกาย และระดับความปวด -->
-  <div class="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-xs space-y-5">
-    <div class="flex items-center space-x-2 border-b border-slate-100 pb-3">
+  <div class="bg-white rounded-2xl p-5 sm:p-6 shadow-sm border border-slate-200 space-y-5">
+    <div class="flex items-center space-x-3 pb-3 border-b border-slate-100">
       <div class="p-2 rounded-xl bg-medical-100 text-medical-700">
         <i data-lucide="activity" class="w-5 h-5"></i>
       </div>
       <div>
-        <h3 class="text-sm sm:text-base font-bold text-slate-900">3. อาการผิดปกติของร่างกาย และระดับความปวด</h3>
-        <p class="text-xs text-slate-500">คัดกรองภาวะช็อก อาการทางสมอง และระดับความปวด</p>
+        <h2 class="text-base font-bold text-slate-900">3. อาการผิดปกติของร่างกาย และระดับความปวด</h2>
+        <p class="text-xs text-slate-500">คัดกรองอาการหน้ามืด เป็นลม ภาวะเสียเลือด และระดับความปวด</p>
       </div>
     </div>
 
     <!-- 3.1 อาการผิดปกติของร่างกาย -->
-    <div>
-      <label class="block text-xs sm:text-sm font-semibold text-slate-800 mb-2">3.1 อาการผิดปกติของร่างกายที่พบร่วมด้วยในขณะนี้ (เลือกได้หลายข้อหากมีอาการ):</label>
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs sm:text-sm">
-        <label class="selectable-card flex items-center p-2.5 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50">
-          <input type="checkbox" name="assaultSystemicSigns" value="presyncope_dizziness" class="rounded text-medical-600 h-4 w-4">
-          <span class="ml-2 text-slate-800">หน้ามืด เวียนศีรษะ วูบ หรือรู้สึกเหมือนจะเป็นลม</span>
-        </label>
-        <label class="selectable-card flex items-center p-2.5 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50">
-          <input type="checkbox" name="assaultSystemicSigns" value="palpitation_cold_sweat_pallor" class="rounded text-medical-600 h-4 w-4">
-          <span class="ml-2 text-slate-800">ใจสั่น เหงื่อแตกท่วมตัว ตัวเย็น หรือหน้าซีดปากซีด</span>
-        </label>
-        <label class="selectable-card flex items-center p-2.5 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50">
-          <input type="checkbox" name="assaultSystemicSigns" value="suspected_drugged_intoxicated" class="rounded text-medical-600 h-4 w-4">
-          <span class="ml-2 text-slate-800">รู้สึกมึนงง สะลึมสะลือผิดปกติ หรือจำเหตุการณ์ไม่ได้โดยสงสัยว่าอาจถูกวางยา/ผสมสารในเครื่องดื่ม</span>
-        </label>
-        <label class="selectable-card flex items-center p-2.5 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50">
-          <input type="checkbox" name="assaultSystemicSigns" value="no_systemic_signs" class="rounded text-medical-600 h-4 w-4">
-          <span class="ml-2 text-slate-600">ไม่มีอาการผิดปกติของร่างกายดังกล่าว</span>
-        </label>
-      </div>
+    <div class="p-3.5 bg-slate-50 rounded-xl border border-slate-200">
+      ${renderAssaultSysHeader({
+        label: '3.1 อาการผิดปกติของร่างกายที่พบร่วมด้วย (เลือกได้หลายข้อ)',
+        icon: 'alert-triangle',
+        colorClass: 'bg-amber-100 text-amber-700',
+        toggleKind: 'checkbox',
+        toggleId: 'assaultSystemicNoneCb',
+        toggleName: 'assaultSystemicSigns',
+        toggleValue: 'no_systemic_signs',
+        toggleLabel: 'ไม่มีอาการในหมวดนี้',
+        toggleOnchange: "handleAssaultGroupNoneToggle(this, 'assaultSystemicSigns')"
+      })}
+      ${renderAssaultGrid('grid-cols-1 sm:grid-cols-3', [
+        { name: 'assaultSystemicSigns', value: 'presyncope_dizziness', title: ['หน้ามืด เวียนศีรษะ', 'วูบจะเป็นลม'], onchange: "handleAssaultGroupItemChange(this, 'assaultSystemicNoneCb')", compact: true },
+        { name: 'assaultSystemicSigns', value: 'palpitation_cold_sweat_pallor', title: ['ใจสั่น เหงื่อแตก', 'ตัวเย็น หน้าปากซีด'], onchange: "handleAssaultGroupItemChange(this, 'assaultSystemicNoneCb')", compact: true },
+        { name: 'assaultSystemicSigns', value: 'suspected_drugged_intoxicated', title: ['มึนงง สะลึมสะลือ', 'สงสัยอาจถูกวางยา'], desc: 'จำเหตุการณ์ไม่ได้ หรือสงสัยมีสารผสมในเครื่องดื่ม', onchange: "handleAssaultGroupItemChange(this, 'assaultSystemicNoneCb')", compact: true }
+      ])}
     </div>
 
-    <!-- 3.2 ระดับความปวด Pain Score -->
-    <div class="pt-3 border-t border-slate-100">
-      <div class="flex items-center justify-between mb-2">
-        <label class="text-xs sm:text-sm font-semibold text-slate-800">3.2 ระดับความปวดบริเวณที่ได้รับบาดเจ็บในขณะนี้ (Pain Score 0-10):</label>
-        <button type="button" id="assaultPainScoreClearBtn" onclick="clearAssaultPainScore()" class="hidden text-xs text-medical-600 hover:text-medical-700 underline font-medium">ล้างค่า</button>
-      </div>
-      <div class="space-y-3">
-        <input type="range" id="assaultPainScore" min="0" max="10" value="0" step="1" oninput="handleAssaultPainScoreChange(this.value)" onchange="handleAssaultPainScoreChange(this.value)" class="w-full accent-medical-600 cursor-pointer h-2 bg-slate-200 rounded-lg">
-        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 text-xs text-slate-500">
-          <div id="assaultPainScoreBadge" class="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-600 border border-slate-300 self-start sm:self-auto transition-all">
-            <span id="assaultPainScoreEmoji">⚪</span>
+    <!-- 3.2 ระดับความปวด -->
+    <div class="bg-slate-50/80 border border-slate-200 rounded-2xl p-4 sm:p-5 space-y-3">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+        <label class="block text-xs sm:text-sm font-semibold text-slate-800 tracking-wider">3.2 ระดับความปวดบริเวณที่ได้รับบาดเจ็บในขณะนี้ (0 – 10)</label>
+        <div class="flex items-center space-x-2">
+          <span id="assaultPainScoreBadge" class="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-600 border border-slate-300 self-start sm:self-auto transition-all">
+            <span id="assaultPainScoreEmoji" class="text-base">⚪</span>
             <span id="assaultPainScoreText">ยังไม่ได้ระบุ (แตะแถบเพื่อระบุ)</span>
-          </div>
-          <span class="text-[11px] text-slate-400">0 = ไม่ปวดเลย, 10 = ปวดรุนแรงที่สุดในชีวิต</span>
+          </span>
+          <button type="button" id="assaultPainScoreClearBtn" onclick="clearAssaultPainScore()" class="text-xs text-slate-400 hover:text-rose-600 underline hidden transition" title="ล้างค่าเพื่อให้เป็นไม่ได้ระบุ">ล้างค่า</button>
         </div>
+      </div>
+      <div class="px-1 pt-1">
+        <input type="range" id="assaultPainScore" min="0" max="10" value="0" step="1" oninput="handleAssaultPainScoreChange(this.value)" class="w-full h-2.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-medical-600 focus:outline-none focus:ring-2 focus:ring-medical-500">
+      </div>
+      <div class="grid grid-cols-5 text-center text-[10px] sm:text-[11px] pt-1 gap-1 text-slate-500 font-medium">
+        <div class="cursor-pointer hover:text-medical-600 transition" onclick="setAssaultPainScore(0)"><span class="text-lg sm:text-xl block">😊</span><span>0: สบายดี</span></div>
+        <div class="cursor-pointer hover:text-medical-600 transition" onclick="setAssaultPainScore(2)"><span class="text-lg sm:text-xl block">🙂</span><span>1–3: เล็กน้อย</span></div>
+        <div class="cursor-pointer hover:text-medical-600 transition" onclick="setAssaultPainScore(5)"><span class="text-lg sm:text-xl block">😐</span><span>4–6: ปานกลาง</span></div>
+        <div class="cursor-pointer hover:text-medical-600 transition" onclick="setAssaultPainScore(8)"><span class="text-lg sm:text-xl block">😣</span><span>7–9: ปวดมาก</span></div>
+        <div class="cursor-pointer hover:text-medical-600 transition" onclick="setAssaultPainScore(10)"><span class="text-lg sm:text-xl block">😭</span><span>10: ปวดที่สุด</span></div>
       </div>
     </div>
   </div>
 
   <!-- CARD 4: ข้อมูลเพิ่มเติมเพื่อการดูแล ยา และวัคซีนบาดทะยัก -->
-  <div class="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-xs space-y-5">
-    <div class="flex items-center space-x-2 border-b border-slate-100 pb-3">
+  <div class="bg-white rounded-2xl p-5 sm:p-6 shadow-sm border border-slate-200 space-y-5">
+    <div class="flex items-center space-x-3 pb-3 border-b border-slate-100">
       <div class="p-2 rounded-xl bg-medical-100 text-medical-700">
         <i data-lucide="shield-plus" class="w-5 h-5"></i>
       </div>
       <div>
-        <h3 class="text-sm sm:text-base font-bold text-slate-900">4. ข้อมูลเพิ่มเติมเพื่อการดูแล ยาละลายลิ่มเลือด และวัคซีนบาดทะยัก</h3>
+        <h2 class="text-base font-bold text-slate-900">4. ข้อมูลเพิ่มเติมเพื่อการดูแล ยาละลายลิ่มเลือด และวัคซีนบาดทะยัก</h2>
         <p class="text-xs text-slate-500">ข้อมูลประวัติเพื่อความปลอดภัยและการดูแลรักษาอย่างเหมาะสม</p>
       </div>
     </div>
 
-    <!-- 4.1 การดูแลพิเศษ / OSCC -->
-    <div>
-      <label class="block text-xs sm:text-sm font-semibold text-slate-800 mb-1">
-        4.1 เหตุการณ์นี้มีการถูกล่วงละเมิดทางเพศ หรือเป็นความรุนแรงจากคนใกล้ชิด หรือคนในครอบครัวด้วยหรือไม่:
-      </label>
-      <p class="text-[11px] sm:text-xs text-slate-500 mb-2">
-        (ข้อมูลส่วนนี้เป็นความลับทางการแพทย์ เพื่อช่วยให้ทีมแพทย์และพยาบาลจัดห้องตรวจที่มิดชิดและให้การดูแลได้อย่างครบถ้วน)
-      </p>
-      <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs sm:text-sm">
-        <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50">
-          <input type="radio" name="assaultOsccScreen" value="general_assault" class="text-medical-600 h-4 w-4">
-          <span class="ml-2 text-slate-800">ไม่มีการถูกล่วงละเมิดทางเพศ (เป็นการทำร้ายร่างกายทั่วไป)</span>
-        </label>
-        <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50">
-          <input type="radio" name="assaultOsccScreen" value="sexual_assault" class="text-medical-600 h-4 w-4">
-          <span class="ml-2 text-slate-800">มีการถูกบังคับ ลวนลาม หรือล่วงละเมิดทางเพศร่วมด้วย</span>
-        </label>
-        <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50">
-          <input type="radio" name="assaultOsccScreen" value="domestic_violence" class="text-medical-600 h-4 w-4">
-          <span class="ml-2 text-slate-800">ถูกทำร้ายโดยคนในครอบครัว/คู่ครอง และกังวลเรื่องความปลอดภัยในการกลับบ้าน</span>
-        </label>
-      </div>
+    <!-- 4.1 การดูแลพิเศษ / ศูนย์พึ่งได้ -->
+    <div class="p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
+      ${renderAssaultSysHeader({
+        label: '4.1 มีการถูกล่วงละเมิดทางเพศ หรือความรุนแรงในครอบครัวร่วมด้วยหรือไม่',
+        icon: 'lock',
+        colorClass: 'bg-purple-100 text-purple-700',
+        toggleKind: 'radio',
+        toggleId: 'assaultOsccNoneRb',
+        toggleName: 'assaultOsccScreen',
+        toggleValue: 'general_assault',
+        toggleLabel: 'ทำร้ายทั่วไป'
+      })}
+      <p class="text-xs text-slate-500">ข้อมูลเป็นความลับทางการแพทย์ เพื่อจัดห้องตรวจที่มิดชิดและประสานดูแลอย่างครบถ้วน</p>
+      ${renderAssaultGrid('grid-cols-1 sm:grid-cols-2', [
+        { kind: 'radio', name: 'assaultOsccScreen', value: 'sexual_assault', title: ['มีเหตุลวนลามหรือ', 'ล่วงละเมิดทางเพศ'], compact: true },
+        { kind: 'radio', name: 'assaultOsccScreen', value: 'domestic_violence', title: ['ถูกคนใกล้ชิดทำร้าย', 'กังวลความปลอดภัย'], desc: 'เกิดจากคนในครอบครัว/คู่ครอง และกังวลเรื่องกลับบ้าน', compact: true }
+      ])}
     </div>
 
     <!-- 4.2 ยาละลายลิ่มเลือด -->
-    <div class="pt-3 border-t border-slate-100">
-      <label class="block text-xs sm:text-sm font-semibold text-slate-800 mb-2">4.2 ประวัติการใช้ยาละลายลิ่มเลือด หรือโรคเลือดหยุดยาก:</label>
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs sm:text-sm">
-        <label class="selectable-card flex items-center p-2.5 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50">
-          <input type="radio" name="assaultAnticoagulantHx" value="anticoagulant_antiplatelet" class="text-medical-600 h-4 w-4">
-          <span class="ml-2 text-slate-800">รับประทานยาละลายลิ่มเลือด หรือยาต้านเกล็ดเลือด (เช่น Warfarin, Aspirin, Plavix, DOACs)</span>
-        </label>
-        <label class="selectable-card flex items-center p-2.5 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50">
-          <input type="radio" name="assaultAnticoagulantHx" value="bleeding_disorder" class="text-medical-600 h-4 w-4">
-          <span class="ml-2 text-slate-800">มีโรคประจำตัวที่ทำให้เลือดออกง่ายหรือหยุดยาก (เช่น โรคตับแข็ง, เกล็ดเลือดต่ำ)</span>
-        </label>
-        <label class="selectable-card flex items-center p-2.5 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50">
-          <input type="radio" name="assaultAnticoagulantHx" value="unknown_regular_meds" class="text-medical-600 h-4 w-4">
-          <span class="ml-2 text-slate-800">มียาประจำตัวรับประทานอยู่ แต่ไม่ทราบชื่อยาแน่ชัด</span>
-        </label>
-        <label class="selectable-card flex items-center p-2.5 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50">
-          <input type="radio" name="assaultAnticoagulantHx" value="no_anticoagulant" class="text-medical-600 h-4 w-4">
-          <span class="ml-2 text-slate-600">ไม่ได้ใช้ยากลุ่มนี้ และไม่มีโรคเลือดหยุดยาก</span>
-        </label>
-      </div>
+    <div class="p-3.5 bg-slate-50 rounded-xl border border-slate-200">
+      ${renderAssaultSysHeader({
+        label: '4.2 ยาละลายลิ่มเลือด หรือโรคเลือดหยุดยาก <span class="text-rose-500">*</span>',
+        icon: 'pill',
+        colorClass: 'bg-blue-100 text-blue-700',
+        toggleKind: 'radio',
+        toggleId: 'assaultAnticoagNoneRb',
+        toggleName: 'assaultAnticoagulantHx',
+        toggleValue: 'no_anticoagulant',
+        toggleLabel: 'ไม่มี / ไม่ได้ใช้'
+      })}
+      ${renderAssaultGrid('grid-cols-1 sm:grid-cols-3', [
+        { kind: 'radio', name: 'assaultAnticoagulantHx', value: 'anticoagulant_antiplatelet', title: ['ใช้ยาละลายลิ่มเลือด', '/ ต้านเกล็ดเลือด'], desc: 'เช่น วาร์ฟาริน แอสไพริน', compact: true },
+        { kind: 'radio', name: 'assaultAnticoagulantHx', value: 'bleeding_disorder', title: ['มีโรคเลือดออกง่าย', 'หรือเลือดหยุดยาก'], desc: 'เช่น โรคตับแข็ง เกล็ดเลือดต่ำ', compact: true },
+        { kind: 'radio', name: 'assaultAnticoagulantHx', value: 'unknown_regular_meds', title: ['กินยาประจำตัว', 'แต่ไม่ทราบชื่อยา'], compact: true }
+      ])}
     </div>
 
-    <!-- 4.3 วัคซีนบาดทะยัก -->
+    <!-- 4.3 วัคซีนบาดทะยัก (Locked Tetanus Standard) -->
     <div class="pt-3 border-t border-slate-100">
-      <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">4.3 ประวัติการได้รับวัคซีนป้องกันบาดทะยัก (Tetanus Vaccine)</label>
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-        <label class="selectable-card flex items-start p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-          <input type="radio" name="assaultTetanusHx" value="within_5_years" class="mt-0.5 text-medical-600 focus:ring-medical-500 h-4 w-4">
-          <div class="ml-3"><span class="block text-xs sm:text-sm font-semibold text-slate-800">เคยฉีดเข็มกระตุ้นภายใน 5 ปีที่ผ่านมา</span><span class="block text-[11px] text-slate-500 font-normal mt-0.5">เคยฉีดครบ (3 เข็ม) มาก่อน และเข็มสุดท้ายหรือเข็มกระตุ้น &lt; 5 ปี</span></div>
-        </label>
-        <label class="selectable-card flex items-start p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-          <input type="radio" name="assaultTetanusHx" value="5_to_10_years" class="mt-0.5 text-medical-600 focus:ring-medical-500 h-4 w-4">
-          <div class="ml-3"><span class="block text-xs sm:text-sm font-semibold text-slate-800">เคยฉีดในช่วง 5 ถึง 10 ปีที่ผ่านมา</span><span class="block text-[11px] text-slate-500 font-normal mt-0.5">เคยฉีดครบ (3 เข็ม) มาก่อน และเข็มสุดท้ายหรือเข็มกระตุ้นห่างมาแล้ว 5–10 ปี</span></div>
-        </label>
-        <label class="selectable-card flex items-start p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-          <input type="radio" name="assaultTetanusHx" value="over_10_years" class="mt-0.5 text-medical-600 focus:ring-medical-500 h-4 w-4">
-          <div class="ml-3"><span class="block text-xs sm:text-sm font-semibold text-slate-800">เคยฉีดครบ แต่เกิน 10 ปีแล้ว</span><span class="block text-[11px] text-slate-500 font-normal mt-0.5">เคยฉีดครบ (3 เข็ม) มาก่อน แต่เข็มสุดท้ายมานานเกิน 10 ปีแล้ว</span></div>
-        </label>
-        <label class="selectable-card flex items-start p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-          <input type="radio" name="assaultTetanusHx" value="unknown_or_never" class="mt-0.5 text-medical-600 focus:ring-medical-500 h-4 w-4">
-          <div class="ml-3"><span class="block text-xs sm:text-sm font-semibold text-slate-800">ไม่เคยฉีด หรือจำประวัติไม่ได้</span><span class="block text-[11px] text-slate-500 font-normal mt-0.5">ไม่เคยฉีด เคยฉีดไม่ครบ 3 เข็ม หรือจำประวัติไม่ได้</span></div>
-        </label>
-      </div>
+      <label class="block text-xs sm:text-sm font-semibold text-slate-800 mb-2">4.3 ประวัติการได้รับวัคซีนป้องกันบาดทะยัก</label>
+      ${renderAssaultGrid('grid-cols-1 sm:grid-cols-2', [
+        {
+          kind: 'radio',
+          name: 'assaultTetanusHx',
+          value: 'within_5_years',
+          title: ['ฉีดกระตุ้น', 'ภายใน 5 ปี'],
+          desc: 'เคยฉีดครบ (3 เข็ม) มาก่อน และเข็มสุดท้ายหรือกระตุ้นไม่เกิน 5 ปี',
+          compact: true
+        },
+        {
+          kind: 'radio',
+          name: 'assaultTetanusHx',
+          value: '5_to_10_years',
+          title: ['ฉีดล่าสุด', '5–10 ปีก่อน'],
+          desc: 'เคยฉีดครบ (3 เข็ม) มาก่อน และเข็มสุดท้ายหรือกระตุ้นอยู่ในช่วง 5–10 ปี',
+          compact: true
+        },
+        {
+          kind: 'radio',
+          name: 'assaultTetanusHx',
+          value: 'over_10_years',
+          title: ['ฉีดครบ', 'เกิน 10 ปีแล้ว'],
+          desc: 'เคยฉีดครบ (3 เข็ม) มาก่อน แต่เข็มสุดท้ายนานเกิน 10 ปีแล้ว',
+          compact: true
+        },
+        {
+          kind: 'radio',
+          name: 'assaultTetanusHx',
+          value: 'unknown_or_never',
+          title: ['ไม่เคยฉีด', '/ จำไม่ได้'],
+          desc: 'ไม่เคยได้รับวัคซีนบาดทะยัก ฉีดไม่ครบ 3 เข็ม หรือไม่ทราบประวัติ',
+          compact: true
+        }
+      ])}
     </div>
 
     <!-- 4.4 ส่วนเฉพาะผู้ป่วยสตรี (Hidden by default - C-AP13) -->
-    <div id="assaultFemaleSection" class="hidden pt-3 border-t border-slate-100 space-y-3">
-      <div class="flex items-center space-x-2">
-        <span class="px-2 py-0.5 text-[10px] font-bold bg-pink-100 text-pink-700 rounded-md">เฉพาะสตรี</span>
-        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider">4.4 ประจำเดือนและการตั้งครรภ์ (LMP &amp; Pregnancy)</label>
-      </div>
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-pink-50/50 p-3.5 rounded-xl border border-pink-200">
-        <div class="min-w-0">
-          <span class="block text-xs font-semibold text-slate-700 mb-1">วันแรกของประจำเดือนครั้งสุดท้าย (LMP):</span>
-          <input type="text" id="assaultLmpDate" data-universal-date="true" placeholder="วว/ดด/ปปปป เช่น 28/10/2026" class="w-full min-w-0 text-xs sm:text-sm border-slate-300 rounded-lg p-2 focus:ring-medical-500 focus:border-medical-500 bg-white">
-        </div>
-        <div class="min-w-0">
-          <span class="block text-xs font-semibold text-slate-700 mb-1">สถานะการตั้งครรภ์:</span>
-          <select id="assaultPregnancyStatus" class="w-full min-w-0 text-xs sm:text-sm border-slate-300 rounded-lg p-2 focus:ring-medical-500 focus:border-medical-500 bg-white">
-            <option value="">-- ไม่ระบุ --</option>
-            <option value="not_pregnant">ไม่ได้ตั้งครรภ์ / ประจำเดือนมาปกติ</option>
-            <option value="suspected_or_missed">ขาดประจำเดือน / สงสัยอาจตั้งครรภ์</option>
-            <option value="confirmed_pregnant">ได้รับการยืนยันว่ากำลังตั้งครรภ์</option>
-            <option value="menopause_or_hysterectomy">วัยหมดประจำเดือน / ผ่าตัดมดลูกแล้ว</option>
-            <option value="unknown">ไม่ทราบ</option>
-          </select>
+    <div id="assaultFemaleSection" class="hidden pt-3 border-t border-slate-100">
+      <div class="p-3.5 bg-pink-50/40 rounded-xl border border-pink-100 space-y-3">
+        ${renderAssaultSysHeader({
+          label: '4.4 ประจำเดือนและการตั้งครรภ์ (เฉพาะสตรี)',
+          icon: 'heart-pulse',
+          colorClass: 'bg-pink-100 text-pink-700',
+          toggleKind: 'radio',
+          toggleId: 'assaultPregNotPregRb',
+          toggleName: 'assaultPregnancyStatus',
+          toggleValue: 'not_pregnant',
+          toggleLabel: 'ไม่ได้ตั้งครรภ์'
+        })}
+        ${renderAssaultGrid('grid-cols-1 sm:grid-cols-2', [
+          { kind: 'radio', name: 'assaultPregnancyStatus', value: 'suspected_or_missed', title: ['ขาดประจำเดือน', '/ สงสัยตั้งครรภ์'], compact: true },
+          { kind: 'radio', name: 'assaultPregnancyStatus', value: 'confirmed_pregnant', title: ['ยืนยัน', 'กำลังตั้งครรภ์'], compact: true },
+          { kind: 'radio', name: 'assaultPregnancyStatus', value: 'menopause_or_hysterectomy', title: ['หมดประจำเดือน', '/ ผ่าตัดมดลูกแล้ว'], compact: true },
+          { kind: 'radio', name: 'assaultPregnancyStatus', value: 'unknown', title: ['ไม่ทราบ'], compact: true }
+        ])}
+        <div class="max-w-xs">
+          <label class="block text-xs sm:text-sm font-semibold text-slate-700 mb-1">วันแรกของประจำเดือนครั้งล่าสุด (ถ้าจำได้):</label>
+          <input type="text" id="assaultLmpDate" data-universal-date="true" placeholder="วว/ดด/ปปปป เช่น 28/10/2026" class="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2 text-xs sm:text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-medical-500">
         </div>
       </div>
     </div>
   </div>
 
   <!-- อาการอื่นๆ เป็นช่องกรอกอิสระ -->
-  <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+  <div class="bg-white rounded-2xl p-5 sm:p-6 shadow-sm border border-slate-200">
     <div class="flex items-center space-x-3 mb-3 pb-2 border-b border-slate-100">
       <div class="bg-slate-100 text-slate-600 p-2 rounded-xl"><i data-lucide="message-square-plus" class="w-5 h-5"></i></div>
       <div>
-        <h2 class="text-base font-bold text-slate-800">อาการอื่นๆ ที่ต้องการแจ้งเพิ่มเติม</h2>
+        <h2 class="text-base font-bold text-slate-900">อาการอื่นๆ ที่ต้องการแจ้งเพิ่มเติม</h2>
         <p class="text-xs text-slate-500">ระบุอาการอื่นๆ ที่ท่านมีหรือต้องการบอกแพทย์เพิ่มเติม (ถ้ามี)</p>
       </div>
     </div>
     <textarea id="physical_assault_other_free" rows="2" placeholder="พิมพ์ระบุอาการอื่นๆ ที่ท่านมีหรือต้องการบอกแพทย์เพิ่มเติม (ถ้ามี)..."
-      class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-medical-500 focus:bg-white"></textarea>
+      class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2 text-xs sm:text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-medical-500 focus:bg-white"></textarea>
   </div>
 </div>
 `;
@@ -1161,6 +1265,8 @@ const physicalAssaultModule = {
   titleEn: 'Physical assault / Violence injury',
   icon: 'shield-alert',
   doctorCcBadgeHtml: '<i data-lucide="shield-alert" class="w-3.5 h-3.5 mr-1 text-medical-600"></i> CC: ถูกทำร้ายร่างกาย (Physical Assault)',
+  pmhSectionNumber: 5,
+  dateFields: ['assaultLmpDate'],
   algorithm: 'physical-assault-protocol',
   sectionDomId: 'cc-physical-assault-section',
   formHtml: PHYSICAL_ASSAULT_FORM_HTML,
@@ -1218,7 +1324,7 @@ const physicalAssaultModule = {
       status: ctx.recordStatus || 'waiting',
       durationVal,
       durationUnit,
-      hospRecordStatus: ctx.hospRecordStatus || 'unspecified',
+      hospRecordStatus: ctx.hospRecordStatus || '',
       underlying: ctx.underlying || [],
       drugAllergy: ctx.drugAllergy || 'ไม่ได้ระบุ',
       currentMeds: ctx.currentMeds || 'ไม่ได้ระบุ',
@@ -1327,7 +1433,7 @@ const physicalAssaultModule = {
       })(),
       ...(isAssaultFemaleCtx(ctx) ? {
         assaultLmpDate: getText('assaultLmpDate'),
-        assaultPregnancyStatus: document.getElementById('assaultPregnancyStatus')?.value || ''
+        assaultPregnancyStatus: getRadioValue('assaultPregnancyStatus') || ''
       } : {})
     };
 
@@ -1392,7 +1498,10 @@ const physicalAssaultModule = {
     setCheckedValues('assaultHeadEarSides', patient.assaultHeadEarSides);
     setChecked('assaultHeadNoseMouth', patient.assaultHeadNoseMouth);
     setCheckedValues('assaultHeadNoseMouthSides', patient.assaultHeadNoseMouthSides);
-    setCheckedValues('assaultHeadSigns', patient.assaultHeadSigns);
+    const headSignsHydrate = Array.isArray(patient.assaultHeadSigns)
+      ? patient.assaultHeadSigns.flatMap(s => (s === 'malocclusion_tooth_avulsion' ? ['malocclusion_jaw_locked', 'broken_loose_tooth'] : [s]))
+      : [];
+    setCheckedValues('assaultHeadSigns', headSignsHydrate);
 
     setChecked('assaultParentNeck', patient.assaultParentNeck);
     setChecked('assaultNeckFront', patient.assaultNeckFront);
@@ -1463,8 +1572,7 @@ const physicalAssaultModule = {
     toggleAssaultFemaleSection(isFem);
     if (isFem) {
       setText('assaultLmpDate', patient.assaultLmpDate || '');
-      const pregEl = document.getElementById('assaultPregnancyStatus');
-      if (pregEl) pregEl.value = patient.assaultPregnancyStatus || '';
+      setRadioValue('assaultPregnancyStatus', patient.assaultPregnancyStatus || '');
     }
     checkAndDisplayAssaultLmp(patient);
 
@@ -1528,8 +1636,6 @@ const physicalAssaultModule = {
     sec.querySelectorAll('input[type="radio"]').forEach(rb => { rb.checked = false; });
     sec.querySelectorAll('input[type="text"], textarea').forEach(ti => { ti.value = ''; });
     sec.querySelectorAll('select').forEach(sel => { sel.selectedIndex = 0; });
-    const pregEl = document.getElementById('assaultPregnancyStatus');
-    if (pregEl) pregEl.value = '';
     sec.querySelectorAll('input[type="number"]').forEach(ni => { ni.value = ''; });
 
     ['assaultDurationVal', 'assaultBluntDetail', 'assaultSharpDetail', 'assaultChemicalDetail', 'assaultOtherMechDetail', 'assaultOtherLocationDetail'].forEach(id => {
@@ -1576,10 +1682,6 @@ const physicalAssaultModule = {
 
   renderNarrativeHpi(patient) {
     return renderAssaultNarrativeHpi(patient);
-  },
-
-  generateCds(patient, ctx) {
-    return generateAssaultCds(patient, ctx);
   },
 
   // --- Standardized Seed Cases (บริบทประเทศไทย) ---

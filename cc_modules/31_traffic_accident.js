@@ -9,6 +9,173 @@
 // --- Module-scoped State & Helpers ---
 let trafficPainScoreTouched = false;
 
+function wrapTrafficWords(chunks) {
+  if (!Array.isArray(chunks)) return chunks;
+  return chunks.map(c => `<span class="inline-block whitespace-nowrap">${c}</span>`).join(' ');
+}
+
+function renderTrafficOption(cfg) {
+  const {
+    kind = 'checkbox',
+    id = '',
+    name = '',
+    value = '',
+    title,
+    desc = '',
+    onchange = '',
+    compact = false,
+    colSpan2 = false
+  } = cfg;
+  const idAttr = id ? `id="${id}" ` : '';
+  const nameAttr = name ? `name="${name}" ` : '';
+  const valAttr = value ? `value="${value}" ` : '';
+  const chgAttr = onchange ? `onchange="${onchange}" ` : '';
+  const alignCls = desc ? 'items-start' : 'items-center';
+  const padCls = compact ? 'p-2.5' : 'p-3';
+  const spanCls = colSpan2 ? ' sm:col-span-2' : '';
+  const roundCls = kind === 'checkbox' ? 'rounded ' : '';
+  const topCls = desc ? 'mt-0.5 ' : '';
+  const szCls = compact ? 'h-3.5 w-3.5' : 'h-4 w-4';
+  const titleHtml = Array.isArray(title) ? wrapTrafficWords(title) : title;
+  const bodyHtml = desc
+    ? `<div class="ml-3 leading-snug"><span class="block text-xs sm:text-sm font-semibold text-slate-800">${titleHtml}</span><span class="block text-xs text-slate-500 font-normal mt-0.5">${desc}</span></div>`
+    : `<span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800 leading-snug">${titleHtml}</span>`;
+  return `<label class="selectable-card bg-white flex ${alignCls} ${padCls} rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition${spanCls}"><input type="${kind}" ${idAttr}${nameAttr}${valAttr}${chgAttr}class="${topCls}${roundCls}text-medical-600 focus:ring-medical-500 ${szCls} flex-shrink-0">${bodyHtml}</label>`;
+}
+
+function renderTrafficGrid(colsCls, items, shared = {}) {
+  return `<div class="grid ${colsCls} gap-2.5">${items.map(it => renderTrafficOption({ ...shared, ...it })).join('\n')}</div>`;
+}
+
+function renderTrafficSysHeader({
+  label,
+  icon,
+  colorClass,
+  toggleKind = 'checkbox',
+  toggleId = '',
+  toggleLabel = '',
+  toggleName = '',
+  toggleValue = '',
+  toggleOnchange = ''
+}) {
+  const nameAttr = toggleName ? `name="${toggleName}" ` : '';
+  const valAttr = toggleValue ? `value="${toggleValue}" ` : '';
+  const chgAttr = toggleOnchange ? `onchange="${toggleOnchange}" ` : '';
+  const roundCls = toggleKind === 'checkbox' ? ' rounded' : '';
+  const toggleHtml = toggleId
+    ? `<label class="inline-flex items-center px-2.5 py-1 rounded-lg bg-white hover:bg-slate-100 border border-slate-200 text-xs font-medium text-slate-700 cursor-pointer transition select-none flex-shrink-0">
+      <input type="${toggleKind}" id="${toggleId}" ${nameAttr}${valAttr}${chgAttr}class="text-medical-600 focus:ring-medical-500 h-3.5 w-3.5${roundCls}">
+      <span class="ml-1.5 whitespace-nowrap">${toggleLabel}</span>
+    </label>`
+    : '';
+  return `<div class="flex flex-wrap items-center justify-between gap-2 mb-2.5">
+    <label class="flex items-center text-xs sm:text-sm font-bold text-slate-800">
+      <span class="${colorClass} p-1.5 rounded-lg mr-2 inline-flex items-center justify-center"><i data-lucide="${icon}" class="w-4 h-4"></i></span>
+      <span>${label}</span>
+    </label>
+    ${toggleHtml}
+  </div>`;
+}
+
+function handleTrafficGroupNoneToggle(noneEl, inputName) {
+  if (!noneEl || !noneEl.checked || typeof document === 'undefined') return;
+  document.querySelectorAll(`input[name="${inputName}"]`).forEach(cb => {
+    if (cb !== noneEl) cb.checked = false;
+  });
+}
+
+function handleTrafficGroupItemChange(itemEl, noneId) {
+  if (!itemEl || !itemEl.checked || !noneId || typeof document === 'undefined') return;
+  const noneEl = document.getElementById(noneId);
+  if (noneEl) noneEl.checked = false;
+}
+
+function renderTrafficPart(id, label, hasCenter = false, deformLabel = 'ผิดรูป') {
+  return `<div class="p-2.5 rounded-xl border border-slate-200 bg-white">
+  <label class="flex items-center cursor-pointer">
+    <input type="checkbox" id="${id}" name="${id}" onchange="toggleTrafficGroup('${id}Detail', this.checked)" class="text-medical-600 h-4 w-4 rounded flex-shrink-0">
+    <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800">${label}</span>
+  </label>
+  <div id="${id}Detail" class="hidden mt-2 pl-6 flex flex-col gap-1.5 text-xs border-t border-slate-100 pt-2">
+    <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
+      <span class="text-xs font-semibold text-slate-500">ด้าน / ข้าง:</span>
+      <label class="inline-flex items-center cursor-pointer"><input type="checkbox" name="${id}Sides" value="left" class="mr-1 text-medical-600 rounded"> ซ้าย</label>
+      <label class="inline-flex items-center cursor-pointer"><input type="checkbox" name="${id}Sides" value="right" class="mr-1 text-medical-600 rounded"> ขวา</label>
+      ${hasCenter ? `<label class="inline-flex items-center cursor-pointer"><input type="checkbox" name="${id}Sides" value="center" class="mr-1 text-medical-600 rounded"> ตรงกลาง</label>` : ''}
+    </div>
+    <div class="flex flex-wrap items-center gap-x-3 gap-y-1 pt-1 border-t border-slate-50">
+      <span class="text-xs font-semibold text-slate-500">ลักษณะบาดเจ็บ:</span>
+      <label class="inline-flex items-center cursor-pointer"><input type="checkbox" name="${id}Injuries" value="wound" class="mr-1 text-medical-600 rounded"> มีแผล</label>
+      <label class="inline-flex items-center cursor-pointer"><input type="checkbox" name="${id}Injuries" value="pain_swelling" class="mr-1 text-medical-600 rounded"> ปวด/บวม</label>
+      <label class="inline-flex items-center cursor-pointer"><input type="checkbox" name="${id}Injuries" value="deformity" class="mr-1 text-medical-600 rounded"> ${deformLabel}</label>
+    </div>
+  </div>
+</div>`;
+}
+
+function renderTrafficDigits(prefix, label) {
+  const digits = [['thumb', 'โป้ง'], ['index', 'ชี้'], ['middle', 'กลาง'], ['ring', 'นาง'], ['little', 'ก้อย']];
+  const row = (side, sl) => `<div class="flex items-center flex-wrap gap-2"><span class="text-xs font-semibold text-slate-500 w-9">${sl}:</span>${digits.map(([k, th]) => `<label class="inline-flex items-center cursor-pointer"><input type="checkbox" name="${prefix}${side}Digits" value="${k}" class="mr-1 text-medical-600 rounded"> ${th}</label>`).join('')}</div>`;
+  return `<div class="p-2.5 rounded-xl border border-slate-200 bg-white">
+  <label class="flex items-center cursor-pointer">
+    <input type="checkbox" id="${prefix}" name="${prefix}" onchange="toggleTrafficGroup('${prefix}Detail', this.checked)" class="text-medical-600 h-4 w-4 rounded flex-shrink-0">
+    <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800">${label}</span>
+  </label>
+  <div id="${prefix}Detail" class="hidden mt-2 pl-6 flex flex-col gap-1.5 text-xs border-t border-slate-100 pt-2">
+    ${row('Left', 'ซ้าย')}${row('Right', 'ขวา')}
+    <div class="flex items-center flex-wrap gap-x-3 gap-y-1 pt-1 border-t border-slate-50">
+      <span class="text-xs font-semibold text-slate-500">ลักษณะบาดเจ็บ:</span>
+      <label class="inline-flex items-center cursor-pointer"><input type="checkbox" name="${prefix}Injuries" value="wound" class="mr-1 text-medical-600 rounded"> มีแผล</label>
+      <label class="inline-flex items-center cursor-pointer"><input type="checkbox" name="${prefix}Injuries" value="pain_swelling" class="mr-1 text-medical-600 rounded"> ปวด/บวม</label>
+      <label class="inline-flex items-center cursor-pointer"><input type="checkbox" name="${prefix}Injuries" value="deformity" class="mr-1 text-medical-600 rounded"> ผิดรูป</label>
+    </div>
+  </div>
+</div>`;
+}
+
+function renderTrafficRegionBox({
+  parentId,
+  subGroupId,
+  title,
+  desc,
+  partsHtml,
+  signsName,
+  signsNoneId,
+  signsCols = 'grid-cols-1 sm:grid-cols-2',
+  signs
+}) {
+  return `<div class="space-y-3">
+    <label class="selectable-card flex items-center p-3.5 rounded-xl border-2 border-slate-200 bg-slate-50 hover:border-medical-400 transition cursor-pointer">
+      <input type="checkbox" id="${parentId}" onchange="toggleTrafficGroup('${subGroupId}', this.checked)" class="text-medical-600 focus:ring-medical-500 h-5 w-5 rounded flex-shrink-0">
+      <div class="ml-3 leading-snug">
+        <span class="text-xs sm:text-sm font-bold text-slate-900">${Array.isArray(title) ? wrapTrafficWords(title) : title}</span>
+        ${desc ? `<p class="text-xs text-slate-500 mt-0.5">${desc}</p>` : ''}
+      </div>
+    </label>
+    <div id="${subGroupId}" class="hidden pl-4 sm:pl-6 space-y-4 border-l-2 border-medical-200">
+      <div>
+        <p class="text-xs sm:text-sm text-slate-700 font-semibold mb-2">จุดที่บาดเจ็บ (เลือกแล้วระบุด้านและลักษณะบาดเจ็บ):</p>
+        <div class="space-y-2">${partsHtml}</div>
+      </div>
+      <div class="p-3 bg-slate-50 rounded-xl border border-slate-200">
+        ${renderTrafficSysHeader({
+          label: 'อาการสำคัญที่พบร่วมด้วย (เลือกได้หลายข้อ)',
+          icon: 'alert-circle',
+          colorClass: 'bg-amber-100 text-amber-700',
+          toggleId: signsNoneId,
+          toggleLabel: 'ไม่มีอาการร่วม',
+          toggleOnchange: `handleTrafficGroupNoneToggle(this, '${signsName}')`
+        })}
+        ${renderTrafficGrid(signsCols, signs, {
+          name: signsName,
+          compact: true,
+          onchange: `handleTrafficGroupItemChange(this, '${signsNoneId}')`
+        })}
+      </div>
+    </div>
+  </div>`;
+}
+
 function toggleTrafficGroup(subId, show) {
   const el = document.getElementById(subId);
   if (!el) return;
@@ -62,15 +229,27 @@ function isTrafficFemalePatient(p) {
   return /นาง|น\.ส\.|ด\.ญ\.|\(หญิง\)|Mrs|Miss|Ms/i.test(label);
 }
 
+function isTrafficFemaleCtx(ctx = {}) {
+  if (ctx.gender === 'หญิง' || ctx.gender === 'female') return true;
+  if (ctx.gender === 'ชาย' || ctx.gender === 'male') return false;
+  if (ctx.patientTitle || ctx.title || ctx.name || ctx.patientName) return isTrafficFemalePatient(ctx);
+  const femSec = typeof document !== 'undefined' ? document.getElementById('trafficFemaleSection') : null;
+  if (femSec && !femSec.classList.contains('hidden')) return true;
+  if (typeof document === 'undefined') return false;
+  const title = document.getElementById('patientTitleSelect')?.value || '';
+  const name = document.getElementById('patientNameInput')?.value || '';
+  const gender = document.getElementById('triageGenderSelect')?.value || '';
+  return isTrafficFemalePatient({ gender, patientTitle: title, name });
+}
+
 function toggleTrafficFemaleSection(isFemale) {
   const femSec = document.getElementById('trafficFemaleSection');
   if (!femSec) return;
   femSec.classList.toggle('hidden', !isFemale);
   if (!isFemale) {
     const lmpEl = document.getElementById('trafficLmpDate');
-    const pregEl = document.getElementById('trafficPregnancyStatus');
     if (lmpEl) lmpEl.value = '';
-    if (pregEl) { pregEl.selectedIndex = 0; pregEl.value = ''; }
+    document.querySelectorAll('input[name="trafficPregnancyStatus"]').forEach(r => { r.checked = false; });
   }
 }
 
@@ -101,40 +280,38 @@ function clearTrafficPainScore() {
 
 function handleTrafficPainScoreChange(val) {
   trafficPainScoreTouched = true;
-  const num = parseInt(val, 10);
+  const num = parseInt(val, 10) || 0;
   const slider = document.getElementById('trafficPainScore');
-  if (slider) slider.value = num;
-  const emojiEl = document.getElementById('trafficPainScoreEmoji');
-  const textEl = document.getElementById('trafficPainScoreText');
-  const badgeEl = document.getElementById('trafficPainScoreBadge');
-  const clearBtn = document.getElementById('trafficPainScoreClearBtn');
-
+  if (slider && String(slider.value) !== String(num)) slider.value = num;
+  const emojiEl = document.getElementById('trafficPainScoreEmoji'), textEl = document.getElementById('trafficPainScoreText');
+  const badgeEl = document.getElementById('trafficPainScoreBadge'), clearBtn = document.getElementById('trafficPainScoreClearBtn');
   if (clearBtn) clearBtn.classList.remove('hidden');
+  if (!emojiEl || !textEl || !badgeEl) return;
 
-  let emoji = '⚪';
-  let desc = 'ยังไม่ได้ระบุ';
-  let badgeClass = 'bg-slate-100 text-slate-600 border-slate-300';
+  let emoji = '😐', label = 'ปวดปานกลาง', badgeClass = 'bg-amber-100 text-amber-800 border-amber-300';
+  if (num === 0) { emoji = '😊'; label = 'สบายดี (ไม่ปวดเลย)'; badgeClass = 'bg-emerald-100 text-emerald-800 border-emerald-300'; }
+  else if (num <= 3) { emoji = '🙂'; label = 'ปวดเล็กน้อย (ทนได้)'; badgeClass = 'bg-lime-100 text-lime-800 border-lime-300'; }
+  else if (num <= 6) { emoji = '😐'; label = 'ปวดปานกลาง (รบกวนสมาธิ)'; badgeClass = 'bg-amber-100 text-amber-800 border-amber-300'; }
+  else if (num <= 9) { emoji = '😣'; label = 'ปวดมาก (ทนแทบไม่ไหว)'; badgeClass = 'bg-rose-100 text-rose-800 border-rose-300'; }
+  else { emoji = '😭'; label = 'เจ็บปวดรุนแรงที่สุดในชีวิต'; badgeClass = 'bg-red-200 text-red-900 border-red-400 animate-pulse'; }
 
-  if (num === 0) {
-    emoji = '😊'; desc = '0 - ไม่ปวดเลย (No pain)';
-    badgeClass = 'bg-emerald-100 text-emerald-800 border-emerald-300';
-  } else if (num >= 1 && num <= 3) {
-    emoji = '🙂'; desc = `${num} - ปวดเล็กน้อย (Mild)`;
-    badgeClass = 'bg-green-100 text-green-800 border-green-300';
-  } else if (num >= 4 && num <= 6) {
-    emoji = '😐'; desc = `${num} - ปวดปานกลาง (Moderate)`;
-    badgeClass = 'bg-amber-100 text-amber-800 border-amber-300';
-  } else if (num >= 7 && num <= 9) {
-    emoji = '😣'; desc = `${num} - ปวดรุนแรง (Severe)`;
-    badgeClass = 'bg-orange-100 text-orange-800 border-orange-300';
-  } else if (num === 10) {
-    emoji = '😫'; desc = '10 - ปวดรุนแรงที่สุด (Worst possible)';
-    badgeClass = 'bg-rose-100 text-rose-800 border-rose-300';
-  }
-
-  if (emojiEl) emojiEl.textContent = emoji;
-  if (textEl) textEl.textContent = desc;
-  if (badgeEl) badgeEl.className = `inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-medium border self-start sm:self-auto transition-all ${badgeClass}`;
+  emojiEl.textContent = emoji;
+  textEl.textContent = `${num} / 10 (${label})`;
+  badgeEl.className = `inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-bold border transition ${badgeClass}`;
+}
+function setTrafficPainScore(score) { trafficPainScoreTouched = true; const s = document.getElementById('trafficPainScore'); if (s) s.value = score; handleTrafficPainScoreChange(score); }
+if (typeof window !== 'undefined') {
+  window.toggleTrafficGroup = toggleTrafficGroup;
+  window.handleTrafficGroupNoneToggle = handleTrafficGroupNoneToggle;
+  window.handleTrafficGroupItemChange = handleTrafficGroupItemChange;
+  window.handleTrafficVehicleChange = handleTrafficVehicleChange;
+  window.handleTrafficMotoCollisionChange = handleTrafficMotoCollisionChange;
+  window.handleTrafficCarCollisionChange = handleTrafficCarCollisionChange;
+  window.handleTrafficPedVehicleChange = handleTrafficPedVehicleChange;
+  window.handleTrafficOtherVehicleCollisionChange = handleTrafficOtherVehicleCollisionChange;
+  window.clearTrafficPainScore = clearTrafficPainScore;
+  window.handleTrafficPainScoreChange = handleTrafficPainScoreChange;
+  window.setTrafficPainScore = setTrafficPainScore;
 }
 
 // Formatters for Digits and Anatomy
@@ -221,7 +398,7 @@ function formatTrafficMechanism(patient) {
     if (mechs.includes('fall_alone')) mechNames.push('ล้มเอง');
     if (mechs.includes('hit_by_motorcycle')) mechNames.push('ถูก จยย. ชน');
     if (mechs.includes('hit_by_car_truck')) mechNames.push('ถูกรถยนต์/บรรทุกชน');
-    if (mechs.includes('thrown_or_run_over')) mechNames.push('กระเด็นตกแรง/ถูกทับ');
+    if (mechs.includes('thrown_or_run_over')) mechNames.push('กระเด็นตกรุนแรง/ถูกทับ');
     return `ปั่นจักรยาน/สกู๊ตเตอร์${beltTxt ? ' • ' + beltTxt : ''}${mechNames.length > 0 ? ' • ' + mechNames.join(', ') : ''}`;
   }
   if (role === 'other_vehicle') {
@@ -459,7 +636,8 @@ function renderTrafficRapidHpi(patient) {
   if (headSigns.includes('severe_headache_vomiting')) positives.push('ปวดศีรษะรุนแรง มึนงงสับสน หรืออาเจียน');
   if (headSigns.includes('diplopia_blurred_foreign_body')) positives.push('ตาพร่ามัว มองเห็นภาพซ้อน หรือสิ่งแปลกปลอมเข้าตา');
   if (headSigns.includes('basilar_ear_nose_discharge')) positives.push('มีเลือดหรือน้ำใสไหลออกจากรูหูหรือรูจมูก');
-  if (headSigns.includes('maxillofacial_malocclusion')) positives.push('ขากรรไกรค้าง สบฟันไม่สนิท หรือฟันหักโยก');
+  if (headSigns.includes('malocclusion_jaw_locked') || headSigns.includes('maxillofacial_malocclusion')) positives.push('ขากรรไกรค้าง อ้าปากไม่ขึ้น หรือสบฟันไม่สนิท');
+  if (headSigns.includes('broken_loose_tooth')) positives.push('ฟันหัก บิ่น หรือฟันโยกคลอน');
 
   if (neckSigns.includes('cspine_severe_pain_stiff')) positives.push('ปวดตึงแนวกระดูกต้นคอมาก หันคอไม่ได้');
   if (neckSigns.includes('radiculopathy_weakness_numbness')) positives.push('ชาแปล๊บเหมือนไฟช็อต หรืออ่อนแรงร้าวลงแขนขา');
@@ -572,8 +750,14 @@ function renderTrafficRapidHpi(patient) {
     hpi += `\n• ประวัติสตรี: ${femStr}`;
   }
 
+  const rfs = evaluateTrafficRedFlags(patient);
+  const rfText = rfs.length > 0
+    ? `🚩 RED FLAGS DETECTED:\n${rfs.map(rf => `  * ${rf.title}\n    ความเสี่ยง: ${rf.detail}\n    ข้อแนะนำการดูแลเร่งด่วน: ${rf.action}`).join('\n\n')}`
+    : '✅ ไม่พบสัญญาณเตือนวิกฤตความเสี่ยงสูง (Non-Red Flag)';
+
   hpi += `\n\n• Pertinent Positives:\n  - ${positives.length > 0 ? positives.join('\n  - ') : 'ผู้ป่วยไม่ได้ระบุอาการร่วมเพิ่มเติม'}`;
   hpi += `\n\n• Pertinent Negatives:\n  - ${negatives.length > 0 ? negatives.join('\n  - ') : 'ผู้ป่วยไม่ได้ระบุคำตอบยืนยันในหมวดอาการร่วม'}`;
+  hpi += `\n\n[Emergency Risk Assessment (Red Flags)]\n${rfText}`;
 
   return hpi;
 }
@@ -608,14 +792,56 @@ function updateTrafficOutputs(rec) {
 
   const redFlags = evaluateTrafficRedFlags(rec);
   rec.redFlags = redFlags;
-}
 
+  const jsonOutput = {
+    encounter: {
+      chief_complaint: 'traffic_accident',
+      schema_code: 'traffic_accident',
+      chief_complaint_title_th: 'ได้รับบาดเจ็บจากอุบัติเหตุจราจร',
+      timestamp: rec.timestamp || new Date().toISOString(),
+      duration_val: rec.durationVal || null,
+      duration_unit: rec.durationUnit || 'minutes',
+      exact_date: rec.trafficExactDate || '',
+      exact_time: rec.trafficExactTime || ''
+    },
+    patient_identification: {
+      id: rec.id || null,
+      queue_number: rec.queue_number || null,
+      hn: rec.hn || null,
+      name: rec.name || null,
+      age: rec.age || null,
+      gender: rec.gender || null
+    },
+    triage_assessment: {
+      vehicle_role: rec.trafficVehicleRole || null,
+      bleeding_status: rec.trafficBleedingStatus || null,
+      systemic_signs: Array.isArray(rec.trafficSystemicSigns) ? rec.trafficSystemicSigns : [],
+      pain_score: rec.painScore,
+      prodrome_signs: Array.isArray(rec.trafficProdromeSigns) ? rec.trafficProdromeSigns : [],
+      anticoagulant_hx: rec.trafficAnticoagulantHx || null,
+      tetanus_history: rec.trafficTetanusHx || null,
+      npo_exact_time: rec.trafficNpoExactTime || '',
+      npo_duration: rec.trafficNpoDuration || null,
+      other_symptoms_free: rec.otherSymptomsFree || ''
+    },
+    safety_and_red_flags: {
+      red_flags_detected: redFlags.map(rf => ({
+        key: rf.key,
+        level: rf.level,
+        title_th: rf.textTh || rf.title,
+        clinical_risk: rf.risk || rf.detail,
+        action: rf.suggestedAction || rf.action
+      })),
+      total_red_flags: redFlags.length
+    }
+  };
+  rec.rapidHpi = rapidText;
+  rec.narrativeHpi = narrativeText;
+  rec.medicalJson = jsonOutput;
 
-function renderTrafficDigits(prefix, label) {
-  const d = [['thumb', 'โป้ง'], ['index', 'ชี้'], ['middle', 'กลาง'], ['ring', 'นาง'], ['little', 'ก้อย']];
-  const row = (side, sideLabel) => `<div class="flex flex-wrap items-center gap-2"><span class="font-medium text-slate-600 w-10">${sideLabel}:</span>${d.map(([k, th]) => `<label class="flex items-center"><input type="checkbox" name="${prefix}${side}Digits" value="${k}" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">${th}</span></label>`).join('')}</div>`;
-  const inj = [['wound', 'มีแผล'], ['pain_swelling', 'ปวด/บวม'], ['deformity', 'ผิดรูป']].map(([k, th]) => `<label class="flex items-center"><input type="checkbox" name="${prefix}Injuries" value="${k}" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">${th}</span></label>`).join('');
-  return `<div class="space-y-1"><label class="flex items-center"><input type="checkbox" id="${prefix}" onchange="toggleTrafficGroup('${prefix}Detail', this.checked)" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-1.5 text-slate-800">${label}</span></label><div id="${prefix}Detail" class="hidden ml-5 p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs space-y-2">${row('Left', 'ซ้าย')}${row('Right', 'ขวา')}<div class="flex flex-wrap items-center gap-2 pt-1 border-t border-slate-200"><span class="font-medium text-slate-600">ชนิดบาดเจ็บ:</span>${inj}</div></div></div>`;
+  const jsonEl = document.getElementById('jsonViewer');
+  if (jsonEl) jsonEl.textContent = JSON.stringify(jsonOutput, null, 2);
+  return { rapid: rapidText, narrative: narrativeText, json: jsonOutput };
 }
 
 // --- QUESTIONNAIRE FORM HTML ---
@@ -623,36 +849,37 @@ const TRAFFIC_ACCIDENT_FORM_HTML = `
 <div id="cc-traffic-accident-section" class="space-y-6">
   <div data-cc-top-banner="traffic_accident"><div class="flex flex-col gap-4">
   <!-- First-Aid Guidance Banner -->
-  <div class="bg-amber-50 border-l-4 border-amber-500 p-3 sm:p-4 rounded-r-xl shadow-sm">
-    <div class="flex items-start">
-      <i data-lucide="alert-triangle" class="w-5 h-5 text-amber-600 mt-0.5 mr-2.5 flex-shrink-0"></i>
-      <div class="text-xs sm:text-sm text-amber-900 space-y-1">
-        <span class="font-bold">ข้อแนะนำการดูแลตนเองเบื้องต้นระหว่างรอพบแพทย์:</span>
-        <ol class="list-decimal list-inside space-y-0.5 text-amber-800">
-          <li><strong>ควรงดน้ำและอาหารทุกชนิดไว้ก่อน:</strong> เผื่อในกรณีที่แพทย์จำเป็นต้องส่งตรวจพิเศษทางรังสีวิทยาหรือต้องได้รับการผ่าตัดฉุกเฉิน</li>
-          <li><strong>อาการสำคัญที่ต้องรีบแจ้งพยาบาลคัดกรองทันที:</strong> หากมีอาการปวดต้นคอรุนแรง แขนขาชาหรืออ่อนแรง ปวดท้องรุนแรง ปวดศีรษะรุนแรง/อาเจียน หายใจหอบเหนื่อย แน่นหน้าอก หน้ามืดคล้ายจะเป็นลม หรือมีเลือดไหลไม่หยุด กรุณาแจ้งพยาบาลหน้าห้องตรวจทันที</li>
-        </ol>
-      </div>
+  <div class="bg-amber-50 border border-amber-300 rounded-2xl p-4 text-xs sm:text-sm text-amber-900 flex items-start space-x-3 shadow-xs">
+    <i data-lucide="alert-triangle" class="w-5 h-5 text-amber-600 shrink-0 mt-0.5"></i>
+    <div class="space-y-1">
+      <strong class="font-bold block text-amber-950 text-sm">คำแนะนำเบื้องต้นระหว่างรอตรวจ:</strong>
+      <ul class="list-disc list-inside space-y-0.5 text-amber-800 text-xs sm:text-sm">
+        <li><strong>ควรงดน้ำและอาหารชั่วคราว:</strong> เผื่อกรณีแพทย์ต้องส่งตรวจพิเศษทางรังสีหรือผ่าตัดฉุกเฉิน</li>
+        <li><strong>อาการฉุกเฉิน:</strong> ปวดต้นคอรุนแรง ชาอ่อนแรง ปวดท้อง แน่นหน้าอก หน้ามืด หรือเลือดไหลไม่หยุด รีบแจ้งพยาบาลทันที</li>
+      </ul>
     </div>
   </div>
   </div></div>
 
   <!-- CARD 1: ข้อมูลเวลาเกิดเหตุ ยานพาหนะ และความรุนแรง -->
-  <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-6 space-y-5">
-    <div class="flex items-center space-x-2 text-medical-700 border-b border-slate-100 pb-3">
-      <div class="p-2 bg-medical-50 rounded-lg"><i data-lucide="car" class="w-5 h-5"></i></div>
-      <h3 class="font-bold text-sm sm:text-base text-slate-800">1. ข้อมูลเวลาเกิดเหตุ ยานพาหนะ และความรุนแรงของอุบัติเหตุ</h3>
+  <div class="bg-white rounded-2xl p-5 sm:p-6 shadow-sm border border-slate-200 space-y-5">
+    <div class="flex items-center space-x-3 pb-3 border-b border-slate-100">
+      <div class="p-2 rounded-xl bg-medical-100 text-medical-700"><i data-lucide="car" class="w-5 h-5"></i></div>
+      <div>
+        <h2 class="text-base font-bold text-slate-900">1. ข้อมูลเวลาเกิดเหตุ ยานพาหนะ และความรุนแรงของอุบัติเหตุ</h2>
+        <p class="text-xs text-slate-500">ระบุเวลาเกิดเหตุ ยานพาหนะที่เกี่ยวข้อง และสถานะเลือดออก</p>
+      </div>
     </div>
 
     <!-- 1.1 ระยะเวลาและวันที่/เวลาเกิดเหตุ -->
-    <div class="space-y-3">
-      <label class="block text-xs sm:text-sm font-semibold text-slate-800">1.1 อุบัติเหตุจราจรเกิดขึ้นมานานเท่าใด และเวลาที่เกิดเหตุ:</label>
+    <div class="space-y-2.5">
+      <label class="block text-xs sm:text-sm font-semibold text-slate-800">1.1 อุบัติเหตุจราจรเกิดขึ้นมานานเท่าใด และวันที่/เวลาที่เกิดเหตุ:</label>
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
-          <span class="text-xs text-slate-600 mb-1 block">ระยะเวลาตั้งแต่เกิดเหตุจนถึงปัจจุบัน:</span>
-          <div class="flex items-center space-x-2">
-            <input type="number" id="trafficDurationVal" min="0" placeholder="เช่น 30" class="w-28 px-3 py-2 border border-slate-300 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-medical-500">
-            <select id="trafficDurationUnit" class="px-3 py-2 border border-slate-300 rounded-xl text-xs sm:text-sm bg-white focus:ring-2 focus:ring-medical-500">
+          <span class="text-xs sm:text-sm text-slate-600 mb-1 block">ระยะเวลาตั้งแต่เกิดเหตุจนถึงปัจจุบัน:</span>
+          <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            <input type="number" id="trafficDurationVal" min="0" placeholder="เช่น 30" class="col-span-1 sm:col-span-2 w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs sm:text-sm text-slate-900 focus:ring-2 focus:ring-medical-500 focus:bg-white">
+            <select id="trafficDurationUnit" class="col-span-1 w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs sm:text-sm text-slate-900 focus:ring-2 focus:ring-medical-500 focus:bg-white">
               <option value="minutes" selected>นาที</option>
               <option value="hours">ชั่วโมง</option>
               <option value="days">วัน</option>
@@ -661,774 +888,550 @@ const TRAFFIC_ACCIDENT_FORM_HTML = `
             </select>
           </div>
         </div>
-        <div class="space-y-1">
-          <span class="text-xs text-slate-600 block">ระบุวันที่และเวลาที่เกิดอุบัติเหตุ:</span>
+        <div>
+          <span class="text-xs sm:text-sm text-slate-600 mb-1 block">ระบุวันที่และเวลาที่เกิดอุบัติเหตุ:</span>
           <div class="grid grid-cols-2 gap-2">
-            <input type="text" id="trafficExactDate" data-universal-date="true" placeholder="วว/ดด/ปปปป" class="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-medical-500">
-            <input type="text" id="trafficExactTime" data-universal-time="true" placeholder="เช่น 14:30 (24 ชม.)" class="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-medical-500">
+            <input type="text" id="trafficExactDate" data-universal-date="true" placeholder="วว/ดด/ปปปป" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs sm:text-sm text-slate-900 focus:ring-2 focus:ring-medical-500 focus:bg-white">
+            <input type="text" id="trafficExactTime" data-universal-time="true" placeholder="เช่น 14:30 (24 ชม.)" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs sm:text-sm text-slate-900 focus:ring-2 focus:ring-medical-500 focus:bg-white">
           </div>
         </div>
       </div>
     </div>
 
     <!-- 1.2 ลักษณะของผู้บาดเจ็บและยานพาหนะ -->
-    <div class="pt-3 border-t border-slate-100 space-y-2">
+    <div class="pt-3 border-t border-slate-100 space-y-2.5">
       <label class="block text-xs sm:text-sm font-semibold text-slate-800">1.2 ลักษณะของผู้บาดเจ็บและยานพาหนะในขณะเกิดเหตุ:</label>
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs sm:text-sm">
-        <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50"><input type="radio" name="trafficVehicleRole" value="motorcycle" onchange="handleTrafficVehicleChange()" class="text-medical-600 h-4 w-4"><span class="ml-2 text-slate-800">ผู้ขับขี่ หรือผู้ซ้อนท้ายรถจักรยานยนต์</span></label>
-        <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50"><input type="radio" name="trafficVehicleRole" value="car_truck" onchange="handleTrafficVehicleChange()" class="text-medical-600 h-4 w-4"><span class="ml-2 text-slate-800">ผู้ขับขี่ หรือผู้โดยสารรถยนต์ / กระบะ / ตู้ / บรรทุก</span></label>
-        <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50"><input type="radio" name="trafficVehicleRole" value="pedestrian" onchange="handleTrafficVehicleChange()" class="text-medical-600 h-4 w-4"><span class="ml-2 text-slate-800">คนเดินเท้า (ถูกรถชนหรือเฉี่ยวชน)</span></label>
-        <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50"><input type="radio" name="trafficVehicleRole" value="bicycle_scooter" onchange="handleTrafficVehicleChange()" class="text-medical-600 h-4 w-4"><span class="ml-2 text-slate-800">ผู้ปั่นจักรยาน หรือสกู๊ตเตอร์ไฟฟ้า</span></label>
-        <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50 sm:col-span-2"><input type="radio" name="trafficVehicleRole" value="other_vehicle" onchange="handleTrafficVehicleChange()" class="text-medical-600 h-4 w-4"><span class="ml-2 text-slate-800">ยานพาหนะอื่นๆ (เช่น รถสามล้อ รถอีแต๋น รถไถ หรือรถโดยสาร)</span></label>
-      </div>
+      ${renderTrafficGrid('grid-cols-1 sm:grid-cols-2', [
+        { kind: 'radio', name: 'trafficVehicleRole', value: 'motorcycle', title: ['ผู้ขับขี่ / ผู้ซ้อน', 'รถจักรยานยนต์'], onchange: 'handleTrafficVehicleChange()' },
+        { kind: 'radio', name: 'trafficVehicleRole', value: 'car_truck', title: ['ผู้ขับขี่ / โดยสาร', 'รถยนต์ / กระบะ / ตู้'], desc: 'รวมรถบรรทุก รถตู้ และรถโดยสารส่วนบุคคล', onchange: 'handleTrafficVehicleChange()' },
+        { kind: 'radio', name: 'trafficVehicleRole', value: 'pedestrian', title: ['คนเดินเท้า', '(ถูกรถชน/เฉี่ยว)'], onchange: 'handleTrafficVehicleChange()' },
+        { kind: 'radio', name: 'trafficVehicleRole', value: 'bicycle_scooter', title: ['ผู้ปั่นจักรยาน /', 'สกู๊ตเตอร์ไฟฟ้า'], onchange: 'handleTrafficVehicleChange()' },
+        { kind: 'radio', name: 'trafficVehicleRole', value: 'other_vehicle', title: ['ยานพาหนะอื่นๆ'], desc: 'รถสามล้อ รถอีแต๋น รถไถ หรือรถโดยสาร', onchange: 'handleTrafficVehicleChange()', colSpan2: true }
+      ])}
     </div>
 
     <!-- 1.3 DYNAMIC BRANCHING BY VEHICLE ROLE -->
-    <div class="pt-3 border-t border-slate-100 space-y-4">
+    <div class="pt-3 border-t border-slate-100 space-y-3">
       <label class="block text-xs sm:text-sm font-semibold text-slate-800">1.3 รายละเอียดอุปกรณ์นิรภัย ลักษณะการเกิดอุบัติเหตุ และความรุนแรง:</label>
 
       <!-- กิ่งที่ 1: รถจักรยานยนต์ -->
-      <div id="trafficBranchMotorcycle" class="hidden space-y-3 p-3 sm:p-4 bg-slate-50 rounded-xl border border-slate-200 text-xs sm:text-sm">
+      <div id="trafficBranchMotorcycle" class="hidden space-y-3 p-3.5 sm:p-4 bg-slate-50 rounded-xl border border-slate-200 text-xs sm:text-sm">
         <span class="font-bold text-slate-900 block">🛵 ข้อมูลเฉพาะสำหรับรถจักรยานยนต์:</span>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <span class="text-slate-700 font-medium block mb-1">ตำแหน่งขณะเกิดเหตุ:</span>
             <div class="flex items-center space-x-3">
-              <label class="flex items-center"><input type="radio" name="trafficMotoRole" value="driver" class="text-medical-600 h-3.5 w-3.5"><span class="ml-1.5 text-slate-800">ผู้ขับขี่</span></label>
-              <label class="flex items-center"><input type="radio" name="trafficMotoRole" value="passenger" class="text-medical-600 h-3.5 w-3.5"><span class="ml-1.5 text-slate-800">ผู้ซ้อนท้าย</span></label>
+              <label class="flex items-center cursor-pointer"><input type="radio" name="trafficMotoRole" value="driver" class="text-medical-600 h-3.5 w-3.5"><span class="ml-1.5 text-slate-800">ผู้ขับขี่</span></label>
+              <label class="flex items-center cursor-pointer"><input type="radio" name="trafficMotoRole" value="passenger" class="text-medical-600 h-3.5 w-3.5"><span class="ml-1.5 text-slate-800">ผู้ซ้อนท้าย</span></label>
             </div>
           </div>
           <div>
             <span class="text-slate-700 font-medium block mb-1">การสวมหมวกกันน็อก:</span>
             <div class="space-y-1">
-              <label class="flex items-center"><input type="radio" name="trafficMotoHelmet" value="helmet_kept" class="text-medical-600 h-3.5 w-3.5"><span class="ml-1.5 text-slate-800">สวมหมวกกันน็อก (ไม่หลุด)</span></label>
-              <label class="flex items-center"><input type="radio" name="trafficMotoHelmet" value="helmet_ejected_damaged" class="text-medical-600 h-3.5 w-3.5"><span class="ml-1.5 text-slate-800">สวมหมวก แต่หมวกหลุดกระเด็นหรือแตก</span></label>
-              <label class="flex items-center"><input type="radio" name="trafficMotoHelmet" value="no_helmet" class="text-medical-600 h-3.5 w-3.5"><span class="ml-1.5 text-slate-800">ไม่ได้สวมหมวกกันน็อก</span></label>
+              <label class="flex items-center cursor-pointer"><input type="radio" name="trafficMotoHelmet" value="helmet_kept" class="text-medical-600 h-3.5 w-3.5"><span class="ml-1.5 text-slate-800">สวมหมวกกันน็อก (ไม่หลุด)</span></label>
+              <label class="flex items-center cursor-pointer"><input type="radio" name="trafficMotoHelmet" value="helmet_ejected_damaged" class="text-medical-600 h-3.5 w-3.5"><span class="ml-1.5 text-slate-800">สวมหมวก แต่หมวกหลุดหรือแตก</span></label>
+              <label class="flex items-center cursor-pointer"><input type="radio" name="trafficMotoHelmet" value="no_helmet" class="text-medical-600 h-3.5 w-3.5"><span class="ml-1.5 text-slate-800">ไม่ได้สวมหมวกกันน็อก</span></label>
             </div>
           </div>
         </div>
         <div class="pt-2 border-t border-slate-200 space-y-1.5">
           <span class="text-slate-700 font-medium block">ลักษณะการเกิดเหตุ (เลือกได้หลายข้อ):</span>
-          <label class="flex items-center"><input type="checkbox" name="trafficMotoMechs" value="lost_control_alone" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">รถเสียหลักล้มเอง แฉลบลื่นไถล หรือตกหลุม (ไม่มีคู่กรณี)</span></label>
-          <label class="flex items-center"><input type="checkbox" name="trafficMotoMechs" value="collision_vehicle" onchange="handleTrafficMotoCollisionChange()" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">เฉี่ยวชน หรือชนปะทะกับรถคันอื่น</span></label>
-          <div id="trafficMotoOpponentContainer" class="hidden ml-6 p-2.5 bg-white border border-slate-200 rounded-lg space-y-1.5 text-xs">
+          <label class="flex items-center cursor-pointer"><input type="checkbox" name="trafficMotoMechs" value="lost_control_alone" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">รถเสียหลักล้มเอง แฉลบลื่นไถล หรือตกหลุม (ไม่มีคู่กรณี)</span></label>
+          <label class="flex items-center cursor-pointer"><input type="checkbox" name="trafficMotoMechs" value="collision_vehicle" onchange="handleTrafficMotoCollisionChange()" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">เฉี่ยวชน หรือชนปะทะกับรถคันอื่น</span></label>
+          <div id="trafficMotoOpponentContainer" class="hidden ml-6 p-2.5 bg-white border border-slate-200 rounded-lg space-y-1.5 text-xs sm:text-sm">
             <span class="font-medium text-slate-700 block">ระบุรถคู่กรณี:</span>
             <div class="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
-              <label class="flex items-center"><input type="checkbox" name="trafficMotoOpponentTypes" value="motorcycle" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">จยย. ด้วยกัน</span></label>
-              <label class="flex items-center"><input type="checkbox" name="trafficMotoOpponentTypes" value="car_pickup_van" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">เก๋ง/กระบะ/ตู้</span></label>
-              <label class="flex items-center"><input type="checkbox" name="trafficMotoOpponentTypes" value="truck_trailer_bus" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">บรรทุก/พ่วง/เมล์</span></label>
-              <label class="flex items-center"><input type="checkbox" name="trafficMotoOpponentTypes" value="other_opponent" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">อื่นๆ/สัตว์</span></label>
+              <label class="flex items-center cursor-pointer"><input type="checkbox" name="trafficMotoOpponentTypes" value="motorcycle" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">จยย. ด้วยกัน</span></label>
+              <label class="flex items-center cursor-pointer"><input type="checkbox" name="trafficMotoOpponentTypes" value="car_pickup_van" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">เก๋ง/กระบะ/ตู้</span></label>
+              <label class="flex items-center cursor-pointer"><input type="checkbox" name="trafficMotoOpponentTypes" value="truck_trailer_bus" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">บรรทุก/พ่วง/เมล์</span></label>
+              <label class="flex items-center cursor-pointer"><input type="checkbox" name="trafficMotoOpponentTypes" value="other_opponent" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">อื่นๆ/สัตว์</span></label>
             </div>
-            <input type="text" id="trafficMotoOpponentOtherDetail" placeholder="ระบุเพิ่มเติม (ถ้ามี)" class="w-full px-2 py-1 border border-slate-300 rounded text-xs">
+            <input type="text" id="trafficMotoOpponentOtherDetail" placeholder="ระบุเพิ่มเติม (ถ้ามี)" class="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs sm:text-sm">
           </div>
-          <label class="flex items-center"><input type="checkbox" name="trafficMotoMechs" value="collision_obstacle" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">ชนสิ่งกีดขวาง (เสาไฟฟ้า ต้นไม้ ขอบฟุตบาท ราวสะพาน)</span></label>
-          <label class="flex items-center"><input type="checkbox" name="trafficMotoMechs" value="ejected_thrown" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">ร่างกระเด็นลอยตกจากรถจักรยานยนต์ หรือไถลไปไกล</span></label>
-          <label class="flex items-center"><input type="checkbox" name="trafficMotoMechs" value="run_over_trapped" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">ถูกรถทับบริเวณร่างกาย หรือร่างเข้าไปติดใต้ท้องรถ</span></label>
-          <label class="flex items-center"><input type="checkbox" name="trafficMotoMechs" value="severe_injury_fatality" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">มีผู้บาดเจ็บสาหัส หรือเสียชีวิตในเหตุการณ์เดียวกัน</span></label>
+          <label class="flex items-center cursor-pointer"><input type="checkbox" name="trafficMotoMechs" value="collision_obstacle" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">ชนสิ่งกีดขวาง (เสาไฟฟ้า ต้นไม้ ขอบฟุตบาท ราวสะพาน)</span></label>
+          <label class="flex items-center cursor-pointer"><input type="checkbox" name="trafficMotoMechs" value="ejected_thrown" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">ร่างกระเด็นลอยตกจากรถ หรือไถลไปไกล</span></label>
+          <label class="flex items-center cursor-pointer"><input type="checkbox" name="trafficMotoMechs" value="run_over_trapped" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">ถูกรถทับบริเวณร่างกาย หรือติดใต้ท้องรถ</span></label>
+          <label class="flex items-center cursor-pointer"><input type="checkbox" name="trafficMotoMechs" value="severe_injury_fatality" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">มีผู้บาดเจ็บสาหัส หรือเสียชีวิตในเหตุการณ์เดียวกัน</span></label>
         </div>
       </div>
 
       <!-- กิ่งที่ 2: รถยนต์ / กระบะ / ตู้ / บรรทุก -->
-      <div id="trafficBranchCarTruck" class="hidden space-y-3 p-3 sm:p-4 bg-slate-50 rounded-xl border border-slate-200 text-xs sm:text-sm">
+      <div id="trafficBranchCarTruck" class="hidden space-y-3 p-3.5 sm:p-4 bg-slate-50 rounded-xl border border-slate-200 text-xs sm:text-sm">
         <span class="font-bold text-slate-900 block">🚗 ข้อมูลเฉพาะสำหรับรถยนต์ / รถกระบะ / รถตู้ / รถบรรทุก:</span>
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
           <div>
             <span class="text-slate-700 font-medium block mb-1">ประเภทรถที่โดยสาร:</span>
-            <input type="text" id="trafficCarVehicleTypeDetail" placeholder="เช่น รถเก๋ง, รถกระบะ, รถตู้..." class="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs">
+            <input type="text" id="trafficCarVehicleTypeDetail" placeholder="เช่น รถเก๋ง, รถกระบะ..." class="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs sm:text-sm bg-white">
           </div>
           <div>
             <span class="text-slate-700 font-medium block mb-1">ตำแหน่งที่นั่งในรถ:</span>
             <div class="space-y-1">
-              <label class="flex items-center"><input type="radio" name="trafficCarRoleSeat" value="driver" class="text-medical-600 h-3.5 w-3.5"><span class="ml-1.5 text-slate-800">คนขับ (ผู้ขับขี่)</span></label>
-              <label class="flex items-center"><input type="radio" name="trafficCarRoleSeat" value="front_passenger" class="text-medical-600 h-3.5 w-3.5"><span class="ml-1.5 text-slate-800">ผู้โดยสารข้างคนขับ (เบาะหน้า)</span></label>
-              <label class="flex items-center"><input type="radio" name="trafficCarRoleSeat" value="rear_passenger" class="text-medical-600 h-3.5 w-3.5"><span class="ml-1.5 text-slate-800">ผู้โดยสารเบาะหลัง</span></label>
-              <label class="flex items-center"><input type="radio" name="trafficCarRoleSeat" value="cargo_bed" class="text-medical-600 h-3.5 w-3.5"><span class="ml-1.5 text-slate-800">นั่งท้ายกระบะ/ส่วนบรรทุก</span></label>
+              <label class="flex items-center cursor-pointer"><input type="radio" name="trafficCarRoleSeat" value="driver" class="text-medical-600 h-3.5 w-3.5"><span class="ml-1.5 text-slate-800">คนขับ</span></label>
+              <label class="flex items-center cursor-pointer"><input type="radio" name="trafficCarRoleSeat" value="front_passenger" class="text-medical-600 h-3.5 w-3.5"><span class="ml-1.5 text-slate-800">นั่งข้างคนขับ (เบาะหน้า)</span></label>
+              <label class="flex items-center cursor-pointer"><input type="radio" name="trafficCarRoleSeat" value="rear_passenger" class="text-medical-600 h-3.5 w-3.5"><span class="ml-1.5 text-slate-800">ผู้โดยสารเบาะหลัง</span></label>
+              <label class="flex items-center cursor-pointer"><input type="radio" name="trafficCarRoleSeat" value="cargo_bed" class="text-medical-600 h-3.5 w-3.5"><span class="ml-1.5 text-slate-800">นั่งท้ายกระบะ/ส่วนบรรทุก</span></label>
             </div>
           </div>
           <div>
             <span class="text-slate-700 font-medium block mb-1">การคาดเข็มขัดนิรภัย:</span>
             <div class="space-y-1">
-              <label class="flex items-center"><input type="radio" name="trafficCarSeatbelt" value="belt_worn" class="text-medical-600 h-3.5 w-3.5"><span class="ml-1.5 text-slate-800">คาดเข็มขัดนิรภัย</span></label>
-              <label class="flex items-center"><input type="radio" name="trafficCarSeatbelt" value="no_belt" class="text-medical-600 h-3.5 w-3.5"><span class="ml-1.5 text-slate-800">ไม่ได้คาดเข็มขัดนิรภัย</span></label>
+              <label class="flex items-center cursor-pointer"><input type="radio" name="trafficCarSeatbelt" value="belt_worn" class="text-medical-600 h-3.5 w-3.5"><span class="ml-1.5 text-slate-800">คาดเข็มขัดนิรภัย</span></label>
+              <label class="flex items-center cursor-pointer"><input type="radio" name="trafficCarSeatbelt" value="no_belt" class="text-medical-600 h-3.5 w-3.5"><span class="ml-1.5 text-slate-800">ไม่ได้คาดเข็มขัดนิรภัย</span></label>
             </div>
           </div>
         </div>
         <div class="pt-2 border-t border-slate-200 space-y-1.5">
           <span class="text-slate-700 font-medium block">ลักษณะการชนและความรุนแรง (เลือกได้หลายข้อ):</span>
-          <label class="flex items-center"><input type="checkbox" name="trafficCarMechs" value="minor_collision" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">เฉี่ยวชน หรือชนท้ายในขณะใช้ความเร็วไม่สูงมาก</span></label>
-          <label class="flex items-center"><input type="checkbox" name="trafficCarMechs" value="high_impact_collision" onchange="handleTrafficCarCollisionChange()" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">ชนปะทะอย่างรุนแรง (ชนประสานงา ชนเสาไฟฟ้า/ต้นไม้ ตกข้างทาง)</span></label>
+          <label class="flex items-center cursor-pointer"><input type="checkbox" name="trafficCarMechs" value="minor_collision" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">เฉี่ยวชน หรือชนท้ายในความเร็วไม่สูงมาก</span></label>
+          <label class="flex items-center cursor-pointer"><input type="checkbox" name="trafficCarMechs" value="high_impact_collision" onchange="handleTrafficCarCollisionChange()" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">ชนปะทะอย่างรุนแรง (ประสานงา / เสาไฟฟ้า / ต้นไม้ / ตกข้างทาง)</span></label>
           <div id="trafficCarOpponentContainer" class="hidden ml-6 p-2 bg-white border border-slate-200 rounded-lg">
-            <input type="text" id="trafficCarOpponentDetail" placeholder="ระบุสิ่งที่ชน เช่น ชนท้ายรถบรรทุกสิบล้อ, ชนต้นไม้ข้างทาง..." class="w-full px-2.5 py-1 border border-slate-300 rounded text-xs">
+            <input type="text" id="trafficCarOpponentDetail" placeholder="ระบุสิ่งที่ชน เช่น ชนท้ายรถบรรทุกสิบล้อ, ชนต้นไม้..." class="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs sm:text-sm">
           </div>
-          <label class="flex items-center"><input type="checkbox" name="trafficCarMechs" value="airbag_deployed_windshield" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">ถุงลมนิรภัย (Airbag) ทำงาน หรือพวงมาลัย/กระจกหน้ารถแตกยุบ</span></label>
-          <label class="flex items-center"><input type="checkbox" name="trafficCarMechs" value="rollover" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">รถพลิกคว่ำ หรือหมุนหลายตลบ</span></label>
-          <label class="flex items-center"><input type="checkbox" name="trafficCarMechs" value="ejected_from_vehicle" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">ร่างกระเด็นหลุดออกจากตัวรถ หรือกระเด็นตกจากท้ายรถกระบะ</span></label>
-          <label class="flex items-center"><input type="checkbox" name="trafficCarMechs" value="trapped_in_vehicle" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">ร่างติดอยู่ในซากรถ (ต้องใช้อุปกรณ์ตัดถ่างนำตัวออก)</span></label>
-          <label class="flex items-center"><input type="checkbox" name="trafficCarMechs" value="severe_injury_fatality" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">มีผู้บาดเจ็บสาหัส หรือเสียชีวิตในรถคันเดียวกัน/เหตุการณ์เดียวกัน</span></label>
+          <label class="flex items-center cursor-pointer"><input type="checkbox" name="trafficCarMechs" value="airbag_deployed_windshield" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">ถุงลมนิรภัยทำงาน หรือพวงมาลัย/กระจกหน้ารถแตกยุบ</span></label>
+          <label class="flex items-center cursor-pointer"><input type="checkbox" name="trafficCarMechs" value="rollover" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">รถพลิกคว่ำ หรือหมุนหลายตลบ</span></label>
+          <label class="flex items-center cursor-pointer"><input type="checkbox" name="trafficCarMechs" value="ejected_from_vehicle" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">ร่างกระเด็นหลุดออกจากตัวรถ หรือตกท้ายรถกระบะ</span></label>
+          <label class="flex items-center cursor-pointer"><input type="checkbox" name="trafficCarMechs" value="trapped_in_vehicle" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">ร่างติดอยู่ในซากรถ (ต้องใช้เครื่องตัดถ่าง)</span></label>
+          <label class="flex items-center cursor-pointer"><input type="checkbox" name="trafficCarMechs" value="severe_injury_fatality" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">มีผู้บาดเจ็บสาหัส หรือเสียชีวิตในเหตุการณ์เดียวกัน</span></label>
         </div>
       </div>
 
       <!-- กิ่งที่ 3: คนเดินเท้า -->
-      <div id="trafficBranchPedestrian" class="hidden space-y-3 p-3 sm:p-4 bg-slate-50 rounded-xl border border-slate-200 text-xs sm:text-sm">
+      <div id="trafficBranchPedestrian" class="hidden space-y-3 p-3.5 sm:p-4 bg-slate-50 rounded-xl border border-slate-200 text-xs sm:text-sm">
         <span class="font-bold text-slate-900 block">🚶 ข้อมูลเฉพาะสำหรับคนเดินเท้า:</span>
         <div class="space-y-1.5">
           <span class="text-slate-700 font-medium block">รถที่พุ่งชนหรือเฉี่ยวชนคือรถชนิดใด:</span>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            <label class="flex items-center"><input type="radio" name="trafficPedVehicleType" value="motorcycle" onchange="handleTrafficPedVehicleChange()" class="text-medical-600 h-3.5 w-3.5"><span class="ml-1.5 text-slate-800">รถจักรยานยนต์</span></label>
-            <label class="flex items-center"><input type="radio" name="trafficPedVehicleType" value="car_pickup_van" onchange="handleTrafficPedVehicleChange()" class="text-medical-600 h-3.5 w-3.5"><span class="ml-1.5 text-slate-800">รถยนต์ส่วนบุคคล (เก๋ง/กระบะ/ตู้/SUV)</span></label>
-            <label class="flex items-center"><input type="radio" name="trafficPedVehicleType" value="truck_bus" onchange="handleTrafficPedVehicleChange()" class="text-medical-600 h-3.5 w-3.5"><span class="ml-1.5 text-slate-800">รถขนาดใหญ่ (บรรทุก/พ่วง/เมล์/บัส)</span></label>
-            <label class="flex items-center"><input type="radio" name="trafficPedVehicleType" value="other_vehicle" onchange="handleTrafficPedVehicleChange()" class="text-medical-600 h-3.5 w-3.5"><span class="ml-1.5 text-slate-800">จักรยาน/สามล้อ หรืออื่นๆ</span></label>
-            <label class="flex items-center sm:col-span-2"><input type="radio" name="trafficPedVehicleType" value="unknown_hit_and_run" onchange="handleTrafficPedVehicleChange()" class="text-medical-600 h-3.5 w-3.5"><span class="ml-1.5 text-slate-800">ไม่ทราบชนิดรถแน่ชัด (เช่น ชนแล้วหลบหนี)</span></label>
+            <label class="flex items-center cursor-pointer"><input type="radio" name="trafficPedVehicleType" value="motorcycle" onchange="handleTrafficPedVehicleChange()" class="text-medical-600 h-3.5 w-3.5"><span class="ml-1.5 text-slate-800">รถจักรยานยนต์</span></label>
+            <label class="flex items-center cursor-pointer"><input type="radio" name="trafficPedVehicleType" value="car_pickup_van" onchange="handleTrafficPedVehicleChange()" class="text-medical-600 h-3.5 w-3.5"><span class="ml-1.5 text-slate-800">รถยนต์ส่วนบุคคล (เก๋ง/กระบะ/ตู้)</span></label>
+            <label class="flex items-center cursor-pointer"><input type="radio" name="trafficPedVehicleType" value="truck_bus" onchange="handleTrafficPedVehicleChange()" class="text-medical-600 h-3.5 w-3.5"><span class="ml-1.5 text-slate-800">รถขนาดใหญ่ (บรรทุก/พ่วง/บัส)</span></label>
+            <label class="flex items-center cursor-pointer"><input type="radio" name="trafficPedVehicleType" value="other_vehicle" onchange="handleTrafficPedVehicleChange()" class="text-medical-600 h-3.5 w-3.5"><span class="ml-1.5 text-slate-800">จักรยาน/สามล้อ หรืออื่นๆ</span></label>
+            <label class="flex items-center cursor-pointer sm:col-span-2"><input type="radio" name="trafficPedVehicleType" value="unknown_hit_and_run" onchange="handleTrafficPedVehicleChange()" class="text-medical-600 h-3.5 w-3.5"><span class="ml-1.5 text-slate-800">ไม่ทราบชนิดรถแน่ชัด (เช่น ชนแล้วหลบหนี)</span></label>
           </div>
           <div id="trafficPedOtherContainer" class="hidden mt-1">
-            <input type="text" id="trafficPedVehicleOtherDetail" placeholder="ระบุชนิดรถ..." class="w-full px-2.5 py-1 border border-slate-300 rounded text-xs">
+            <input type="text" id="trafficPedVehicleOtherDetail" placeholder="ระบุชนิดรถ..." class="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs sm:text-sm bg-white">
           </div>
         </div>
         <div class="pt-2 border-t border-slate-200 space-y-1.5">
           <span class="text-slate-700 font-medium block">ลักษณะการถูกชนและความรุนแรง (เลือกได้หลายข้อ):</span>
-          <label class="flex items-center"><input type="checkbox" name="trafficPedMechs" value="sideswiped_fall" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">ถูกรถเฉี่ยวชนแล้วล้มลงกับพื้น (ความเร็วไม่สูงมาก)</span></label>
-          <label class="flex items-center"><input type="checkbox" name="trafficPedMechs" value="direct_impact_thrown" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">ถูกรถพุ่งชนปะทะโดยตรงอย่างแรง จนร่างกระเด็นหรือลอยกระแทกหน้ารถ</span></label>
-          <label class="flex items-center"><input type="checkbox" name="trafficPedMechs" value="run_over_limbs_body" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">ถูกรถทับ หรือล้อรถเหยียบบริเวณร่างกาย/แขนขา</span></label>
-          <label class="flex items-center"><input type="checkbox" name="trafficPedMechs" value="trapped_under_dragged" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">ร่างเข้าไปติดอยู่ใต้ท้องรถ หรือถูกลากไปกับพื้นถนน</span></label>
-          <label class="flex items-center"><input type="checkbox" name="trafficPedMechs" value="severe_injury_fatality" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">มีผู้บาดเจ็บสาหัส หรือเสียชีวิตในเหตุการณ์เดียวกัน</span></label>
+          <label class="flex items-center cursor-pointer"><input type="checkbox" name="trafficPedMechs" value="sideswiped_fall" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">ถูกรถเฉี่ยวชนแล้วล้มลงกับพื้น</span></label>
+          <label class="flex items-center cursor-pointer"><input type="checkbox" name="trafficPedMechs" value="direct_impact_thrown" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">ถูกรถพุ่งชนโดยตรงจนร่างกระเด็น</span></label>
+          <label class="flex items-center cursor-pointer"><input type="checkbox" name="trafficPedMechs" value="run_over_limbs_body" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">ถูกรถทับ หรือล้อรถเหยียบร่างกาย/แขนขา</span></label>
+          <label class="flex items-center cursor-pointer"><input type="checkbox" name="trafficPedMechs" value="trapped_under_dragged" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">ร่างติดอยู่ใต้ท้องรถ หรือถูกลากไปกับพื้น</span></label>
+          <label class="flex items-center cursor-pointer"><input type="checkbox" name="trafficPedMechs" value="severe_injury_fatality" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">มีผู้บาดเจ็บสาหัส หรือเสียชีวิตในเหตุการณ์เดียวกัน</span></label>
         </div>
       </div>
 
       <!-- กิ่งที่ 4: จักรยาน / สกู๊ตเตอร์ -->
-      <div id="trafficBranchBicycleScooter" class="hidden space-y-3 p-3 sm:p-4 bg-slate-50 rounded-xl border border-slate-200 text-xs sm:text-sm">
-        <span class="font-bold text-slate-900 block">🚲 ข้อมูลเฉพาะสำหรับจักรยาน / สกู๊ตเตอร์:</span>
+      <div id="trafficBranchBicycleScooter" class="hidden space-y-3 p-3.5 sm:p-4 bg-slate-50 rounded-xl border border-slate-200 text-xs sm:text-sm">
+        <span class="font-bold text-slate-900 block">🚲 ข้อมูลเฉพาะสำหรับจักรยาน / สกู๊ตเตอร์ไฟฟ้า:</span>
         <div>
           <span class="text-slate-700 font-medium block mb-1">การสวมหมวกกันน็อก:</span>
           <div class="flex items-center space-x-3">
-            <label class="flex items-center"><input type="radio" name="trafficBikeHelmet" value="helmet_worn" class="text-medical-600 h-3.5 w-3.5"><span class="ml-1.5 text-slate-800">สวมหมวกกันน็อก</span></label>
-            <label class="flex items-center"><input type="radio" name="trafficBikeHelmet" value="no_helmet" class="text-medical-600 h-3.5 w-3.5"><span class="ml-1.5 text-slate-800">ไม่ได้สวมหมวกกันน็อก</span></label>
+            <label class="flex items-center cursor-pointer"><input type="radio" name="trafficBikeHelmet" value="helmet_worn" class="text-medical-600 h-3.5 w-3.5"><span class="ml-1.5 text-slate-800">สวมหมวกกันน็อก</span></label>
+            <label class="flex items-center cursor-pointer"><input type="radio" name="trafficBikeHelmet" value="no_helmet" class="text-medical-600 h-3.5 w-3.5"><span class="ml-1.5 text-slate-800">ไม่ได้สวมหมวกกันน็อก</span></label>
           </div>
         </div>
         <div class="pt-2 border-t border-slate-200 space-y-1.5">
           <span class="text-slate-700 font-medium block">ลักษณะการเกิดอุบัติเหตุ:</span>
-          <label class="flex items-center"><input type="checkbox" name="trafficBikeMechs" value="fall_alone" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">เสียหลักล้มเอง หรือชนสิ่งกีดขวาง (ไม่มีรถอื่นชน)</span></label>
-          <label class="flex items-center"><input type="checkbox" name="trafficBikeMechs" value="hit_by_motorcycle" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">ถูกรถจักรยานยนต์เฉี่ยวชน หรือชนปะทะ</span></label>
-          <label class="flex items-center"><input type="checkbox" name="trafficBikeMechs" value="hit_by_car_truck" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">ถูกรถยนต์ รถกระบะ หรือรถบรรทุกเฉี่ยวชน หรือชนปะทะ</span></label>
-          <label class="flex items-center"><input type="checkbox" name="trafficBikeMechs" value="thrown_or_run_over" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">ร่างกระเด็นตกจากรถอย่างแรง หรือถูกรถทับ/ติดใต้ท้องรถ</span></label>
+          <label class="flex items-center cursor-pointer"><input type="checkbox" name="trafficBikeMechs" value="fall_alone" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">เสียหลักล้มเอง หรือชนสิ่งกีดขวาง</span></label>
+          <label class="flex items-center cursor-pointer"><input type="checkbox" name="trafficBikeMechs" value="hit_by_motorcycle" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">ถูกรถจักรยานยนต์เฉี่ยวชน</span></label>
+          <label class="flex items-center cursor-pointer"><input type="checkbox" name="trafficBikeMechs" value="hit_by_car_truck" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">ถูกรถยนต์ กระบะ หรือรถบรรทุกชน</span></label>
+          <label class="flex items-center cursor-pointer"><input type="checkbox" name="trafficBikeMechs" value="thrown_or_run_over" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">ร่างกระเด็นตกรุนแรง หรือถูกรถทับ/ติดใต้ท้องรถ</span></label>
         </div>
       </div>
 
       <!-- กิ่งที่ 5: ยานพาหนะอื่นๆ -->
-      <div id="trafficBranchOtherVehicle" class="hidden space-y-3 p-3 sm:p-4 bg-slate-50 rounded-xl border border-slate-200 text-xs sm:text-sm">
+      <div id="trafficBranchOtherVehicle" class="hidden space-y-3 p-3.5 sm:p-4 bg-slate-50 rounded-xl border border-slate-200 text-xs sm:text-sm">
         <span class="font-bold text-slate-900 block">🚜 ข้อมูลสำหรับยานพาหนะอื่นๆ:</span>
         <div>
           <span class="text-slate-700 font-medium block mb-1">ระบุประเภทยานพาหนะ:</span>
-          <input type="text" id="trafficOtherVehicleTypeDetail" placeholder="เช่น รถสามล้อพ่วงข้าง, รถไถนา, รถสองแถว..." class="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs">
+          <input type="text" id="trafficOtherVehicleTypeDetail" placeholder="เช่น รถสามล้อพ่วงข้าง, รถไถนา, รถสองแถว..." class="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs sm:text-sm bg-white">
         </div>
         <div class="pt-2 border-t border-slate-200 space-y-1.5">
           <span class="text-slate-700 font-medium block">ลักษณะการเกิดเหตุ:</span>
-          <label class="flex items-center"><input type="checkbox" name="trafficOtherVehicleMechs" value="rollover_alone" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">รถเสียหลักล้มเอง หรือตกข้างทาง</span></label>
-          <label class="flex items-center"><input type="checkbox" name="trafficOtherVehicleMechs" value="collision_other" onchange="handleTrafficOtherVehicleCollisionChange()" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">ชนปะทะกับรถคันอื่น หรือชนสิ่งกีดขวาง</span></label>
+          <label class="flex items-center cursor-pointer"><input type="checkbox" name="trafficOtherVehicleMechs" value="rollover_alone" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">รถเสียหลักล้มเอง หรือตกข้างทาง</span></label>
+          <label class="flex items-center cursor-pointer"><input type="checkbox" name="trafficOtherVehicleMechs" value="collision_other" onchange="handleTrafficOtherVehicleCollisionChange()" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">ชนปะทะกับรถคันอื่น หรือสิ่งกีดขวาง</span></label>
           <div id="trafficOtherOpponentContainer" class="hidden ml-6">
-            <input type="text" id="trafficOtherOpponentDetail" placeholder="ระบุสิ่งที่ชน..." class="w-full px-2.5 py-1 border border-slate-300 rounded text-xs">
+            <input type="text" id="trafficOtherOpponentDetail" placeholder="ระบุสิ่งที่ชน..." class="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs sm:text-sm bg-white">
           </div>
-          <label class="flex items-center"><input type="checkbox" name="trafficOtherVehicleMechs" value="rollover_thrown" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">รถพลิกคว่ำ หรือร่างกระเด็นตกจากรถ</span></label>
-          <label class="flex items-center"><input type="checkbox" name="trafficOtherVehicleMechs" value="run_over_trapped" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">ถูกรถทับร่าง หรือติดอยู่ใต้ตัวรถ/ซากรถ</span></label>
+          <label class="flex items-center cursor-pointer"><input type="checkbox" name="trafficOtherVehicleMechs" value="rollover_thrown" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">รถพลิกคว่ำ หรือร่างกระเด็นตกจากรถ</span></label>
+          <label class="flex items-center cursor-pointer"><input type="checkbox" name="trafficOtherVehicleMechs" value="run_over_trapped" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">ถูกรถทับร่าง หรือติดอยู่ใต้ซากรถ</span></label>
         </div>
       </div>
     </div>
 
     <!-- 1.4 สถานะเลือดออก -->
-    <div class="pt-3 border-t border-slate-100 space-y-2">
-      <label class="block text-xs sm:text-sm font-semibold text-slate-800">1.4 มีบาดแผลเปิด แผลถลอก หรือเลือดออกภายนอกร่วมด้วยหรือไม่:</label>
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs sm:text-sm">
-        <label class="selectable-card flex items-center p-2.5 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50"><input type="radio" name="trafficBleedingStatus" value="none_or_contusion" class="text-medical-600 h-4 w-4"><span class="ml-2 text-slate-800">ไม่มีบาดแผลเปิดหรือเลือดออก (มีเฉพาะปวด บวม หรือฟกช้ำ)</span></label>
-        <label class="selectable-card flex items-center p-2.5 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50"><input type="radio" name="trafficBleedingStatus" value="abrasion_or_stopped" class="text-medical-600 h-4 w-4"><span class="ml-2 text-slate-800">มีแผลถลอกตามผิวหนัง หรือแผลแตกแต่เลือดหยุดไหลแล้ว</span></label>
-        <label class="selectable-card flex items-center p-2.5 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50"><input type="radio" name="trafficBleedingStatus" value="oozing_continuous" class="text-medical-600 h-4 w-4"><span class="ml-2 text-slate-800">มีบาดแผลฉีกขาดและเลือดยังไหลซึมออกมาต่อเนื่อง</span></label>
-        <label class="selectable-card flex items-center p-2.5 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50"><input type="radio" name="trafficBleedingStatus" value="pulsatile_or_massive" class="text-medical-600 h-4 w-4"><span class="ml-2 text-slate-800">มีบาดแผลเลือดไหลพุ่ง หรือไหลออกมากผิดปกติ</span></label>
-      </div>
+    <div class="p-3.5 bg-slate-50 rounded-xl border border-slate-200">
+      ${renderTrafficSysHeader({
+        label: '1.4 สถานะบาดแผลเปิดหรือเลือดออกภายนอก <span class="text-rose-500">*</span>',
+        icon: 'droplets',
+        colorClass: 'bg-rose-100 text-rose-700',
+        toggleKind: 'radio',
+        toggleId: 'trafficBleedNoneRb',
+        toggleName: 'trafficBleedingStatus',
+        toggleValue: 'none_or_contusion',
+        toggleLabel: 'ไม่มีเลือดออก'
+      })}
+      ${renderTrafficGrid('grid-cols-1 sm:grid-cols-3', [
+        { kind: 'radio', name: 'trafficBleedingStatus', value: 'abrasion_or_stopped', title: ['แผลถลอก / แผลแตก', 'เลือดหยุดไหลแล้ว'], compact: true },
+        { kind: 'radio', name: 'trafficBleedingStatus', value: 'oozing_continuous', title: ['มีแผลฉีกขาดและ', 'เลือดไหลซึมต่อเนื่อง'], compact: true },
+        { kind: 'radio', name: 'trafficBleedingStatus', value: 'pulsatile_or_massive', title: ['แผลเลือดไหลพุ่ง /', 'ไหลออกมากผิดปกติ'], compact: true }
+      ])}
     </div>
   </div>
 
   <!-- CARD 2: ตำแหน่งของร่างกายที่ได้รับบาดเจ็บและชนิดการบาดเจ็บ -->
-  <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-6 space-y-4">
-    <div class="flex items-center space-x-2 text-medical-700 border-b border-slate-100 pb-3">
-      <div class="p-2 bg-medical-50 rounded-lg"><i data-lucide="user-check" class="w-5 h-5"></i></div>
+  <div class="bg-white rounded-2xl p-5 sm:p-6 shadow-sm border border-slate-200 space-y-5">
+    <div class="flex items-center space-x-3 pb-3 border-b border-slate-100">
+      <div class="p-2 rounded-xl bg-medical-100 text-medical-700"><i data-lucide="user-check" class="w-5 h-5"></i></div>
       <div>
-        <h3 class="font-bold text-sm sm:text-base text-slate-800">2. ตำแหน่งของร่างกายที่ได้รับบาดเจ็บและชนิดการบาดเจ็บ</h3>
-        <p class="text-xs text-slate-500">ติ๊กเลือกตำแหน่งที่ได้รับบาดเจ็บ จากนั้นระบุข้างและชนิดการบาดเจ็บ (มีแผล / ปวดบวม / ผิดรูป)</p>
+        <h2 class="text-base font-bold text-slate-900">2. ตำแหน่งของร่างกายที่ได้รับบาดเจ็บและชนิดการบาดเจ็บ</h2>
+        <p class="text-xs text-slate-500">เลือกโซนร่างกายที่ได้รับบาดเจ็บ จากนั้นระบุด้านและลักษณะบาดเจ็บ</p>
       </div>
     </div>
 
-    <!-- 2.1 ศีรษะ ใบหน้า -->
-    <div class="border border-slate-200 rounded-xl p-3 sm:p-4 space-y-3">
-      <label class="flex items-center cursor-pointer">
-        <input type="checkbox" id="trafficParentHeadFace" onchange="toggleTrafficGroup('trafficHeadFaceSubGroup', this.checked)" class="rounded text-medical-600 h-4 w-4">
-        <span class="ml-2 text-xs sm:text-sm font-bold text-slate-900">2.1 บาดเจ็บที่ศีรษะ ใบหน้า ดวงตา หู จมูก หรือในช่องปาก</span>
-      </label>
-      <div id="trafficHeadFaceSubGroup" class="hidden space-y-3 pl-6 pt-2 border-t border-slate-100 text-xs sm:text-sm">
-        <div class="space-y-2">
-          <div class="flex flex-wrap items-center gap-2">
-            <label class="flex items-center"><input type="checkbox" id="trafficHeadScalp" onchange="toggleTrafficGroup('trafficHeadScalpDetail', this.checked)" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-1.5 text-slate-800">หนังศีรษะ/หน้าผาก/ท้ายทอย</span></label>
-            <div id="trafficHeadScalpDetail" class="hidden flex flex-wrap items-center gap-2 bg-slate-50 border border-slate-200 px-2 py-1 rounded-lg text-xs">
-              <span class="text-slate-500 font-medium">ด้าน:</span>
-              <label class="flex items-center"><input type="checkbox" name="trafficHeadScalpSides" value="left" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ซ้าย</span></label>
-              <label class="flex items-center"><input type="checkbox" name="trafficHeadScalpSides" value="right" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ขวา</span></label>
-              <label class="flex items-center"><input type="checkbox" name="trafficHeadScalpSides" value="center" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">กลาง</span></label>
-              <span class="text-slate-300 mx-1.5">|</span>
-              <span class="text-slate-500 font-medium">การบาดเจ็บ:</span>
-              <label class="flex items-center"><input type="checkbox" name="trafficHeadScalpInjuries" value="wound" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">มีแผล</span></label>
-              <label class="flex items-center"><input type="checkbox" name="trafficHeadScalpInjuries" value="pain_swelling" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ปวด/บวม</span></label>
-              <label class="flex items-center"><input type="checkbox" name="trafficHeadScalpInjuries" value="deformity" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ผิดรูป/ยุบ</span></label>
-            </div>
-          </div>
-          <div class="flex flex-wrap items-center gap-2">
-            <label class="flex items-center"><input type="checkbox" id="trafficHeadFace" onchange="toggleTrafficGroup('trafficHeadFaceDetail', this.checked)" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-1.5 text-slate-800">ใบหน้า/โหนกแก้ม/คาง</span></label>
-            <div id="trafficHeadFaceDetail" class="hidden flex flex-wrap items-center gap-2 bg-slate-50 border border-slate-200 px-2 py-1 rounded-lg text-xs">
-              <span class="text-slate-500 font-medium">ด้าน:</span>
-              <label class="flex items-center"><input type="checkbox" name="trafficHeadFaceSides" value="left" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ซ้าย</span></label>
-              <label class="flex items-center"><input type="checkbox" name="trafficHeadFaceSides" value="right" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ขวา</span></label>
-              <label class="flex items-center"><input type="checkbox" name="trafficHeadFaceSides" value="center" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">กลาง</span></label>
-              <span class="text-slate-300 mx-1.5">|</span>
-              <span class="text-slate-500 font-medium">การบาดเจ็บ:</span>
-              <label class="flex items-center"><input type="checkbox" name="trafficHeadFaceInjuries" value="wound" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">มีแผล</span></label>
-              <label class="flex items-center"><input type="checkbox" name="trafficHeadFaceInjuries" value="pain_swelling" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ปวด/บวม</span></label>
-              <label class="flex items-center"><input type="checkbox" name="trafficHeadFaceInjuries" value="deformity" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ผิดรูป</span></label>
-            </div>
-          </div>
-          <div class="flex flex-wrap items-center gap-2">
-            <label class="flex items-center"><input type="checkbox" id="trafficHeadEye" onchange="toggleTrafficGroup('trafficHeadEyeDetail', this.checked)" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-1.5 text-slate-800">ดวงตา/เปลือกตา/เบ้าตา</span></label>
-            <div id="trafficHeadEyeDetail" class="hidden flex flex-wrap items-center gap-2 bg-slate-50 border border-slate-200 px-2 py-1 rounded-lg text-xs">
-              <span class="text-slate-500 font-medium">ด้าน:</span>
-              <label class="flex items-center"><input type="checkbox" name="trafficHeadEyeSides" value="left" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ซ้าย</span></label>
-              <label class="flex items-center"><input type="checkbox" name="trafficHeadEyeSides" value="right" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ขวา</span></label>
-              <span class="text-slate-300 mx-1.5">|</span>
-              <span class="text-slate-500 font-medium">การบาดเจ็บ:</span>
-              <label class="flex items-center"><input type="checkbox" name="trafficHeadEyeInjuries" value="wound" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">มีแผล</span></label>
-              <label class="flex items-center"><input type="checkbox" name="trafficHeadEyeInjuries" value="pain_swelling" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ปวด/บวม</span></label>
-              <label class="flex items-center"><input type="checkbox" name="trafficHeadEyeInjuries" value="deformity" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ผิดรูป</span></label>
-            </div>
-          </div>
-          <div class="flex flex-wrap items-center gap-2">
-            <label class="flex items-center"><input type="checkbox" id="trafficHeadEar" onchange="toggleTrafficGroup('trafficHeadEarDetail', this.checked)" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-1.5 text-slate-800">ใบหู/กกหู</span></label>
-            <div id="trafficHeadEarDetail" class="hidden flex flex-wrap items-center gap-2 bg-slate-50 border border-slate-200 px-2 py-1 rounded-lg text-xs">
-              <span class="text-slate-500 font-medium">ด้าน:</span>
-              <label class="flex items-center"><input type="checkbox" name="trafficHeadEarSides" value="left" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ซ้าย</span></label>
-              <label class="flex items-center"><input type="checkbox" name="trafficHeadEarSides" value="right" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ขวา</span></label>
-              <span class="text-slate-300 mx-1.5">|</span>
-              <span class="text-slate-500 font-medium">การบาดเจ็บ:</span>
-              <label class="flex items-center"><input type="checkbox" name="trafficHeadEarInjuries" value="wound" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">มีแผล</span></label>
-              <label class="flex items-center"><input type="checkbox" name="trafficHeadEarInjuries" value="pain_swelling" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ปวด/บวม</span></label>
-              <label class="flex items-center"><input type="checkbox" name="trafficHeadEarInjuries" value="deformity" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ผิดรูป</span></label>
-            </div>
-          </div>
-          <div class="flex flex-wrap items-center gap-2">
-            <label class="flex items-center"><input type="checkbox" id="trafficHeadNoseMouth" onchange="toggleTrafficGroup('trafficHeadNoseMouthDetail', this.checked)" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-1.5 text-slate-800">จมูก/ริมฝีปาก/ฟัน/ในช่องปาก</span></label>
-            <div id="trafficHeadNoseMouthDetail" class="hidden flex flex-wrap items-center gap-2 bg-slate-50 border border-slate-200 px-2 py-1 rounded-lg text-xs">
-              <span class="text-slate-500 font-medium">ด้าน:</span>
-              <label class="flex items-center"><input type="checkbox" name="trafficHeadNoseMouthSides" value="left" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ซ้าย</span></label>
-              <label class="flex items-center"><input type="checkbox" name="trafficHeadNoseMouthSides" value="right" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ขวา</span></label>
-              <label class="flex items-center"><input type="checkbox" name="trafficHeadNoseMouthSides" value="center" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">กลาง</span></label>
-              <span class="text-slate-300 mx-1.5">|</span>
-              <span class="text-slate-500 font-medium">การบาดเจ็บ:</span>
-              <label class="flex items-center"><input type="checkbox" name="trafficHeadNoseMouthInjuries" value="wound" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">มีแผล</span></label>
-              <label class="flex items-center"><input type="checkbox" name="trafficHeadNoseMouthInjuries" value="pain_swelling" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ปวด/บวม</span></label>
-              <label class="flex items-center"><input type="checkbox" name="trafficHeadNoseMouthInjuries" value="deformity" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ผิดรูป/ฟันหัก</span></label>
-            </div>
-          </div>
-        </div>
-        <div class="pt-2 border-t border-slate-100 space-y-1.5">
-          <span class="font-semibold text-slate-700 block">อาการสำคัญที่พบร่วมด้วย:</span>
-          <label class="flex items-center"><input type="checkbox" name="trafficHeadSigns" value="loc_amnesia" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">มีอาการสลบ หมดสติชั่วขณะ หรือจำเหตุการณ์ไม่ได้</span></label>
-          <label class="flex items-center"><input type="checkbox" name="trafficHeadSigns" value="severe_headache_vomiting" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">ปวดศีรษะรุนแรง มึนงงสับสน ง่วงซึมลง หรือมีอาเจียน</span></label>
-          <label class="flex items-center"><input type="checkbox" name="trafficHeadSigns" value="diplopia_blurred_foreign_body" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">ตาพร่ามัว มองเห็นภาพซ้อน เลือดออกในตา หรือมีเศษกระจกเข้าตา</span></label>
-          <label class="flex items-center"><input type="checkbox" name="trafficHeadSigns" value="basilar_ear_nose_discharge" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">มีเลือดหรือน้ำใสไหลออกจากรูหู หรือรูจมูก</span></label>
-          <label class="flex items-center"><input type="checkbox" name="trafficHeadSigns" value="maxillofacial_malocclusion" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">อ้าปากไม่ได้ ขากรรไกรค้าง/สบฟันไม่สนิท หรือมีฟันหักโยก</span></label>
-        </div>
-      </div>
-    </div>
+    ${renderTrafficRegionBox({
+      parentId: 'trafficParentHeadFace',
+      subGroupId: 'trafficHeadFaceSubGroup',
+      title: ['2.1 ศีรษะ ใบหน้า', 'ดวงตา หู จมูก ปาก'],
+      partsHtml: [
+        renderTrafficPart('trafficHeadScalp', 'หนังศีรษะ / หน้าผาก / ท้ายทอย', true, 'ผิดรูป/ยุบ'),
+        renderTrafficPart('trafficHeadFace', 'ใบหน้า / โหนกแก้ม / คาง', true),
+        renderTrafficPart('trafficHeadEye', 'ดวงตา / เปลือกตา / เบ้าตา'),
+        renderTrafficPart('trafficHeadEar', 'ใบหู / กกหู'),
+        renderTrafficPart('trafficHeadNoseMouth', 'จมูก / ริมฝีปาก / ฟัน / ในช่องปาก', true, 'ผิดรูป/ฟันหัก')
+      ].join('\n'),
+      signsName: 'trafficHeadSigns',
+      signsNoneId: 'trafficHeadSignsNoneCb',
+      signs: [
+        { value: 'loc_amnesia', title: ['สลบ หมดสติชั่วขณะ', 'จำเหตุการณ์ไม่ได้'] },
+        { value: 'severe_headache_vomiting', title: ['ปวดศีรษะรุนแรง', 'มึนงง ซึม อาเจียน'] },
+        { value: 'diplopia_blurred_foreign_body', title: ['ตาพร่ามัว ภาพซ้อน', 'หรือเศษแก้วเข้าตา'], desc: 'มีเลือดออกในตา หรือสิ่งแปลกปลอมเข้าตา' },
+        { value: 'basilar_ear_nose_discharge', title: ['เลือดหรือน้ำใสไหล', 'ออกจากรูหู / จมูก'] },
+        { value: 'malocclusion_jaw_locked', title: ['ขากรรไกรค้าง /', 'สบไม่สนิท'], desc: 'อ้าปากไม่ขึ้น หรือสบฟันไม่ตรง' },
+        { value: 'broken_loose_tooth', title: ['ฟันหัก / โยก'], desc: 'ฟันแตก บิ่น หลุด หรือโยกคลอน' }
+      ]
+    })}
 
-    <!-- 2.2 ลำคอ -->
-    <div class="border border-slate-200 rounded-xl p-3 sm:p-4 space-y-3">
-      <label class="flex items-center cursor-pointer">
-        <input type="checkbox" id="trafficParentNeck" onchange="toggleTrafficGroup('trafficNeckSubGroup', this.checked)" class="rounded text-medical-600 h-4 w-4">
-        <span class="ml-2 text-xs sm:text-sm font-bold text-slate-900">2.2 บาดเจ็บที่ลำคอ หรือต้นคอ</span>
-      </label>
-      <div id="trafficNeckSubGroup" class="hidden space-y-3 pl-6 pt-2 border-t border-slate-100 text-xs sm:text-sm">
-        <div class="space-y-2">
-          <div class="flex flex-wrap items-center gap-2">
-            <label class="flex items-center"><input type="checkbox" id="trafficNeckBack" onchange="toggleTrafficGroup('trafficNeckBackDetail', this.checked)" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-1.5 text-slate-800">ต้นคอด้านหลัง (แนวกระดูกคอ)</span></label>
-            <div id="trafficNeckBackDetail" class="hidden flex flex-wrap items-center gap-2 bg-slate-50 border border-slate-200 px-2 py-1 rounded-lg text-xs">
-              <span class="text-slate-500 font-medium">ด้าน:</span>
-              <label class="flex items-center"><input type="checkbox" name="trafficNeckBackSides" value="left" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ซ้าย</span></label>
-              <label class="flex items-center"><input type="checkbox" name="trafficNeckBackSides" value="right" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ขวา</span></label>
-              <label class="flex items-center"><input type="checkbox" name="trafficNeckBackSides" value="center" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">กลาง</span></label>
-              <span class="text-slate-300 mx-1.5">|</span>
-              <span class="text-slate-500 font-medium">การบาดเจ็บ:</span>
-              <label class="flex items-center"><input type="checkbox" name="trafficNeckBackInjuries" value="wound" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">มีแผล</span></label>
-              <label class="flex items-center"><input type="checkbox" name="trafficNeckBackInjuries" value="pain_swelling" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ปวด/บวม</span></label>
-              <label class="flex items-center"><input type="checkbox" name="trafficNeckBackInjuries" value="deformity" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ผิดรูป</span></label>
-            </div>
-          </div>
-          <div class="flex flex-wrap items-center gap-2">
-            <label class="flex items-center"><input type="checkbox" id="trafficNeckFront" onchange="toggleTrafficGroup('trafficNeckFrontDetail', this.checked)" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-1.5 text-slate-800">ลำคอด้านหน้า (หลอดลม)</span></label>
-            <div id="trafficNeckFrontDetail" class="hidden flex flex-wrap items-center gap-2 bg-slate-50 border border-slate-200 px-2 py-1 rounded-lg text-xs">
-              <span class="text-slate-500 font-medium">ด้าน:</span>
-              <label class="flex items-center"><input type="checkbox" name="trafficNeckFrontSides" value="left" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ซ้าย</span></label>
-              <label class="flex items-center"><input type="checkbox" name="trafficNeckFrontSides" value="right" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ขวา</span></label>
-              <label class="flex items-center"><input type="checkbox" name="trafficNeckFrontSides" value="center" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">กลาง</span></label>
-              <span class="text-slate-300 mx-1.5">|</span>
-              <span class="text-slate-500 font-medium">การบาดเจ็บ:</span>
-              <label class="flex items-center"><input type="checkbox" name="trafficNeckFrontInjuries" value="wound" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">มีแผล</span></label>
-              <label class="flex items-center"><input type="checkbox" name="trafficNeckFrontInjuries" value="pain_swelling" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ปวด/บวม</span></label>
-              <label class="flex items-center"><input type="checkbox" name="trafficNeckFrontInjuries" value="deformity" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ผิดรูป</span></label>
-            </div>
-          </div>
-          <div class="flex flex-wrap items-center gap-2">
-            <label class="flex items-center"><input type="checkbox" id="trafficNeckSide" onchange="toggleTrafficGroup('trafficNeckSideDetail', this.checked)" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-1.5 text-slate-800">ลำคอด้านข้าง</span></label>
-            <div id="trafficNeckSideDetail" class="hidden flex flex-wrap items-center gap-2 bg-slate-50 border border-slate-200 px-2 py-1 rounded-lg text-xs">
-              <span class="text-slate-500 font-medium">ด้าน:</span>
-              <label class="flex items-center"><input type="checkbox" name="trafficNeckSideSides" value="left" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ซ้าย</span></label>
-              <label class="flex items-center"><input type="checkbox" name="trafficNeckSideSides" value="right" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ขวา</span></label>
-              <span class="text-slate-300 mx-1.5">|</span>
-              <span class="text-slate-500 font-medium">การบาดเจ็บ:</span>
-              <label class="flex items-center"><input type="checkbox" name="trafficNeckSideInjuries" value="wound" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">มีแผล</span></label>
-              <label class="flex items-center"><input type="checkbox" name="trafficNeckSideInjuries" value="pain_swelling" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ปวด/บวม</span></label>
-              <label class="flex items-center"><input type="checkbox" name="trafficNeckSideInjuries" value="deformity" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ผิดรูป</span></label>
-            </div>
-          </div>
-        </div>
-        <div class="pt-2 border-t border-slate-100 space-y-1.5">
-          <span class="font-semibold text-slate-700 block">อาการสำคัญที่พบร่วมด้วย:</span>
-          <label class="flex items-center"><input type="checkbox" name="trafficNeckSigns" value="cspine_severe_pain_stiff" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">ปวดตึงแนวกระดูกต้นคอมาก หรือหันคอ/ก้มเงยคอไม่ได้</span></label>
-          <label class="flex items-center"><input type="checkbox" name="trafficNeckSigns" value="radiculopathy_weakness_numbness" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">มีอาการชา แปล๊บเหมือนไฟช็อต หรืออ่อนแรงร้าวลงแขนขา</span></label>
-          <label class="flex items-center"><input type="checkbox" name="trafficNeckSigns" value="airway_compromise_hoarseness" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">หายใจลำบาก กลืนน้ำลายลำบาก เสียงแหบ หรือคอบวมโตหลังกระแทก</span></label>
-        </div>
-      </div>
-    </div>
+    ${renderTrafficRegionBox({
+      parentId: 'trafficParentNeck',
+      subGroupId: 'trafficNeckSubGroup',
+      title: ['2.2 ลำคอ / ต้นคอ'],
+      partsHtml: [
+        renderTrafficPart('trafficNeckBack', 'ต้นคอด้านหลัง (แนวกระดูกคอ)', true),
+        renderTrafficPart('trafficNeckFront', 'ลำคอด้านหน้า (หลอดลม)', true),
+        renderTrafficPart('trafficNeckSide', 'ลำคอด้านข้าง')
+      ].join('\n'),
+      signsName: 'trafficNeckSigns',
+      signsNoneId: 'trafficNeckSignsNoneCb',
+      signsCols: 'grid-cols-1 sm:grid-cols-3',
+      signs: [
+        { value: 'cspine_severe_pain_stiff', title: ['ปวดตึงต้นคอมาก', 'หันหรือก้มเงยไม่ได้'] },
+        { value: 'radiculopathy_weakness_numbness', title: ['ชา แปล๊บไฟช็อต', 'อ่อนแรงร้าวแขนขา'] },
+        { value: 'airway_compromise_hoarseness', title: ['หายใจ / กลืนลำบาก', 'เสียงแหบ คอบวมโต'] }
+      ]
+    })}
 
-    <!-- 2.3 หน้าอก -->
-    <div class="border border-slate-200 rounded-xl p-3 sm:p-4 space-y-3">
-      <label class="flex items-center cursor-pointer">
-        <input type="checkbox" id="trafficParentChest" onchange="toggleTrafficGroup('trafficChestSubGroup', this.checked)" class="rounded text-medical-600 h-4 w-4">
-        <span class="ml-2 text-xs sm:text-sm font-bold text-slate-900">2.3 บาดเจ็บที่หน้าอก ซี่โครง ไหปลาร้า หรือหลังส่วนบน/สะบัก</span>
-      </label>
-      <div id="trafficChestSubGroup" class="hidden space-y-3 pl-6 pt-2 border-t border-slate-100 text-xs sm:text-sm">
-        <div class="space-y-2">
-          <div class="flex flex-wrap items-center gap-2">
-            <label class="flex items-center"><input type="checkbox" id="trafficChestWall" onchange="toggleTrafficGroup('trafficChestWallDetail', this.checked)" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-1.5 text-slate-800">หน้าอก/ซี่โครง/ราวนม</span></label>
-            <div id="trafficChestWallDetail" class="hidden flex flex-wrap items-center gap-2 bg-slate-50 border border-slate-200 px-2 py-1 rounded-lg text-xs">
-              <span class="text-slate-500 font-medium">ด้าน:</span>
-              <label class="flex items-center"><input type="checkbox" name="trafficChestWallSides" value="left" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ซ้าย</span></label>
-              <label class="flex items-center"><input type="checkbox" name="trafficChestWallSides" value="right" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ขวา</span></label>
-              <label class="flex items-center"><input type="checkbox" name="trafficChestWallSides" value="center" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">กลาง</span></label>
-              <span class="text-slate-300 mx-1.5">|</span>
-              <span class="text-slate-500 font-medium">การบาดเจ็บ:</span>
-              <label class="flex items-center"><input type="checkbox" name="trafficChestWallInjuries" value="wound" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">มีแผล</span></label>
-              <label class="flex items-center"><input type="checkbox" name="trafficChestWallInjuries" value="pain_swelling" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ปวด/บวม</span></label>
-              <label class="flex items-center"><input type="checkbox" name="trafficChestWallInjuries" value="deformity" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ผิดรูป/ยุบ</span></label>
-            </div>
-          </div>
-          <div class="flex flex-wrap items-center gap-2">
-            <label class="flex items-center"><input type="checkbox" id="trafficChestClavicle" onchange="toggleTrafficGroup('trafficChestClavicleDetail', this.checked)" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-1.5 text-slate-800">ไหปลาร้า</span></label>
-            <div id="trafficChestClavicleDetail" class="hidden flex flex-wrap items-center gap-2 bg-slate-50 border border-slate-200 px-2 py-1 rounded-lg text-xs">
-              <span class="text-slate-500 font-medium">ด้าน:</span>
-              <label class="flex items-center"><input type="checkbox" name="trafficChestClavicleSides" value="left" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ซ้าย</span></label>
-              <label class="flex items-center"><input type="checkbox" name="trafficChestClavicleSides" value="right" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ขวา</span></label>
-              <span class="text-slate-300 mx-1.5">|</span>
-              <span class="text-slate-500 font-medium">การบาดเจ็บ:</span>
-              <label class="flex items-center"><input type="checkbox" name="trafficChestClavicleInjuries" value="wound" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">มีแผล</span></label>
-              <label class="flex items-center"><input type="checkbox" name="trafficChestClavicleInjuries" value="pain_swelling" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ปวด/บวม</span></label>
-              <label class="flex items-center"><input type="checkbox" name="trafficChestClavicleInjuries" value="deformity" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ผิดรูป/ปูดนูน</span></label>
-            </div>
-          </div>
-          <div class="flex flex-wrap items-center gap-2">
-            <label class="flex items-center"><input type="checkbox" id="trafficChestUpperBack" onchange="toggleTrafficGroup('trafficChestUpperBackDetail', this.checked)" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-1.5 text-slate-800">หลังส่วนบน/สะบัก</span></label>
-            <div id="trafficChestUpperBackDetail" class="hidden flex flex-wrap items-center gap-2 bg-slate-50 border border-slate-200 px-2 py-1 rounded-lg text-xs">
-              <span class="text-slate-500 font-medium">ด้าน:</span>
-              <label class="flex items-center"><input type="checkbox" name="trafficChestUpperBackSides" value="left" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ซ้าย</span></label>
-              <label class="flex items-center"><input type="checkbox" name="trafficChestUpperBackSides" value="right" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ขวา</span></label>
-              <label class="flex items-center"><input type="checkbox" name="trafficChestUpperBackSides" value="center" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">กลาง</span></label>
-              <span class="text-slate-300 mx-1.5">|</span>
-              <span class="text-slate-500 font-medium">การบาดเจ็บ:</span>
-              <label class="flex items-center"><input type="checkbox" name="trafficChestUpperBackInjuries" value="wound" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">มีแผล</span></label>
-              <label class="flex items-center"><input type="checkbox" name="trafficChestUpperBackInjuries" value="pain_swelling" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ปวด/บวม</span></label>
-              <label class="flex items-center"><input type="checkbox" name="trafficChestUpperBackInjuries" value="deformity" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ผิดรูป</span></label>
-            </div>
-          </div>
-        </div>
-        <div class="pt-2 border-t border-slate-100 space-y-1.5">
-          <span class="font-semibold text-slate-700 block">อาการสำคัญที่พบร่วมด้วย:</span>
-          <label class="flex items-center"><input type="checkbox" name="trafficChestSigns" value="chest_dyspnea_tightness" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">หายใจหอบเหนื่อย แน่นหน้าอก หรือรู้สึกหายใจเข้าได้ไม่สุด</span></label>
-          <label class="flex items-center"><input type="checkbox" name="trafficChestSigns" value="pleuritic_pain_cough" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">เจ็บแปล๊บที่หน้าอกหรือซี่โครงเวลาหายใจเข้าลึกๆ หรือไอ</span></label>
-          <label class="flex items-center"><input type="checkbox" name="trafficChestSigns" value="rib_clavicle_deformity_tenderness" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">กระดูกไหปลาร้าหรือซี่โครงปูดนูน ผิดรูป หรือกดเจ็บมาก</span></label>
-        </div>
-      </div>
-    </div>
+    ${renderTrafficRegionBox({
+      parentId: 'trafficParentChest',
+      subGroupId: 'trafficChestSubGroup',
+      title: ['2.3 หน้าอก ซี่โครง', 'ไหปลาร้า / หลังบน'],
+      partsHtml: [
+        renderTrafficPart('trafficChestWall', 'หน้าอก / ซี่โครง / ราวนม', true, 'ผิดรูป/ยุบ'),
+        renderTrafficPart('trafficChestClavicle', 'ไหปลาร้า', false, 'ผิดรูป/ปูดนูน'),
+        renderTrafficPart('trafficChestUpperBack', 'หลังส่วนบน / สะบัก', true)
+      ].join('\n'),
+      signsName: 'trafficChestSigns',
+      signsNoneId: 'trafficChestSignsNoneCb',
+      signsCols: 'grid-cols-1 sm:grid-cols-3',
+      signs: [
+        { value: 'chest_dyspnea_tightness', title: ['หายใจหอบเหนื่อย', 'แน่นหน้าอก'], desc: 'รู้สึกหายใจเข้าได้ไม่สุด' },
+        { value: 'pleuritic_pain_cough', title: ['เจ็บแปล๊บหน้าอก /', 'ซี่โครงเวลาหายใจ'], desc: 'เจ็บเวลาหายใจเข้าลึกๆ หรือไอ' },
+        { value: 'rib_clavicle_deformity_tenderness', title: ['ไหปลาร้า / ซี่โครง', 'ปูดนูนหรือกดเจ็บมาก'] }
+      ]
+    })}
 
-    <!-- 2.4 หน้าท้อง -->
-    <div class="border border-slate-200 rounded-xl p-3 sm:p-4 space-y-3">
-      <label class="flex items-center cursor-pointer">
-        <input type="checkbox" id="trafficParentAbdomen" onchange="toggleTrafficGroup('trafficAbdSubGroup', this.checked)" class="rounded text-medical-600 h-4 w-4">
-        <span class="ml-2 text-xs sm:text-sm font-bold text-slate-900">2.4 บาดเจ็บที่หน้าท้อง บั้นเอว หลังส่วนล่าง หรือสะโพก/เชิงกราน</span>
-      </label>
-      <div id="trafficAbdSubGroup" class="hidden space-y-3 pl-6 pt-2 border-t border-slate-100 text-xs sm:text-sm">
-        <div class="space-y-2">
-          <div class="flex flex-wrap items-center gap-2">
-            <label class="flex items-center"><input type="checkbox" id="trafficAbdWall" onchange="toggleTrafficGroup('trafficAbdWallDetail', this.checked)" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-1.5 text-slate-800">หน้าท้อง/ชายโครง</span></label>
-            <div id="trafficAbdWallDetail" class="hidden flex flex-wrap items-center gap-2 bg-slate-50 border border-slate-200 px-2 py-1 rounded-lg text-xs">
-              <span class="text-slate-500 font-medium">ด้าน:</span>
-              <label class="flex items-center"><input type="checkbox" name="trafficAbdWallSides" value="left" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ซ้าย</span></label>
-              <label class="flex items-center"><input type="checkbox" name="trafficAbdWallSides" value="right" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ขวา</span></label>
-              <label class="flex items-center"><input type="checkbox" name="trafficAbdWallSides" value="center" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">กลาง</span></label>
-              <span class="text-slate-300 mx-1.5">|</span>
-              <span class="text-slate-500 font-medium">การบาดเจ็บ:</span>
-              <label class="flex items-center"><input type="checkbox" name="trafficAbdWallInjuries" value="wound" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">มีแผล</span></label>
-              <label class="flex items-center"><input type="checkbox" name="trafficAbdWallInjuries" value="pain_swelling" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ปวด/บวม</span></label>
-              <label class="flex items-center"><input type="checkbox" name="trafficAbdWallInjuries" value="deformity" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ท้องอืดตึง</span></label>
-            </div>
-          </div>
-          <div class="flex flex-wrap items-center gap-2">
-            <label class="flex items-center"><input type="checkbox" id="trafficAbdFlank" onchange="toggleTrafficGroup('trafficAbdFlankDetail', this.checked)" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-1.5 text-slate-800">สีข้าง/บั้นเอว</span></label>
-            <div id="trafficAbdFlankDetail" class="hidden flex flex-wrap items-center gap-2 bg-slate-50 border border-slate-200 px-2 py-1 rounded-lg text-xs">
-              <span class="text-slate-500 font-medium">ด้าน:</span>
-              <label class="flex items-center"><input type="checkbox" name="trafficAbdFlankSides" value="left" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ซ้าย</span></label>
-              <label class="flex items-center"><input type="checkbox" name="trafficAbdFlankSides" value="right" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ขวา</span></label>
-              <span class="text-slate-300 mx-1.5">|</span>
-              <span class="text-slate-500 font-medium">การบาดเจ็บ:</span>
-              <label class="flex items-center"><input type="checkbox" name="trafficAbdFlankInjuries" value="wound" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">มีแผล</span></label>
-              <label class="flex items-center"><input type="checkbox" name="trafficAbdFlankInjuries" value="pain_swelling" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ปวด/บวม</span></label>
-              <label class="flex items-center"><input type="checkbox" name="trafficAbdFlankInjuries" value="deformity" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ผิดรูป</span></label>
-            </div>
-          </div>
-          <div class="flex flex-wrap items-center gap-2">
-            <label class="flex items-center"><input type="checkbox" id="trafficAbdLowerBack" onchange="toggleTrafficGroup('trafficAbdLowerBackDetail', this.checked)" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-1.5 text-slate-800">หลังส่วนล่าง (แนวกระดูกเอว)</span></label>
-            <div id="trafficAbdLowerBackDetail" class="hidden flex flex-wrap items-center gap-2 bg-slate-50 border border-slate-200 px-2 py-1 rounded-lg text-xs">
-              <span class="text-slate-500 font-medium">ด้าน:</span>
-              <label class="flex items-center"><input type="checkbox" name="trafficAbdLowerBackSides" value="left" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ซ้าย</span></label>
-              <label class="flex items-center"><input type="checkbox" name="trafficAbdLowerBackSides" value="right" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ขวา</span></label>
-              <label class="flex items-center"><input type="checkbox" name="trafficAbdLowerBackSides" value="center" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">กลาง</span></label>
-              <span class="text-slate-300 mx-1.5">|</span>
-              <span class="text-slate-500 font-medium">การบาดเจ็บ:</span>
-              <label class="flex items-center"><input type="checkbox" name="trafficAbdLowerBackInjuries" value="wound" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">มีแผล</span></label>
-              <label class="flex items-center"><input type="checkbox" name="trafficAbdLowerBackInjuries" value="pain_swelling" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ปวด/บวม</span></label>
-              <label class="flex items-center"><input type="checkbox" name="trafficAbdLowerBackInjuries" value="deformity" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ผิดรูป</span></label>
-            </div>
-          </div>
-          <div class="flex flex-wrap items-center gap-2">
-            <label class="flex items-center"><input type="checkbox" id="trafficAbdPelvis" onchange="toggleTrafficGroup('trafficAbdPelvisDetail', this.checked)" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-1.5 text-slate-800">สะโพก/เชิงกราน/ก้นกบ</span></label>
-            <div id="trafficAbdPelvisDetail" class="hidden flex flex-wrap items-center gap-2 bg-slate-50 border border-slate-200 px-2 py-1 rounded-lg text-xs">
-              <span class="text-slate-500 font-medium">ด้าน:</span>
-              <label class="flex items-center"><input type="checkbox" name="trafficAbdPelvisSides" value="left" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ซ้าย</span></label>
-              <label class="flex items-center"><input type="checkbox" name="trafficAbdPelvisSides" value="right" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ขวา</span></label>
-              <label class="flex items-center"><input type="checkbox" name="trafficAbdPelvisSides" value="center" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">กลาง</span></label>
-              <span class="text-slate-300 mx-1.5">|</span>
-              <span class="text-slate-500 font-medium">การบาดเจ็บ:</span>
-              <label class="flex items-center"><input type="checkbox" name="trafficAbdPelvisInjuries" value="wound" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">มีแผล</span></label>
-              <label class="flex items-center"><input type="checkbox" name="trafficAbdPelvisInjuries" value="pain_swelling" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ปวด/บวม</span></label>
-              <label class="flex items-center"><input type="checkbox" name="trafficAbdPelvisInjuries" value="deformity" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ผิดรูป</span></label>
-            </div>
-          </div>
-          <div class="flex flex-wrap items-center gap-2">
-            <label class="flex items-center"><input type="checkbox" id="trafficAbdGenitalia" onchange="toggleTrafficGroup('trafficAbdGenitaliaDetail', this.checked)" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-1.5 text-slate-800">ขาหนีบ/อวัยวะเพศ</span></label>
-            <div id="trafficAbdGenitaliaDetail" class="hidden flex flex-wrap items-center gap-2 bg-slate-50 border border-slate-200 px-2 py-1 rounded-lg text-xs">
-              <span class="text-slate-500 font-medium">ด้าน:</span>
-              <label class="flex items-center"><input type="checkbox" name="trafficAbdGenitaliaSides" value="left" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ซ้าย</span></label>
-              <label class="flex items-center"><input type="checkbox" name="trafficAbdGenitaliaSides" value="right" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ขวา</span></label>
-              <label class="flex items-center"><input type="checkbox" name="trafficAbdGenitaliaSides" value="center" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">กลาง</span></label>
-              <span class="text-slate-300 mx-1.5">|</span>
-              <span class="text-slate-500 font-medium">การบาดเจ็บ:</span>
-              <label class="flex items-center"><input type="checkbox" name="trafficAbdGenitaliaInjuries" value="wound" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">มีแผล</span></label>
-              <label class="flex items-center"><input type="checkbox" name="trafficAbdGenitaliaInjuries" value="pain_swelling" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ปวด/บวม</span></label>
-              <label class="flex items-center"><input type="checkbox" name="trafficAbdGenitaliaInjuries" value="deformity" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ผิดรูป</span></label>
-            </div>
-          </div>
-        </div>
-        <div class="pt-2 border-t border-slate-100 space-y-1.5">
-          <span class="font-semibold text-slate-700 block">อาการสำคัญที่พบร่วมด้วย:</span>
-          <label class="flex items-center"><input type="checkbox" name="trafficAbdSigns" value="peritonitis_seatbelt_sign" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">ปวดท้องรุนแรง ท้องอืดตึง หรือมีรอยช้ำพาดขวางหน้าท้อง</span></label>
-          <label class="flex items-center"><input type="checkbox" name="trafficAbdSigns" value="pelvic_instability_pain" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">ปวดสะโพกหรือเชิงกรานมากจนขยับขาไม่ได้ หรือยืนลงน้ำหนักไม่ได้</span></label>
-          <label class="flex items-center"><input type="checkbox" name="trafficAbdSigns" value="cauda_equina_sciatica" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">ปวดหลังร้าวลงขา ขาชา/อ่อนแรง หรือกลั้นปัสสาวะ/อุจจาระไม่ได้</span></label>
-          <label class="flex items-center"><input type="checkbox" name="trafficAbdSigns" value="hematuria_anuria" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">ปัสสาวะไม่ออก หรือมีเลือดสดปนในปัสสาวะ</span></label>
-        </div>
-      </div>
-    </div>
+    ${renderTrafficRegionBox({
+      parentId: 'trafficParentAbdomen',
+      subGroupId: 'trafficAbdSubGroup',
+      title: ['2.4 หน้าท้อง เอว', 'หลังล่าง เชิงกราน'],
+      partsHtml: [
+        renderTrafficPart('trafficAbdWall', 'หน้าท้อง / ชายโครง', true, 'ท้องอืดตึง'),
+        renderTrafficPart('trafficAbdFlank', 'สีข้าง / บั้นเอว'),
+        renderTrafficPart('trafficAbdLowerBack', 'หลังส่วนล่าง (แนวกระดูกเอว)', true),
+        renderTrafficPart('trafficAbdPelvis', 'สะโพก / เชิงกราน / ก้นกบ', true),
+        renderTrafficPart('trafficAbdGenitalia', 'ขาหนีบ / อวัยวะเพศ', true)
+      ].join('\n'),
+      signsName: 'trafficAbdSigns',
+      signsNoneId: 'trafficAbdSignsNoneCb',
+      signs: [
+        { value: 'peritonitis_seatbelt_sign', title: ['ปวดท้องรุนแรง', 'ท้องตึง'], desc: 'หรือมีรอยช้ำพาดขวางหน้าท้อง' },
+        { value: 'pelvic_instability_pain', title: ['ปวดสะโพก เชิงกราน', 'ขยับขาไม่ไหว'], desc: 'ปวดมากจนขยับขาหรือยืนลงน้ำหนักไม่ได้' },
+        { value: 'cauda_equina_sciatica', title: ['ปวดร้าวลงขา ชาขา', 'กลั้นขับถ่ายไม่ได้'] },
+        { value: 'hematuria_anuria', title: ['ปัสสาวะไม่ออก', 'หรือมีเลือดปน'] }
+      ]
+    })}
 
-    <!-- 2.5 แขน มือ นิ้วมือ -->
-    <div class="border border-slate-200 rounded-xl p-3 sm:p-4 space-y-3">
-      <label class="flex items-center cursor-pointer">
-        <input type="checkbox" id="trafficParentUpperExtremity" onchange="toggleTrafficGroup('trafficUpperExtSubGroup', this.checked)" class="rounded text-medical-600 h-4 w-4">
-        <span class="ml-2 text-xs sm:text-sm font-bold text-slate-900">2.5 บาดเจ็บที่ไหล่ แขน ข้อศอก ข้อมือ หรือมือ/นิ้วมือ</span>
-      </label>
-      <div id="trafficUpperExtSubGroup" class="hidden space-y-3 pl-6 pt-2 border-t border-slate-100 text-xs sm:text-sm">
-        <div class="space-y-2">
-          <div class="flex flex-wrap items-center gap-2">
-            <label class="flex items-center"><input type="checkbox" id="trafficArmShoulder" onchange="toggleTrafficGroup('trafficArmShoulderDetail', this.checked)" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-1.5 text-slate-800">หัวไหล่/ต้นแขน</span></label>
-            <div id="trafficArmShoulderDetail" class="hidden flex flex-wrap items-center gap-2 bg-slate-50 border border-slate-200 px-2 py-1 rounded-lg text-xs">
-              <span class="text-slate-500 font-medium">ด้าน:</span>
-              <label class="flex items-center"><input type="checkbox" name="trafficArmShoulderSides" value="left" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ซ้าย</span></label>
-              <label class="flex items-center"><input type="checkbox" name="trafficArmShoulderSides" value="right" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ขวา</span></label>
-              <span class="text-slate-300 mx-1.5">|</span>
-              <span class="text-slate-500 font-medium">การบาดเจ็บ:</span>
-              <label class="flex items-center"><input type="checkbox" name="trafficArmShoulderInjuries" value="wound" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">มีแผล</span></label>
-              <label class="flex items-center"><input type="checkbox" name="trafficArmShoulderInjuries" value="pain_swelling" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ปวด/บวม</span></label>
-              <label class="flex items-center"><input type="checkbox" name="trafficArmShoulderInjuries" value="deformity" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ผิดรูป</span></label>
-            </div>
-          </div>
-          <div class="flex flex-wrap items-center gap-2">
-            <label class="flex items-center"><input type="checkbox" id="trafficArmElbowForearm" onchange="toggleTrafficGroup('trafficArmElbowForearmDetail', this.checked)" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-1.5 text-slate-800">ข้อศอก/แขนท่อนล่าง</span></label>
-            <div id="trafficArmElbowForearmDetail" class="hidden flex flex-wrap items-center gap-2 bg-slate-50 border border-slate-200 px-2 py-1 rounded-lg text-xs">
-              <span class="text-slate-500 font-medium">ด้าน:</span>
-              <label class="flex items-center"><input type="checkbox" name="trafficArmElbowForearmSides" value="left" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ซ้าย</span></label>
-              <label class="flex items-center"><input type="checkbox" name="trafficArmElbowForearmSides" value="right" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ขวา</span></label>
-              <span class="text-slate-300 mx-1.5">|</span>
-              <span class="text-slate-500 font-medium">การบาดเจ็บ:</span>
-              <label class="flex items-center"><input type="checkbox" name="trafficArmElbowForearmInjuries" value="wound" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">มีแผล</span></label>
-              <label class="flex items-center"><input type="checkbox" name="trafficArmElbowForearmInjuries" value="pain_swelling" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ปวด/บวม</span></label>
-              <label class="flex items-center"><input type="checkbox" name="trafficArmElbowForearmInjuries" value="deformity" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ผิดรูป</span></label>
-            </div>
-          </div>
-          <div class="flex flex-wrap items-center gap-2">
-            <label class="flex items-center"><input type="checkbox" id="trafficArmWristHand" onchange="toggleTrafficGroup('trafficArmWristHandDetail', this.checked)" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-1.5 text-slate-800">ข้อมือ/ฝ่ามือ/หลังมือ</span></label>
-            <div id="trafficArmWristHandDetail" class="hidden flex flex-wrap items-center gap-2 bg-slate-50 border border-slate-200 px-2 py-1 rounded-lg text-xs">
-              <span class="text-slate-500 font-medium">ด้าน:</span>
-              <label class="flex items-center"><input type="checkbox" name="trafficArmWristHandSides" value="left" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ซ้าย</span></label>
-              <label class="flex items-center"><input type="checkbox" name="trafficArmWristHandSides" value="right" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ขวา</span></label>
-              <span class="text-slate-300 mx-1.5">|</span>
-              <span class="text-slate-500 font-medium">การบาดเจ็บ:</span>
-              <label class="flex items-center"><input type="checkbox" name="trafficArmWristHandInjuries" value="wound" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">มีแผล</span></label>
-              <label class="flex items-center"><input type="checkbox" name="trafficArmWristHandInjuries" value="pain_swelling" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ปวด/บวม</span></label>
-              <label class="flex items-center"><input type="checkbox" name="trafficArmWristHandInjuries" value="deformity" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ผิดรูป</span></label>
-            </div>
-          </div>
-          ${renderTrafficDigits('trafficArmFingers', 'นิ้วมือ')}
-        </div>
-        <div class="pt-2 border-t border-slate-100 space-y-1.5">
-          <span class="font-semibold text-slate-700 block">อาการสำคัญที่พบร่วมด้วย:</span>
-          <label class="flex items-center"><input type="checkbox" name="trafficUpperExtSigns" value="deformity_fracture_dislocation" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">ไหล่ แขน ข้อมือ หรือนิ้วมือ บวมโต ผิดรูป หรือสงสัยกระดูกหัก/ข้อหลุด</span></label>
-          <label class="flex items-center"><input type="checkbox" name="trafficUpperExtSigns" value="inability_to_move" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">ปวดมากจนยกแขน ขยับข้อศอก หมุนข้อมือ หรือกำมือ/เหยียดนิ้วไม่ได้</span></label>
-          <label class="flex items-center"><input type="checkbox" name="trafficUpperExtSigns" value="numbness_sensory_loss" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">มีอาการชา หรือไร้ความรู้สึกที่แขน ฝ่ามือ หรือปลายนิ้วมือ</span></label>
-          <label class="flex items-center"><input type="checkbox" name="trafficUpperExtSigns" value="pallor_pulseless_cold_cyanosis" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">ปลายนิ้วมือซีดขาว เย็นเฉียบ หรือม่วงคล้ำ</span></label>
-          <label class="flex items-center"><input type="checkbox" name="trafficUpperExtSigns" value="open_fracture_bone_exposed" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">มีแผลเปิดลึกบริเวณกระดูกหัก หรือมองเห็นกระดูกโผล่</span></label>
-        </div>
-      </div>
-    </div>
+    ${renderTrafficRegionBox({
+      parentId: 'trafficParentUpperExtremity',
+      subGroupId: 'trafficUpperExtSubGroup',
+      title: ['2.5 ไหล่ แขน มือ', 'และนิ้วมือ'],
+      partsHtml: [
+        renderTrafficPart('trafficArmShoulder', 'หัวไหล่ / ต้นแขน'),
+        renderTrafficPart('trafficArmElbowForearm', 'ข้อศอก / แขนท่อนล่าง'),
+        renderTrafficPart('trafficArmWristHand', 'ข้อมือ / ฝ่ามือ / หลังมือ'),
+        renderTrafficDigits('trafficArmFingers', 'นิ้วมือ')
+      ].join('\n'),
+      signsName: 'trafficUpperExtSigns',
+      signsNoneId: 'trafficUpperExtSignsNoneCb',
+      signs: [
+        { value: 'deformity_fracture_dislocation', title: ['แขน มือ นิ้วผิดรูป', 'บวมโตบิดเบี้ยว'] },
+        { value: 'inability_to_move', title: ['ปวดจนยกแขนไม่ได้', 'กำ/เหยียดนิ้วไม่ลง'] },
+        { value: 'numbness_sensory_loss', title: ['มีอาการชา', 'หรือไร้ความรู้สึก'], desc: 'บริเวณแขน ฝ่ามือ หรือปลายนิ้วมือ' },
+        { value: 'pallor_pulseless_cold_cyanosis', title: ['ปลายนิ้วมือซีดขาว', 'เย็นเฉียบ / ม่วงคล้ำ'] },
+        { value: 'open_fracture_bone_exposed', title: ['มีแผลเปิดลึก', 'มองเห็นกระดูกโผล่'], colSpan2: true }
+      ]
+    })}
 
-    <!-- 2.6 ขา เท้า นิ้วเท้า -->
-    <div class="border border-slate-200 rounded-xl p-3 sm:p-4 space-y-3">
-      <label class="flex items-center cursor-pointer">
-        <input type="checkbox" id="trafficParentLowerExtremity" onchange="toggleTrafficGroup('trafficLowerExtSubGroup', this.checked)" class="rounded text-medical-600 h-4 w-4">
-        <span class="ml-2 text-xs sm:text-sm font-bold text-slate-900">2.6 บาดเจ็บที่ต้นขา เข่า หน้าแข้ง ข้อเท้า หรือเท้า/นิ้วเท้า</span>
-      </label>
-      <div id="trafficLowerExtSubGroup" class="hidden space-y-3 pl-6 pt-2 border-t border-slate-100 text-xs sm:text-sm">
-        <div class="space-y-2">
-          <div class="flex flex-wrap items-center gap-2">
-            <label class="flex items-center"><input type="checkbox" id="trafficLegThigh" onchange="toggleTrafficGroup('trafficLegThighDetail', this.checked)" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-1.5 text-slate-800">ต้นขา</span></label>
-            <div id="trafficLegThighDetail" class="hidden flex flex-wrap items-center gap-2 bg-slate-50 border border-slate-200 px-2 py-1 rounded-lg text-xs">
-              <span class="text-slate-500 font-medium">ด้าน:</span>
-              <label class="flex items-center"><input type="checkbox" name="trafficLegThighSides" value="left" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ซ้าย</span></label>
-              <label class="flex items-center"><input type="checkbox" name="trafficLegThighSides" value="right" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ขวา</span></label>
-              <span class="text-slate-300 mx-1.5">|</span>
-              <span class="text-slate-500 font-medium">การบาดเจ็บ:</span>
-              <label class="flex items-center"><input type="checkbox" name="trafficLegThighInjuries" value="wound" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">มีแผล</span></label>
-              <label class="flex items-center"><input type="checkbox" name="trafficLegThighInjuries" value="pain_swelling" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ปวด/บวม</span></label>
-              <label class="flex items-center"><input type="checkbox" name="trafficLegThighInjuries" value="deformity" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ผิดรูป</span></label>
-            </div>
-          </div>
-          <div class="flex flex-wrap items-center gap-2">
-            <label class="flex items-center"><input type="checkbox" id="trafficLegKneeShin" onchange="toggleTrafficGroup('trafficLegKneeShinDetail', this.checked)" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-1.5 text-slate-800">หัวเข่า/หน้าแข้ง/น่อง</span></label>
-            <div id="trafficLegKneeShinDetail" class="hidden flex flex-wrap items-center gap-2 bg-slate-50 border border-slate-200 px-2 py-1 rounded-lg text-xs">
-              <span class="text-slate-500 font-medium">ด้าน:</span>
-              <label class="flex items-center"><input type="checkbox" name="trafficLegKneeShinSides" value="left" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ซ้าย</span></label>
-              <label class="flex items-center"><input type="checkbox" name="trafficLegKneeShinSides" value="right" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ขวา</span></label>
-              <span class="text-slate-300 mx-1.5">|</span>
-              <span class="text-slate-500 font-medium">การบาดเจ็บ:</span>
-              <label class="flex items-center"><input type="checkbox" name="trafficLegKneeShinInjuries" value="wound" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">มีแผล</span></label>
-              <label class="flex items-center"><input type="checkbox" name="trafficLegKneeShinInjuries" value="pain_swelling" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ปวด/บวม</span></label>
-              <label class="flex items-center"><input type="checkbox" name="trafficLegKneeShinInjuries" value="deformity" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ผิดรูป</span></label>
-            </div>
-          </div>
-          <div class="flex flex-wrap items-center gap-2">
-            <label class="flex items-center"><input type="checkbox" id="trafficLegAnkleFoot" onchange="toggleTrafficGroup('trafficLegAnkleFootDetail', this.checked)" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-1.5 text-slate-800">ข้อเท้า/ส้นเท้า/ฝ่าเท้า/หลังเท้า</span></label>
-            <div id="trafficLegAnkleFootDetail" class="hidden flex flex-wrap items-center gap-2 bg-slate-50 border border-slate-200 px-2 py-1 rounded-lg text-xs">
-              <span class="text-slate-500 font-medium">ด้าน:</span>
-              <label class="flex items-center"><input type="checkbox" name="trafficLegAnkleFootSides" value="left" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ซ้าย</span></label>
-              <label class="flex items-center"><input type="checkbox" name="trafficLegAnkleFootSides" value="right" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ขวา</span></label>
-              <span class="text-slate-300 mx-1.5">|</span>
-              <span class="text-slate-500 font-medium">การบาดเจ็บ:</span>
-              <label class="flex items-center"><input type="checkbox" name="trafficLegAnkleFootInjuries" value="wound" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">มีแผล</span></label>
-              <label class="flex items-center"><input type="checkbox" name="trafficLegAnkleFootInjuries" value="pain_swelling" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ปวด/บวม</span></label>
-              <label class="flex items-center"><input type="checkbox" name="trafficLegAnkleFootInjuries" value="deformity" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ผิดรูป</span></label>
-            </div>
-          </div>
-          ${renderTrafficDigits('trafficLegToes', 'นิ้วเท้า')}
-        </div>
-        <div class="pt-2 border-t border-slate-100 space-y-1.5">
-          <span class="font-semibold text-slate-700 block">อาการสำคัญที่พบร่วมด้วย:</span>
-          <label class="flex items-center"><input type="checkbox" name="trafficLowerExtSigns" value="deformity_fracture_shortening" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">ต้นขา เข่า หน้าแข้ง หรือข้อเท้า บวมโต ผิดรูป หรือขาสั้นยาวไม่เท่ากัน</span></label>
-          <label class="flex items-center"><input type="checkbox" name="trafficLowerExtSigns" value="inability_to_bear_weight" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">ปวดมากจนไม่สามารถยืนลงน้ำหนัก หรือเดินก้าวขาได้เลย</span></label>
-          <label class="flex items-center"><input type="checkbox" name="trafficLowerExtSigns" value="numbness_drop_foot_cyanosis" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">มีอาการชาปลายเท้า กระดกข้อเท้าไม่ขึ้น หรือปลายเท้าซีดเย็น</span></label>
-          <label class="flex items-center"><input type="checkbox" name="trafficLowerExtSigns" value="open_fracture_spoke_injury" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">มีแผลเปิดลึกบริเวณกระดูกหัก หรือแผลถูกซี่ลวดล้อรถบาดลึก</span></label>
-        </div>
-      </div>
-    </div>
+    ${renderTrafficRegionBox({
+      parentId: 'trafficParentLowerExtremity',
+      subGroupId: 'trafficLowerExtSubGroup',
+      title: ['2.6 ต้นขา เข่า', 'ข้อเท้าและนิ้วเท้า'],
+      partsHtml: [
+        renderTrafficPart('trafficLegThigh', 'ต้นขา'),
+        renderTrafficPart('trafficLegKneeShin', 'หัวเข่า / หน้าแข้ง / น่อง'),
+        renderTrafficPart('trafficLegAnkleFoot', 'ข้อเท้า / ส้นเท้า / ฝ่าเท้า / หลังเท้า'),
+        renderTrafficDigits('trafficLegToes', 'นิ้วเท้า')
+      ].join('\n'),
+      signsName: 'trafficLowerExtSigns',
+      signsNoneId: 'trafficLowerExtSignsNoneCb',
+      signs: [
+        { value: 'deformity_fracture_shortening', title: ['ขา เข่า ข้อเท้า', 'บวมผิดรูป'], desc: 'หรือขาสั้นยาวไม่เท่ากัน' },
+        { value: 'inability_to_bear_weight', title: ['เดินหรือยืน', 'ลงน้ำหนักไม่ได้เลย'] },
+        { value: 'numbness_drop_foot_cyanosis', title: ['ชาปลายเท้า ซีดเย็น', 'กระดกข้อเท้าไม่ขึ้น'] },
+        { value: 'open_fracture_spoke_injury', title: ['แผลเปิดเห็นกระดูก', 'หรือซี่ล้อบาดลึก'] }
+      ]
+    })}
 
     <!-- 2.7 ตำแหน่งอื่นๆ -->
-    <div class="border border-slate-200 rounded-xl p-3 sm:p-4 space-y-3">
-      <label class="flex items-center cursor-pointer">
-        <input type="checkbox" id="trafficParentOther" onchange="toggleTrafficGroup('trafficOtherSubGroup', this.checked)" class="rounded text-medical-600 h-4 w-4">
-        <span class="ml-2 text-xs sm:text-sm font-bold text-slate-900">2.7 บาดแผลที่ตำแหน่งอื่นๆ (พิมพ์ระบุ)</span>
+    <div class="space-y-3">
+      <label class="selectable-card flex items-center p-3.5 rounded-xl border-2 border-slate-200 bg-slate-50 hover:border-medical-400 transition cursor-pointer">
+        <input type="checkbox" id="trafficParentOther" onchange="toggleTrafficGroup('trafficOtherSubGroup', this.checked)" class="text-medical-600 focus:ring-medical-500 h-5 w-5 rounded flex-shrink-0">
+        <span class="ml-3 text-xs sm:text-sm font-bold text-slate-900">2.7 ตำแหน่งอื่นๆ (พิมพ์ระบุ)</span>
       </label>
-      <div id="trafficOtherSubGroup" class="hidden space-y-2 pl-6 pt-2 border-t border-slate-100 text-xs sm:text-sm">
-        <div class="flex flex-wrap items-center gap-2">
-          <span class="font-medium text-slate-600">ชนิดบาดเจ็บ:</span>
-          <label class="flex items-center"><input type="checkbox" name="trafficOtherLocationInjuries" value="wound" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">มีแผล</span></label>
-          <label class="flex items-center"><input type="checkbox" name="trafficOtherLocationInjuries" value="pain_swelling" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ปวด/บวม</span></label>
-          <label class="flex items-center"><input type="checkbox" name="trafficOtherLocationInjuries" value="deformity" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ผิดรูป</span></label>
+      <div id="trafficOtherSubGroup" class="hidden space-y-2 pl-4 sm:pl-6 border-l-2 border-medical-200 text-xs sm:text-sm">
+        <div class="flex flex-wrap items-center gap-3">
+          <span class="font-medium text-slate-600">ลักษณะบาดเจ็บ:</span>
+          <label class="flex items-center cursor-pointer"><input type="checkbox" name="trafficOtherLocationInjuries" value="wound" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-1.5 text-slate-800">มีแผล</span></label>
+          <label class="flex items-center cursor-pointer"><input type="checkbox" name="trafficOtherLocationInjuries" value="pain_swelling" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-1.5 text-slate-800">ปวด/บวม</span></label>
+          <label class="flex items-center cursor-pointer"><input type="checkbox" name="trafficOtherLocationInjuries" value="deformity" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-1.5 text-slate-800">ผิดรูป</span></label>
         </div>
-        <input type="text" id="trafficOtherLocationDetail" placeholder="พิมพ์ระบุตำแหน่งบาดแผลหรืออาการบาดเจ็บเพิ่มเติม..." class="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs sm:text-sm">
+        <input type="text" id="trafficOtherLocationDetail" placeholder="พิมพ์ระบุตำแหน่งบาดแผลหรืออาการบาดเจ็บเพิ่มเติม..." class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2 text-xs sm:text-sm text-slate-800 focus:ring-2 focus:ring-medical-500 focus:bg-white">
       </div>
     </div>
   </div>
 
   <!-- CARD 3: อาการผิดปกติของร่างกายและระดับความปวด -->
-  <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-6 space-y-5">
-    <div class="flex items-center space-x-2 text-medical-700 border-b border-slate-100 pb-3">
-      <div class="p-2 bg-medical-50 rounded-lg"><i data-lucide="activity" class="w-5 h-5"></i></div>
-      <h3 class="font-bold text-sm sm:text-base text-slate-800">3. อาการผิดปกติของร่างกายและระดับความปวด</h3>
-    </div>
-    <div class="space-y-2">
-      <label class="block text-xs sm:text-sm font-semibold text-slate-800">3.1 อาการผิดปกติของร่างกายที่พบร่วมด้วยในขณะนี้ (เลือกได้หลายข้อ):</label>
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs sm:text-sm">
-        <label class="selectable-card flex items-center p-2.5 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50"><input type="checkbox" name="trafficSystemicSigns" value="presyncope_dizziness" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">หน้ามืด เวียนศีรษะจะเป็นลม หรือตาพร่ามัวเวลาลุกนั่ง</span></label>
-        <label class="selectable-card flex items-center p-2.5 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50"><input type="checkbox" name="trafficSystemicSigns" value="palpitation_cold_sweat_pallor" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">ใจสั่น เหงื่อแตกท่วมตัว ตัวเย็นซีด หรือกระหายน้ำมาก</span></label>
-        <label class="selectable-card flex items-center p-2.5 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50"><input type="checkbox" name="trafficSystemicSigns" value="drowsy_confused_weakness" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">รู้สึกง่วงซึมลง สับสน หรืออ่อนเพลียไม่มีแรงทั่วร่างกาย</span></label>
-        <label class="selectable-card flex items-center p-2.5 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50"><input type="checkbox" name="trafficSystemicSigns" value="no_systemic_signs" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">ไม่มีอาการผิดปกติข้างต้น (รู้สึกตัวดี ไม่หน้ามืด)</span></label>
+  <div class="bg-white rounded-2xl p-5 sm:p-6 shadow-sm border border-slate-200 space-y-5">
+    <div class="flex items-center space-x-3 pb-3 border-b border-slate-100">
+      <div class="p-2 rounded-xl bg-medical-100 text-medical-700"><i data-lucide="activity" class="w-5 h-5"></i></div>
+      <div>
+        <h2 class="text-base font-bold text-slate-900">3. อาการผิดปกติของร่างกาย และระดับความปวด</h2>
+        <p class="text-xs text-slate-500">คัดกรองอาการหน้ามืด เป็นลม ภาวะเสียเลือด และระดับความปวด</p>
       </div>
     </div>
-    <div class="pt-3 border-t border-slate-100 space-y-2">
-      <div class="flex items-center justify-between">
-        <label class="text-xs sm:text-sm font-semibold text-slate-800">3.2 ระดับความปวดในขณะนี้ (Pain Score 0–10):</label>
-        <div id="trafficPainScoreBadge" class="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-600 border border-slate-300">
-          <span id="trafficPainScoreEmoji">⚪</span>
-          <span id="trafficPainScoreText">ยังไม่ได้ระบุ (แตะแถบเพื่อระบุ)</span>
+    <div class="p-3.5 bg-slate-50 rounded-xl border border-slate-200">
+      ${renderTrafficSysHeader({
+        label: '3.1 อาการผิดปกติของร่างกายที่พบร่วมด้วย (เลือกได้หลายข้อ)',
+        icon: 'alert-triangle',
+        colorClass: 'bg-amber-100 text-amber-700',
+        toggleKind: 'checkbox',
+        toggleId: 'trafficSystemicNoneCb',
+        toggleName: 'trafficSystemicSigns',
+        toggleValue: 'no_systemic_signs',
+        toggleLabel: 'ไม่มีอาการในหมวดนี้',
+        toggleOnchange: "handleTrafficGroupNoneToggle(this, 'trafficSystemicSigns')"
+      })}
+      ${renderTrafficGrid('grid-cols-1 sm:grid-cols-3', [
+        { name: 'trafficSystemicSigns', value: 'presyncope_dizziness', title: ['หน้ามืด เวียนศีรษะ', 'ตาพร่าเวลาลุกนั่ง'], onchange: "handleTrafficGroupItemChange(this, 'trafficSystemicNoneCb')", compact: true },
+        { name: 'trafficSystemicSigns', value: 'palpitation_cold_sweat_pallor', title: ['ใจสั่น เหงื่อแตก', 'ตัวเย็นซีด'], desc: 'หรือกระหายน้ำมาก', onchange: "handleTrafficGroupItemChange(this, 'trafficSystemicNoneCb')", compact: true },
+        { name: 'trafficSystemicSigns', value: 'drowsy_confused_weakness', title: ['ง่วงซึม สับสน', 'อ่อนเพลียไม่มีแรง'], onchange: "handleTrafficGroupItemChange(this, 'trafficSystemicNoneCb')", compact: true }
+      ])}
+    </div>
+    <div class="bg-slate-50/80 border border-slate-200 rounded-2xl p-4 sm:p-5 space-y-3">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+        <label class="block text-xs sm:text-sm font-semibold text-slate-800 tracking-wider">3.2 ระดับความปวดในขณะนี้ (0 – 10)</label>
+        <div class="flex items-center space-x-2">
+          <span id="trafficPainScoreBadge" class="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-600 border border-slate-300 self-start sm:self-auto transition-all">
+            <span id="trafficPainScoreEmoji" class="text-base">⚪</span>
+            <span id="trafficPainScoreText">ยังไม่ได้ระบุ (แตะแถบเพื่อระบุ)</span>
+          </span>
+          <button type="button" id="trafficPainScoreClearBtn" onclick="clearTrafficPainScore()" class="text-xs text-slate-400 hover:text-rose-600 underline hidden transition" title="ล้างค่าเพื่อให้เป็นไม่ได้ระบุ">ล้างค่า</button>
         </div>
       </div>
-      <input type="range" id="trafficPainScore" min="0" max="10" value="0" step="1" oninput="handleTrafficPainScoreChange(this.value)" class="w-full accent-medical-600 h-2 bg-slate-200 rounded-lg cursor-pointer">
-      <div class="flex justify-between text-[11px] text-slate-600 px-1 font-medium">
-        <span>0 (ไม่ปวดเลย)</span>
-        <span>5 (ปวดปานกลาง)</span>
-        <span>10 (ปวดที่สุด)</span>
-      </div>
-      <div class="text-right">
-        <button type="button" id="trafficPainScoreClearBtn" onclick="clearTrafficPainScore()" class="hidden text-xs text-slate-500 hover:text-rose-600 underline transition-colors">ล้างค่าคะแนนความปวด</button>
+      <div class="px-1 pt-1"><input type="range" id="trafficPainScore" min="0" max="10" value="0" step="1" oninput="handleTrafficPainScoreChange(this.value)" class="w-full h-2.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-medical-600 focus:outline-none focus:ring-2 focus:ring-medical-500"></div>
+      <div class="grid grid-cols-5 text-center text-[10px] sm:text-[11px] pt-1 gap-1 text-slate-500 font-medium">
+        <div class="cursor-pointer hover:text-medical-600 transition" onclick="setTrafficPainScore(0)"><span class="text-lg sm:text-xl block">😊</span><span>0: สบายดี</span></div>
+        <div class="cursor-pointer hover:text-medical-600 transition" onclick="setTrafficPainScore(2)"><span class="text-lg sm:text-xl block">🙂</span><span>1–3: เล็กน้อย</span></div>
+        <div class="cursor-pointer hover:text-medical-600 transition" onclick="setTrafficPainScore(5)"><span class="text-lg sm:text-xl block">😐</span><span>4–6: ปานกลาง</span></div>
+        <div class="cursor-pointer hover:text-medical-600 transition" onclick="setTrafficPainScore(8)"><span class="text-lg sm:text-xl block">😣</span><span>7–9: ปวดมาก</span></div>
+        <div class="cursor-pointer hover:text-medical-600 transition" onclick="setTrafficPainScore(10)"><span class="text-lg sm:text-xl block">😭</span><span>10: ปวดที่สุด</span></div>
       </div>
     </div>
   </div>
 
-  <!-- CARD 4: อาการนำก่อนเกิดเหตุ ยาประจำตัว บาดทะยัก NPO Time และประวัติสตรี (LMP) -->
-  <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-6 space-y-5">
-    <div class="flex items-center space-x-2 text-medical-700 border-b border-slate-100 pb-3">
-      <div class="p-2 bg-medical-50 rounded-lg"><i data-lucide="shield-plus" class="w-5 h-5"></i></div>
-      <h3 class="font-bold text-sm sm:text-base text-slate-800">4. อาการนำก่อนเกิดเหตุ ยาประจำตัว บาดทะยัก NPO Time และประวัติสตรี (LMP)</h3>
-    </div>
-    <div class="space-y-2">
-      <label class="block text-xs sm:text-sm font-semibold text-slate-800">4.1 ก่อนเกิดอุบัติเหตุ มีอาการผิดปกติของร่างกายนำมาก่อน หรือมีการดื่มแอลกอฮอล์ร่วมด้วยหรือไม่:</label>
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs sm:text-sm">
-        <label class="selectable-card flex items-start p-2.5 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50"><input type="checkbox" name="trafficProdromeSigns" value="prodrome_syncope_medical" class="rounded text-medical-600 h-3.5 w-3.5 mt-0.5"><span class="ml-2 text-slate-800">มีอาการวูบ หน้ามืด แน่นหน้าอก ชัก หรือแขนขาอ่อนแรงนำมาก่อนแล้วเกิดอุบัติเหตุ</span></label>
-        <label class="selectable-card flex items-start p-2.5 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50"><input type="checkbox" name="trafficProdromeSigns" value="prodrome_drowsy_sleep" class="rounded text-medical-600 h-3.5 w-3.5 mt-0.5"><span class="ml-2 text-slate-800">มีอาการง่วง หรือหลับในก่อนเกิดเหตุ</span></label>
-        <label class="selectable-card flex items-start p-2.5 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50"><input type="checkbox" name="trafficProdromeSigns" value="prodrome_alcohol_drugs" class="rounded text-medical-600 h-3.5 w-3.5 mt-0.5"><span class="ml-2 text-slate-800">ดื่มเครื่องดื่มแอลกอฮอล์ (สุรา/เบียร์) หรือรับประทานยาที่ทำให้ง่วงซึม</span></label>
-        <label class="selectable-card flex items-start p-2.5 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50"><input type="checkbox" name="trafficProdromeSigns" value="prodrome_none" class="rounded text-medical-600 h-3.5 w-3.5 mt-0.5"><span class="ml-2 text-slate-800">ไม่มีอาการผิดปกตินำมาก่อน และไม่ได้ดื่มแอลกอฮอล์</span></label>
-      </div>
-    </div>
-    <div class="pt-3 border-t border-slate-100 space-y-2">
-      <label class="block text-xs sm:text-sm font-semibold text-slate-800">4.2 ท่านมีโรคประจำตัว หรือรับประทานยาละลายลิ่มเลือด/ยาต้านเกล็ดเลือดอยู่หรือไม่:</label>
-      <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs sm:text-sm">
-        <label class="selectable-card flex items-center p-2.5 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50"><input type="radio" name="trafficAnticoagulantHx" value="anticoagulant_antiplatelet" class="text-medical-600 h-4 w-4"><span class="ml-2 text-slate-800">รับประทานยาละลายลิ่มเลือด / ยาต้านเกล็ดเลือด (เช่น Warfarin, Aspirin, Plavix)</span></label>
-        <label class="selectable-card flex items-center p-2.5 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50"><input type="radio" name="trafficAnticoagulantHx" value="bleeding_disorder_cirrhosis" class="text-medical-600 h-4 w-4"><span class="ml-2 text-slate-800">มีโรคเลือดหยุดยาก หรือโรคตับแข็ง</span></label>
-        <label class="selectable-card flex items-center p-2.5 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50"><input type="radio" name="trafficAnticoagulantHx" value="no_anticoagulant" class="text-medical-600 h-4 w-4"><span class="ml-2 text-slate-800">ไม่ได้รับประทานยากลุ่มนี้ และไม่มีโรคเลือดหยุดยาก</span></label>
+  <!-- CARD 4: อาการนำก่อนเกิดเหตุ ยาประจำตัว บาดทะยัก อาหารมื้อล่าสุด และข้อมูลสตรี -->
+  <div class="bg-white rounded-2xl p-5 sm:p-6 shadow-sm border border-slate-200 space-y-5">
+    <div class="flex items-center space-x-3 pb-3 border-b border-slate-100">
+      <div class="p-2 rounded-xl bg-medical-100 text-medical-700"><i data-lucide="shield-plus" class="w-5 h-5"></i></div>
+      <div>
+        <h2 class="text-base font-bold text-slate-900">4. อาการนำก่อนเกิดเหตุ ยาประจำตัว วัคซีนบาดทะยัก และอาหารมื้อล่าสุด</h2>
+        <p class="text-xs text-slate-500">ประวัติสาเหตุก่อนเกิดเหตุ ยาละลายลิ่มเลือด วัคซีน และเวลาที่รับประทานมื้อล่าสุด</p>
       </div>
     </div>
 
-    <!-- 4.3 ประวัติการได้รับวัคซีนป้องกันบาดทะยัก -->
+    <!-- 4.1 อาการนำก่อนเกิดเหตุ -->
+    <div class="p-3.5 bg-slate-50 rounded-xl border border-slate-200">
+      ${renderTrafficSysHeader({
+        label: '4.1 ก่อนเกิดอุบัติเหตุ มีอาการผิดปกตินำมาก่อน หรือดื่มแอลกอฮอล์หรือไม่',
+        icon: 'zap',
+        colorClass: 'bg-amber-100 text-amber-700',
+        toggleKind: 'checkbox',
+        toggleId: 'trafficProdromeNoneCb',
+        toggleName: 'trafficProdromeSigns',
+        toggleValue: 'prodrome_none',
+        toggleLabel: 'ไม่มีอาการนำ',
+        toggleOnchange: "handleTrafficGroupNoneToggle(this, 'trafficProdromeSigns')"
+      })}
+      ${renderTrafficGrid('grid-cols-1 sm:grid-cols-3', [
+        { name: 'trafficProdromeSigns', value: 'prodrome_syncope_medical', title: ['วูบ แน่นหน้าอก ชัก', 'หรืออ่อนแรงก่อนเกิด'], onchange: "handleTrafficGroupItemChange(this, 'trafficProdromeNoneCb')", compact: true },
+        { name: 'trafficProdromeSigns', value: 'prodrome_drowsy_sleep', title: ['ง่วงนอน หรือหลับใน', 'ก่อนเกิดเหตุ'], onchange: "handleTrafficGroupItemChange(this, 'trafficProdromeNoneCb')", compact: true },
+        { name: 'trafficProdromeSigns', value: 'prodrome_alcohol_drugs', title: ['ดื่มแอลกอฮอล์', 'หรือกินยาง่วงซึม'], onchange: "handleTrafficGroupItemChange(this, 'trafficProdromeNoneCb')", compact: true }
+      ])}
+    </div>
+
+    <!-- 4.2 ยาละลายลิ่มเลือด -->
+    <div class="p-3.5 bg-slate-50 rounded-xl border border-slate-200">
+      ${renderTrafficSysHeader({
+        label: '4.2 ยาละลายลิ่มเลือด หรือโรคเลือดหยุดยาก <span class="text-rose-500">*</span>',
+        icon: 'pill',
+        colorClass: 'bg-blue-100 text-blue-700',
+        toggleKind: 'radio',
+        toggleId: 'trafficAnticoagNoneRb',
+        toggleName: 'trafficAnticoagulantHx',
+        toggleValue: 'no_anticoagulant',
+        toggleLabel: 'ไม่มี / ไม่ได้ใช้'
+      })}
+      ${renderTrafficGrid('grid-cols-1 sm:grid-cols-2', [
+        { kind: 'radio', name: 'trafficAnticoagulantHx', value: 'anticoagulant_antiplatelet', title: ['ใช้ยาละลายลิ่มเลือด', '/ ต้านเกล็ดเลือด'], desc: 'เช่น วาร์ฟาริน แอสไพริน', compact: true },
+        { kind: 'radio', name: 'trafficAnticoagulantHx', value: 'bleeding_disorder_cirrhosis', title: ['มีโรคเลือดหยุดยาก', 'หรือโรคตับแข็ง'], compact: true }
+      ])}
+    </div>
+
+    <!-- 4.3 ประวัติการได้รับวัคซีนป้องกันบาดทะยัก (Locked Tetanus Standard) -->
     <div class="pt-3 border-t border-slate-100">
-      <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">4.3 ประวัติการได้รับวัคซีนป้องกันบาดทะยัก (Tetanus Vaccine)</label>
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-        <label class="selectable-card flex items-start p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-          <input type="radio" name="trafficTetanusHx" value="within_5_years" class="mt-0.5 text-medical-600 focus:ring-medical-500 h-4 w-4">
-          <div class="ml-3"><span class="block text-xs sm:text-sm font-semibold text-slate-800">เคยฉีดเข็มกระตุ้นภายใน 5 ปีที่ผ่านมา</span><span class="block text-[11px] text-slate-500 font-normal mt-0.5">เคยฉีดครบ (3 เข็ม) มาก่อน และเข็มสุดท้ายหรือเข็มกระตุ้น &lt; 5 ปี</span></div>
-        </label>
-        <label class="selectable-card flex items-start p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-          <input type="radio" name="trafficTetanusHx" value="5_to_10_years" class="mt-0.5 text-medical-600 focus:ring-medical-500 h-4 w-4">
-          <div class="ml-3"><span class="block text-xs sm:text-sm font-semibold text-slate-800">เคยฉีดในช่วง 5 ถึง 10 ปีที่ผ่านมา</span><span class="block text-[11px] text-slate-500 font-normal mt-0.5">เคยฉีดครบ (3 เข็ม) มาก่อน และเข็มสุดท้ายหรือเข็มกระตุ้นห่างมาแล้ว 5–10 ปี</span></div>
-        </label>
-        <label class="selectable-card flex items-start p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-          <input type="radio" name="trafficTetanusHx" value="over_10_years" class="mt-0.5 text-medical-600 focus:ring-medical-500 h-4 w-4">
-          <div class="ml-3"><span class="block text-xs sm:text-sm font-semibold text-slate-800">เคยฉีดครบ แต่เกิน 10 ปีแล้ว</span><span class="block text-[11px] text-slate-500 font-normal mt-0.5">เคยฉีดครบ (3 เข็ม) มาก่อน แต่เข็มสุดท้ายมานานเกิน 10 ปีแล้ว</span></div>
-        </label>
-        <label class="selectable-card flex items-start p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-          <input type="radio" name="trafficTetanusHx" value="unknown_or_never" class="mt-0.5 text-medical-600 focus:ring-medical-500 h-4 w-4">
-          <div class="ml-3"><span class="block text-xs sm:text-sm font-semibold text-slate-800">ไม่เคยฉีด หรือจำประวัติไม่ได้</span><span class="block text-[11px] text-slate-500 font-normal mt-0.5">ไม่เคยฉีด เคยฉีดไม่ครบ 3 เข็ม หรือจำประวัติไม่ได้</span></div>
-        </label>
-      </div>
+      <label class="block text-xs sm:text-sm font-semibold text-slate-800 mb-2">4.3 ประวัติการได้รับวัคซีนป้องกันบาดทะยัก</label>
+      ${renderTrafficGrid('grid-cols-1 sm:grid-cols-2', [
+        {
+          kind: 'radio',
+          name: 'trafficTetanusHx',
+          value: 'within_5_years',
+          title: ['ฉีดกระตุ้น', 'ภายใน 5 ปี'],
+          desc: 'เคยฉีดครบ (3 เข็ม) มาก่อน และเข็มสุดท้ายหรือกระตุ้นไม่เกิน 5 ปี',
+          compact: true
+        },
+        {
+          kind: 'radio',
+          name: 'trafficTetanusHx',
+          value: '5_to_10_years',
+          title: ['ฉีดล่าสุด', '5–10 ปีก่อน'],
+          desc: 'เคยฉีดครบ (3 เข็ม) มาก่อน และเข็มสุดท้ายหรือกระตุ้นอยู่ในช่วง 5–10 ปี',
+          compact: true
+        },
+        {
+          kind: 'radio',
+          name: 'trafficTetanusHx',
+          value: 'over_10_years',
+          title: ['ฉีดครบ', 'เกิน 10 ปีแล้ว'],
+          desc: 'เคยฉีดครบ (3 เข็ม) มาก่อน แต่เข็มสุดท้ายนานเกิน 10 ปีแล้ว',
+          compact: true
+        },
+        {
+          kind: 'radio',
+          name: 'trafficTetanusHx',
+          value: 'unknown_or_never',
+          title: ['ไม่เคยฉีด', '/ จำไม่ได้'],
+          desc: 'ไม่เคยได้รับวัคซีนบาดทะยัก ฉีดไม่ครบ 3 เข็ม หรือไม่ทราบประวัติ',
+          compact: true
+        }
+      ])}
     </div>
 
-    <!-- 4.4 NPO Time -->
-    <div class="pt-3 border-t border-slate-100 space-y-2">
-      <label class="block text-xs sm:text-sm font-semibold text-slate-800">4.4 ประวัติการรับประทานอาหารหรือดื่มน้ำครั้งสุดท้าย (NPO Time — สำหรับห้องผ่าตัด/ดมยา):</label>
+    <!-- 4.4 ประวัติการรับประทานอาหารหรือดื่มน้ำครั้งสุดท้าย -->
+    <div class="pt-3 border-t border-slate-100 space-y-2.5">
+      <div>
+        <label class="block text-xs sm:text-sm font-semibold text-slate-800">4.4 ประวัติการรับประทานอาหารหรือดื่มน้ำครั้งสุดท้าย:</label>
+        <p class="text-xs text-slate-500">สำหรับวางแผนกรณีต้องตรวจพิเศษหรือผ่าตัด</p>
+      </div>
       <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div>
-          <span class="text-xs text-slate-600 block mb-1">เวลาที่รับประทานครั้งสุดท้าย:</span>
-          <input type="text" id="trafficNpoExactTime" data-universal-time="true" placeholder="เช่น 12:30 (24 ชม.)" class="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs">
+          <span class="text-xs sm:text-sm text-slate-600 block mb-1">เวลาที่รับประทานครั้งสุดท้าย:</span>
+          <input type="text" id="trafficNpoExactTime" data-universal-time="true" placeholder="เช่น 12:30 (24 ชม.)" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2 text-xs sm:text-sm text-slate-900 focus:ring-2 focus:ring-medical-500 focus:bg-white">
         </div>
         <div>
-          <span class="text-xs text-slate-600 block mb-1">ระยะเวลาที่งดน้ำ/อาหารมาแล้ว:</span>
-          <div class="space-y-1 text-xs">
-            <label class="flex items-center"><input type="radio" name="trafficNpoDuration" value="less_than_2_hours" class="text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ไม่เกิน 2 ชั่วโมง</span></label>
-            <label class="flex items-center"><input type="radio" name="trafficNpoDuration" value="2_to_6_hours" class="text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">ประมาณ 2 – 6 ชั่วโมง</span></label>
-            <label class="flex items-center"><input type="radio" name="trafficNpoDuration" value="over_6_hours" class="text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">มากกว่า 6 ชั่วโมงขึ้นไป</span></label>
-            <label class="flex items-center"><input type="radio" name="trafficNpoDuration" value="unknown" class="text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">จำไม่ได้แน่ชัด</span></label>
+          <span class="text-xs sm:text-sm text-slate-600 block mb-1">ระยะเวลาที่งดน้ำ/อาหารมาแล้ว:</span>
+          <div class="space-y-1 text-xs sm:text-sm">
+            <label class="flex items-center cursor-pointer"><input type="radio" name="trafficNpoDuration" value="less_than_2_hours" class="text-medical-600 h-3.5 w-3.5"><span class="ml-1.5 text-slate-800">ไม่เกิน 2 ชั่วโมง</span></label>
+            <label class="flex items-center cursor-pointer"><input type="radio" name="trafficNpoDuration" value="2_to_6_hours" class="text-medical-600 h-3.5 w-3.5"><span class="ml-1.5 text-slate-800">ประมาณ 2 – 6 ชั่วโมง</span></label>
+            <label class="flex items-center cursor-pointer"><input type="radio" name="trafficNpoDuration" value="over_6_hours" class="text-medical-600 h-3.5 w-3.5"><span class="ml-1.5 text-slate-800">มากกว่า 6 ชั่วโมงขึ้นไป</span></label>
+            <label class="flex items-center cursor-pointer"><input type="radio" name="trafficNpoDuration" value="unknown" class="text-medical-600 h-3.5 w-3.5"><span class="ml-1.5 text-slate-800">จำไม่ได้แน่ชัด</span></label>
           </div>
         </div>
         <div>
-          <span class="text-xs text-slate-600 block mb-1">สิ่งที่รับประทานครั้งสุดท้าย:</span>
-          <input type="text" id="trafficNpoLastFoodDetail" placeholder="เช่น ข้าวผัดและน้ำเปล่า..." class="w-full px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs">
+          <span class="text-xs sm:text-sm text-slate-600 block mb-1">สิ่งที่รับประทานครั้งสุดท้าย:</span>
+          <input type="text" id="trafficNpoLastFoodDetail" placeholder="เช่น ข้าวผัดและน้ำเปล่า..." class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2 text-xs sm:text-sm text-slate-900 focus:ring-2 focus:ring-medical-500 focus:bg-white">
         </div>
       </div>
     </div>
 
     <!-- 4.5 ส่วนเฉพาะผู้ป่วยสตรี (Hidden by default - C-AP13) -->
-    <div id="trafficFemaleSection" class="hidden pt-2 border-t border-slate-100 space-y-3">
-      <div class="flex items-center space-x-2">
-        <span class="px-2 py-0.5 text-[10px] font-bold bg-pink-100 text-pink-700 rounded-md">เฉพาะสตรี</span>
-        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider">4.5 ประจำเดือนและการตั้งครรภ์ (LMP & Pregnancy)</label>
-      </div>
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-pink-50/50 p-3.5 rounded-xl border border-pink-200">
-        <div class="min-w-0">
-          <span class="block text-xs font-semibold text-slate-700 mb-1">วันแรกของประจำเดือนครั้งสุดท้าย (LMP):</span>
-          <input type="text" id="trafficLmpDate" data-universal-date="true" placeholder="วว/ดด/ปปปป เช่น 28/10/2026" class="w-full min-w-0 text-xs sm:text-sm border-slate-300 rounded-lg p-2 focus:ring-medical-500 focus:border-medical-500 bg-white">
-        </div>
-        <div class="min-w-0">
-          <span class="block text-xs font-semibold text-slate-700 mb-1">สถานะการตั้งครรภ์:</span>
-          <select id="trafficPregnancyStatus" class="w-full min-w-0 text-xs sm:text-sm border-slate-300 rounded-lg p-2 focus:ring-medical-500 focus:border-medical-500 bg-white">
-            <option value="">-- ไม่ระบุ --</option>
-            <option value="not_pregnant">ไม่ได้ตั้งครรภ์ / ประจำเดือนมาปกติ</option>
-            <option value="suspected_or_missed">ขาดประจำเดือน / สงสัยอาจตั้งครรภ์</option>
-            <option value="confirmed_pregnant">ได้รับการยืนยันว่ากำลังตั้งครรภ์</option>
-            <option value="menopause_or_hysterectomy">วัยหมดประจำเดือน / ผ่าตัดมดลูกแล้ว</option>
-            <option value="unknown">ไม่ทราบ</option>
-          </select>
+    <div id="trafficFemaleSection" class="hidden pt-3 border-t border-slate-100">
+      <div class="p-3.5 bg-pink-50/40 rounded-xl border border-pink-100 space-y-3">
+        ${renderTrafficSysHeader({
+          label: '4.5 ประจำเดือนและการตั้งครรภ์ (เฉพาะสตรี)',
+          icon: 'heart-pulse',
+          colorClass: 'bg-pink-100 text-pink-700',
+          toggleKind: 'radio',
+          toggleId: 'trafficPregNotPregRb',
+          toggleName: 'trafficPregnancyStatus',
+          toggleValue: 'not_pregnant',
+          toggleLabel: 'ไม่ได้ตั้งครรภ์'
+        })}
+        ${renderTrafficGrid('grid-cols-1 sm:grid-cols-2', [
+          { kind: 'radio', name: 'trafficPregnancyStatus', value: 'suspected_or_missed', title: ['ขาดประจำเดือน', '/ สงสัยตั้งครรภ์'], compact: true },
+          { kind: 'radio', name: 'trafficPregnancyStatus', value: 'confirmed_pregnant', title: ['ยืนยัน', 'กำลังตั้งครรภ์'], compact: true },
+          { kind: 'radio', name: 'trafficPregnancyStatus', value: 'menopause_or_hysterectomy', title: ['หมดประจำเดือน', '/ ผ่าตัดมดลูกแล้ว'], compact: true },
+          { kind: 'radio', name: 'trafficPregnancyStatus', value: 'unknown', title: ['ไม่ทราบ'], compact: true }
+        ])}
+        <div class="max-w-xs">
+          <label class="block text-xs sm:text-sm font-semibold text-slate-700 mb-1">วันแรกของประจำเดือนครั้งล่าสุด (ถ้าจำได้):</label>
+          <input type="text" id="trafficLmpDate" data-universal-date="true" placeholder="วว/ดด/ปปปป เช่น 28/10/2026" class="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2 text-xs sm:text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-medical-500">
         </div>
       </div>
     </div>
   </div>
 
   <!-- อาการอื่นๆ เป็นช่องกรอกอิสระ -->
-  <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+  <div class="bg-white rounded-2xl p-5 sm:p-6 shadow-sm border border-slate-200">
     <div class="flex items-center space-x-3 mb-3 pb-2 border-b border-slate-100">
       <div class="bg-slate-100 text-slate-600 p-2 rounded-xl"><i data-lucide="message-square-plus" class="w-5 h-5"></i></div>
       <div>
-        <h2 class="text-base font-bold text-slate-800">อาการอื่นๆ ที่ต้องการแจ้งเพิ่มเติม</h2>
+        <h2 class="text-base font-bold text-slate-900">อาการอื่นๆ ที่ต้องการแจ้งเพิ่มเติม</h2>
         <p class="text-xs text-slate-500">ระบุอาการอื่นๆ ที่ท่านมีหรือต้องการบอกแพทย์เพิ่มเติม (ถ้ามี)</p>
       </div>
     </div>
     <textarea id="traffic_accident_other_free" rows="2" placeholder="พิมพ์ระบุอาการอื่นๆ ที่ท่านมีหรือต้องการบอกแพทย์เพิ่มเติม (ถ้ามี)..."
-      class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-medical-500 focus:bg-white"></textarea>
+      class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2 text-xs sm:text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-medical-500 focus:bg-white"></textarea>
   </div>
 
 </div>
@@ -1444,6 +1447,9 @@ const trafficAccidentModule = {
   titleEn: 'Traffic accident injury',
   icon: 'car',
   doctorCcBadgeHtml: '<i data-lucide="car" class="w-3.5 h-3.5 mr-1 text-medical-600"></i> CC: ได้รับบาดเจ็บจากอุบัติเหตุจราจร (Traffic Accident)',
+  pmhSectionNumber: 5,
+  dateFields: ['trafficExactDate', 'trafficLmpDate'],
+  timeFields: ['trafficExactTime', 'trafficNpoExactTime'],
   algorithm: 'traffic-accident-protocol',
   sectionDomId: 'cc-traffic-accident-section',
   formHtml: TRAFFIC_ACCIDENT_FORM_HTML,
@@ -1503,7 +1509,7 @@ const trafficAccidentModule = {
       durationUnit,
       trafficExactDate: getText('trafficExactDate'),
       trafficExactTime: getText('trafficExactTime'),
-      hospRecordStatus: ctx.hospRecordStatus || 'unspecified',
+      hospRecordStatus: ctx.hospRecordStatus || '',
       underlying: ctx.underlying || [],
       drugAllergy: ctx.drugAllergy || 'ไม่ได้ระบุ',
       currentMeds: ctx.currentMeds || 'ไม่ได้ระบุ',
@@ -1583,9 +1589,9 @@ const trafficAccidentModule = {
       trafficAnticoagulantHx: getRadioValue('trafficAnticoagulantHx'),
 
       // Female LMP & Pregnancy (C-AP13 Male Guard)
-      ...(isTrafficFemalePatient(ctx) ? {
+      ...(isTrafficFemaleCtx(ctx) ? {
         trafficLmpDate: getText('trafficLmpDate'),
-        trafficPregnancyStatus: document.getElementById('trafficPregnancyStatus')?.value || ''
+        trafficPregnancyStatus: getRadioValue('trafficPregnancyStatus') || ''
       } : {}),
 
       // Tetanus & NPO
@@ -1663,7 +1669,13 @@ const trafficAccidentModule = {
 
     // Anatomy
     ['ParentHeadFace', 'ParentNeck', 'ParentChest', 'ParentAbdomen', 'ParentUpperExtremity', 'ParentLowerExtremity', 'ParentOther'].forEach(p => setChecked('traffic' + p, patient['traffic' + p]));
-    ['HeadSigns', 'NeckSigns', 'ChestSigns', 'AbdSigns', 'UpperExtSigns', 'LowerExtSigns'].forEach(s => setCheckedValues('traffic' + s, patient['traffic' + s]));
+    ['HeadSigns', 'NeckSigns', 'ChestSigns', 'AbdSigns', 'UpperExtSigns', 'LowerExtSigns'].forEach(s => {
+      const rawArr = patient['traffic' + s];
+      const vals = (s === 'HeadSigns' && Array.isArray(rawArr))
+        ? rawArr.flatMap(x => (x === 'maxillofacial_malocclusion' ? ['malocclusion_jaw_locked', 'broken_loose_tooth'] : [x]))
+        : rawArr;
+      setCheckedValues('traffic' + s, vals);
+    });
 
     setChecked('trafficArmFingers', patient.trafficArmFingers);
     setCheckedValues('trafficArmFingersLeftDigits', patient.trafficArmFingersLeftDigits);
@@ -1690,17 +1702,12 @@ const trafficAccidentModule = {
     setRadioValue('trafficAnticoagulantHx', patient.trafficAnticoagulantHx);
 
     const isFem = isTrafficFemalePatient(patient);
-    const femSec = document.getElementById('trafficFemaleSection');
-    if (femSec) {
-      femSec.classList.toggle('hidden', !isFem);
-      if (isFem) {
-        setText('trafficLmpDate', patient.trafficLmpDate || patient.trafficLmpExactDate || '');
-        const pregEl = document.getElementById('trafficPregnancyStatus');
-        if (pregEl) {
-          const legacyStatusMap = { missed_period: 'suspected_or_missed', pregnant: 'confirmed_pregnant', menopause_hysterectomy: 'menopause_or_hysterectomy' };
-          pregEl.value = patient.trafficPregnancyStatus || legacyStatusMap[patient.trafficLmpStatus] || '';
-        }
-      }
+    toggleTrafficFemaleSection(isFem);
+    if (isFem) {
+      setText('trafficLmpDate', patient.trafficLmpDate || patient.trafficLmpExactDate || '');
+      const legacyStatusMap = { missed_period: 'suspected_or_missed', pregnant: 'confirmed_pregnant', menopause_hysterectomy: 'menopause_or_hysterectomy' };
+      const resolvedStatus = patient.trafficPregnancyStatus || legacyStatusMap[patient.trafficLmpStatus] || '';
+      setRadioValue('trafficPregnancyStatus', resolvedStatus);
     }
 
     const legacyTetanusMap = { over_10_years_or_never: 'unknown_or_never', within_5y: 'within_5_years', '5_to_10y': '5_to_10_years', over_10y: 'over_10_years' };
@@ -1749,8 +1756,6 @@ const trafficAccidentModule = {
     sec.querySelectorAll('input[type="number"]').forEach(ni => { ni.value = ''; });
 
     sec.querySelectorAll('select').forEach(el => { el.selectedIndex = 0; });
-    const pregEl = document.getElementById('trafficPregnancyStatus');
-    if (pregEl) pregEl.value = '';
 
     const hiddenContainers = [
       'trafficBranchMotorcycle', 'trafficMotoOpponentContainer', 'trafficBranchCarTruck', 'trafficCarOpponentContainer',
@@ -1776,32 +1781,6 @@ const trafficAccidentModule = {
 
   evaluateRedFlags(patient) {
     return evaluateTrafficRedFlags(patient);
-  },
-
-  generateCds(patient, ctx) {
-    const rfs = evaluateTrafficRedFlags(patient);
-    if (!ctx) return rfs;
-    if (!Array.isArray(ctx.ddxList)) ctx.ddxList = [];
-    if (!Array.isArray(ctx.workupList)) ctx.workupList = [];
-    if (!Array.isArray(ctx.managementList)) ctx.managementList = [];
-    const p = patient || {};
-    ctx.ddxList.push('Polytrauma / Blunt or penetrating traffic injury (ATLS Survey)');
-    if (p.trafficParentHeadFace || (p.trafficHeadSigns || []).length) ctx.ddxList.push('Traumatic Brain Injury (TBI) / Maxillofacial fracture');
-    if (p.trafficParentNeck || (p.trafficNeckSigns || []).length) ctx.ddxList.push('Cervical spine / Airway injury');
-    if (p.trafficParentChest || (p.trafficChestSigns || []).length) ctx.ddxList.push('Thoracic trauma (Pneumothorax / Hemothorax / Rib fracture)');
-    if (p.trafficParentAbdomen || (p.trafficAbdSigns || []).length) ctx.ddxList.push('Intra-abdominal viscus injury / Pelvic fracture');
-    if (p.trafficParentUpperExtremity || p.trafficParentLowerExtremity) ctx.ddxList.push('Extremity fracture / Neurovascular injury');
-    ctx.workupList.push('Primary Survey (ABCDE), vital signs & continuous SpO2/EKG monitoring, DTX');
-    ctx.workupList.push('Bedside eFAST, CBC, Electrolyte, BUN/Cr, Coagulogram, Group & Crossmatch');
-    if (p.trafficParentHeadFace || (p.trafficHeadSigns || []).length) ctx.workupList.push('CT Brain non-contrast / C-spine imaging');
-    if (p.trafficParentChest || p.trafficParentAbdomen) ctx.workupList.push('Chest X-ray, Pelvic AP X-ray, UA / CT Abdomen');
-    if (p.trafficParentUpperExtremity || p.trafficParentLowerExtremity) ctx.workupList.push('X-ray injured extremities & neurovascular check');
-    if (isTrafficFemalePatient(p)) ctx.workupList.push('Urine Pregnancy Test (UPT) prior to imaging');
-    ctx.managementList.push('C-Spine immobilization (Hard C-Collar) if indicated until cleared');
-    ctx.managementList.push('IV access & crystalloid resuscitation per hemodynamic status');
-    ctx.managementList.push('Wound hemostasis, sterile dressing, splinting & pain control');
-    ctx.managementList.push('Tetanus prophylaxis (Td/Tdap +/- TIG) per vaccination history');
-    return rfs;
   },
 
   updateOutputs(patient) {

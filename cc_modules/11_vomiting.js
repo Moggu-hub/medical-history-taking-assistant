@@ -51,13 +51,13 @@ const VOM_LABELS = {
     food_particles: 'เศษอาหารที่เพิ่งทาน',
     undigested_old_food: 'เศษอาหารเก่าค้างมื้อ (หลายชั่วโมงหรือข้ามวัน)',
     yellow_green_bile: 'น้ำดีสีเขียว / เหลืองเข้ม (Bile-stained)',
-    brown_feculent: 'สีน้ำตาล กลิ่นเหม็นคล้ายอุจจาระ 🚩 (Feculent Vomiting)',
-    blood_bright_red: 'มีเลือดสีแดงสดปน 🚩 (Hematemesis)',
-    blood_coffee_ground: 'สีกาแฟคั่ว / กากสีดำ 🚩 (Coffee-ground Vomitus)'
+    brown_feculent: 'สีน้ำตาล กลิ่นเหม็นคล้ายอุจจาระ (Feculent Vomiting)',
+    blood_bright_red: 'มีเลือดสีแดงสดปน (Hematemesis)',
+    blood_coffee_ground: 'สีกาแฟคั่ว / กากสีดำ (Coffee-ground Vomitus)'
   },
   patternType: {
     normal_retching: 'มีคลื่นไส้พะอืดพะอมนำมาก่อน',
-    projectile_vomiting: 'อาเจียนพุ่งแรงทันที แทบไม่คลื่นไส้นำ 🚩 (Projectile Vomiting)'
+    projectile_vomiting: 'อาเจียนพุ่งแรงทันที แทบไม่คลื่นไส้นำ (Projectile Vomiting)'
   },
   volume: {
     small_sip: 'เล็กน้อย (ไม่เกินครึ่งแก้ว)',
@@ -66,13 +66,13 @@ const VOM_LABELS = {
   },
   oral: {
     can_drink_water: 'จิบน้ำ / เกลือแร่ได้บ้าง',
-    intolerant_vomit_all: 'ดื่มไม่ได้เลย ทานแล้วอาเจียนออกหมด 🚩 (Oral Intolerance)'
+    intolerant_vomit_all: 'ดื่มไม่ได้เลย ทานแล้วอาเจียนออกหมด (Oral Intolerance)'
   },
   dehy: {
-    oliguria_anuria: 'ปัสสาวะออกน้อย / ไม่ออก > 8 ชม. 🚩',
+    oliguria_anuria: 'ปัสสาวะออกน้อย / ไม่ออก > 8 ชม.',
     marked_dry_mouth_thirst: 'ปากแห้งมาก / กระหายน้ำจัด',
-    postural_dizziness_blackout: 'ลุกยืนแล้วหน้ามืด / วูบ 🚩',
-    cold_clammy_extremities: 'มือเท้าเย็นชืด 🚩'
+    postural_dizziness_blackout: 'ลุกยืนแล้วหน้ามืด / วูบ',
+    cold_clammy_extremities: 'มือเท้าเย็นชืด'
   },
   abdpainLoc: {
     epigastrium: 'ใต้ลิ้นปี่',
@@ -84,63 +84,63 @@ const VOM_LABELS = {
   },
   abdpainChar: {
     cramping_colicky: 'ปวดบิดเป็นพักๆ',
-    constant_severe: 'ปวดรุนแรงต่อเนื่อง ขยับเจ็บสะเทือน 🚩',
+    constant_severe: 'ปวดรุนแรงต่อเนื่อง ขยับเจ็บสะเทือน',
     dull_aching: 'ปวดตื้อๆ แน่นๆ'
   },
   diarrheaStool: {
     watery: 'น้ำเหลวล้วน',
     mucus: 'มีมูกปน',
-    bloody: 'มีเลือดสดปน 🚩',
-    dark_tarry: 'สีดำคล้ำ 🚩'
+    bloody: 'มีเลือดสดปน',
+    dark_tarry: 'สีดำคล้ำ'
   },
   bloodyStool: {
     bright_red_coating: 'เลือดแดงสดเคลือบก้อนอุจจาระ',
-    pure_bright_red: 'ถ่ายเป็นเลือดแดงสดล้วน 🚩',
-    dark_clots: 'ถ่ายเป็นลิ่มเลือดสีคล้ำ 🚩',
-    black_tarry_melena: 'ถ่ายดำเหนียวคล้ายยางมะตอย 🚩 (Melena)',
-    maroon_wash: 'ถ่ายสีแดงคล้ำคล้ายน้ำล้างเนื้อ 🚩'
+    pure_bright_red: 'ถ่ายเป็นเลือดแดงสดล้วน',
+    dark_clots: 'ถ่ายเป็นลิ่มเลือดสีคล้ำ',
+    black_tarry_melena: 'ถ่ายดำเหนียวคล้ายยางมะตอย (Melena)',
+    maroon_wash: 'ถ่ายสีแดงคล้ำคล้ายน้ำล้างเนื้อ'
   },
   constipationSub: {
-    no_stool_no_gas: 'ไม่ถ่ายและไม่ผายลมเลย 🚩 (Complete Obstipation)',
+    no_stool_no_gas: 'ไม่ถ่ายและไม่ผายลมเลย (Complete Obstipation)',
     no_stool_can_pass_gas: 'ไม่ถ่าย แต่ยังผายลมได้ (Partial Obstruction)',
     hard_pellet_stool: 'ถ่ายก้อนแข็งเม็ดกระสุน',
     watery_overflow_scant: 'ถ่ายเหลวเล็ดครั้งละน้อย'
   },
   priorSurgery: {
-    yes: 'เคยผ่าตัดช่องท้อง 🚩',
+    yes: 'เคยผ่าตัดช่องท้อง',
     no: 'ไม่เคย',
     unsure: 'ไม่แน่ใจ'
   },
   cardiac: {
-    chest_tightness_pressure: 'แน่น / เจ็บหน้าอก (หรือร้าวไปกราม/แขนซ้าย) 🚩',
-    diaphoresis_cold_sweat: 'เหงื่อแตกท่วมตัว ตัวเย็น 🚩',
-    syncope_presyncope: 'หน้ามืด / วูบหมดสติ 🚩',
+    chest_tightness_pressure: 'แน่น / เจ็บหน้าอก (หรือร้าวไปกราม/แขนซ้าย)',
+    diaphoresis_cold_sweat: 'เหงื่อแตกท่วมตัว ตัวเย็น',
+    syncope_presyncope: 'หน้ามืด / วูบหมดสติ',
     palpitation_racing_heart: 'ใจสั่น / หัวใจเต้นรัว'
   },
   neuro: {
-    severe_sudden_headache: 'ปวดศีรษะรุนแรงฉับพลัน 🚩',
-    stiff_neck: 'คอแข็ง ก้มคอไม่ได้ 🚩',
-    focal_weakness_numbness: 'แขนขาอ่อนแรง / ปากเบี้ยว 🚩',
-    diplopia_blurred_vision: 'เห็นภาพซ้อน / ตามัวเฉียบพลัน 🚩',
+    severe_sudden_headache: 'ปวดศีรษะรุนแรงฉับพลัน',
+    stiff_neck: 'คอแข็ง ก้มคอไม่ได้',
+    focal_weakness_numbness: 'แขนขาอ่อนแรง / ปากเบี้ยว',
+    diplopia_blurred_vision: 'เห็นภาพซ้อน / ตามัวเฉียบพลัน',
     vertigo_ataxia: 'เวียนหัวบ้านหมุน / เดินเซ',
-    confusion_drowsiness: 'ซึมลง / สับสน 🚩'
+    confusion_drowsiness: 'ซึมลง / สับสน'
   },
   precip: {
     general_food_poisoning: 'อาหารค้างคืน / มีผู้ร่วมทานป่วยคล้ายกัน',
-    natural_toxin_food: 'อาหารเสี่ยงสารพิษธรรมชาติ (เห็ดป่า/กลอย/หน่อไม้/แมงดาถ้วย/ปลาปักเป้า/ลูกเนียง/สบู่ดำ-แดง) 🚩',
+    natural_toxin_food: 'อาหารเสี่ยงสารพิษธรรมชาติ (เห็ดป่า/กลอย/หน่อไม้/แมงดาถ้วย/ปลาปักเป้า/ลูกเนียง/สบู่ดำ-แดง)',
     high_risk_medications: 'ทานยากลุ่มความเสี่ยงสูง',
-    missed_dm_insulin: 'ขาดยาเบาหวาน / ไม่ได้ฉีดอินซูลิน 🚩',
+    missed_dm_insulin: 'ขาดยาเบาหวาน / ไม่ได้ฉีดอินซูลิน',
     known_diabetes: 'มีประวัติโรคเบาหวาน',
     heavy_alcohol_or_withdrawal: 'ดื่มสุราหนัก / เพิ่งหยุดดื่มกะทันหัน',
-    suspected_toxin_chemical: 'กินยาเกินขนาด / สารเคมีเกษตร 🚩'
+    suspected_toxin_chemical: 'กินยาเกินขนาด / สารเคมีเกษตร'
   },
   medList: {
-    digoxin: 'ยาหัวใจ Digoxin 🚩',
+    digoxin: 'ยาหัวใจ Digoxin',
     nsaids: 'ยาแก้ปวดข้อ NSAIDs',
     herbal_bolus: 'ยาต้ม / ยาลูกกลอน',
     chemotherapy: 'ยาเคมีบำบัด',
     antibiotics: 'ยาปฏิชีวนะ',
-    lithium_psych: 'ยาจิตเวช Lithium 🚩'
+    lithium_psych: 'ยาจิตเวช Lithium'
   },
   coEaters: {
     symptomatic: 'มีผู้อื่นมีอาการเหมือนกัน',
@@ -148,8 +148,8 @@ const VOM_LABELS = {
     ate_alone: 'ทานคนเดียว'
   },
   pregnancyStatus: {
-    pregnant: 'กำลังตั้งครรภ์ 🚩',
-    suspected: 'สงสัยว่าอาจตั้งครรภ์ 🚩',
+    pregnant: 'กำลังตั้งครรภ์',
+    suspected: 'สงสัยว่าอาจตั้งครรภ์',
     not_pregnant: 'ไม่ได้ตั้งครรภ์',
     unsure: 'ไม่แน่ใจสถานะการตั้งครรภ์',
     menopause: 'หมดประจำเดือนแล้ว'
@@ -157,7 +157,7 @@ const VOM_LABELS = {
   lmpStatus: {
     regular_lmp_exact: 'จำวันที่แน่นอนได้',
     approx_recent: 'จำได้คร่าวๆ (1–4 สัปดาห์ก่อน)',
-    missed_period: 'ประจำเดือนขาดอย่างน้อย 1 รอบ 🚩',
+    missed_period: 'ประจำเดือนขาดอย่างน้อย 1 รอบ',
     unknown: 'จำไม่ได้ / ไม่แน่ใจ',
     post_menopausal_or_hysterectomy: 'หมดประจำเดือนแล้ว',
     not_applicable_child: 'ยังไม่เคยมีประจำเดือน'
@@ -165,7 +165,7 @@ const VOM_LABELS = {
   pregTest: {
     not_tested: 'ยังไม่ได้ตรวจครรภ์',
     tested_negative: 'ตรวจครรภ์ผลลบ (1 ขีด)',
-    tested_positive: 'ตรวจครรภ์ผลบวก (2 ขีด) 🚩'
+    tested_positive: 'ตรวจครรภ์ผลบวก (2 ขีด)'
   },
   hospStatus: {
     complete: 'มีประวัติกับ รพ.ราชบุรี ครบถ้วน (ดึงข้อมูลเดิมจากระบบ)',
@@ -575,7 +575,7 @@ function updateVomitingOutputs(patient) {
   const hasBlood = Boolean(patient.vomitingHasBloodyStool || bowel === 'bloody_melena_stool');
   const hasConst = Boolean(patient.vomitingHasConstipation || bowel === 'constipation_obstipation_gte24h');
 
-  if (hasDistension) positives.push('ท้องอืด แน่นตึงมาก 🚩');
+  if (hasDistension) positives.push('ท้องอืด แน่นตึงมาก');
   if (hasFever) positives.push('มีไข้ / หนาวสั่น');
   if (hasDiar) {
     const dStools = (Array.isArray(patient.vomitingDiarrheaStools) ? patient.vomitingDiarrheaStools : [])
@@ -585,7 +585,7 @@ function updateVomitingOutputs(patient) {
   }
   if (hasBlood) {
     const bChar = VOM_LABELS.bloodyStool[patient.vomitingBloodyStoolChar] || '';
-    positives.push(bChar ? `ถ่ายดำ/ถ่ายเป็นเลือด (${bChar})` : 'ถ่ายดำ / ถ่ายเป็นเลือด 🚩');
+    positives.push(bChar ? `ถ่ายดำ/ถ่ายเป็นเลือด (${bChar})` : 'ถ่ายดำ / ถ่ายเป็นเลือด');
   }
   if (hasConst) {
     const cChar = VOM_LABELS.constipationSub[patient.vomitingConstipationSub] || '';
@@ -631,10 +631,10 @@ function updateVomitingOutputs(patient) {
         toxParts.push(VOM_LABELS.coEaters[patient.vomitingToxinFoodCoEaters] || patient.vomitingToxinFoodCoEaters);
       }
       if (toxParts.length === 0 && patient.vomitingToxinFoodDetails) toxParts.push(patient.vomitingToxinFoodDetails);
-      positives.push(`อาหารเสี่ยงสารพิษธรรมชาติ 🚩${toxParts.length > 0 ? ` (${toxParts.join(', ')})` : ''}`);
+      positives.push(`อาหารเสี่ยงสารพิษธรรมชาติ${toxParts.length > 0 ? ` (${toxParts.join(', ')})` : ''}`);
     } else if (k === 'suspected_toxin_chemical') {
       const chem = patient.vomitingChemicalDetails ? ` (${patient.vomitingChemicalDetails})` : '';
-      positives.push(`กินยาเกินขนาด / สารเคมีเกษตร 🚩${chem}`);
+      positives.push(`กินยาเกินขนาด / สารเคมีเกษตร${chem}`);
     } else {
       positives.push(VOM_LABELS.precip[k] || k);
     }
@@ -705,7 +705,7 @@ ${redFlags.length > 0
 อาการร่วมที่พบ: ${patient.pertinentPositives.join(', ')}
 อาการสำคัญที่ปฏิเสธ: ${patient.pertinentNegatives.join(', ')}
 ประวัติสุขภาพ: [${hospLabel}], ผ่าตัดช่องท้อง: ${surgText}, โรคประจำตัว: ${udText}, ยาประจำตัว: ${medsText}, แพ้ยา: ${allergyText}
-${redFlags.length > 0 ? `[🚩 สัญญาณเตือนภาวะวิกฤต]: ${redFlags.map(rf => rf.textTh).join('; ')}` : ''}
+${redFlags.length > 0 ? `[แจ้งเตือนความเสี่ยงสูง]: ${redFlags.map(rf => rf.textTh).join('; ')}` : ''}
 
 [บันทึกการตรวจและการประเมินโดยแพทย์]:
 ${docNotes.additional_hpi ? `• ประวัติเพิ่มเติม: ${docNotes.additional_hpi}\n` : ''}${docNotes.physical_exam ? `• การตรวจร่างกาย: ${docNotes.physical_exam}\n` : ''}${docNotes.preliminary_dx ? `• การวินิจฉัย: ${docNotes.preliminary_dx}\n` : ''}${docNotes.plan ? `• แผนการรักษา: ${docNotes.plan}` : ''}`;

@@ -932,18 +932,18 @@ assert(ccModBite !== null, 'Module animal_bite successfully registered');
 
 const biteRf1 = ccModBite.evaluateRedFlags(biteCase1);
 assert(biteRf1.some(r => r.key === 'rf_bite_severe_neck_face_hemorrhagic_shock'), 'Bite Case 1 triggers Severe Neck/Face Mauling Red Flag (ESI 1/2)');
-assert(biteRf1.some(r => r.key === 'rf_bite_who_cat3_rig_indicated'), 'Bite Case 1 triggers WHO Cat III RIG Indicated Red Flag (ESI 2)');
+assert(!biteRf1.some(r => r.key === 'rf_bite_who_cat3_rig_indicated' || r.key === 'rf_bite_who_cat2_or_booster_regimen'), 'Bite Case 1 does not trigger routine Rabies Exposure Red Flag');
 
 const biteRf2 = ccModBite.evaluateRedFlags(biteCase2);
 assert(biteRf2.some(r => r.key === 'rf_bite_deep_hand_tendon_joint_infection'), 'Bite Case 2 triggers High-Risk Hand Bite Red Flag (ESI 2)');
 assert(biteRf2.some(r => r.key === 'rf_bite_infected_wound_sepsis_immunocompromised'), 'Bite Case 2 triggers Infected Bite Sepsis Red Flag (ESI 2)');
-assert(biteRf2.some(r => r.key === 'rf_bite_who_cat2_or_booster_regimen'), 'Bite Case 2 triggers Booster Regimen Red Flag (ESI 3)');
+assert(!biteRf2.some(r => r.key === 'rf_bite_who_cat2_or_booster_regimen'), 'Bite Case 2 does not trigger routine Rabies Booster Red Flag');
 
 const biteRf3 = ccModBite.evaluateRedFlags(biteCase3);
-assert(biteRf3.some(r => r.key === 'rf_bite_who_cat3_rig_indicated'), 'Bite Case 3 triggers WHO Cat III RIG Indicated Red Flag (ESI 2)');
+assert(biteRf3.length === 0, 'Bite Case 3 (Routine Uncomplicated Exposure Needing Rabies PEP Only) triggers Zero Red Flags');
 
 const biteRf4 = ccModBite.evaluateRedFlags(biteCase4);
-assert(biteRf4.some(r => r.key === 'rf_bite_who_cat2_or_booster_regimen'), 'Bite Case 4 triggers WHO Cat II / Booster Regimen Red Flag (ESI 3/4)');
+assert(biteRf4.length === 0, 'Bite Case 4 (Minor Superficial Scratch, Booster Regimen) triggers Zero Red Flags');
 
 assert(biteRf1.every(r => typeof r.textTh === 'string' && r.textTh.length > 0 && typeof r.risk === 'string' && r.risk.length > 0), 'Bite Red Flags have non-empty textTh and risk strings');
 assert(fallRf1.every(r => typeof r.textTh === 'string' && r.textTh.length > 0 && typeof r.risk === 'string' && r.risk.length > 0), 'Fall Trauma Red Flags have non-empty textTh and risk strings');

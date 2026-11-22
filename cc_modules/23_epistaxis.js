@@ -1,16 +1,115 @@
 // =========================================================================
 // MODULAR CHIEF COMPLAINT MODULE: 23_epistaxis.js
 // อาการนำ: เลือดกำเดาไหล (Epistaxis / Nosebleed)
-// รองรับ Zero Default Bias, Progressive Disclosure, Universal Date/Time,
-// Rapid Note De-duplication, และ TDD Core Guard
+// ปรับปรุงตามมาตรฐาน plan_epistaxis.md, plan-cc และ code-cc (กลุ่ม B1)
 // =========================================================================
 
-// --- Progressive Disclosure Helper Functions ---
+// --- Internal DOM & UI Helpers ---
+function getEpistaxisEl(id) {
+  return typeof document !== 'undefined' ? document.getElementById(id) : null;
+}
+
+function queryEpistaxisOne(selector) {
+  return typeof document !== 'undefined' ? document.querySelector(selector) : null;
+}
+
+function queryEpistaxisAll(selector) {
+  return typeof document !== 'undefined' ? Array.from(document.querySelectorAll(selector)) : [];
+}
+
+function wrapEpistaxisWords(chunks) {
+  if (!Array.isArray(chunks)) return chunks;
+  return chunks.map(c => `<span class="inline-block whitespace-nowrap">${c}</span>`).join(' ');
+}
+
+function renderEpistaxisOption(cfg) {
+  const {
+    kind = 'checkbox',
+    id = '',
+    name = '',
+    value = '',
+    title,
+    desc = '',
+    onchange = '',
+    compact = false,
+    colSpan2 = false
+  } = cfg;
+  const idAttr = id ? `id="${id}" ` : '';
+  const nameAttr = name ? `name="${name}" ` : '';
+  const valAttr = value ? `value="${value}" ` : '';
+  const chgAttr = onchange ? `onchange="${onchange}" ` : '';
+  const alignCls = desc ? 'items-start' : 'items-center';
+  const padCls = compact ? 'p-2.5' : 'p-3';
+  const spanCls = colSpan2 ? ' sm:col-span-2' : '';
+  const roundCls = kind === 'checkbox' ? 'rounded ' : '';
+  const topCls = desc ? 'mt-0.5 ' : '';
+  const szCls = compact ? 'h-3.5 w-3.5' : 'h-4 w-4';
+  const titleHtml = Array.isArray(title) ? wrapEpistaxisWords(title) : title;
+  const bodyHtml = desc
+    ? `<div class="ml-3 leading-snug"><span class="block text-xs sm:text-sm font-semibold text-slate-800">${titleHtml}</span><span class="block text-[11px] text-slate-500 font-normal mt-0.5">${desc}</span></div>`
+    : `<span class="ml-3 ${compact ? 'text-xs' : 'text-xs sm:text-sm'} font-semibold text-slate-800 leading-snug">${titleHtml}</span>`;
+  return `<label class="selectable-card bg-white flex ${alignCls} ${padCls} rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition${spanCls}"><input type="${kind}" ${idAttr}${nameAttr}${valAttr}${chgAttr}class="${topCls}${roundCls}text-medical-600 focus:ring-medical-500 ${szCls} flex-shrink-0">${bodyHtml}</label>`;
+}
+
+function renderEpistaxisGrid(colsCls, items, shared = {}) {
+  return `<div class="grid ${colsCls} gap-2.5">${items.map(it => renderEpistaxisOption({ ...shared, ...it })).join('\n')}</div>`;
+}
+
+function renderEpistaxisSysHeader({
+  label,
+  icon,
+  colorClass,
+  toggleId = '',
+  toggleLabel = '',
+  toggleOnchange = '',
+  toggleName = '',
+  toggleValue = ''
+}) {
+  const nameAttr = toggleName ? `name="${toggleName}" ` : '';
+  const valAttr = toggleValue ? `value="${toggleValue}" ` : '';
+  const toggleHtml = toggleId
+    ? `<label class="inline-flex items-center px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 border border-slate-200 text-xs font-medium text-slate-700 cursor-pointer transition select-none flex-shrink-0">
+      <input type="checkbox" id="${toggleId}" ${nameAttr}${valAttr}onchange="${toggleOnchange}" class="text-medical-600 focus:ring-medical-500 h-3.5 w-3.5 rounded">
+      <span class="ml-1.5 whitespace-nowrap">${toggleLabel}</span>
+    </label>`
+    : '';
+  return `<div class="flex flex-wrap items-center justify-between gap-2 mb-2.5">
+    <label class="flex items-center text-xs sm:text-sm font-bold text-slate-800">
+      <span class="${colorClass} p-1.5 rounded-lg mr-2 inline-flex items-center justify-center"><i data-lucide="${icon}" class="w-4 h-4"></i></span>
+      <span>${label}</span>
+    </label>
+    ${toggleHtml}
+  </div>`;
+}
+
+function renderEpistaxisSubPanel(subId, title, items, extraHtml = '') {
+  return `<div id="${subId}" class="hidden bg-slate-50 border border-slate-200 rounded-xl p-3.5 mt-3 space-y-2.5">
+    <div class="text-xs font-semibold text-slate-700">${title}</div>
+    ${extraHtml}
+    ${renderEpistaxisGrid('grid-cols-1 sm:grid-cols-2', items, { compact: true })}
+  </div>`;
+}
+
+const EPISTAXIS_WARN_PARENT_TO_SUB = {
+  epistaxisWarnAirwayParent: 'epistaxisWarnAirwaySub',
+  epistaxisWarnShockParent: 'epistaxisWarnShockSub',
+  epistaxisWarnBleedingParent: 'epistaxisWarnBleedingSub',
+  epistaxisWarnHeadNeckParent: 'epistaxisWarnHeadNeckSub'
+};
+
+// --- Progressive Disclosure & Corner-Toggle Handlers ---
 function toggleEpistaxisGroup(subId, show) {
-  const el = document.getElementById(subId);
+  const el = getEpistaxisEl(subId);
   if (!el) return;
   if (show) {
     el.classList.remove('hidden');
+    if (subId === 'epistaxisTraumaSub') {
+      const trigNone = getEpistaxisEl('epistaxis_trig_none');
+      if (trigNone) trigNone.checked = false;
+    } else if (subId.startsWith('epistaxisWarn')) {
+      const warnNone = getEpistaxisEl('epistaxis_warn_none');
+      if (warnNone) warnNone.checked = false;
+    }
   } else {
     el.classList.add('hidden');
     el.querySelectorAll('input[type="checkbox"]').forEach(cb => { cb.checked = false; });
@@ -19,19 +118,58 @@ function toggleEpistaxisGroup(subId, show) {
   }
 }
 
+function handleEpistaxisTrigChange(clickedEl) {
+  if (!clickedEl) return;
+  if (clickedEl.value === 'trig_spontaneous') {
+    if (clickedEl.checked) {
+      queryEpistaxisAll('input[name="epistaxisTriggers"]').forEach(cb => {
+        if (cb.value !== 'trig_spontaneous') cb.checked = false;
+      });
+      const traumaParent = getEpistaxisEl('epistaxisTraumaParent');
+      if (traumaParent) traumaParent.checked = false;
+      toggleEpistaxisGroup('epistaxisTraumaSub', false);
+    }
+  } else if (clickedEl.checked) {
+    const noneCb = queryEpistaxisOne('input[name="epistaxisTriggers"][value="trig_spontaneous"]');
+    if (noneCb) noneCb.checked = false;
+  }
+}
+
 function handleEpistaxisMedChange(clickedEl) {
   if (!clickedEl) return;
   if (clickedEl.value === 'none') {
     if (clickedEl.checked) {
-      document.querySelectorAll('input[name="epistaxisMeds"]').forEach(cb => {
+      queryEpistaxisAll('input[name="epistaxisMeds"]').forEach(cb => {
         if (cb.value !== 'none') cb.checked = false;
       });
     }
-  } else {
-    if (clickedEl.checked) {
-      const noneCb = document.querySelector('input[name="epistaxisMeds"][value="none"]');
-      if (noneCb) noneCb.checked = false;
-    }
+  } else if (clickedEl.checked) {
+    const noneCb = queryEpistaxisOne('input[name="epistaxisMeds"][value="none"]');
+    if (noneCb) noneCb.checked = false;
+  }
+}
+
+function handleEpistaxisGroupItemChange(noneId, clickedEl) {
+  if (clickedEl && clickedEl.checked) {
+    const noneEl = getEpistaxisEl(noneId);
+    if (noneEl) noneEl.checked = false;
+  }
+}
+
+function handleEpistaxisGroupNoneToggle(groupKey, clickedEl) {
+  if (!clickedEl || !clickedEl.checked) return;
+  if (groupKey === 'dir') {
+    queryEpistaxisAll('input[name="epistaxisDirection"]').forEach(cb => { cb.checked = false; });
+  } else if (groupKey === 'warn') {
+    Object.entries(EPISTAXIS_WARN_PARENT_TO_SUB).forEach(([parentId, subId]) => {
+      const pEl = getEpistaxisEl(parentId);
+      if (pEl) pEl.checked = false;
+      toggleEpistaxisGroup(subId, false);
+    });
+    queryEpistaxisAll('input[name="epistaxisWarningSigns"]').forEach(cb => { cb.checked = false; });
+    queryEpistaxisAll('input[name="epistaxisAcuteCranial"]').forEach(cb => { cb.checked = false; });
+  } else if (groupKey === 'ud') {
+    queryEpistaxisAll('input[name="epistaxisUnderlying"]').forEach(cb => { cb.checked = false; });
   }
 }
 
@@ -90,7 +228,7 @@ function evaluateEpistaxisRedFlags(patient) {
   // 4. Anticoagulant / Antiplatelet-associated Epistaxis / Coagulopathy (ESI 3)
   const hasAnticoag = meds.includes('anticoagulant_warfarin') || meds.includes('antiplatelet_aspirin') || meds.includes('meds_unknown');
   const hasCoagulopathy = underlying.includes('cirrhosis') || underlying.includes('esrd') || underlying.includes('coagulopathy');
-  const hasBleedingSigns = warnSigns.includes('warn_petechiae_purpura') || warnSigns.includes('warn_mucosal_or_melena');
+  const hasBleedingSigns = warnSigns.includes('warn_petechiae_purpura') || warnSigns.includes('warn_mucosal_or_melena') || warnSigns.includes('warn_hematuria') || warnSigns.includes('warn_melena');
   if (hasAnticoag || hasCoagulopathy || hasBleedingSigns) {
     rfs.push({
       key: 'rf_anticoagulant_bleeding',
@@ -130,48 +268,107 @@ function evaluateEpistaxisRedFlags(patient) {
 }
 
 // --- Formatters for Doctor Rapid Note ---
+const EPISTAXIS_DUR_UNIT_MAP = {
+  minutes: 'นาที',
+  hours: 'ชั่วโมง',
+  days: 'วัน',
+  weeks: 'สัปดาห์',
+  months: 'เดือน',
+  years: 'ปี'
+};
+
+const EPISTAXIS_SIDE_MAP = {
+  left: 'ข้างซ้ายข้างเดียว',
+  right: 'ข้างขวาข้างเดียว',
+  bilateral: 'ไหลทั้งสองข้างพร้อมกัน'
+};
+
+const EPISTAXIS_ACTIVE_MAP = {
+  active: 'ยังมีเลือดไหลอยู่ขณะนี้',
+  stopped: 'เลือดหยุดไหลแล้วก่อนมาถึง'
+};
+
+const EPISTAXIS_RECURRENCE_MAP = {
+  highest_in_life: 'ไหลมากที่สุดในชีวิต',
+  recurrent_episodes: 'เคยไหลซ้ำๆ แบบนี้มาก่อน'
+};
+
+const EPISTAXIS_VOLUME_MAP = {
+  mild_oozing: 'ไหลซึมๆ หยดช้าๆ หรือเปื้อนกระดาษทิชชู',
+  moderate_flow: 'ไหลเป็นสายต่อเนื่อง ชุ่มกระดาษหรือผ้าหลายผืน',
+  heavy_clots: 'ไหลทะลักปริมาณมาก มีก้อนลิ่มเลือดขนาดใหญ่'
+};
+
+const EPISTAXIS_TRAUMA_SIGN_MAP = {
+  trauma_csf_leak_rhinorrhea: 'มีน้ำใสไหลปนออกจากจมูก (ไม่ข้นเหมือนน้ำมูก)',
+  trauma_raccoon_eyes: 'ช้ำรอบตาหรือหลังใบหู',
+  trauma_nasal_deformity: 'ดั้งจมูกเบี้ยวหรือผิดรูป'
+};
+
+const EPISTAXIS_WARN_MAP = {
+  warn_choking_swallow: 'สำลักเลือดหรือกลืนลำบาก',
+  warn_stridor_airway_tight: 'หายใจติดขัด แน่นคอ หรือเสียงหวีด',
+  warn_dizziness_presyncope: 'หน้ามืด วูบ หรือหมดสติ',
+  warn_profuse_sweat_cold_shock: 'เหงื่อแตกตัวเย็น หรือใจสั่นเร็ว',
+  warn_petechiae_purpura: 'จุดเลือดออกหรือจ้ำเลือดตามตัว',
+  warn_mucosal_or_melena: 'เลือดออกตามไรฟัน',
+  warn_hematuria: 'ปัสสาวะเป็นเลือด',
+  warn_melena: 'ถ่ายอุจจาระสีดำ',
+  warn_cervical_lymph_node: 'คลำพบก้อนที่คอหรือใต้กราม',
+  warn_unilateral_obstruction: 'คัดจมูกข้างเดียวเรื้อรังหรือน้ำมูกกลิ่นเหม็น',
+  warn_unilateral_tinnitus: 'หูอื้อหรือได้ยินลดลงข้างเดียว'
+};
+
+const EPISTAXIS_TRIGGER_MAP = {
+  trig_nose_picking: 'มีประวัติแคะจมูก ขยี้จมูก หรือสั่งน้ำมูกแรง',
+  trig_nasal_spray_dry_air: 'เพิ่งใช้ยาพ่นจมูก หรือสัมผัสอากาศแห้ง/เย็นจัด'
+};
+
+const EPISTAXIS_MED_MAP = {
+  anticoagulant_warfarin: 'รับประทานยาละลายลิ่มเลือด (เช่น Warfarin, Eliquis, Xarelto, Pradaxa)',
+  antiplatelet_aspirin: 'รับประทานยาต้านเกล็ดเลือด (เช่น Aspirin, Clopidogrel / Plavix)',
+  meds_unknown: 'มียาโรคหัวใจ/หลอดเลือดประจำ แต่ไม่ทราบชื่อยา'
+};
+
+const EPISTAXIS_UD_MAP = {
+  htn: 'โรคความดันโลหิตสูง',
+  cirrhosis: 'โรคตับแข็ง หรือภาวะตับวายเรื้อรัง',
+  esrd: 'โรคไตเรื้อรัง หรือกำลังฟอกไต',
+  coagulopathy: 'โรคเลือดผิดปกติ หรือเกล็ดเลือดต่ำ'
+};
+
+const EPISTAXIS_HOSP_MAP = {
+  ratchaburi: 'มีประวัติการรักษาที่ รพ.ราชบุรี',
+  complete: 'มีประวัติกับ รพ.ราชบุรี ครบถ้วน (ดึงข้อมูลเดิมจากระบบ)',
+  additional: 'มีประวัติกับ รพ.ราชบุรี และขอให้ข้อมูลเพิ่มเติม',
+  self: 'ขอให้ข้อมูลด้วยตนเองทั้งหมด',
+  unspecified: 'ไม่ได้ระบุ'
+};
+
 function formatEpistaxisSide(patient) {
-  const map = {
-    left: 'ข้างซ้ายข้างเดียว (Left)',
-    right: 'ข้างขวาข้างเดียว (Right)',
-    bilateral: 'ไหลทั้งสองข้างพร้อมกัน (Bilateral) 🚩'
-  };
-  return map[patient.epistaxisSide] || 'ไม่ได้ระบุ';
+  return EPISTAXIS_SIDE_MAP[patient.epistaxisSide] || 'ไม่ได้ระบุ';
 }
 
 function formatEpistaxisActiveStatus(patient) {
-  const map = {
-    active: 'ยังมีเลือดไหลต่อเนื่องอยู่ขณะนี้ (Active bleeding) 🚩',
-    stopped: 'เลือดหยุดไหลแล้วก่อนมาถึง (Bleeding stopped)'
-  };
-  return map[patient.epistaxisActiveStatus] || 'ไม่ได้ระบุ';
+  return EPISTAXIS_ACTIVE_MAP[patient.epistaxisActiveStatus] || 'ไม่ได้ระบุ';
 }
 
 function formatEpistaxisRecurrence(patient) {
-  const map = {
-    highest_in_life: 'ไหลมากที่สุดในชีวิต (Severe primary episode)',
-    recurrent_episodes: 'เคยมีเลือดกำเดาไหลซ้ำๆ แบบนี้มาก่อน (Recurrent episodes)'
-  };
-  return map[patient.epistaxisRecurrence] || 'ไม่ได้ระบุ';
+  return EPISTAXIS_RECURRENCE_MAP[patient.epistaxisRecurrence] || 'ไม่ได้ระบุ';
 }
 
 function formatEpistaxisVolume(patient) {
-  const map = {
-    mild_oozing: 'ไหลซึมๆ หยดช้าๆ หรือเปื้อนกระดาษทิชชู (Mild / oozing)',
-    moderate_flow: 'ไหลเป็นสายต่อเนื่อง ชุ่มกระดาษ/ผ้าหลายผืน (Moderate flow)',
-    heavy_clots: 'ไหลทะลักปริมาณมาก มีก้อนลิ่มเลือดขนาดใหญ่หลุดออกมา (Heavy / Clots) 🚩'
-  };
-  return map[patient.epistaxisVolume] || 'ไม่ได้ระบุ';
+  return EPISTAXIS_VOLUME_MAP[patient.epistaxisVolume] || 'ไม่ได้ระบุ';
 }
 
 // --- Rapid Note Generator (5 Standardized Sections) ---
 function renderEpistaxisRapidHpi(patient) {
   const durVal = patient.durationVal;
-  const durUnitMap = { minutes: 'นาที', hours: 'ชั่วโมง', days: 'วัน', weeks: 'สัปดาห์', months: 'เดือน', years: 'ปี' };
-  const durUnit = durUnitMap[patient.durationUnit] || 'นาที';
-  const durationStr = durVal ? `${durVal} ${durUnit}` : 'ไม่ระบุ';
+  const durUnit = EPISTAXIS_DUR_UNIT_MAP[patient.durationUnit] || 'นาที';
+  const durationStr = durVal ? `${durVal} ${durUnit}` : 'ไม่ได้ระบุ';
 
   const warnSigns = Array.isArray(patient.epistaxisWarningSigns) ? patient.epistaxisWarningSigns : [];
+  const warnParents = patient.epistaxisWarnParents || {};
   const direction = Array.isArray(patient.epistaxisDirection) ? patient.epistaxisDirection : [];
   const cranialSigns = Array.isArray(patient.epistaxisAcuteCranial) ? patient.epistaxisAcuteCranial : [];
   const traumaSigns = Array.isArray(patient.epistaxisTraumaSigns) ? patient.epistaxisTraumaSigns : [];
@@ -182,85 +379,90 @@ function renderEpistaxisRapidHpi(patient) {
   const posList = [];
   const negList = [];
 
-  // Positives evaluation
-  if (patient.epistaxisVolume === 'heavy_clots') {
-    posList.push('เลือดกำเดาไหลทะลักปริมาณมาก มีก้อนลิ่มเลือดขนาดใหญ่ (Heavy bleeding / Clots) 🚩');
-  } else if (patient.epistaxisVolume === 'moderate_flow') {
-    posList.push('เลือดกำเดาไหลเป็นสายต่อเนื่อง ชุ่มกระดาษหรือผ้าหลายผืน');
-  }
-
-  if (patient.epistaxisActiveStatus === 'active') {
-    posList.push('ยังมีเลือดไหลต่อเนื่องอยู่ขณะนี้ (Active bleeding) 🚩');
-  }
-
+  // Associated symptoms & risk factors (de-duplicated from upper HPI lines)
   if (direction.includes('dripping_throat')) {
-    posList.push('รู้สึกมีเลือดไหลรินลงคอตลอดเวลา / ต้องคอยกลืนเลือด (Suspected Posterior Epistaxis) 🚩');
-  }
-  if (direction.includes('failed_compression')) {
-    posList.push('บีบปีกจมูกแน่น 15-20 นาทีแล้วไม่หยุด (Failed direct compression) 🚩');
+    posList.push('รู้สึกมีเลือดไหลลงคอ หรือต้องคอยกลืนเลือดตลอดเวลา');
   }
   if (direction.includes('vomited_blood_clots')) {
-    posList.push('มีอาการไอหรืออาเจียนออกมาเป็นลิ่มเลือด/สีกาแฟ (Swallowed blood / Hematemesis) 🚩');
+    posList.push('มีอาการอาเจียนหรือบ้วนออกมาเป็นลิ่มเลือด / สีกาแฟ');
   }
-
   if (cranialSigns.includes('severe_headache')) {
-    posList.push('มีอาการปวดศีรษะรุนแรง ตามัว ตาพร่า หรือแน่นหน้าอก (Suspected Hypertensive Urgency) 🚩');
+    posList.push('มีอาการปวดศีรษะรุนแรง ตาพร่ามัว หรือแน่นหน้าอกร่วมด้วย');
   }
 
   if (patient.epistaxisTrauma) {
-    const tSigns = [];
-    if (traumaSigns.includes('trauma_csf_leak_rhinorrhea')) tSigns.push('มีน้ำใสๆ ไหลปนออกมาจากจมูกคล้ายน้ำมูก (Suspected CSF rhinorrhea) 🚩');
-    if (traumaSigns.includes('trauma_raccoon_eyes')) tSigns.push('รอยฟกช้ำม่วงคล้ำรอบตาทั้งสองข้างหรือหลังใบหู (Raccoon eyes / Battle sign) 🚩');
-    if (traumaSigns.includes('trauma_nasal_deformity')) tSigns.push('กระดูกดั้งจมูกเบี้ยว ผิดรูป 🚩');
-    const details = patient.epistaxisTraumaDetails ? `: "${patient.epistaxisTraumaDetails}"` : '';
-    posList.push(`มีประวัติได้รับอุบัติเหตุกระแทกใบหน้าหรือศีรษะ${details} ${tSigns.length > 0 ? `[${tSigns.join(', ')}]` : ''}`);
+    const tSigns = traumaSigns.map(k => EPISTAXIS_TRAUMA_SIGN_MAP[k]).filter(Boolean);
+    const details = patient.epistaxisTraumaDetails ? `: ${patient.epistaxisTraumaDetails}` : '';
+    posList.push(`มีประวัติถูกกระแทกที่จมูก ใบหน้า หรือศีรษะ${details}${tSigns.length > 0 ? ` (${tSigns.join(', ')})` : ''}`);
   }
 
-  // Warning signs positives
-  if (warnSigns.includes('warn_choking_swallow')) posList.push('สำลักเลือด หรือกลืนลำบาก 🚩');
-  if (warnSigns.includes('warn_stridor_airway_tight')) posList.push('หายใจติดขัด หายใจมีเสียงหวีด หรือรู้สึกแน่นคอแทบหายใจไม่ออก (Airway threat) 🚩');
-  if (warnSigns.includes('warn_dizziness_presyncope')) posList.push('หน้ามืด เวียนศีรษะ วูบ หรือหมดสติไปชั่วขณะ 🚩');
-  if (warnSigns.includes('warn_profuse_sweat_cold_shock')) posList.push('เหงื่อแตกท่วมตัว ผิวหนังซีดเย็น ใจสั่นรัวเร็ว (Shock sign) 🚩');
-  if (warnSigns.includes('warn_petechiae_purpura')) posList.push('จุดเลือดออกสีแดงเล็กๆ หรือรอยช้ำจ้ำเลือดตามแขนขาและลำตัว 🚩');
-  if (warnSigns.includes('warn_mucosal_or_melena')) posList.push('เลือดออกตามไรฟัน ปัสสาวะเป็นเลือด หรือถ่ายอุจจาระสีดำสนิท 🚩');
-  if (warnSigns.includes('warn_cervical_lymph_node')) posList.push('คลำได้ก้อนบวมแข็งที่ลำคอ หรือข้างกราม 🚩');
-  if (warnSigns.includes('warn_unilateral_obstruction')) posList.push('คัดจมูกข้างเดียวเรื้อรัง หรือน้ำมูกปนเลือดกลิ่นเหม็น 🚩');
-  if (warnSigns.includes('warn_unilateral_tinnitus')) posList.push('มีอาการหูอื้อหรือการได้ยินลดลงข้างเดียวกับที่มีเลือดออก 🚩');
+  warnSigns.forEach(k => {
+    if (EPISTAXIS_WARN_MAP[k]) posList.push(EPISTAXIS_WARN_MAP[k]);
+  });
+  // Fallback if patient checked a Progressive Parent checkbox without checking any sub-option
+  if (warnParents.airway && !warnSigns.some(k => k === 'warn_choking_swallow' || k === 'warn_stridor_airway_tight')) {
+    posList.push('สำลักหรือหายใจลำบาก');
+  }
+  if (warnParents.shock && !warnSigns.some(k => k === 'warn_dizziness_presyncope' || k === 'warn_profuse_sweat_cold_shock')) {
+    posList.push('หน้ามืด วูบ หรือใจสั่นเหงื่อแตก');
+  }
+  if (warnParents.bleeding && !warnSigns.some(k => k === 'warn_petechiae_purpura' || k === 'warn_mucosal_or_melena' || k === 'warn_hematuria' || k === 'warn_melena')) {
+    posList.push('เลือดออกที่อื่นหรือจ้ำเลือดตามตัว');
+  }
+  if (warnParents.headNeck && !warnSigns.some(k => k === 'warn_cervical_lymph_node' || k === 'warn_unilateral_obstruction' || k === 'warn_unilateral_tinnitus')) {
+    posList.push('คัดจมูก หูอื้อ หรือคลำก้อนที่คอ');
+  }
 
-  // Triggers positives
-  if (triggers.includes('trig_nose_picking')) posList.push('มีประวัติแคะแกะเกาหรือสั่งน้ำมูกแรงๆ ในโพรงจมูก');
-  if (triggers.includes('trig_nasal_spray_dry_air')) posList.push('เพิ่งใช้ยาพ่นจมูก หรือสัมผัสอากาศแห้ง/เย็นจัด');
-
-  // Meds positives
-  if (meds.includes('anticoagulant_warfarin')) posList.push('รับประทานยาต้านการแข็งตัวของเลือด (Warfarin, Eliquis, Xarelto, Pradaxa) 🚩');
-  if (meds.includes('antiplatelet_aspirin')) posList.push('รับประทานยาต้านเกล็ดเลือด (Aspirin, Clopidogrel / Plavix) 🚩');
-  if (meds.includes('meds_unknown')) posList.push('มียาประจำตัว แต่ไม่ทราบชื่อยาที่ใช้ 🚩');
-
+  triggers.forEach(k => {
+    if (EPISTAXIS_TRIGGER_MAP[k]) posList.push(EPISTAXIS_TRIGGER_MAP[k]);
+  });
+  meds.forEach(k => {
+    if (EPISTAXIS_MED_MAP[k]) posList.push(EPISTAXIS_MED_MAP[k]);
+  });
+  if (underlying.length > 0) {
+    const udMapped = underlying.map(k => EPISTAXIS_UD_MAP[k]).filter(Boolean);
+    if (udMapped.length > 0) posList.push(`โรคประจำตัวที่เกี่ยวข้อง: ${udMapped.join(', ')}`);
+  }
   if (patient.otherSymptomsFree) {
     posList.push(patient.otherSymptomsFree);
   }
 
-  // Negatives evaluation (เฉพาะข้อที่ผู้ป่วยระบุยืนยัน)
-  if (patient.epistaxisActiveStatus === 'stopped') negList.push('เลือดหยุดไหลแล้วก่อนมาถึง (Bleeding stopped)');
-  if (direction.length > 0) {
-    if (!direction.includes('dripping_throat')) negList.push('ปฏิเสธประวัติเลือดไหลรินลงคอ');
-    if (!direction.includes('vomited_blood_clots')) negList.push('ปฏิเสธการไอหรืออาเจียนเป็นเลือด');
+  // Confirmed negatives only (Zero Default Bias)
+  if (patient.epistaxisDirNone) {
+    negList.push('ปฏิเสธเลือดไหลลงคอ บีบปีกจมูกไม่หยุด และอาเจียนเป็นลิ่มเลือด');
+  } else if (direction.length > 0) {
+    if (!direction.includes('dripping_throat')) negList.push('ปฏิเสธเลือดไหลลงคอ');
+    if (!direction.includes('vomited_blood_clots')) negList.push('ปฏิเสธอาเจียนเป็นลิ่มเลือด');
   }
-  if (warnSigns.length > 0) {
-    if (!warnSigns.includes('warn_choking_swallow') && !warnSigns.includes('warn_stridor_airway_tight')) negList.push('ปฏิเสธการสำลักเลือด หายใจติดขัด หรือแน่นคอ');
-    if (!warnSigns.includes('warn_dizziness_presyncope') && !warnSigns.includes('warn_profuse_sweat_cold_shock')) negList.push('ปฏิเสธหน้ามืด วูบ เป็นลม และไม่มีเหงื่อแตกตัวเย็น');
-    if (!warnSigns.includes('warn_petechiae_purpura') && !warnSigns.includes('warn_mucosal_or_melena')) negList.push('ไม่มีจุดเลือดออก จ้ำเลือดตามตัว เลือดออกตามไรฟัน หรือถ่ายดำ');
-    if (!warnSigns.includes('warn_cervical_lymph_node') && !warnSigns.includes('warn_unilateral_obstruction') && !warnSigns.includes('warn_unilateral_tinnitus')) negList.push('คลำไม่พบก้อนที่คอ ไม่มีคัดจมูกหรือหูอื้อข้างเดียว');
+
+  if (patient.epistaxisWarnNone) {
+    negList.push('ปฏิเสธสำลักเลือด หายใจติดขัด หน้ามืดวูบ ปวดศีรษะรุนแรง จ้ำเลือดตามตัว และอาการเรื้อรังทางจมูก/หู/ก้อนที่คอ');
+  } else if (warnSigns.length > 0 || cranialSigns.length > 0) {
+    if (!warnSigns.includes('warn_choking_swallow') && !warnSigns.includes('warn_stridor_airway_tight')) {
+      negList.push('ปฏิเสธการสำลักเลือด หายใจติดขัด หรือแน่นคอ');
+    }
+    if (!warnSigns.includes('warn_dizziness_presyncope') && !warnSigns.includes('warn_profuse_sweat_cold_shock')) {
+      negList.push('ปฏิเสธหน้ามืด วูบ และเหงื่อแตกตัวเย็น');
+    }
+    if (!warnSigns.includes('warn_petechiae_purpura') && !warnSigns.includes('warn_mucosal_or_melena') && !warnSigns.includes('warn_hematuria') && !warnSigns.includes('warn_melena')) {
+      negList.push('ปฏิเสธจุดจ้ำเลือด เลือดออกตามไรฟัน ปัสสาวะเป็นเลือด และถ่ายอุจจาระสีดำ');
+    }
+    if (!warnSigns.includes('warn_cervical_lymph_node') && !warnSigns.includes('warn_unilateral_obstruction') && !warnSigns.includes('warn_unilateral_tinnitus')) {
+      negList.push('ปฏิเสธก้อนที่คอ คัดจมูกข้างเดียว และหูอื้อข้างเดียว');
+    }
   }
-  if (meds.includes('none')) negList.push('ปฏิเสธยาต้านการแข็งตัวของเลือดและยาต้านเกล็ดเลือด');
 
-  const hospLabel = {
-    complete: 'มีประวัติกับ รพ.ราชบุรี ครบถ้วน (ดึงข้อมูลเดิมจากระบบ)',
-    additional: 'มีประวัติกับ รพ.ราชบุรี และขอให้ข้อมูลเพิ่มเติม',
-    self: 'ขอให้ข้อมูลด้วยตนเองทั้งหมด',
-    unspecified: 'ไม่ได้ระบุ'
-  }[patient.hospRecordStatus] || 'ไม่ได้ระบุ';
+  if (triggers.includes('trig_spontaneous') && !patient.epistaxisTrauma) {
+    negList.push('ไม่มีสาเหตุนำหรือปัจจัยกระตุ้นชัดเจน (ไหลออกมาเอง)');
+  }
+  if (meds.includes('none')) {
+    negList.push('ปฏิเสธการใช้ยาละลายลิ่มเลือดและยาต้านเกล็ดเลือด');
+  }
+  if (patient.epistaxisUdNone) {
+    negList.push('ปฏิเสธโรคความดันโลหิตสูง โรคตับแข็ง โรคไตเรื้อรัง และโรคเลือด');
+  }
 
+  const hospLabel = EPISTAXIS_HOSP_MAP[patient.hospRecordStatus] || 'ไม่ได้ระบุ';
   const udArr = Array.isArray(patient.underlying) ? patient.underlying : (patient.underlying ? [patient.underlying] : []);
   const filteredUd = udArr.filter(u => u && !u.includes('ปฏิเสธ') && u !== 'ไม่มี' && u !== 'ไม่มีโรคประจำตัว' && u !== 'ไม่ได้ระบุ');
   const hasExplicitUdDeny = udArr.some(u => u && (u.includes('ปฏิเสธ') || u === 'ไม่มี' || u === 'ไม่มีโรคประจำตัว'));
@@ -277,15 +479,18 @@ function renderEpistaxisRapidHpi(patient) {
   const docNotes = patient.doctor_notes || {};
   const redFlags = evaluateEpistaxisRedFlags(patient);
 
-  const defaultRapid =
-`[Chief Complaint (CC)]
+  const compressionStr = direction.includes('failed_compression')
+    ? 'บีบปีกจมูกแน่นเกิน 15–20 นาทีแล้วเลือดยังไม่หยุด'
+    : (patient.epistaxisActiveStatus === 'stopped' ? 'เลือดหยุดไหลแล้วก่อนมาถึง' : 'ไม่ได้ระบุ');
+
+  return `[Chief Complaint (CC)]
 เลือดกำเดาไหล (Epistaxis) มา ${durationStr}
 
 [History of Present Illness (HPI)]
-• ระยะเวลาที่มีอาการ: ${durVal ? `เลือดกำเดาไหลมา ${durationStr}` : 'ไม่ระบุ'} (ตำแหน่ง: ${formatEpistaxisSide(patient)}, สถานะ: ${formatEpistaxisActiveStatus(patient)})
+• ระยะเวลาที่มีอาการ: ${durVal ? `เลือดกำเดาไหลมา ${durationStr}` : 'ไม่ได้ระบุ'} (ตำแหน่ง: ${formatEpistaxisSide(patient)}, สถานะ: ${formatEpistaxisActiveStatus(patient)})
 • ประวัติความรุนแรงและการเป็นซ้ำ: ${formatEpistaxisRecurrence(patient)}
 • ปริมาณเลือดที่ออก: ${formatEpistaxisVolume(patient)}
-• การตอบสนองต่อการบีบปีกจมูก: ${direction.includes('failed_compression') ? 'บีบปีกจมูกแน่น 15-20 นาทีแล้วไม่หยุด (Failed compression) 🚩' : (patient.epistaxisActiveStatus === 'stopped' ? 'เลือดหยุดไหลแล้วก่อนมาถึง' : 'ไม่ได้ระบุ')}
+• การตอบสนองต่อการบีบปีกจมูก: ${compressionStr}
 
 • Pertinent Positives:
 ${posList.length > 0 ? posList.map(p => `  - ${p}`).join('\n') : '  - ผู้ป่วยไม่ได้ระบุอาการร่วมเพิ่มเติม'}
@@ -309,15 +514,12 @@ ${redFlags.length > 0
 • สัญญาณชีพและการตรวจร่างกาย: ${docNotes.physical_exam || '-'}
 • การวินิจฉัยเบื้องต้น (Impression): ${docNotes.preliminary_dx || '-'}
 • แผนการรักษา (Plan/Orders): ${docNotes.plan || '-'}`;
-
-  return defaultRapid;
 }
 
 // --- Narrative Note Generator (Doctor View) ---
 function renderEpistaxisNarrative(patient) {
   const durVal = patient.durationVal;
-  const durUnitMap = { minutes: 'นาที', hours: 'ชั่วโมง', days: 'วัน', weeks: 'สัปดาห์', months: 'เดือน', years: 'ปี' };
-  const durUnit = durUnitMap[patient.durationUnit] || 'นาที';
+  const durUnit = EPISTAXIS_DUR_UNIT_MAP[patient.durationUnit] || 'นาที';
   const durStr = durVal ? `${durVal} ${durUnit}` : 'ไม่ระบุระยะเวลา';
 
   const sideStr = formatEpistaxisSide(patient);
@@ -327,34 +529,41 @@ function renderEpistaxisNarrative(patient) {
 
   const warnSigns = Array.isArray(patient.epistaxisWarningSigns) ? patient.epistaxisWarningSigns : [];
   const direction = Array.isArray(patient.epistaxisDirection) ? patient.epistaxisDirection : [];
+  const triggers = Array.isArray(patient.epistaxisTriggers) ? patient.epistaxisTriggers : [];
+  const meds = Array.isArray(patient.epistaxisMeds) ? patient.epistaxisMeds : [];
+  const underlying = Array.isArray(patient.epistaxisUnderlying) ? patient.epistaxisUnderlying : [];
 
   const genderLabel = (patient.gender && patient.gender !== 'ไม่ระบุ') ? patient.gender : '';
-  let note = `ผู้ป่วย${genderLabel} อายุ ${patient.age || 'ไม่ระบุ'} ปี มารับการตรวจที่ห้องฉุกเฉินด้วยอาการเลือดกำเดาไหล เป็นมา ${durStr} ก่อนมาโรงพยาบาล ตำแหน่งที่เลือดออกคือ${sideStr} สถานะปัจจุบัน${activeStr} ประวัติความรุนแรง${recurStr} ปริมาณเลือดที่ออกคือ${volStr}`;
+  let note = `ผู้ป่วย${genderLabel} อายุ ${patient.age || 'ไม่ได้ระบุ'} ปี มารับการตรวจด้วยอาการเลือดกำเดาไหล เป็นมา ${durStr} ก่อนมาโรงพยาบาล ตำแหน่งที่เลือดออกคือ${sideStr} สถานะปัจจุบัน${activeStr} ประวัติความรุนแรง${recurStr} ปริมาณเลือดที่ออกคือ${volStr}`;
 
   if (direction.includes('dripping_throat')) {
-    note += ' มีประวัติเลือดไหลรินลงคออย่างต่อเนื่องต้องคอยกลืนเลือดตลอดเวลา';
+    note += ' มีประวัติเลือดไหลลงคอต้องคอยกลืนเลือดตลอดเวลา';
   }
   if (direction.includes('failed_compression')) {
-    note += ' บีบปีกจมูกแน่นต่อเนื่องเกิน 15-20 นาทีแล้วเลือดยังไม่ยอมหยุด';
+    note += ' บีบปีกจมูกแน่นต่อเนื่องเกิน 15–20 นาทีแล้วเลือดยังไม่ยอมหยุด';
   }
   if (direction.includes('vomited_blood_clots')) {
-    note += ' มีอาการกลืนเลือดจนไอหรืออาเจียนออกมาเป็นลิ่มเลือด';
+    note += ' มีอาการอาเจียนหรือบ้วนออกมาเป็นลิ่มเลือดหรือสีกาแฟ';
   }
 
   if (patient.epistaxisTrauma) {
-    note += ` มีประวัติได้รับอุบัติเหตุกระแทกใบหน้าหรือศีรษะ (${patient.epistaxisTraumaDetails || 'ไม่ระบุรายละเอียด'})`;
+    note += ` มีประวัติถูกกระแทกที่จมูก ใบหน้า หรือศีรษะ (${patient.epistaxisTraumaDetails || 'ไม่ได้ระบุรายละเอียด'})`;
   }
 
   if (warnSigns.length > 0) {
-    const warnTexts = [];
-    if (warnSigns.includes('warn_choking_swallow')) warnTexts.push('สำลักเลือดหรือกลืนลำบาก');
-    if (warnSigns.includes('warn_stridor_airway_tight')) warnTexts.push('หายใจติดขัดแน่นคอ');
-    if (warnSigns.includes('warn_dizziness_presyncope')) warnTexts.push('หน้ามืดวูบเป็นลม');
-    if (warnSigns.includes('warn_profuse_sweat_cold_shock')) warnTexts.push('เหงื่อแตกตัวเย็นใจสั่น');
-    if (warnSigns.includes('warn_petechiae_purpura')) warnTexts.push('มีจุดเลือดออกตามตัว');
-    if (warnSigns.includes('warn_cervical_lymph_node')) warnTexts.push('คลำได้ก้อนที่ลำคอ');
-    if (warnTexts.length > 0) note += ` ร่วมกับมีอาการเตือนสำคัญ: ${warnTexts.join(', ')}`;
+    const warnTexts = warnSigns.map(k => EPISTAXIS_WARN_MAP[k]).filter(Boolean);
+    if (warnTexts.length > 0) note += ` ร่วมกับมีอาการเตือนสำคัญ ได้แก่ ${warnTexts.join(', ')}`;
   }
+
+  const trigTexts = triggers.filter(k => k !== 'trig_spontaneous').map(k => EPISTAXIS_TRIGGER_MAP[k]).filter(Boolean);
+  if (trigTexts.length > 0) note += ` ปัจจัยกระตุ้นคือ ${trigTexts.join(', ')}`;
+  else if (triggers.includes('trig_spontaneous') && !patient.epistaxisTrauma) note += ' เกิดขึ้นเองโดยไม่มีปัจจัยกระตุ้นชัดเจน';
+
+  const medTexts = meds.filter(k => k !== 'none').map(k => EPISTAXIS_MED_MAP[k]).filter(Boolean);
+  if (medTexts.length > 0) note += ` ประวัติการใช้ยา: ${medTexts.join(', ')}`;
+
+  const udTexts = underlying.map(k => EPISTAXIS_UD_MAP[k]).filter(Boolean);
+  if (udTexts.length > 0) note += ` โรคประจำตัวที่เกี่ยวข้อง: ${udTexts.join(', ')}`;
 
   return note;
 }
@@ -365,14 +574,18 @@ function renderEpistaxisDoctorHpi(patient) {
 
 // --- Output Dispatcher ---
 function updateEpistaxisOutputs(rec) {
-  if (!rec) return;
+  if (!rec) return null;
   const rapidText = renderEpistaxisRapidHpi(rec);
   const narrativeText = renderEpistaxisNarrative(rec);
+  const finalRapid = rec.custom_rapid_note || rapidText;
+  const finalNarrative = rec.custom_narrative_note || narrativeText;
 
-  const rapidEl = document.getElementById('rapidTextView');
-  const narrativeEl = document.getElementById('narrativeTextView');
-  if (rapidEl) rapidEl.value = rec.custom_rapid_note || rapidText;
-  if (narrativeEl) narrativeEl.value = rec.custom_narrative_note || narrativeText;
+  if (typeof document !== 'undefined') {
+    const rapidEl = document.getElementById('rapidTextView');
+    const narrativeEl = document.getElementById('narrativeTextView');
+    if (rapidEl) rapidEl.value = finalRapid;
+    if (narrativeEl) narrativeEl.value = finalNarrative;
+  }
 
   const posMatch = rapidText.match(/• Pertinent Positives:\n((?:\s*-[^\n]+\n?)+)/);
   if (posMatch) {
@@ -385,7 +598,7 @@ function updateEpistaxisOutputs(rec) {
   if (negMatch) {
     rec.pertinentNegatives = negMatch[1].trim().split('\n').map(l => l.replace(/^[-*\s]+/, '').trim());
   } else {
-    rec.pertinentNegatives = [];
+    rec.pertinentNegatives = ['ผู้ป่วยไม่ได้ระบุคำตอบยืนยันในหมวดอาการร่วม'];
   }
 
   const redFlags = evaluateEpistaxisRedFlags(rec);
@@ -436,90 +649,65 @@ function updateEpistaxisOutputs(rec) {
       total_red_flags: redFlags.length
     }
   };
-  const jsonEl = document.getElementById('jsonViewer');
-  if (jsonEl) jsonEl.textContent = JSON.stringify(jsonOutput, null, 2);
-}
 
-// --- CDS Generator ---
-function generateEpistaxisCds(patient, { rfs, ddxList = [], workupList = [], managementList = [] } = {}) {
-  if (!patient) return '';
-  const redFlags = rfs || evaluateEpistaxisRedFlags(patient);
+  rec.rapidHpi = finalRapid;
+  rec.narrativeHpi = finalNarrative;
+  rec.medicalJson = jsonOutput;
 
-  const hasMassive = redFlags.some(r => r.key === 'rf_massive_epistaxis_shock');
-  const hasTrauma = redFlags.some(r => r.key === 'rf_basilar_skull_trauma_csf');
-  const hasPosterior = redFlags.some(r => r.key === 'rf_posterior_epistaxis');
-  const hasAnticoag = redFlags.some(r => r.key === 'rf_anticoagulant_bleeding');
-  const hasHTN = redFlags.some(r => r.key === 'rf_hypertensive_urgency');
-  const hasNPC = redFlags.some(r => r.key === 'rf_suspected_npc_mass');
-
-  if (hasMassive) {
-    ddxList.push('1. 🚨 Massive Epistaxis with Impending Airway Compromise & Hemorrhagic Shock');
-    ddxList.push('2. Ruptured Sphenopalatine / Internal Carotid Pseudoaneurysm');
-    ddxList.push('3. Posterior Epistaxis with Severe Blood Aspiration');
-    workupList.push('Stat Suction Airway, เตรียมพร้อม Endotracheal Intubation');
-    workupList.push('Stat Type and Crossmatch PRC 4 units + FFP 2 units');
-    workupList.push('CBC, Coagulogram (PT, INR, PTT), BUN, Cr, Electrolytes');
-    workupList.push('Stat Urgent ENT and Interventional Radiology (IR) Consultation');
-    managementList.push('Triage Level 1: ย้ายเข้าห้องกู้ชีพ (Resuscitation Room) ทันที');
-    managementList.push('จัดท่านั่งโน้มตัวไปข้างหน้าเล็กน้อยเพื่อป้องกันการสำลักเลือดลงหลอดลม');
-    managementList.push('Two Large-Bore IVs (18G x 2 เส้น) และให้ IV Fluid Resuscitation');
-    managementList.push('ทำ Anterior & Posterior packing ทันที (Rapid Rhino หรือ Foley catheter balloon tamponade)');
-  } else if (hasTrauma) {
-    ddxList.push('1. 🚨 Maxillofacial Trauma / Basilar Skull Fracture with CSF Rhinorrhea');
-    ddxList.push('2. Traumatic Ethmoidal / Sphenopalatine Artery Laceration');
-    workupList.push('Stat CT Facial bones with 3D reconstruction and CT Brain');
-    workupList.push('Stat Neurosurgery and ENT Consultation');
-    workupList.push('CBC, Coagulation profile, Blood crossmatch');
-    managementList.push('Triage Level 2: ⚠️ ห้ามทำ Blind Nasal Packing หรือใส่ Nasogastric Tube โดยเด็ดขาด');
-    managementList.push('ใส่ Cervical Collar ดามคอไว้จนกว่าจะตัดภาวะกระดูกสันหลังส่วนคอหัก');
-    managementList.push('หากจำเป็นต้องห้ามเลือด ให้ใช้ Direct compression หรือ Anterior packing ภายใต้การมองเห็นโดยตรง');
-  } else if (hasPosterior) {
-    ddxList.push('1. ⚠️ Suspected Posterior Epistaxis / Woodruff’s Plexus Bleeding');
-    ddxList.push('2. Refractory Anterior Epistaxis');
-    workupList.push('ส่องตรวจ Posterior Oropharynx ประเมินสายเลือดที่ไหลรินลงคอ');
-    workupList.push('CBC, PT, INR, PTT, BUN, Cr');
-    workupList.push('Stat ENT Consultation for Endoscopic Cauterization / Sphenopalatine Artery Ligation');
-    managementList.push('Triage Level 2: ดูดลิ่มเลือดออกและใส่ Cotton swab ชุบ 0.05% Oxymetazoline / Adrenaline 1:1000');
-    managementList.push('ทำ Posterior Nasal Packing หรือใส่ Double-balloon epistaxis catheter (หรือ 12-14 Fr Foley catheter balloon 5-7 ml ใน nasopharynx)');
-    managementList.push('รับไว้รักษาในโรงพยาบาลเพื่อเฝ้าระวังทางเดินหายใจ (Admit for observation with posterior pack)');
-  } else if (hasAnticoag) {
-    ddxList.push('1. ⚠️ Anticoagulant / Antiplatelet-Induced Epistaxis');
-    ddxList.push('2. Coagulopathy-Associated Epistaxis (Liver Disease / ESRD)');
-    workupList.push('Stat Coagulogram (PT, INR, PTT, Thrombin Time)');
-    workupList.push('CBC (Platelet count), BUN, Cr, LFT');
-    managementList.push('Triage Level 3: หยุดยาต้านการแข็งตัวของเลือด/เกล็ดเลือดทันที (Hold Warfarin / DOACs / Antiplatelets)');
-    managementList.push('พิจารณาให้ Reversal Agent (Vitamin K 5-10 mg IV, FFP หรือ PCC ในกรณี Warfarin toxicity)');
-    managementList.push('หลีกเลี่ยงการทำ Nasal packing รุนแรง พิจารณาใช้วัสดุห้ามเลือดชนิดละลายได้ (Surgicel / Gelita-Spon)');
-  } else if (hasHTN) {
-    ddxList.push('1. ⚠️ Hypertensive Urgency with Epistaxis');
-    ddxList.push('2. Severe Hypertension exacerbating Nasal Bleeding');
-    workupList.push('ตรวจวัดความดันโลหิตซ้ำทั้ง 2 แขน');
-    workupList.push('12-lead ECG, BUN, Cr, Electrolytes (ประเมิน End-Organ Damage)');
-    managementList.push('Triage Level 3: ห้ามเลือดเฉพาะที่ด้วยการกดปีกจมูกและประคบเย็นก่อนเป็นลำดับแรก');
-    managementList.push('เมื่อห้ามเลือดได้แล้ว ให้ยาลดความดันโลหิตชนิดรับประทานอย่างนุ่มนวล หลีกเลี่ยงความดันตกฮวบ');
-  } else if (hasNPC) {
-    ddxList.push('1. ⚠️ Recurrent Epistaxis / Suspected Nasopharyngeal Carcinoma (NPC)');
-    ddxList.push('2. Benign Vascular Neoplasm / Juvenile Nasopharyngeal Angiofibroma');
-    workupList.push('CBC (Hb, Hct) ประเมินภาวะซีดเรื้อรัง');
-    workupList.push('ส่งต่อพบแพทย์เฉพาะทาง ENT เพื่อทำ Rigid/Flexible Nasoendoscopy และ Biopsy');
-    managementList.push('Triage Level 3/4: ห้ามเลือดเบื้องต้นและส่งต่อแผนกตรวจผู้ป่วยนอก ENT');
-  } else {
-    ddxList.push('1. Simple Anterior Epistaxis (Kiesselbach’s plexus / Little’s area)');
-    ddxList.push('2. Digital Trauma / Dry Mucosal Erosion');
-    workupList.push('ตรวจดูโพรงจมูกด้านหน้าด้วย Nasal Speculum และไฟส่องสว่าง');
-    managementList.push('Triage Level 4/5: สอนและแนะนำวิธีกดปีกจมูกที่ถูกต้อง: นั่งตัวตรง โน้มตัวไปข้างหน้าเล็กน้อย ใช้นิ้วชี้และนิ้วหัวแม่มือกดบีบปีกจมูกค้างไว้ 10-15 นาที หายใจทางปาก');
-    managementList.push('ประคบเย็นบริเวณสันจมูกและหน้าผาก');
-    managementList.push('ทาปิโตรเลียมเจลลี่หรือยาขี้ผึ้งปฏิชีวนะบางๆ ในรูจมูก เลี่ยงการแคะจมูกหรือสั่งน้ำมูกแรง 24-48 ชม.');
+  if (typeof document !== 'undefined') {
+    const jsonEl = document.getElementById('jsonViewer');
+    if (jsonEl) jsonEl.textContent = JSON.stringify(jsonOutput, null, 2);
   }
 
-  return { ddxList, workupList, managementList };
+  return { rapid: finalRapid, narrative: finalNarrative, json: jsonOutput };
 }
+
+// =========================================================================
+// UI TEMPLATE CONSTANTS (Golden UI/UX — 4 Cards + Universal PMH Card 5)
+// =========================================================================
+const EPISTAXIS_TRAUMA_SUB_HTML = renderEpistaxisSubPanel(
+  'epistaxisTraumaSub',
+  'อาการร่วมหลังถูกกระแทก (เลือกได้หลายข้อ)',
+  [
+    { name: 'epistaxisTraumaSigns', value: 'trauma_csf_leak_rhinorrhea', title: ['น้ำใสไหลปน', 'ออกจากจมูก'], desc: 'ใสคล้ายน้ำ ไม่ข้นเหนียว' },
+    { name: 'epistaxisTraumaSigns', value: 'trauma_raccoon_eyes', title: ['ช้ำรอบตา /', 'หลังใบหู'] },
+    { name: 'epistaxisTraumaSigns', value: 'trauma_nasal_deformity', title: ['ดั้งจมูกเบี้ยว /', 'ผิดรูป'], colSpan2: true }
+  ],
+  `<div>
+    <label class="block text-slate-700 font-medium mb-1">เหตุการณ์ที่ถูกกระแทก (ถ้ามี):</label>
+    <input type="text" id="epistaxisTraumaDetails" placeholder="เช่น รถล้มหน้ากระแทก, ถูกชกจมูก..."
+      class="w-full bg-white px-3.5 py-2 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-medical-500 focus:outline-none">
+  </div>`
+);
+
+const EPISTAXIS_WARN_SUBS_HTML = [
+  renderEpistaxisSubPanel('epistaxisWarnAirwaySub', 'ลักษณะอาการสำลักหรือหายใจ (เลือกได้หลายข้อ)', [
+    { name: 'epistaxisWarningSigns', value: 'warn_choking_swallow', title: ['สำลักเลือด /', 'กลืนลำบาก'], onchange: `handleEpistaxisGroupItemChange('epistaxis_warn_none', this)` },
+    { name: 'epistaxisWarningSigns', value: 'warn_stridor_airway_tight', title: ['หายใจติดขัด /', 'แน่นคอ /', 'เสียงหวีด'], onchange: `handleEpistaxisGroupItemChange('epistaxis_warn_none', this)` }
+  ]),
+  renderEpistaxisSubPanel('epistaxisWarnShockSub', 'ลักษณะอาการหน้ามืดหรือเสียเลือด (เลือกได้หลายข้อ)', [
+    { name: 'epistaxisWarningSigns', value: 'warn_dizziness_presyncope', title: ['หน้ามืด / วูบ', 'หรือหมดสติ'], onchange: `handleEpistaxisGroupItemChange('epistaxis_warn_none', this)` },
+    { name: 'epistaxisWarningSigns', value: 'warn_profuse_sweat_cold_shock', title: ['เหงื่อแตกตัวเย็น /', 'ใจสั่นเร็ว'], onchange: `handleEpistaxisGroupItemChange('epistaxis_warn_none', this)` }
+  ]),
+  renderEpistaxisSubPanel('epistaxisWarnBleedingSub', 'ตำแหน่งเลือดออกผิดปกติ (เลือกได้หลายข้อ)', [
+    { name: 'epistaxisWarningSigns', value: 'warn_petechiae_purpura', title: ['จุดเลือดออก /', 'จ้ำเลือดตามตัว'], onchange: `handleEpistaxisGroupItemChange('epistaxis_warn_none', this)` },
+    { name: 'epistaxisWarningSigns', value: 'warn_mucosal_or_melena', title: ['เลือดออก', 'ตามไรฟัน'], onchange: `handleEpistaxisGroupItemChange('epistaxis_warn_none', this)` },
+    { name: 'epistaxisWarningSigns', value: 'warn_hematuria', title: ['ปัสสาวะเป็นเลือด'], onchange: `handleEpistaxisGroupItemChange('epistaxis_warn_none', this)` },
+    { name: 'epistaxisWarningSigns', value: 'warn_melena', title: ['ถ่ายอุจจาระสีดำ'], onchange: `handleEpistaxisGroupItemChange('epistaxis_warn_none', this)` }
+  ]),
+  renderEpistaxisSubPanel('epistaxisWarnHeadNeckSub', 'อาการทางจมูก หู หรือลำคอ (เลือกได้หลายข้อ)', [
+    { name: 'epistaxisWarningSigns', value: 'warn_unilateral_obstruction', title: ['คัดจมูกข้างเดียว', 'เรื้อรัง /', 'น้ำมูกกลิ่นเหม็น'], onchange: `handleEpistaxisGroupItemChange('epistaxis_warn_none', this)` },
+    { name: 'epistaxisWarningSigns', value: 'warn_unilateral_tinnitus', title: ['หูอื้อ / ได้ยินลดลง', 'ข้างเดียว'], onchange: `handleEpistaxisGroupItemChange('epistaxis_warn_none', this)` },
+    { name: 'epistaxisWarningSigns', value: 'warn_cervical_lymph_node', title: ['คลำพบก้อนที่คอ', '/ ใต้กราม'], onchange: `handleEpistaxisGroupItemChange('epistaxis_warn_none', this)`, colSpan2: true }
+  ])
+].join('\n');
 
 // =========================================================================
 // MODULE DEFINITION: epistaxisModule
 // =========================================================================
 const epistaxisModule = {
   id: 'epistaxis',
+  schemaCode: 'epistaxis',
   recordCc: 'epistaxis',
   titleTh: 'เลือดกำเดาไหล',
   titleEn: 'Epistaxis / Nosebleed',
@@ -527,44 +715,55 @@ const epistaxisModule = {
   doctorCcBadgeHtml: '<i data-lucide="droplets" class="w-3.5 h-3.5 mr-1 text-rose-500"></i> CC: เลือดกำเดาไหล (Epistaxis)',
   algorithm: 'epistaxis-clinical-protocol',
   sectionDomId: 'cc-epistaxis-section',
+  pmhSectionNumber: 5,
+  getPmhSectionNumber: () => 5,
+  dateFields: [],
+  timeFields: [],
+  branchIds: [
+    'epistaxisTraumaSub',
+    'epistaxisWarnAirwaySub',
+    'epistaxisWarnShockSub',
+    'epistaxisWarnBleedingSub',
+    'epistaxisWarnHeadNeckSub'
+  ],
+  inputIdsToClear: [
+    'epistaxisDurationVal',
+    'epistaxisTraumaDetails',
+    'epistaxis_other_free'
+  ],
 
   formHtml: `
     <div id="cc-epistaxis-section" class="hidden space-y-6">
-      <div data-cc-top-banner="epistaxis"><div class="flex flex-col gap-4">
-      <!-- คำแนะนำการปฐมพยาบาลเบื้องต้นอย่างถูกวิธี (Triage First-Aid Guidance Banner) -->
-      <div class="bg-amber-50 border border-amber-200 rounded-2xl p-4 sm:p-5 flex items-start gap-3.5 shadow-xs">
-        <div class="bg-amber-100 text-amber-800 p-2.5 rounded-xl flex-shrink-0 mt-0.5">
-          <i data-lucide="alert-circle" class="w-5 h-5"></i>
-        </div>
-        <div>
-          <h3 class="text-sm font-bold text-amber-900 mb-1 flex items-center gap-1.5">
-            <span>ข้อแนะนำการปฐมพยาบาลเบื้องต้นอย่างถูกวิธีระหว่างรอตรวจ</span>
-          </h3>
-          <p class="text-xs text-amber-800 leading-relaxed">
-            <strong>วิธีที่ถูกต้อง:</strong> นั่งตัวตรงและโน้มตัวไปข้างหน้าเล็กน้อย ก้มหน้าเล็กน้อย บีบปีกจมูกทั้ง 2 ข้างค้างไว้ต่อเนื่อง 10–15 นาทีเต็ม โดยหายใจทางปากแทน และ<strong>ห้ามปล่อยนิ้วออกมาดูบ่อย ๆ ห้ามเงยหน้าเด็ดขาด เพราะเสี่ยงต่อการสำลักเลือดลงหลอดลม</strong>
-          </p>
+      <div data-cc-top-banner="epistaxis">
+        <div class="bg-amber-50 border border-amber-200 rounded-2xl p-4 sm:p-5 flex items-start gap-3.5 shadow-xs">
+          <div class="bg-amber-100 text-amber-800 p-2.5 rounded-xl flex-shrink-0 mt-0.5">
+            <i data-lucide="alert-circle" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <h3 class="text-sm font-bold text-amber-900 mb-1">คำแนะนำการปฐมพยาบาลเบื้องต้นระหว่างรอตรวจ</h3>
+            <p class="text-xs text-amber-800 leading-relaxed">
+              นั่งตัวตรง <strong>ก้มหน้าเล็กน้อย</strong> บีบปีกจมูกส่วนนิ่มทั้ง 2 ข้างค้างไว้ต่อเนื่อง 10–15 นาที และหายใจทางปากแทน <strong>ห้ามเงยหน้า และเลี่ยงการกลืนเลือด เพราะเสี่ยงต่อการสำลักเลือดลงหลอดลม</strong> หากเลือดไหลทะลักไม่หยุด สำลักเลือด หายใจติดขัด หรือหน้ามืดวูบ กรุณาแจ้งพยาบาลทันที
+            </p>
+          </div>
         </div>
       </div>
-      </div></div>
 
-      <!-- CARD 1: ข้อมูลอาการเริ่มต้นและลักษณะการไหล -->
+      <!-- CARD 1: ระยะเวลา ลักษณะเลือดที่ไหล และการห้ามเลือดเบื้องต้น -->
       <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
         <div class="flex items-center space-x-3 mb-4 pb-3 border-b border-slate-100">
           <div class="bg-medical-100 text-medical-700 p-2 rounded-xl">
             <i data-lucide="clock" class="w-5 h-5"></i>
           </div>
-          <div>
-            <h2 class="text-base font-bold text-slate-900">1. ข้อมูลอาการเริ่มต้นและลักษณะการไหล (Bleeding Profile)</h2>
-            <p class="text-xs text-slate-500">ข้อมูลระยะเวลา ข้างที่เลือดออก สถานะการไหล ปริมาณและความแรงของเลือด</p>
-          </div>
+          <h2 class="text-base font-bold text-slate-900">1. ระยะเวลา ลักษณะเลือดที่ไหล และการห้ามเลือดเบื้องต้น</h2>
         </div>
 
         <div class="space-y-4">
-          <!-- 1.1 ระยะเวลาที่เป็นมา -->
           <div>
-            <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
-              1.1 ระยะเวลาที่มีเลือดกำเดาไหลมานานเท่าไรแล้ว? <span class="text-rose-500">*</span>
-            </label>
+            ${renderEpistaxisSysHeader({
+              label: '1.1 ระยะเวลาที่มีเลือดกำเดาไหลในครั้งนี้',
+              icon: 'clock',
+              colorClass: 'bg-sky-100 text-sky-700'
+            })}
             <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
               <div class="col-span-1 sm:col-span-2">
                 <input type="number" id="epistaxisDurationVal" min="1" max="1000" placeholder="ระบุตัวเลข เช่น 20"
@@ -584,396 +783,183 @@ const epistaxisModule = {
             </div>
           </div>
 
-          <!-- 1.2 ข้างที่มีเลือดกำเดาไหล -->
-          <div>
-            <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
-              1.2 ข้างที่มีเลือดกำเดาไหล (Side Affected) <span class="text-rose-500">*</span>
-            </label>
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-              <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white cursor-pointer hover:border-medical-300 transition">
-                <input type="radio" name="epistaxisSide" value="left" class="text-medical-600 focus:ring-medical-500 h-4 w-4">
-                <span class="ml-2.5 text-xs sm:text-sm font-medium text-slate-800">ข้างซ้ายข้างเดียว</span>
-              </label>
-              <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white cursor-pointer hover:border-medical-300 transition">
-                <input type="radio" name="epistaxisSide" value="right" class="text-medical-600 focus:ring-medical-500 h-4 w-4">
-                <span class="ml-2.5 text-xs sm:text-sm font-medium text-slate-800">ข้างขวาข้างเดียว</span>
-              </label>
-              <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white cursor-pointer hover:border-medical-300 transition">
-                <input type="radio" name="epistaxisSide" value="bilateral" class="text-medical-600 focus:ring-medical-500 h-4 w-4">
-                <span class="ml-2.5 text-xs sm:text-sm font-medium text-slate-800">ไหลทั้งสองข้างพร้อมกัน</span>
-              </label>
-            </div>
+          <div class="pt-4 border-t border-slate-100">
+            ${renderEpistaxisSysHeader({
+              label: '1.2 ข้างที่มีเลือดกำเดาไหล',
+              icon: 'arrow-left-right',
+              colorClass: 'bg-sky-100 text-sky-700'
+            })}
+            ${renderEpistaxisGrid('grid-cols-1 sm:grid-cols-3', [
+              { kind: 'radio', name: 'epistaxisSide', value: 'left', title: ['ข้างซ้าย', 'ข้างเดียว'] },
+              { kind: 'radio', name: 'epistaxisSide', value: 'right', title: ['ข้างขวา', 'ข้างเดียว'] },
+              { kind: 'radio', name: 'epistaxisSide', value: 'bilateral', title: ['ไหลทั้งสองข้าง', 'พร้อมกัน'] }
+            ])}
           </div>
 
-          <!-- 1.3 สถานะการไหลในปัจจุบัน -->
-          <div>
-            <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
-              1.3 สถานะการไหลในขณะนี้
-            </label>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-              <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white cursor-pointer hover:border-medical-300 transition">
-                <input type="radio" name="epistaxisActiveStatus" value="active" class="text-medical-600 focus:ring-medical-500 h-4 w-4">
-                <div class="ml-2.5">
-                  <span class="text-xs sm:text-sm font-semibold text-slate-800 block">ยังมีเลือดไหลอยู่ขณะนี้</span>
-                  <span class="text-[11px] text-slate-500">เลือดยังไม่ยอมหยุด หรือไหลซึมต่อเนื่อง</span>
-                </div>
-              </label>
-              <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white cursor-pointer hover:border-medical-300 transition">
-                <input type="radio" name="epistaxisActiveStatus" value="stopped" class="text-medical-600 focus:ring-medical-500 h-4 w-4">
-                <div class="ml-2.5">
-                  <span class="text-xs sm:text-sm font-semibold text-slate-800 block">เลือดหยุดไหลแล้ว</span>
-                  <span class="text-[11px] text-slate-500">เลือดหยุดไหลแล้วก่อนมาถึงโรงพยาบาล</span>
-                </div>
-              </label>
-            </div>
+          <div class="pt-4 border-t border-slate-100">
+            ${renderEpistaxisSysHeader({
+              label: '1.3 ปริมาณและความแรงของเลือดที่ออก',
+              icon: 'gauge',
+              colorClass: 'bg-sky-100 text-sky-700'
+            })}
+            ${renderEpistaxisGrid('grid-cols-1 sm:grid-cols-2', [
+              { kind: 'radio', name: 'epistaxisVolume', value: 'mild_oozing', title: ['ไหลซึมๆ /', 'หยดช้าๆ'], desc: 'เปื้อนกระดาษทิชชูเพียงเล็กน้อย' },
+              { kind: 'radio', name: 'epistaxisVolume', value: 'moderate_flow', title: ['ไหลเป็นสาย', 'ต่อเนื่อง'], desc: 'ชุ่มกระดาษทิชชูหรือผ้าหลายผืน' },
+              { kind: 'radio', name: 'epistaxisVolume', value: 'heavy_clots', title: ['ไหลทะลักมาก /', 'มีลิ่มเลือด', 'ก้อนใหญ่'], colSpan2: true }
+            ])}
           </div>
 
-          <!-- 1.4 การเกิดซ้ำหรือความรุนแรง -->
-          <div>
-            <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
-              1.4 ประวัติความรุนแรงและการเป็นซ้ำ
-            </label>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-              <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white cursor-pointer hover:border-medical-300 transition">
-                <input type="radio" name="epistaxisRecurrence" value="highest_in_life" class="text-medical-600 focus:ring-medical-500 h-4 w-4">
-                <span class="ml-2.5 text-xs sm:text-sm font-medium text-slate-800">ไหลมากที่สุดในชีวิต</span>
-              </label>
-              <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white cursor-pointer hover:border-medical-300 transition">
-                <input type="radio" name="epistaxisRecurrence" value="recurrent_episodes" class="text-medical-600 focus:ring-medical-500 h-4 w-4">
-                <span class="ml-2.5 text-xs sm:text-sm font-medium text-slate-800">เคยมีเลือดกำเดาไหลซ้ำๆแบบนี้ มาก่อน</span>
-              </label>
-            </div>
+          <div class="pt-4 border-t border-slate-100">
+            ${renderEpistaxisSysHeader({
+              label: '1.4 สถานะการไหลในขณะนี้',
+              icon: 'activity',
+              colorClass: 'bg-sky-100 text-sky-700'
+            })}
+            ${renderEpistaxisGrid('grid-cols-1 sm:grid-cols-2', [
+              { kind: 'radio', name: 'epistaxisActiveStatus', value: 'active', title: ['ยังมีเลือด', 'ไหลอยู่ขณะนี้'] },
+              { kind: 'radio', name: 'epistaxisActiveStatus', value: 'stopped', title: ['เลือดหยุดไหลแล้ว'] }
+            ])}
           </div>
 
-          <!-- 1.5 ปริมาณและความแรงของเลือดที่ออก -->
-          <div>
-            <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
-              1.5 ปริมาณและความแรงของเลือดที่ออก
-            </label>
-            <div class="space-y-2">
-              <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white cursor-pointer hover:border-medical-300 transition">
-                <input type="radio" name="epistaxisVolume" value="mild_oozing" class="text-medical-600 focus:ring-medical-500 h-4 w-4">
-                <div class="ml-2.5">
-                  <span class="text-xs sm:text-sm font-semibold text-slate-800 block">ไหลซึมๆ หยดช้าๆ หรือเปื้อนกระดาษทิชชู</span>
-                  <span class="text-[11px] text-slate-500">ปริมาณเล็กน้อย เลือดออกเพียงเล็กน้อย</span>
-                </div>
-              </label>
-              <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white cursor-pointer hover:border-medical-300 transition">
-                <input type="radio" name="epistaxisVolume" value="moderate_flow" class="text-medical-600 focus:ring-medical-500 h-4 w-4">
-                <div class="ml-2.5">
-                  <span class="text-xs sm:text-sm font-semibold text-slate-800 block">ไหลเป็นสายต่อเนื่อง ชุ่มกระดาษ/ผ้าหลายผืน</span>
-                  <span class="text-[11px] text-slate-500">ปริมาณปานกลาง ไหลไม่หยุดทันที</span>
-                </div>
-              </label>
-              <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white cursor-pointer hover:border-medical-300 transition">
-                <input type="radio" name="epistaxisVolume" value="heavy_clots" class="text-medical-600 focus:ring-medical-500 h-4 w-4">
-                <div class="ml-2.5">
-                  <span class="text-xs sm:text-sm font-semibold text-slate-800 block">ไหลทะลักปริมาณมาก หรือมีก้อนลิ่มเลือดขนาดใหญ่หลุดออกมา</span>
-                  <span class="text-[11px] text-slate-500">ปริมาณมาก มีก้อนเลือดลิ่มขนาดใหญ่ หรือสำลักเลือด</span>
-                </div>
-              </label>
-            </div>
+          <div class="pt-4 border-t border-slate-100">
+            ${renderEpistaxisSysHeader({
+              label: '1.5 ลักษณะการไหลลงคอและการห้ามเลือดเบื้องต้น (เลือกได้หลายข้อ)',
+              icon: 'droplet',
+              colorClass: 'bg-sky-100 text-sky-700',
+              toggleId: 'epistaxis_dir_none',
+              toggleLabel: 'ไม่มีอาการในหมวดนี้',
+              toggleOnchange: `handleEpistaxisGroupNoneToggle('dir', this)`
+            })}
+            ${renderEpistaxisGrid('grid-cols-1 sm:grid-cols-2', [
+              { name: 'epistaxisDirection', value: 'dripping_throat', title: ['เลือดไหลลงคอ /', 'ต้องกลืนเลือด'], onchange: `handleEpistaxisGroupItemChange('epistaxis_dir_none', this)` },
+              { name: 'epistaxisDirection', value: 'failed_compression', title: ['บีบจมูก 15–20 นาที', 'ยังไม่หยุด'], onchange: `handleEpistaxisGroupItemChange('epistaxis_dir_none', this)` },
+              { name: 'epistaxisDirection', value: 'vomited_blood_clots', title: ['อาเจียนเป็นลิ่มเลือด', '/ สีกาแฟ'], onchange: `handleEpistaxisGroupItemChange('epistaxis_dir_none', this)`, colSpan2: true }
+            ])}
           </div>
         </div>
       </div>
 
-      <!-- CARD 2: อาการแสดงและทิศทางการไหล -->
+      <!-- CARD 2: ประวัติการเป็นซ้ำ และสาเหตุหรือปัจจัยกระตุ้นก่อนเลือดออก -->
       <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
         <div class="flex items-center space-x-3 mb-4 pb-3 border-b border-slate-100">
           <div class="bg-medical-100 text-medical-700 p-2 rounded-xl">
             <i data-lucide="activity" class="w-5 h-5"></i>
           </div>
-          <div>
-            <h2 class="text-base font-bold text-slate-900">2. อาการแสดงและทิศทางการไหล (Bleeding Direction & Cranial Signs)</h2>
-            <p class="text-xs text-slate-500">ทิศทางการไหล การตอบสนองต่อการบีบจมูก และประวัติอุบัติเหตุกระแทก</p>
-          </div>
+          <h2 class="text-base font-bold text-slate-900">2. ประวัติการเป็นซ้ำ และสาเหตุหรือปัจจัยกระตุ้นก่อนเลือดออก</h2>
         </div>
 
         <div class="space-y-4">
-          <!-- 2.1 ทิศทางและการตอบสนองต่อการบีบจมูก -->
           <div>
-            <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
-              2.1 ทิศทางการไหลและการตอบสนองต่อการบีบจมูก (เลือกได้หลายข้อ)
-            </label>
-            <div class="space-y-2">
-              <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white cursor-pointer hover:border-medical-300 transition">
-                <input type="checkbox" name="epistaxisDirection" value="dripping_throat" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
-                <div class="ml-2.5">
-                  <span class="text-xs sm:text-sm font-semibold text-slate-800 block">รู้สึกมีเลือดไหลรินลงคอ หรือต้องคอยกลืนเลือดตลอดเวลา</span>
-                  <span class="text-[11px] text-slate-500">รู้สึกเหมือนมีน้ำหรือเลือดไหลย้อนลงไปในลำคอ</span>
-                </div>
-              </label>
-              <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white cursor-pointer hover:border-medical-300 transition">
-                <input type="checkbox" name="epistaxisDirection" value="failed_compression" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
-                <div class="ml-2.5">
-                  <span class="text-xs sm:text-sm font-semibold text-slate-800 block">บีบปีกจมูกแน่นๆ ติดต่อกันเกิน 15-20 นาทีแล้ว เลือดยังไม่ยอมหยุดไหล</span>
-                  <span class="text-[11px] text-slate-500">บีบปีกจมูกค้างไว้นานแล้วเลือดยังคงทะลักออกต่อเนื่อง</span>
-                </div>
-              </label>
-              <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white cursor-pointer hover:border-medical-300 transition">
-                <input type="checkbox" name="epistaxisDirection" value="vomited_blood_clots" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
-                <div class="ml-2.5">
-                  <span class="text-xs sm:text-sm font-semibold text-slate-800 block">มีอาการไอ หรืออาเจียนออกมาเป็นลิ่มเลือด/สีกาแฟ</span>
-                  <span class="text-[11px] text-slate-500">เนื่องจากกลืนเลือดกำเดาลงกระเพาะอาหาร</span>
-                </div>
-              </label>
-            </div>
+            ${renderEpistaxisSysHeader({
+              label: '2.1 ประวัติการเกิดเลือดกำเดาไหล',
+              icon: 'history',
+              colorClass: 'bg-teal-100 text-teal-700'
+            })}
+            ${renderEpistaxisGrid('grid-cols-1 sm:grid-cols-2', [
+              { kind: 'radio', name: 'epistaxisRecurrence', value: 'highest_in_life', title: ['ไหลมากที่สุด', 'ในชีวิต'] },
+              { kind: 'radio', name: 'epistaxisRecurrence', value: 'recurrent_episodes', title: ['เคยไหลซ้ำๆ', 'แบบนี้มาก่อน'] }
+            ])}
           </div>
 
-          <!-- 2.2 อาการเฉียบพลันร่วมทางศีรษะและความดันโลหิต -->
-          <div>
-            <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
-              2.2 อาการเฉียบพลันร่วมทางศีรษะและความดันโลหิต
-            </label>
-            <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white cursor-pointer hover:border-medical-300 transition">
-              <input type="checkbox" name="epistaxisAcuteCranial" value="severe_headache" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
-              <div class="ml-2.5">
-                <span class="text-xs sm:text-sm font-semibold text-slate-800 block">มีอาการปวดศีรษะรุนแรง ตามัว ตาพร่า หรือแน่นหน้าอกร่วมด้วย</span>
-                <span class="text-[11px] text-slate-500">คัดกรองภาวะความดันโลหิตสูงรุนแรงเฉียบพลัน</span>
-              </div>
-            </label>
-          </div>
-
-          <!-- 2.3 ประวัติอุบัติเหตุกระแทก (Progressive Disclosure) -->
-          <div>
-            <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
-              2.3 ประวัติอุบัติเหตุหรือการบาดเจ็บ
-            </label>
-            <div class="border border-slate-200 rounded-xl p-3.5 bg-white hover:border-medical-300 transition">
-              <label class="flex items-start cursor-pointer">
-                <input type="checkbox" id="epistaxisTraumaParent"
-                  onchange="toggleEpistaxisGroup('epistaxisTraumaSub', this.checked)"
-                  class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0 mt-0.5">
-                <div class="ml-3">
-                  <span class="text-xs sm:text-sm font-semibold text-slate-800 block">มีประวัติได้รับอุบัติเหตุกระแทกที่ใบหน้าหรือศีรษะก่อนเลือดออก</span>
-                  <span class="text-[11px] text-slate-500 font-normal block mt-0.5">เช่น ถูกชกต่อย รถล้ม ตกจากที่สูง หรือของแข็งกระแทกใบหน้า</span>
-                </div>
-              </label>
-              <div id="epistaxisTraumaSub" class="hidden pl-7 pt-3 mt-2.5 border-t border-slate-100 space-y-2.5 text-xs">
-                <div>
-                  <label class="block text-slate-700 font-medium mb-1">ระบุเหตุการณ์อุบัติเหตุ (ช่องกรอกอิสระ):</label>
-                  <input type="text" id="epistaxisTraumaDetails" placeholder="เช่น ถูกชกต่อย, รถจักรยานยนต์ล้ม, ของแข็งกระแทกหน้า"
-                    class="w-full bg-slate-50 px-3.5 py-2 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-medical-500 focus:bg-white focus:outline-none">
-                </div>
-                <label class="flex items-center p-2.5 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-200 cursor-pointer">
-                  <input type="checkbox" name="epistaxisTraumaSigns" value="trauma_csf_leak_rhinorrhea" class="text-medical-600 focus:ring-medical-500 mr-2 rounded">
-                  <span>มีน้ำใสๆ ไหลปนออกมาจากจมูกคล้ายน้ำมูกแต่ไม่ข้น</span>
-                </label>
-                <label class="flex items-center p-2.5 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-200 cursor-pointer">
-                  <input type="checkbox" name="epistaxisTraumaSigns" value="trauma_raccoon_eyes" class="text-medical-600 focus:ring-medical-500 mr-2 rounded">
-                  <span>มีรอยฟกช้ำม่วงคล้ำรอบตาทั้งสองข้าง หรือหลังใบหู</span>
-                </label>
-                <label class="flex items-center p-2.5 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-200 cursor-pointer">
-                  <input type="checkbox" name="epistaxisTraumaSigns" value="trauma_nasal_deformity" class="text-medical-600 focus:ring-medical-500 mr-2 rounded">
-                  <span>กระดูกดั้งจมูกเบี้ยว ผิดรูป</span>
-                </label>
-              </div>
-            </div>
+          <div class="pt-4 border-t border-slate-100">
+            ${renderEpistaxisSysHeader({
+              label: '2.2 สาเหตุหรือเหตุการณ์นำก่อนเลือดออกในครั้งนี้ (เลือกได้หลายข้อ)',
+              icon: 'wind',
+              colorClass: 'bg-teal-100 text-teal-700',
+              toggleId: 'epistaxis_trig_none',
+              toggleName: 'epistaxisTriggers',
+              toggleValue: 'trig_spontaneous',
+              toggleLabel: 'ไม่มีปัจจัยในหมวดนี้',
+              toggleOnchange: `handleEpistaxisTrigChange(this)`
+            })}
+            ${renderEpistaxisGrid('grid-cols-1 sm:grid-cols-2', [
+              { name: 'epistaxisTriggers', value: 'trig_nose_picking', title: ['แคะจมูก /', 'สั่งน้ำมูกแรง'], onchange: `handleEpistaxisTrigChange(this)` },
+              { name: 'epistaxisTriggers', value: 'trig_nasal_spray_dry_air', title: ['ใช้ยาพ่นจมูก /', 'อากาศแห้งเย็น'], onchange: `handleEpistaxisTrigChange(this)` },
+              {
+                id: 'epistaxisTraumaParent',
+                title: ['ถูกกระแทกจมูก /', 'ใบหน้า / ศีรษะ'],
+                desc: 'เช่น หกล้ม รถล้ม หรือของแข็งกระแทกก่อนเลือดออก',
+                onchange: `toggleEpistaxisGroup('epistaxisTraumaSub', this.checked)`,
+                colSpan2: true
+              }
+            ])}
+            ${EPISTAXIS_TRAUMA_SUB_HTML}
           </div>
         </div>
       </div>
 
-      <!-- CARD 3: สัญญาณเตือน สภาวะอันตราย -->
+      <!-- CARD 3: อาการผิดปกติร่วมและสัญญาณเตือนสำคัญ -->
       <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
         <div class="flex items-center space-x-3 mb-4 pb-3 border-b border-slate-100">
           <div class="bg-medical-100 text-medical-700 p-2 rounded-xl">
             <i data-lucide="shield-alert" class="w-5 h-5"></i>
           </div>
-          <div>
-            <h2 class="text-base font-bold text-slate-900">3. สัญญาณเตือน สภาวะอันตราย (Warning Signs)</h2>
-            <p class="text-xs text-slate-500">คัดกรองปัญหาทางเดินหายใจ ภาวะช็อก เลือดออกผิดปกติ หรือก้อนที่คอ</p>
-          </div>
+          <h2 class="text-base font-bold text-slate-900">3. อาการผิดปกติร่วมและสัญญาณเตือนสำคัญ</h2>
         </div>
 
-        <div class="space-y-3">
-          <!-- กลุ่ม 1: อาการผิดปกติเกี่ยวกับการหายใจ หรือการกลืน -->
-          <div class="border border-slate-200 rounded-xl p-3.5 bg-white hover:border-medical-300 transition">
-            <label class="flex items-start cursor-pointer">
-              <input type="checkbox" id="epistaxisWarnAirwayParent"
-                onchange="toggleEpistaxisGroup('epistaxisWarnAirwaySub', this.checked)"
-                class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0 mt-0.5">
-              <div class="ml-3">
-                <span class="text-xs sm:text-sm font-semibold text-slate-800 block">มีปัญหาการหายใจ หรือสำลักเลือด</span>
-                <span class="text-[11px] text-slate-500 font-normal block mt-0.5">สำลักเลือด หายใจติดขัด หรือรู้สึกแน่นคอ</span>
-              </div>
-            </label>
-            <div id="epistaxisWarnAirwaySub" class="hidden pl-7 pt-2.5 mt-2 border-t border-slate-100 space-y-2 text-xs">
-              <label class="flex items-center p-2.5 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-200 cursor-pointer">
-                <input type="checkbox" name="epistaxisWarningSigns" value="warn_choking_swallow" class="text-medical-600 focus:ring-medical-500 mr-2 rounded">
-                <span>สำลักเลือด หรือกลืนลำบาก</span>
-              </label>
-              <label class="flex items-center p-2.5 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-200 cursor-pointer">
-                <input type="checkbox" name="epistaxisWarningSigns" value="warn_stridor_airway_tight" class="text-medical-600 focus:ring-medical-500 mr-2 rounded">
-                <span>หายใจติดขัด หายใจมีเสียงหวีด หรือรู้สึกแน่นคอแทบหายใจไม่ออก</span>
-              </label>
-            </div>
-          </div>
-
-          <!-- กลุ่ม 2: อาการหน้ามืด วูบ หรือมีอาการช็อก -->
-          <div class="border border-slate-200 rounded-xl p-3.5 bg-white hover:border-medical-300 transition">
-            <label class="flex items-start cursor-pointer">
-              <input type="checkbox" id="epistaxisWarnShockParent"
-                onchange="toggleEpistaxisGroup('epistaxisWarnShockSub', this.checked)"
-                class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0 mt-0.5">
-              <div class="ml-3">
-                <span class="text-xs sm:text-sm font-semibold text-slate-800 block">หน้ามืด เวียนศีรษะรุนแรง หรือตัวเย็น</span>
-                <span class="text-[11px] text-slate-500 font-normal block mt-0.5">อาการจากการสูญเสียเลือดมากหรือความดันตก</span>
-              </div>
-            </label>
-            <div id="epistaxisWarnShockSub" class="hidden pl-7 pt-2.5 mt-2 border-t border-slate-100 space-y-2 text-xs">
-              <label class="flex items-center p-2.5 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-200 cursor-pointer">
-                <input type="checkbox" name="epistaxisWarningSigns" value="warn_dizziness_presyncope" class="text-medical-600 focus:ring-medical-500 mr-2 rounded">
-                <span>หน้ามืด เวียนศีรษะ วูบ หรือหมดสติไปชั่วขณะ</span>
-              </label>
-              <label class="flex items-center p-2.5 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-200 cursor-pointer">
-                <input type="checkbox" name="epistaxisWarningSigns" value="warn_profuse_sweat_cold_shock" class="text-medical-600 focus:ring-medical-500 mr-2 rounded">
-                <span>เหงื่อแตกท่วมตัว ผิวหนังซีดเย็น หรือใจสั่นรัวเร็วผิดปกติ</span>
-              </label>
-            </div>
-          </div>
-
-          <!-- กลุ่ม 3: กลุ่มอาการเลือดออกผิดปกติที่ตำแหน่งอื่น -->
-          <div class="border border-slate-200 rounded-xl p-3.5 bg-white hover:border-medical-300 transition">
-            <label class="flex items-start cursor-pointer">
-              <input type="checkbox" id="epistaxisWarnBleedingParent"
-                onchange="toggleEpistaxisGroup('epistaxisWarnBleedingSub', this.checked)"
-                class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0 mt-0.5">
-              <div class="ml-3">
-                <span class="text-xs sm:text-sm font-semibold text-slate-800 block">มีเลือดออกผิดปกติที่ตำแหน่งอื่นร่วมด้วย</span>
-                <span class="text-[11px] text-slate-500 font-normal block mt-0.5">จุดจ้ำเลือด เลือดออกตามไรฟัน ปัสสาวะหรืออุจจาระผิดปกติ</span>
-              </div>
-            </label>
-            <div id="epistaxisWarnBleedingSub" class="hidden pl-7 pt-2.5 mt-2 border-t border-slate-100 space-y-2 text-xs">
-              <label class="flex items-center p-2.5 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-200 cursor-pointer">
-                <input type="checkbox" name="epistaxisWarningSigns" value="warn_petechiae_purpura" class="text-medical-600 focus:ring-medical-500 mr-2 rounded">
-                <span>มีจุดเลือดออกสีแดงเล็กๆ หรือรอยช้ำจ้ำเลือดตามแขนขาและลำตัว</span>
-              </label>
-              <label class="flex items-center p-2.5 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-200 cursor-pointer">
-                <input type="checkbox" name="epistaxisWarningSigns" value="warn_mucosal_or_melena" class="text-medical-600 focus:ring-medical-500 mr-2 rounded">
-                <span>มีเลือดออกตามไรฟัน ปัสสาวะเป็นเลือด หรือถ่ายอุจจาระเป็นสีดำสนิท</span>
-              </label>
-            </div>
-          </div>
-
-          <!-- กลุ่ม 4: อาการผิดปกติเรื้อรังบริเวณใบหน้า คอ หรือการได้ยิน -->
-          <div class="border border-slate-200 rounded-xl p-3.5 bg-white hover:border-medical-300 transition">
-            <label class="flex items-start cursor-pointer">
-              <input type="checkbox" id="epistaxisWarnHeadNeckParent"
-                onchange="toggleEpistaxisGroup('epistaxisWarnHeadNeckSub', this.checked)"
-                class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0 mt-0.5">
-              <div class="ml-3">
-                <span class="text-xs sm:text-sm font-semibold text-slate-800 block">มีก้อนที่คอ หรืออาการผิดปกติเรื้อรังที่ใบหน้าและหู</span>
-                <span class="text-[11px] text-slate-500 font-normal block mt-0.5">คลำได้ก้อน คัดจมูกข้างเดียวเรื้อรัง หรือหูอื้อข้างเดียว</span>
-              </div>
-            </label>
-            <div id="epistaxisWarnHeadNeckSub" class="hidden pl-7 pt-2.5 mt-2 border-t border-slate-100 space-y-2 text-xs">
-              <label class="flex items-center p-2.5 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-200 cursor-pointer">
-                <input type="checkbox" name="epistaxisWarningSigns" value="warn_cervical_lymph_node" class="text-medical-600 focus:ring-medical-500 mr-2 rounded">
-                <span>คลำได้ก้อนบวมแข็งที่ลำคอ หรือบริเวณข้างกราม</span>
-              </label>
-              <label class="flex items-center p-2.5 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-200 cursor-pointer">
-                <input type="checkbox" name="epistaxisWarningSigns" value="warn_unilateral_obstruction" class="text-medical-600 focus:ring-medical-500 mr-2 rounded">
-                <span>คัดจมูกข้างเดียวเรื้อรัง หรือมีน้ำมูกปนเลือดกลิ่นเหม็น</span>
-              </label>
-              <label class="flex items-center p-2.5 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-200 cursor-pointer">
-                <input type="checkbox" name="epistaxisWarningSigns" value="warn_unilateral_tinnitus" class="text-medical-600 focus:ring-medical-500 mr-2 rounded">
-                <span>มีอาการหูอื้อ หรือการได้ยินลดลงข้างเดียวกับที่มีเลือดออก</span>
-              </label>
-            </div>
-          </div>
+        <div>
+          ${renderEpistaxisSysHeader({
+            label: 'อาการผิดปกติร่วม (เลือกได้หลายข้อ)',
+            icon: 'alert-triangle',
+            colorClass: 'bg-amber-100 text-amber-700',
+            toggleId: 'epistaxis_warn_none',
+            toggleLabel: 'ไม่มีอาการในหมวดนี้',
+            toggleOnchange: `handleEpistaxisGroupNoneToggle('warn', this)`
+          })}
+          ${renderEpistaxisGrid('grid-cols-1 sm:grid-cols-2', [
+            { id: 'epistaxisWarnAirwayParent', title: ['สำลัก /', 'หายใจลำบาก'], onchange: `toggleEpistaxisGroup('epistaxisWarnAirwaySub', this.checked)` },
+            { id: 'epistaxisWarnShockParent', title: ['หน้ามืด วูบ /', 'ใจสั่นเหงื่อแตก'], onchange: `toggleEpistaxisGroup('epistaxisWarnShockSub', this.checked)` },
+            { id: 'epistaxisWarnBleedingParent', title: ['เลือดออกที่อื่น /', 'จ้ำเลือดตามตัว'], onchange: `toggleEpistaxisGroup('epistaxisWarnBleedingSub', this.checked)` },
+            { id: 'epistaxisWarnHeadNeckParent', title: ['คัดจมูก / หูอื้อ /', 'ก้อนที่คอ'], onchange: `toggleEpistaxisGroup('epistaxisWarnHeadNeckSub', this.checked)` },
+            { name: 'epistaxisAcuteCranial', value: 'severe_headache', title: ['ปวดศีรษะรุนแรง /', 'ตามัว / แน่นหน้าอก'], onchange: `handleEpistaxisGroupItemChange('epistaxis_warn_none', this)`, colSpan2: true }
+          ])}
+          ${EPISTAXIS_WARN_SUBS_HTML}
         </div>
       </div>
 
-      <!-- CARD 4: ปัจจัยกระตุ้นและประวัติการใช้ยา -->
+      <!-- CARD 4: ประวัติการใช้ยาและโรคประจำตัวที่ส่งผลต่อการแข็งตัวของเลือด -->
       <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
         <div class="flex items-center space-x-3 mb-4 pb-3 border-b border-slate-100">
           <div class="bg-medical-100 text-medical-700 p-2 rounded-xl">
             <i data-lucide="pill" class="w-5 h-5"></i>
           </div>
-          <div>
-            <h2 class="text-base font-bold text-slate-900">4. ปัจจัยกระตุ้นและประวัติการใช้ยา (Triggers & Medications)</h2>
-            <p class="text-xs text-slate-500">ปัจจัยกระตุ้นเฉพาะที่ การใช้ยาต้านการแข็งตัวของเลือด และโรคประจำตัวร่วม</p>
-          </div>
+          <h2 class="text-base font-bold text-slate-900">4. ประวัติการใช้ยาและโรคประจำตัวที่ส่งผลต่อการแข็งตัวของเลือด</h2>
         </div>
 
         <div class="space-y-4">
-          <!-- 4.1 ปัจจัยกระตุ้นเฉพาะที่ -->
           <div>
-            <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
-              4.1 ปัจจัยกระตุ้นเฉพาะที่
-            </label>
-            <div class="space-y-2">
-              <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white cursor-pointer hover:border-medical-300 transition">
-                <input type="checkbox" name="epistaxisTriggers" value="trig_nose_picking" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
-                <span class="ml-2.5 text-xs sm:text-sm font-medium text-slate-800">ล้วง แคะ แกะ เกา หรือสั่งน้ำมูกแรงๆ ในโพรงจมูก</span>
-              </label>
-              <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white cursor-pointer hover:border-medical-300 transition">
-                <input type="checkbox" name="epistaxisTriggers" value="trig_nasal_spray_dry_air" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
-                <span class="ml-2.5 text-xs sm:text-sm font-medium text-slate-800">เพิ่งใช้ยาพ่นจมูก หรือสัมผัสอากาศแห้ง/เย็นจัด</span>
-              </label>
-              <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white cursor-pointer hover:border-medical-300 transition">
-                <input type="checkbox" name="epistaxisTriggers" value="trig_spontaneous" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
-                <span class="ml-2.5 text-xs sm:text-sm font-medium text-slate-800">ไม่มีปัจจัยกระตุ้นชัดเจน (อยู่ดีๆ เลือดก็ไหลออกมาเอง)</span>
-              </label>
-            </div>
+            ${renderEpistaxisSysHeader({
+              label: '4.1 ยาประจำตัวที่มีผลต่อการแข็งตัวของเลือด (เลือกได้หลายข้อ)',
+              icon: 'pill',
+              colorClass: 'bg-indigo-100 text-indigo-700',
+              toggleId: 'epistaxis_meds_none',
+              toggleName: 'epistaxisMeds',
+              toggleValue: 'none',
+              toggleLabel: 'ไม่มีประวัติในหมวดนี้',
+              toggleOnchange: `handleEpistaxisMedChange(this)`
+            })}
+            ${renderEpistaxisGrid('grid-cols-1 sm:grid-cols-2', [
+              { name: 'epistaxisMeds', value: 'anticoagulant_warfarin', title: ['ยาละลายลิ่มเลือด'], desc: 'เช่น Warfarin, Eliquis, Xarelto, Pradaxa', onchange: `handleEpistaxisMedChange(this)` },
+              { name: 'epistaxisMeds', value: 'antiplatelet_aspirin', title: ['ยาต้านเกล็ดเลือด'], desc: 'เช่น Aspirin, Clopidogrel, Plavix', onchange: `handleEpistaxisMedChange(this)` },
+              { name: 'epistaxisMeds', value: 'meds_unknown', title: ['มียาโรคหัวใจ /', 'หลอดเลือด', 'ไม่ทราบชื่อยา'], onchange: `handleEpistaxisMedChange(this)`, colSpan2: true }
+            ])}
           </div>
 
-          <!-- 4.2 การใช้ยาที่มีผลต่อการแข็งตัวของเลือด -->
-          <div>
-            <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
-              4.2 การใช้ยาที่มีผลต่อการแข็งตัวของเลือด
-            </label>
-            <div class="space-y-2">
-              <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white cursor-pointer hover:border-medical-300 transition">
-                <input type="checkbox" name="epistaxisMeds" value="anticoagulant_warfarin"
-                  onchange="handleEpistaxisMedChange(this)"
-                  class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
-                <span class="ml-2.5 text-xs sm:text-sm font-medium text-slate-800">ยาต้านการแข็งตัวของเลือด (เช่น Warfarin, Eliquis, Xarelto, Pradaxa)</span>
-              </label>
-              <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white cursor-pointer hover:border-medical-300 transition">
-                <input type="checkbox" name="epistaxisMeds" value="antiplatelet_aspirin"
-                  onchange="handleEpistaxisMedChange(this)"
-                  class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
-                <span class="ml-2.5 text-xs sm:text-sm font-medium text-slate-800">ยาต้านเกล็ดเลือด (เช่น Aspirin, Clopidogrel / Plavix)</span>
-              </label>
-              <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white cursor-pointer hover:border-medical-300 transition">
-                <input type="checkbox" name="epistaxisMeds" value="meds_unknown"
-                  onchange="handleEpistaxisMedChange(this)"
-                  class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
-                <span class="ml-2.5 text-xs sm:text-sm font-medium text-slate-800">มียาประจำตัว แต่ไม่แน่ใจ / ไม่ทราบชื่อยาที่ใช้</span>
-              </label>
-              <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white cursor-pointer hover:border-medical-300 transition">
-                <input type="checkbox" name="epistaxisMeds" value="none"
-                  onchange="handleEpistaxisMedChange(this)"
-                  class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
-                <span class="ml-2.5 text-xs sm:text-sm font-medium text-slate-800">ไม่ได้รับประทานยากลุ่มนี้</span>
-              </label>
-            </div>
-          </div>
-
-          <!-- 4.3 โรคประจำตัวที่เกี่ยวข้อง -->
-          <div>
-            <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
-              4.3 โรคประจำตัวที่เกี่ยวข้อง
-            </label>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-              <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white cursor-pointer hover:border-medical-300 transition">
-                <input type="checkbox" name="epistaxisUnderlying" value="htn" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
-                <span class="ml-2.5 text-xs sm:text-sm font-medium text-slate-800">โรคความดันโลหิตสูง</span>
-              </label>
-              <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white cursor-pointer hover:border-medical-300 transition">
-                <input type="checkbox" name="epistaxisUnderlying" value="cirrhosis" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
-                <span class="ml-2.5 text-xs sm:text-sm font-medium text-slate-800">โรคตับแข็ง หรือภาวะตับวายเรื้อรัง</span>
-              </label>
-              <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white cursor-pointer hover:border-medical-300 transition">
-                <input type="checkbox" name="epistaxisUnderlying" value="esrd" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
-                <span class="ml-2.5 text-xs sm:text-sm font-medium text-slate-800">โรคไตเรื้อรัง หรือกำลังฟอกไต</span>
-              </label>
-              <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 bg-white cursor-pointer hover:border-medical-300 transition">
-                <input type="checkbox" name="epistaxisUnderlying" value="coagulopathy" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
-                <span class="ml-2.5 text-xs sm:text-sm font-medium text-slate-800">โรคเลือดผิดปกติ หรือเกล็ดเลือดต่ำ</span>
-              </label>
-            </div>
+          <div class="pt-4 border-t border-slate-100">
+            ${renderEpistaxisSysHeader({
+              label: '4.2 โรคประจำตัวที่เกี่ยวข้องกับภาวะเลือดกำเดาไหล (เลือกได้หลายข้อ)',
+              icon: 'heart-pulse',
+              colorClass: 'bg-rose-100 text-rose-700',
+              toggleId: 'epistaxis_ud_none',
+              toggleLabel: 'ไม่มีประวัติในหมวดนี้',
+              toggleOnchange: `handleEpistaxisGroupNoneToggle('ud', this)`
+            })}
+            ${renderEpistaxisGrid('grid-cols-1 sm:grid-cols-2', [
+              { name: 'epistaxisUnderlying', value: 'htn', title: ['โรคความดัน', 'โลหิตสูง'], onchange: `handleEpistaxisGroupItemChange('epistaxis_ud_none', this)` },
+              { name: 'epistaxisUnderlying', value: 'cirrhosis', title: ['โรคตับแข็ง /', 'ตับวายเรื้อรัง'], onchange: `handleEpistaxisGroupItemChange('epistaxis_ud_none', this)` },
+              { name: 'epistaxisUnderlying', value: 'esrd', title: ['โรคไตเรื้อรัง /', 'กำลังฟอกไต'], onchange: `handleEpistaxisGroupItemChange('epistaxis_ud_none', this)` },
+              { name: 'epistaxisUnderlying', value: 'coagulopathy', title: ['โรคเลือดผิดปกติ /', 'เกล็ดเลือดต่ำ'], onchange: `handleEpistaxisGroupItemChange('epistaxis_ud_none', this)` }
+            ])}
           </div>
         </div>
       </div>
@@ -982,15 +968,11 @@ const epistaxisModule = {
       <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
         <div class="flex items-center space-x-3 mb-3 pb-2 border-b border-slate-100">
           <div class="bg-slate-100 text-slate-600 p-2 rounded-xl"><i data-lucide="message-square-plus" class="w-5 h-5"></i></div>
-          <div>
-            <h2 class="text-base font-bold text-slate-800">อาการอื่นๆ ที่ต้องการแจ้งเพิ่มเติม</h2>
-            <p class="text-xs text-slate-500">ระบุอาการอื่นๆ ที่ท่านมีหรือต้องการบอกแพทย์เพิ่มเติม (ถ้ามี)</p>
-          </div>
+          <h2 class="text-base font-bold text-slate-800">อาการอื่นๆ ที่ต้องการแจ้งเพิ่มเติม</h2>
         </div>
         <textarea id="epistaxis_other_free" rows="2" placeholder="พิมพ์ระบุอาการอื่นๆ ที่ท่านมีหรือต้องการบอกแพทย์เพิ่มเติม (ถ้ามี)..."
           class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-medical-500 focus:bg-white"></textarea>
       </div>
-
     </div>
   `,
 
@@ -999,16 +981,64 @@ const epistaxisModule = {
     if (typeof lucide !== 'undefined') lucide.createIcons();
   },
 
-  collectIntake: function(ctx = {}) {
-    const durVal = parseInt(document.getElementById('epistaxisDurationVal')?.value, 10);
-    const durUnit = document.getElementById('epistaxisDurationUnit')?.value || 'minutes';
+  resetForm: function() {
+    this.inputIdsToClear.forEach(id => {
+      const el = getEpistaxisEl(id);
+      if (el) el.value = '';
+    });
+    const durUnit = getEpistaxisEl('epistaxisDurationUnit');
+    if (durUnit) durUnit.value = 'minutes';
+
+    [
+      'epistaxisSide',
+      'epistaxisActiveStatus',
+      'epistaxisRecurrence',
+      'epistaxisVolume',
+      'epistaxisDirection',
+      'epistaxisAcuteCranial',
+      'epistaxisTraumaSigns',
+      'epistaxisWarningSigns',
+      'epistaxisTriggers',
+      'epistaxisMeds',
+      'epistaxisUnderlying'
+    ].forEach(name => {
+      queryEpistaxisAll(`input[name="${name}"]`).forEach(el => { el.checked = false; });
+    });
+
+    [
+      'epistaxisTraumaParent',
+      'epistaxisWarnAirwayParent',
+      'epistaxisWarnShockParent',
+      'epistaxisWarnBleedingParent',
+      'epistaxisWarnHeadNeckParent',
+      'epistaxis_dir_none',
+      'epistaxis_warn_none',
+      'epistaxis_trig_none',
+      'epistaxis_meds_none',
+      'epistaxis_ud_none'
+    ].forEach(id => {
+      const el = getEpistaxisEl(id);
+      if (el) el.checked = false;
+    });
+
+    this.branchIds.forEach(subId => toggleEpistaxisGroup(subId, false));
+  },
+
+  onSelectForm: function() {},
+  onActivate: function() {},
+  onTitleChange: function() {},
+
+  collectIntake: function(ctx) {
+    ctx = ctx || {};
+    const durVal = parseInt(getEpistaxisEl('epistaxisDurationVal')?.value, 10);
+    const durUnit = getEpistaxisEl('epistaxisDurationUnit')?.value || 'minutes';
 
     const getRadio = (name) => {
-      const el = document.querySelector(`input[name="${name}"]:checked`);
+      const el = queryEpistaxisOne(`input[name="${name}"]:checked`);
       return el ? el.value : null;
     };
     const getChecks = (name) => {
-      return Array.from(document.querySelectorAll(`input[name="${name}"]:checked`)).map(el => el.value);
+      return queryEpistaxisAll(`input[name="${name}"]:checked`).map(el => el.value);
     };
 
     const side = getRadio('epistaxisSide');
@@ -1018,32 +1048,42 @@ const epistaxisModule = {
 
     const direction = getChecks('epistaxisDirection');
     const acuteCranial = getChecks('epistaxisAcuteCranial');
-
-    const traumaChecked = document.getElementById('epistaxisTraumaParent')?.checked || false;
-    const traumaDetails = document.getElementById('epistaxisTraumaDetails')?.value?.trim() || '';
-    const traumaSigns = getChecks('epistaxisTraumaSigns');
+    const traumaChecked = getEpistaxisEl('epistaxisTraumaParent')?.checked || false;
+    const traumaDetails = traumaChecked ? (getEpistaxisEl('epistaxisTraumaDetails')?.value?.trim() || '') : '';
+    const traumaSigns = traumaChecked ? getChecks('epistaxisTraumaSigns') : [];
 
     const warningSigns = getChecks('epistaxisWarningSigns');
+    const epistaxisWarnParents = {
+      airway: Boolean(getEpistaxisEl('epistaxisWarnAirwayParent')?.checked),
+      shock: Boolean(getEpistaxisEl('epistaxisWarnShockParent')?.checked),
+      bleeding: Boolean(getEpistaxisEl('epistaxisWarnBleedingParent')?.checked),
+      headNeck: Boolean(getEpistaxisEl('epistaxisWarnHeadNeckParent')?.checked)
+    };
+    const anyWarnParent = Object.values(epistaxisWarnParents).some(Boolean);
     const triggers = getChecks('epistaxisTriggers');
     const meds = getChecks('epistaxisMeds');
     const underlying = getChecks('epistaxisUnderlying');
-    const otherSymptomsFree = document.getElementById('epistaxis_other_free')?.value?.trim() || ctx.otherSymptomsFree || '';
+    const otherSymptomsFree = getEpistaxisEl('epistaxis_other_free')?.value?.trim() || ctx.otherSymptomsFree || '';
+
+    const epistaxisDirNone = (getEpistaxisEl('epistaxis_dir_none')?.checked || false) && direction.length === 0;
+    const epistaxisWarnNone = (getEpistaxisEl('epistaxis_warn_none')?.checked || false) && warningSigns.length === 0 && acuteCranial.length === 0 && !anyWarnParent;
+    const epistaxisUdNone = (getEpistaxisEl('epistaxis_ud_none')?.checked || false) && underlying.length === 0;
 
     const rec = {
-      id: ctx.recordId || ctx.id,
-      queue_number: ctx.queueNumber || ctx.queue_number,
-      hn: ctx.randomHn || ctx.hn,
-      name: ctx.patientName || ctx.name,
-      age: ctx.patientAge !== undefined ? ctx.patientAge : ctx.age,
-      gender: ctx.gender,
+      id: ctx.recordId || ctx.id || `case-${Date.now()}`,
+      queue_number: ctx.queueNumber || ctx.queue_number || 'ER-NEW',
+      hn: ctx.randomHn || ctx.hn || '-',
+      name: ctx.patientName || ctx.name || 'ไม่ระบุชื่อ',
+      age: ctx.patientAge !== undefined ? ctx.patientAge : (ctx.age !== undefined ? ctx.age : 'ไม่ได้ระบุ'),
+      gender: ctx.gender || 'ไม่ระบุ',
       chief_complaint: 'epistaxis',
       chief_complaint_title: 'เลือดกำเดาไหล',
       timestamp: new Date().toISOString(),
       status: ctx.recordStatus || ctx.status || 'waiting',
-      durationVal: !isNaN(durVal) ? durVal : null,
+      durationVal: (!isNaN(durVal) && durVal > 0) ? durVal : null,
       durationUnit: durUnit,
       hospRecordStatus: ctx.hospRecordStatus || 'unspecified',
-      underlying: ctx.underlying || [],
+      underlying: Array.isArray(ctx.underlying) ? ctx.underlying : [],
       drugAllergy: ctx.drugAllergy || 'ไม่ได้ระบุ',
       currentMeds: ctx.currentMeds || 'ไม่ได้ระบุ',
       otherSymptomsFree,
@@ -1059,38 +1099,45 @@ const epistaxisModule = {
       epistaxisTraumaDetails: traumaDetails,
       epistaxisTraumaSigns: traumaSigns,
       epistaxisWarningSigns: warningSigns,
+      epistaxisWarnParents,
       epistaxisTriggers: triggers,
       epistaxisMeds: meds,
-      epistaxisUnderlying: underlying
+      epistaxisUnderlying: underlying,
+      epistaxisDirNone,
+      epistaxisWarnNone,
+      epistaxisUdNone
     };
 
     updateEpistaxisOutputs(rec);
     return rec;
   },
 
-  collectFormData: function(ctx = {}) {
+  collectFormData: function(ctx) {
     return this.collectIntake(ctx);
   },
 
   hydrateForm: function(data = {}) {
+    if (!data) return;
+    this.resetForm();
+
     if (data.durationVal) {
-      const valEl = document.getElementById('epistaxisDurationVal');
+      const valEl = getEpistaxisEl('epistaxisDurationVal');
       if (valEl) valEl.value = data.durationVal;
     }
     if (data.durationUnit) {
-      const unitEl = document.getElementById('epistaxisDurationUnit');
+      const unitEl = getEpistaxisEl('epistaxisDurationUnit');
       if (unitEl) unitEl.value = data.durationUnit;
     }
 
     const setRadio = (name, val) => {
       if (!val) return;
-      const el = document.querySelector(`input[name="${name}"][value="${val}"]`);
+      const el = queryEpistaxisOne(`input[name="${name}"][value="${val}"]`);
       if (el) el.checked = true;
     };
     const setChecks = (name, arr) => {
       if (!Array.isArray(arr)) return;
       arr.forEach(val => {
-        const el = document.querySelector(`input[name="${name}"][value="${val}"]`);
+        const el = queryEpistaxisOne(`input[name="${name}"][value="${val}"]`);
         if (el) el.checked = true;
       });
     };
@@ -1101,52 +1148,65 @@ const epistaxisModule = {
     setRadio('epistaxisVolume', data.epistaxisVolume);
 
     setChecks('epistaxisDirection', data.epistaxisDirection);
+    if (data.epistaxisDirNone && (!Array.isArray(data.epistaxisDirection) || data.epistaxisDirection.length === 0)) {
+      const dirNoneEl = getEpistaxisEl('epistaxis_dir_none');
+      if (dirNoneEl) dirNoneEl.checked = true;
+    }
+
     setChecks('epistaxisAcuteCranial', data.epistaxisAcuteCranial);
 
     if (data.epistaxisTrauma) {
-      const traumaParent = document.getElementById('epistaxisTraumaParent');
+      const traumaParent = getEpistaxisEl('epistaxisTraumaParent');
       if (traumaParent) {
         traumaParent.checked = true;
         toggleEpistaxisGroup('epistaxisTraumaSub', true);
       }
       if (data.epistaxisTraumaDetails) {
-        const dEl = document.getElementById('epistaxisTraumaDetails');
+        const dEl = getEpistaxisEl('epistaxisTraumaDetails');
         if (dEl) dEl.value = data.epistaxisTraumaDetails;
       }
       setChecks('epistaxisTraumaSigns', data.epistaxisTraumaSigns);
     }
 
-    if (Array.isArray(data.epistaxisWarningSigns) && data.epistaxisWarningSigns.length > 0) {
-      const ws = data.epistaxisWarningSigns;
-      if (ws.some(k => k === 'warn_choking_swallow' || k === 'warn_stridor_airway_tight')) {
-        const p = document.getElementById('epistaxisWarnAirwayParent');
+    const ws = Array.isArray(data.epistaxisWarningSigns) ? data.epistaxisWarningSigns : [];
+    const wp = data.epistaxisWarnParents || {};
+    if (ws.length > 0 || Object.values(wp).some(Boolean)) {
+      if (wp.airway || ws.some(k => k === 'warn_choking_swallow' || k === 'warn_stridor_airway_tight')) {
+        const p = getEpistaxisEl('epistaxisWarnAirwayParent');
         if (p) { p.checked = true; toggleEpistaxisGroup('epistaxisWarnAirwaySub', true); }
       }
-      if (ws.some(k => k === 'warn_dizziness_presyncope' || k === 'warn_profuse_sweat_cold_shock')) {
-        const p = document.getElementById('epistaxisWarnShockParent');
+      if (wp.shock || ws.some(k => k === 'warn_dizziness_presyncope' || k === 'warn_profuse_sweat_cold_shock')) {
+        const p = getEpistaxisEl('epistaxisWarnShockParent');
         if (p) { p.checked = true; toggleEpistaxisGroup('epistaxisWarnShockSub', true); }
       }
-      if (ws.some(k => k === 'warn_petechiae_purpura' || k === 'warn_mucosal_or_melena')) {
-        const p = document.getElementById('epistaxisWarnBleedingParent');
+      if (wp.bleeding || ws.some(k => k === 'warn_petechiae_purpura' || k === 'warn_mucosal_or_melena' || k === 'warn_hematuria' || k === 'warn_melena')) {
+        const p = getEpistaxisEl('epistaxisWarnBleedingParent');
         if (p) { p.checked = true; toggleEpistaxisGroup('epistaxisWarnBleedingSub', true); }
       }
-      if (ws.some(k => k === 'warn_cervical_lymph_node' || k === 'warn_unilateral_obstruction' || k === 'warn_unilateral_tinnitus')) {
-        const p = document.getElementById('epistaxisWarnHeadNeckParent');
+      if (wp.headNeck || ws.some(k => k === 'warn_cervical_lymph_node' || k === 'warn_unilateral_obstruction' || k === 'warn_unilateral_tinnitus')) {
+        const p = getEpistaxisEl('epistaxisWarnHeadNeckParent');
         if (p) { p.checked = true; toggleEpistaxisGroup('epistaxisWarnHeadNeckSub', true); }
       }
-      setChecks('epistaxisWarningSigns', data.epistaxisWarningSigns);
+      setChecks('epistaxisWarningSigns', ws);
+    } else if (data.epistaxisWarnNone && (!Array.isArray(data.epistaxisAcuteCranial) || data.epistaxisAcuteCranial.length === 0)) {
+      const warnNoneEl = getEpistaxisEl('epistaxis_warn_none');
+      if (warnNoneEl) warnNoneEl.checked = true;
     }
 
     setChecks('epistaxisTriggers', data.epistaxisTriggers);
     setChecks('epistaxisMeds', data.epistaxisMeds);
     setChecks('epistaxisUnderlying', data.epistaxisUnderlying);
-    const otherFreeEl = document.getElementById('epistaxis_other_free');
+    if (data.epistaxisUdNone && (!Array.isArray(data.epistaxisUnderlying) || data.epistaxisUnderlying.length === 0)) {
+      const udNoneEl = getEpistaxisEl('epistaxis_ud_none');
+      if (udNoneEl) udNoneEl.checked = true;
+    }
+
+    const otherFreeEl = getEpistaxisEl('epistaxis_other_free');
     if (otherFreeEl) otherFreeEl.value = data.otherSymptomsFree || '';
   },
 
   isRedFlag: function(patient) {
-    const rfs = evaluateEpistaxisRedFlags(patient);
-    return rfs.length > 0;
+    return evaluateEpistaxisRedFlags(patient).length > 0;
   },
 
   evaluateRedFlags: evaluateEpistaxisRedFlags,
@@ -1154,7 +1214,6 @@ const epistaxisModule = {
   renderRapidHpi: renderEpistaxisRapidHpi,
   renderNarrative: renderEpistaxisNarrative,
   renderDoctorHpi: renderEpistaxisDoctorHpi,
-  generateCds: generateEpistaxisCds,
 
   // --- Seed Patients Registry ---
   seedPatients: [
@@ -1173,8 +1232,8 @@ const epistaxisModule = {
       durationVal: 45,
       durationUnit: 'minutes',
       hospRecordStatus: 'complete',
-      underlying: ['ความดันสูง (HT)', 'หัวใจเต้นผิดจังหวะ (AF)'],
-      drugAllergy: 'ปฏิเสธประวัติแพ้ยาและแพ้อาหาร',
+      underlying: ['ความดันโลหิตสูง', 'หัวใจเต้นผิดจังหวะ (AF)'],
+      drugAllergy: 'ปฏิเสธ',
       currentMeds: 'Warfarin 3 mg 1 tab po hs, Amlodipine 5 mg 1 tab po od',
       otherSymptomsFree: 'เลือดกำเดาไหลทะลักสองข้าง เลือดไหลรินลงคอตลอดเวลา บีบจมูกแน่น 20 นาทีแล้วไม่หยุด กลืนเลือดจนอาเจียนออกมาเป็นลิ่มเลือด ปวดศีรษะตื้อๆ',
       doctor_notes: { additional_hpi: '', physical_exam: '', preliminary_dx: '', plan: '' },
@@ -1212,7 +1271,7 @@ const epistaxisModule = {
       durationUnit: 'hours',
       hospRecordStatus: 'complete',
       underlying: [],
-      drugAllergy: 'ปฏิเสธประวัติแพ้ยาและแพ้อาหาร',
+      drugAllergy: 'ปฏิเสธ',
       currentMeds: 'ไม่มี',
       otherSymptomsFree: 'อุบัติเหตุรถจักรยานยนต์ล้ม หน้ากระแทกแฮนด์รถอย่างแรง เลือดกำเดาไหลสองข้าง มีน้ำใสปนเลือดไหลตลอดเวลา ดั้งจมูกเบี้ยวผิดรูป ช้ำรอบตาสองข้าง',
       doctor_notes: { additional_hpi: '', physical_exam: '', preliminary_dx: '', plan: '' },
@@ -1231,7 +1290,10 @@ const epistaxisModule = {
       epistaxisWarningSigns: [],
       epistaxisTriggers: [],
       epistaxisMeds: ['none'],
-      epistaxisUnderlying: []
+      epistaxisUnderlying: [],
+      epistaxisDirNone: true,
+      epistaxisWarnNone: true,
+      epistaxisUdNone: true
     },
 
     // Case 3: Recurrent Unilateral Epistaxis / Suspected Head & Neck Mass (NPC) (ESI 3)
@@ -1250,7 +1312,7 @@ const epistaxisModule = {
       durationUnit: 'weeks',
       hospRecordStatus: 'complete',
       underlying: [],
-      drugAllergy: 'ปฏิเสธประวัติแพ้ยาและแพ้อาหาร',
+      drugAllergy: 'ปฏิเสธ',
       currentMeds: 'ไม่มี',
       otherSymptomsFree: 'เลือดกำเดาไหลข้างขวาเป็นๆ หายๆ มา 3 สัปดาห์ คัดจมูกข้างขวาข้างเดียวเรื้อรัง หูอื้อข้างขวา คลำได้ก้อนบวมที่คอด้านขวา',
       doctor_notes: { additional_hpi: '', physical_exam: '', preliminary_dx: '', plan: '' },
@@ -1269,7 +1331,9 @@ const epistaxisModule = {
       epistaxisWarningSigns: ['warn_cervical_lymph_node', 'warn_unilateral_obstruction', 'warn_unilateral_tinnitus'],
       epistaxisTriggers: ['trig_spontaneous'],
       epistaxisMeds: ['none'],
-      epistaxisUnderlying: []
+      epistaxisUnderlying: [],
+      epistaxisDirNone: true,
+      epistaxisUdNone: true
     },
 
     // Case 4: Simple Anterior Epistaxis from Digital Trauma (ESI 4)
@@ -1288,7 +1352,7 @@ const epistaxisModule = {
       durationUnit: 'minutes',
       hospRecordStatus: 'self',
       underlying: [],
-      drugAllergy: 'ปฏิเสธประวัติแพ้ยาและแพ้อาหาร',
+      drugAllergy: 'ปฏิเสธ',
       currentMeds: 'ไม่มี',
       otherSymptomsFree: 'เลือดกำเดาไหลข้างซ้ายหลังแคะขี้มูกในห้องแอร์ กดบีบปีกจมูก 10 นาทีแล้วเลือดหยุดสนิท ไม่มีอาการผิดปกติอื่น',
       doctor_notes: { additional_hpi: '', physical_exam: '', preliminary_dx: '', plan: '' },
@@ -1307,7 +1371,10 @@ const epistaxisModule = {
       epistaxisWarningSigns: [],
       epistaxisTriggers: ['trig_nose_picking'],
       epistaxisMeds: ['none'],
-      epistaxisUnderlying: ['nose_picking_digital_trauma']
+      epistaxisUnderlying: [],
+      epistaxisDirNone: true,
+      epistaxisWarnNone: true,
+      epistaxisUdNone: true
     }
   ]
 };
@@ -1317,6 +1384,14 @@ if (typeof registerCcModule === 'function') {
   registerCcModule(epistaxisModule);
 } else if (typeof window !== 'undefined' && typeof window.registerCcModule === 'function') {
   window.registerCcModule(epistaxisModule);
+}
+
+if (typeof window !== 'undefined') {
+  window.toggleEpistaxisGroup = toggleEpistaxisGroup;
+  window.handleEpistaxisTrigChange = handleEpistaxisTrigChange;
+  window.handleEpistaxisMedChange = handleEpistaxisMedChange;
+  window.handleEpistaxisGroupItemChange = handleEpistaxisGroupItemChange;
+  window.handleEpistaxisGroupNoneToggle = handleEpistaxisGroupNoneToggle;
 }
 
 if (typeof module !== 'undefined' && module.exports) {

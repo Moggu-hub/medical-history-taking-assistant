@@ -42,3 +42,9 @@ CREATE TABLE IF NOT EXISTS user_feedbacks (
 
 CREATE INDEX IF NOT EXISTS idx_user_feedbacks_cc_status
   ON user_feedbacks (cc_id, status, created_at);
+
+CREATE TABLE IF NOT EXISTS app_settings (
+  key TEXT PRIMARY KEY,
+  value_json TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);

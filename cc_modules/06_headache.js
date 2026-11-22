@@ -11,6 +11,11 @@ function toggleHeadacheBranch(id, show) {
   if (el) el.classList.toggle('hidden', !show);
 }
 
+function wrapHeadacheWords(chunks) {
+  if (!Array.isArray(chunks)) return chunks;
+  return chunks.map(c => `<span class="inline-block whitespace-nowrap">${c}</span>`).join(' ');
+}
+
 function renderHeadacheCard(cfg) {
   const {
     kind = 'radio', id = '', name = '', value = '', title,
@@ -27,14 +32,84 @@ function renderHeadacheCard(cfg) {
   const roundCls = kind === 'checkbox' ? 'rounded ' : '';
   const topCls = desc ? 'mt-0.5 ' : '';
   const szCls = compact ? 'h-3.5 w-3.5' : 'h-4 w-4';
+  const titleHtml = Array.isArray(title) ? wrapHeadacheWords(title) : title;
   const bodyHtml = desc
-    ? `<div class="ml-3"><span class="block text-xs sm:text-sm font-semibold text-slate-800">${title}</span><span class="block text-[11px] text-slate-500 font-normal mt-0.5">${desc}</span></div>`
-    : `<span class="ml-3 ${compact ? 'text-xs' : 'text-xs sm:text-sm'} font-semibold text-slate-800">${title}</span>`;
+    ? `<div class="ml-3 leading-snug"><span class="block text-xs sm:text-sm font-semibold text-slate-800">${titleHtml}</span><span class="block text-[11px] text-slate-500 font-normal mt-0.5">${desc}</span></div>`
+    : `<span class="ml-3 ${compact ? 'text-xs' : 'text-xs sm:text-sm'} font-semibold text-slate-800 leading-snug">${titleHtml}</span>`;
   return `<label class="selectable-card ${bgCls}flex ${alignCls} ${padCls} rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition${spanCls}"><input type="${kind}" ${idAttr}${nameAttr}${valAttr}${chgAttr}class="${topCls}${roundCls}text-medical-600 focus:ring-medical-500 ${szCls} flex-shrink-0">${bodyHtml}</label>`;
 }
 
 function renderHeadacheGrid(colsCls, items, shared = {}) {
   return `<div class="grid ${colsCls} gap-2.5">${items.map(it => renderHeadacheCard({ ...shared, ...it })).join('\n')}</div>`;
+}
+
+function renderHeadacheSysHeader({ label, icon, colorClass, toggleId, toggleLabel, toggleOnchange }) {
+  return `<div class="flex flex-wrap items-center justify-between gap-2 mb-2.5">
+    <label class="flex items-center text-xs sm:text-sm font-bold text-slate-800">
+      <span class="${colorClass} p-1.5 rounded-lg mr-2 inline-flex items-center justify-center"><i data-lucide="${icon}" class="w-4 h-4"></i></span>
+      <span>${label}</span>
+    </label>
+    <label class="inline-flex items-center px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 border border-slate-200 text-xs font-medium text-slate-700 cursor-pointer transition select-none flex-shrink-0">
+      <input type="checkbox" id="${toggleId}" onchange="${toggleOnchange}" class="text-medical-600 focus:ring-medical-500 h-3.5 w-3.5 rounded">
+      <span class="ml-1.5 whitespace-nowrap">${toggleLabel}</span>
+    </label>
+  </div>`;
+}
+
+const HEADACHE_NONE_GROUPS = {
+  trig: {
+    noneId: 'headache_trig_none',
+    itemIds: [
+      'headache_trig_valsalva', 'headache_trig_supine_morning', 'headache_trig_upright',
+      'headache_trig_jaw_claudication', 'headache_trig_scalp_tenderness',
+      'headache_trig_light_sound', 'headache_trig_stress_fatigue', 'headache_trig_other_chk'
+    ]
+  },
+  neuro: {
+    noneId: 'headache_neuro_none',
+    itemIds: [
+      'headache_rf_weakness_numb', 'headache_rf_facial_speech', 'headache_rf_ataxia_walk',
+      'headache_rf_seizure_syncope', 'headache_rf_altered_mental', 'headache_rf_stiff_neck', 'headache_rf_fever'
+    ]
+  },
+  ocular: {
+    noneId: 'headache_ocular_none',
+    itemIds: [
+      'headache_rf_acute_glaucoma', 'headache_rf_diplopia_field',
+      'headache_has_visual_aura', 'headache_has_autonomic'
+    ]
+  },
+  vomit: {
+    noneId: 'headache_vomit_none',
+    itemIds: ['headache_has_nausea_vomit']
+  },
+  risk: {
+    noneId: 'headache_risk_none',
+    itemIds: [
+      'headache_risk_new_onset_age50', 'headache_risk_recent_trauma', 'headache_risk_anticoagulants',
+      'headache_risk_cancer', 'headache_risk_immunocompromised', 'headache_risk_co_exposure',
+      'headache_risk_severe_htn', 'headache_risk_med_overuse'
+    ]
+  }
+};
+
+function handleHeadacheGroupItemChange(noneId, el) {
+  if (el && el.checked) {
+    const noneEl = document.getElementById(noneId);
+    if (noneEl) noneEl.checked = false;
+  }
+}
+
+function handleHeadacheGroupNoneToggle(groupKey, el) {
+  if (!el || !el.checked) return;
+  const cfg = HEADACHE_NONE_GROUPS[groupKey];
+  if (!cfg) return;
+  clearHeadacheCheckboxes(cfg.itemIds);
+  if (groupKey === 'trig') {
+    handleHeadacheTrigOtherToggle(false);
+  } else if (groupKey === 'vomit') {
+    handleHeadacheVomitChange();
+  }
 }
 
 function setHeadacheRadioChecked(name, val) {
@@ -169,6 +244,10 @@ function handleHeadacheLocOtherToggle(checked) {
 }
 
 function handleHeadacheTrigOtherToggle(checked) {
+  if (checked) {
+    const noneEl = document.getElementById('headache_trig_none');
+    if (noneEl) noneEl.checked = false;
+  }
   toggleHeadacheBranch('headache_trig_other_wrap', checked);
   if (!checked) {
     const el = document.getElementById('headache_trig_other_text');
@@ -178,6 +257,10 @@ function handleHeadacheTrigOtherToggle(checked) {
 
 function handleHeadacheVomitChange() {
   const hasVomit = document.getElementById('headache_has_nausea_vomit')?.checked || false;
+  if (hasVomit) {
+    const noneEl = document.getElementById('headache_vomit_none');
+    if (noneEl) noneEl.checked = false;
+  }
   toggleHeadacheBranch('headache_vomit_detail_wrap', hasVomit);
   if (!hasVomit) clearHeadacheRadioGroup('headacheVomitStatus');
 }
@@ -194,6 +277,10 @@ function handleHeadachePregnancyChange() {
 
 function syncHeadacheCancerPmh() {
   const hasCancer = document.getElementById('headache_risk_cancer')?.checked || false;
+  if (hasCancer) {
+    const noneEl = document.getElementById('headache_risk_none');
+    if (noneEl) noneEl.checked = false;
+  }
   const udCancer = document.getElementById('ud_cancer');
   if (udCancer && hasCancer && !udCancer.checked) {
     udCancer.checked = true;
@@ -414,16 +501,17 @@ function evaluateHeadacheRedFlags(patient) {
 }
 
 function updateHeadacheOutputs(patient) {
+  if (!patient) return null;
   const durationText = patient.durationVal
     ? `${patient.durationVal} ${HEADACHE_LABELS.units[patient.durationUnit] || 'ชั่วโมง'}`
     : 'ไม่ระบุระยะเวลา';
 
   const painScoreText = (patient.headachePainScore !== null && patient.headachePainScore !== undefined)
     ? `${patient.headachePainScore}/10`
-    : 'ไม่ได้ระบุระดับความปวด';
+    : 'ไม่ได้ระบุ';
 
-  const onsetStr = HEADACHE_LABELS.onset[patient.headacheOnsetMode] || 'ไม่ได้ระบุรูปแบบการเริ่ม';
-  const activityStr = HEADACHE_LABELS.onsetActivity[patient.headacheOnsetActivity] || 'ไม่ได้ระบุกิจกรรมขณะเริ่มปวด';
+  const onsetStr = HEADACHE_LABELS.onset[patient.headacheOnsetMode] || 'ไม่ได้ระบุ';
+  const activityStr = HEADACHE_LABELS.onsetActivity[patient.headacheOnsetActivity] || 'ไม่ได้ระบุ';
 
   const locations = [];
   (patient.headacheLocs || []).forEach(l => {
@@ -442,10 +530,10 @@ function updateHeadacheOutputs(patient) {
   if (patient.headacheLocOther && !locations.some(l => l.includes(patient.headacheLocOther))) {
     locations.push(`ตำแหน่งอื่นๆ (${patient.headacheLocOther})`);
   }
-  const locationsText = locations.length > 0 ? locations.join(', ') : 'ไม่ได้ระบุตำแหน่งชัดเจน';
+  const locationsText = locations.length > 0 ? locations.join(', ') : 'ไม่ได้ระบุ';
 
   const chars = (patient.headacheChars || []).map(c => HEADACHE_LABELS.chars[c] || c);
-  const charsText = chars.length > 0 ? chars.join(', ') : 'ไม่ได้ระบุลักษณะอาการปวด';
+  const charsText = chars.length > 0 ? chars.join(', ') : 'ไม่ได้ระบุ';
 
   const triggers = [];
   if (patient.headache_trig_valsalva) triggers.push('ปวดมากขึ้นเวลาไอ จาม เบ่ง หรือก้มศีรษะ');
@@ -456,71 +544,87 @@ function updateHeadacheOutputs(patient) {
   if (patient.headache_trig_light_sound) triggers.push('ปวดมากขึ้นเมื่อเจอแสงจ้า เสียงดัง หรือกลิ่นฉุน');
   if (patient.headache_trig_stress_fatigue) triggers.push('สัมพันธ์กับการอดนอน ความเครียด หรือใช้สายตานาน');
   if (patient.headache_trig_other) triggers.push(`สิ่งกระตุ้นอื่นๆ (${patient.headache_trig_other})`);
-  const triggersText = triggers.length > 0 ? triggers.join(', ') : 'ไม่ได้ระบุ';
+  const triggersText = triggers.length > 0
+    ? triggers.join(', ')
+    : (patient.headache_trig_none ? 'ไม่มีสิ่งกระตุ้นข้างต้น' : 'ไม่ได้ระบุ');
 
   const positives = [];
   const negatives = [];
   const hasFever = Boolean(patient.headache_rf_fever ?? patient.headache_rf_fever_stiff_neck);
   const hasStiffNeck = Boolean(patient.headache_rf_stiff_neck ?? patient.headache_rf_fever_stiff_neck);
-  const anyHeadacheAssoc = Boolean(
+
+  // Per-group Zero Default Bias Prevention (P-AP14 / C-AP20)
+  const neuroConfirmed = Boolean(
+    patient.headache_neuro_none ||
     patient.headache_rf_weakness_numb || patient.headache_rf_facial_speech || patient.headache_rf_ataxia_walk ||
-    patient.headache_rf_seizure_syncope || patient.headache_rf_altered_mental || hasFever || hasStiffNeck ||
-    patient.headache_rf_acute_glaucoma || patient.headache_rf_diplopia_field || patient.headache_has_visual_aura ||
-    patient.headache_has_autonomic || patient.headache_has_nausea_vomit || patient.headache_risk_new_onset_age50 ||
-    patient.headache_risk_recent_trauma || patient.headache_risk_anticoagulants || patient.headache_risk_cancer ||
+    patient.headache_rf_seizure_syncope || patient.headache_rf_altered_mental || hasFever || hasStiffNeck
+  );
+  const ocularConfirmed = Boolean(
+    patient.headache_ocular_none ||
+    patient.headache_rf_acute_glaucoma || patient.headache_rf_diplopia_field ||
+    patient.headache_has_visual_aura || patient.headache_has_autonomic
+  );
+  const vomitConfirmed = Boolean(patient.headache_vomit_none || patient.headache_has_nausea_vomit);
+  const riskConfirmed = Boolean(
+    patient.headache_risk_none ||
+    patient.headache_risk_new_onset_age50 || patient.headache_risk_recent_trauma ||
+    patient.headache_risk_anticoagulants || patient.headache_risk_cancer ||
     patient.headache_risk_immunocompromised || patient.headache_risk_co_exposure ||
     patient.headache_risk_severe_htn || patient.headache_risk_med_overuse
   );
 
   if (patient.headache_rf_weakness_numb) positives.push('มีอาการแขนขาอ่อนแรงหรือชาครึ่งซีก');
-  else if (anyHeadacheAssoc) negatives.push('ไม่มีแขนขาอ่อนแรงหรือชาครึ่งซีก');
+  else if (neuroConfirmed) negatives.push('ไม่มีแขนขาอ่อนแรงหรือชาครึ่งซีก');
 
   if (patient.headache_rf_facial_speech) positives.push('มีอาการปากเบี้ยวหรือพูดไม่ชัด');
-  else if (anyHeadacheAssoc) negatives.push('ไม่มีปากเบี้ยวหรือพูดไม่ชัด');
+  else if (neuroConfirmed) negatives.push('ไม่มีปากเบี้ยวหรือพูดไม่ชัด');
 
   if (patient.headache_rf_ataxia_walk) positives.push('เดินเซหรือหยิบของไม่ถนัด');
-  else if (anyHeadacheAssoc) negatives.push('ไม่มีอาการเดินเซ สามารถทรงตัวได้ปกติ');
+  else if (neuroConfirmed) negatives.push('ไม่มีอาการเดินเซ สามารถทรงตัวได้ปกติ');
 
   if (patient.headache_rf_seizure_syncope) positives.push('มีอาการชักเกร็งหรือวูบหมดสติร่วมด้วย');
-  else if (anyHeadacheAssoc) negatives.push('ไม่มีอาการชักเกร็งหรือวูบหมดสติ');
+  else if (neuroConfirmed) negatives.push('ไม่มีอาการชักเกร็งหรือวูบหมดสติ');
 
   if (patient.headache_rf_altered_mental) positives.push('ง่วงซึม สับสน หรือพฤติกรรมเปลี่ยนแปลง');
-  else if (anyHeadacheAssoc) negatives.push('รู้สึกตัวดี ไม่ซึมไม่สับสน');
+  else if (neuroConfirmed) negatives.push('รู้สึกตัวดี ไม่ซึมไม่สับสน');
 
   if (hasStiffNeck) positives.push('คอแข็งเกร็ง ก้มไม่ลง');
-  else if (anyHeadacheAssoc) negatives.push('ไม่มีคอแข็งเกร็ง ก้มคอได้ปกติ');
+  else if (neuroConfirmed) negatives.push('ไม่มีคอแข็งเกร็ง ก้มคอได้ปกติ');
 
   if (hasFever) positives.push('มีไข้หรือหนาวสั่นร่วมด้วย');
-  else if (anyHeadacheAssoc) negatives.push('ไม่มีไข้หรือหนาวสั่น');
+  else if (neuroConfirmed) negatives.push('ไม่มีไข้หรือหนาวสั่น');
 
   if (patient.headache_rf_acute_glaucoma) positives.push('ตาแดง ปวดเบ้าตารุนแรง ตามัวลงทันที หรือเห็นรุ้งรอบไฟ');
-  else if (anyHeadacheAssoc) negatives.push('ไม่มีตาแดง ปวดเบ้าตารุนแรง หรือตามัวฉับพลัน');
+  else if (ocularConfirmed) negatives.push('ไม่มีตาแดง ปวดเบ้าตารุนแรง หรือตามัวฉับพลัน');
 
   if (patient.headache_rf_diplopia_field) positives.push('มองเห็นภาพซ้อนหรือลานสายตามืดไปบางส่วน');
-  else if (anyHeadacheAssoc) negatives.push('ไม่มีภาพซ้อนหรือลานสายตาแคบลง');
+  else if (ocularConfirmed) negatives.push('ไม่มีภาพซ้อนหรือลานสายตาแคบลง');
 
-  if (patient.headache_has_visual_aura) positives.push('เห็นแสงวูบวาบหรือเส้นซิกแซกนำมาก่อนปวดศีรษะ (Visual Aura)');
-  else if (anyHeadacheAssoc) negatives.push('ไม่มีอาการแสงวูบวาบนำมาก่อน');
+  if (patient.headache_has_visual_aura) positives.push('เห็นแสงวูบวาบหรือเส้นซิกแซกนำมาก่อนปวดศีรษะ');
+  else if (ocularConfirmed) negatives.push('ไม่มีอาการแสงวูบวาบนำมาก่อน');
 
-  if (patient.headache_has_autonomic) positives.push('มีอาการตาแดง น้ำตาไหล หนังตาตก หรือคัดจมูกข้างเดียวกับที่ปวด (Cranial autonomic)');
-  else if (anyHeadacheAssoc) negatives.push('ไม่มีน้ำตาไหล ตาแดง หรือคัดจมูกข้างเดียวกับที่ปวด');
+  if (patient.headache_has_autonomic) positives.push('มีอาการตาแดง น้ำตาไหล หนังตาตก หรือคัดจมูกข้างเดียวกับที่ปวด');
+  else if (ocularConfirmed) negatives.push('ไม่มีน้ำตาไหล ตาแดง หรือคัดจมูกข้างเดียวกับที่ปวด');
 
   if (patient.headache_has_nausea_vomit) {
     positives.push(HEADACHE_LABELS.vomitStatus[patient.headacheVomitStatus] || 'มีอาการคลื่นไส้หรืออาเจียนร่วมด้วย');
-  } else if (anyHeadacheAssoc) {
+  } else if (vomitConfirmed) {
     negatives.push('ไม่มีคลื่นไส้หรืออาเจียน');
   }
 
   if (patient.headache_risk_new_onset_age50) positives.push('เพิ่งเคยปวดศีรษะรุนแรงลักษณะนี้เป็นครั้งแรกในชีวิต');
   if (patient.headache_risk_recent_trauma) positives.push('มีประวัติศีรษะกระแทก หกล้ม หรืออุบัติเหตุภายใน 3 เดือน');
-  else if (anyHeadacheAssoc) negatives.push('ปฏิเสธประวัติอุบัติเหตุศีรษะใน 3 เดือนที่ผ่านมา');
+  else if (riskConfirmed) negatives.push('ปฏิเสธประวัติอุบัติเหตุศีรษะใน 3 เดือนที่ผ่านมา');
 
   if (patient.headache_risk_anticoagulants) positives.push('รับประทานยาละลายลิ่มเลือดหรือยาต้านเกล็ดเลือดอยู่ประจำ');
   if (patient.headache_risk_cancer) positives.push('มีประวัติโรคมะเร็ง');
   if (patient.headache_risk_immunocompromised) positives.push('มีภาวะภูมิคุ้มกันบกพร่องหรือทานยากดภูมิ');
   if (patient.headache_risk_co_exposure) positives.push('สูดดมควันในที่อับอากาศหรือมีคนใกล้ชิดปวดศีรษะพร้อมกัน');
   if (patient.headache_risk_severe_htn) positives.push('ความดันโลหิตสูงมากผิดปกติก่อนมาโรงพยาบาล');
-  if (patient.headache_risk_med_overuse) positives.push('รับประทานยาแก้ปวดบ่อยเกือบทุกวันติดต่อกันนาน (MOH risk)');
+  if (patient.headache_risk_med_overuse) positives.push('รับประทานยาแก้ปวดบ่อยเกือบทุกวันติดต่อกันนาน');
+  if (patient.headache_risk_none && negatives.length === 0) {
+    negatives.push('ไม่มีประวัติเสี่ยงสำคัญ (อุบัติเหตุ 3 เดือน / ยาละลายลิ่มเลือด / มะเร็ง / กดภูมิ)');
+  }
 
   if (patient.otherSymptomsFree && String(patient.otherSymptomsFree).trim()) {
     positives.push(`ผู้ป่วยแจ้งอาการเพิ่มเติม: "${String(patient.otherSymptomsFree).trim()}"`);
@@ -600,7 +704,7 @@ ${effectiveRfs.length > 0
 การเริ่มมีอาการ: [${onsetStr}] ขณะเกิดเหตุ: [${activityStr}] ตำแหน่งที่ปวด: [${locationsText}] ลักษณะความรู้สึกปวด: [${charsText}] ปัจจัยกระตุ้นและท่าทาง: [${triggersText}]${femaleStr ? ` ประวัติสตรี: [${femaleStr}]` : ''}
 อาการร่วมสำคัญที่พบ: ${positives.join(', ')}
 อาการสำคัญที่ปฏิเสธ: ${patient.pertinentNegatives.join(', ')}
-ประวัติการเจ็บป่วยในอดีต: [${hospLabel}], โรคประจำตัว: ${udList}, ยาประจำตัว: ${medsText}, แพ้ยา: ${allergyText}${effectiveRfs.length > 0 ? `\n[🚩 แจ้งเตือนสัญญาณวิกฤต (Red Flags)]: ${effectiveRfs.map(rf => rf.textTh).join('; ')}` : ''}
+ประวัติการเจ็บป่วยในอดีต: [${hospLabel}], โรคประจำตัว: ${udList}, ยาประจำตัว: ${medsText}, แพ้ยา: ${allergyText}${effectiveRfs.length > 0 ? `\n[แจ้งเตือนความเสี่ยงสูง]: ${effectiveRfs.map(rf => rf.textTh).join('; ')}` : ''}
 
 [บันทึกการตรวจและการประเมินโดยแพทย์]:
 ${docNotes.additional_hpi ? `• ประวัติเพิ่มเติม: ${docNotes.additional_hpi}\n` : ''}${docNotes.physical_exam ? `• การตรวจร่างกาย: ${docNotes.physical_exam}\n` : ''}${docNotes.preliminary_dx ? `• การวินิจฉัย: ${docNotes.preliminary_dx}\n` : ''}${docNotes.plan ? `• แผนการรักษา: ${docNotes.plan}` : ''}`;
@@ -704,9 +808,10 @@ ${docNotes.additional_hpi ? `• ประวัติเพิ่มเติ�
   patient.narrativeHpi = finalNarrative;
   patient.medicalJson = jsonPayload;
 
-  const rapidEl = document.getElementById('rapidTextView');
-  const narrEl = document.getElementById('narrativeTextView');
-  const jsonEl = document.getElementById('jsonViewer');
+  const hasDoc = typeof document !== 'undefined';
+  const rapidEl = hasDoc ? document.getElementById('rapidTextView') : null;
+  const narrEl = hasDoc ? document.getElementById('narrativeTextView') : null;
+  const jsonEl = hasDoc ? document.getElementById('jsonViewer') : null;
   if (rapidEl) rapidEl.value = finalRapid;
   if (narrEl) narrEl.value = finalNarrative;
   if (jsonEl) jsonEl.textContent = JSON.stringify(jsonPayload, null, 2);
@@ -714,15 +819,12 @@ ${docNotes.additional_hpi ? `• ประวัติเพิ่มเติ�
   return { rapid: finalRapid, narrative: finalNarrative, json: jsonPayload };
 }
 
-// --- Build Form HTML cleanly using C-AP1 / C-AP16 compliant templates ---
+// --- Build Form HTML cleanly using C-AP1 / C-AP16 / P-AP10 / P-AP12 compliant templates ---
 const HEADACHE_CARD1_HTML = `
 <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
   <div class="flex items-center space-x-3 mb-4 pb-3 border-b border-slate-100">
     <div class="bg-medical-100 text-medical-700 p-2 rounded-xl"><i data-lucide="clock" class="w-5 h-5"></i></div>
-    <div>
-      <h2 class="text-base font-bold text-slate-900">1. ระยะเวลา รูปแบบการเริ่มปวด กิจกรรมขณะเริ่มปวด และระดับความเจ็บปวด</h2>
-      <p class="text-xs text-slate-500 font-sans">Duration, Onset, Context &amp; Pain Score Assessment</p>
-    </div>
+    <h2 class="text-base font-bold text-slate-900">1. ระยะเวลา รูปแบบการเริ่มปวด กิจกรรมขณะเริ่มปวด และระดับความเจ็บปวด</h2>
   </div>
   <div class="space-y-5">
     <div>
@@ -744,29 +846,29 @@ const HEADACHE_CARD1_HTML = `
       </div>
     </div>
 
-    <div>
+    <div class="pt-3 border-t border-slate-100">
       <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">1.2 รูปแบบการเริ่มมีอาการปวดศีรษะ <span class="text-rose-500">*</span></label>
       ${renderHeadacheGrid('grid-cols-1 sm:grid-cols-2', [
-        { name: 'headacheOnsetMode', value: 'thunderclap', title: 'ปวดรุนแรงถึงขีดสุดทันทีใน 1 – 2 นาที', desc: 'อยู่ดีๆ ก็ปวดรุนแรงขึ้นมาทันทีทันใด หรือรุนแรงที่สุดในชีวิตภายในไม่กี่วินาทีถึง 2 นาที' },
-        { name: 'headacheOnsetMode', value: 'gradual', title: 'ค่อยๆ ปวดมากขึ้นเรื่อยๆ', desc: 'เริ่มจากปวดน้อยๆ แล้วค่อยๆ ปวดแรงขึ้นต่อเนื่องในช่วงหลายชั่วโมงหรือหลายวัน' },
-        { name: 'headacheOnsetMode', value: 'chronic', title: 'ปวดตื้อๆ เป็นๆ หายๆ เรื้อรัง', desc: 'มีอาการปวดศีรษะลักษณะเดิมเป็นๆ หายๆ มานานหลายสัปดาห์หรือหลายเดือน' },
-        { name: 'headacheOnsetMode', value: 'pattern_change', title: 'ปวดเรื้อรังเดิม แต่ครั้งนี้เปลี่ยนไปชัดเจน', desc: 'เคยปวดศีรษะประจำ แต่ครั้งนี้ปวดแรงกว่าทุกครั้ง หรือตำแหน่งและลักษณะปวดเปลี่ยนไปจากเดิม' }
+        { name: 'headacheOnsetMode', value: 'thunderclap', title: ['ปวดรุนแรงถึงขีดสุด', 'ทันทีใน 1–2 นาที'], desc: 'ปวดพุ่งสูงสุดทันทีภายในไม่กี่วินาที–2 นาที' },
+        { name: 'headacheOnsetMode', value: 'gradual', title: ['ค่อยๆ ปวดมากขึ้น', 'เรื่อยๆ'] },
+        { name: 'headacheOnsetMode', value: 'chronic', title: ['ปวดตื้อๆ', 'เป็นๆ หายๆ', 'เรื้อรัง'] },
+        { name: 'headacheOnsetMode', value: 'pattern_change', title: ['ปวดเรื้อรังเดิม', 'แต่ครั้งนี้', 'เปลี่ยน', 'ไปชัดเจน'], desc: 'แรงกว่าเดิม หรือตำแหน่งและลักษณะเปลี่ยนไป' }
       ])}
     </div>
 
-    <div>
+    <div class="pt-3 border-t border-slate-100">
       <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">1.3 เหตุการณ์หรือกิจกรรมขณะเริ่มปวดศีรษะครั้งนี้</label>
       ${renderHeadacheGrid('grid-cols-1 sm:grid-cols-2', [
-        { name: 'headacheOnsetActivity', value: 'resting_normal', title: 'เกิดขึ้นเองขณะพัก หรือทำกิจวัตรปกติ', desc: 'เริ่มปวดขณะนั่งทำงาน เดิน หรืออยู่เฉยๆ ตามปกติ' },
-        { name: 'headacheOnsetActivity', value: 'exertion_valsalva', title: 'เริ่มปวดขณะออกแรงหนัก ยกของ หรือเบ่ง', desc: 'เริ่มปวดศีรษะขึ้นมาทันทีขณะออกกำลังกาย ยกของหนัก เบ่งถ่าย หรือขณะมีเพศสัมพันธ์' },
-        { name: 'headacheOnsetActivity', value: 'sleep_awakening', title: 'ปวดตั้งแต่ตื่นนอน หรือปวดจนสะดุ้งตื่นกลางดึก', desc: 'นอนหลับอยู่แล้วปวดศีรษะจนต้องตื่นขึ้นมา หรือปวดมากที่สุดทันทีที่ตื่นนอนตอนเช้า' },
-        { name: 'headacheOnsetActivity', value: 'neck_trauma_manipulation', title: 'เริ่มปวดหลังสะบัดคอ บิดคอ หรือนวดดัดคอ', desc: 'มีการหันคอแรงๆ นวดดัดต้นคอ หรือเกร็งสะบัดคอก่อนเริ่มปวดศีรษะหรือต้นคอ' }
+        { name: 'headacheOnsetActivity', value: 'resting_normal', title: ['เกิดขึ้นเอง', 'ขณะพัก /', 'ทำกิจวัตร'] },
+        { name: 'headacheOnsetActivity', value: 'exertion_valsalva', title: ['เริ่มปวดขณะ', 'ออกแรงหนัก / เบ่ง'] },
+        { name: 'headacheOnsetActivity', value: 'sleep_awakening', title: ['ปวดตั้งแต่ตื่น /', 'ตื่นกลางดึก'] },
+        { name: 'headacheOnsetActivity', value: 'neck_trauma_manipulation', title: ['หลังสะบัดคอ /', 'บิด / นวดดัดคอ'] }
       ])}
     </div>
 
     <div class="bg-slate-50/80 border border-slate-200 rounded-2xl p-4 sm:p-5 space-y-3">
       <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-        <label class="block text-xs font-semibold text-slate-800 uppercase tracking-wider">1.4 ระดับความเจ็บปวดขณะปวดมากที่สุด (Pain Score: 0 - 10)</label>
+        <label class="block text-xs font-semibold text-slate-800 uppercase tracking-wider">1.4 ระดับความเจ็บปวดขณะปวดมากที่สุด (Pain Score: 0 – 10)</label>
         <div class="flex items-center space-x-2">
           <span id="headachePainScoreBadge" class="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-600 border border-slate-300 self-start sm:self-auto transition-all">
             <span id="headachePainScoreEmoji" class="text-base">⚪</span>
@@ -787,19 +889,19 @@ const HEADACHE_CARD1_HTML = `
         </div>
         <div class="cursor-pointer hover:text-medical-600 transition" onclick="setHeadachePainScore(2)">
           <span class="text-lg sm:text-xl block">🙂</span>
-          <span>1-3: เล็กน้อย</span>
+          <span>1–3: เล็กน้อย</span>
         </div>
         <div class="cursor-pointer hover:text-medical-600 transition" onclick="setHeadachePainScore(5)">
           <span class="text-lg sm:text-xl block">😐</span>
-          <span>4-6: ปานกลาง</span>
+          <span>4–6: ปานกลาง</span>
         </div>
         <div class="cursor-pointer hover:text-medical-600 transition" onclick="setHeadachePainScore(8)">
           <span class="text-lg sm:text-xl block">😣</span>
-          <span>7-9: ปวดมาก</span>
+          <span>7–9: ปวดมาก</span>
         </div>
         <div class="cursor-pointer hover:text-medical-600 transition" onclick="setHeadachePainScore(10)">
           <span class="text-lg sm:text-xl block">😭</span>
-          <span>10: ปวดรุนแรงที่สุด</span>
+          <span>10: ปวดที่สุด</span>
         </div>
       </div>
     </div>
@@ -810,74 +912,74 @@ const HEADACHE_CARD2_HTML = `
 <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
   <div class="flex items-center space-x-3 mb-4 pb-3 border-b border-slate-100">
     <div class="bg-medical-100 text-medical-700 p-2 rounded-xl"><i data-lucide="map-pin" class="w-5 h-5"></i></div>
-    <div>
-      <h2 class="text-base font-bold text-slate-900">2. ตำแหน่งที่ปวด ลักษณะความปวด และปัจจัยกระตุ้น</h2>
-      <p class="text-xs text-slate-500 font-sans">Location, Pain Quality &amp; Aggravating Factors (เลือกได้หลายข้อ)</p>
-    </div>
+    <h2 class="text-base font-bold text-slate-900">2. ตำแหน่งที่ปวด ลักษณะความปวด และปัจจัยกระตุ้น</h2>
   </div>
   <div class="space-y-5">
     <div>
       <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">2.1 ตำแหน่งที่ปวดศีรษะ (เลือกได้หลายข้อ)</label>
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-        ${renderHeadacheCard({
-          kind: 'checkbox', id: 'headache_loc_unilateral', onchange: 'handleHeadacheLocationChange()', colSpan2: true,
-          title: 'ปวดขมับซีกเดียว', desc: 'ปวดเน้นเฉพาะขมับหรือศีรษะซีกซ้ายหรือซีกขวาเพียงข้างเดียว'
-        })}
-        <div id="headache_unilateral_side_wrap" class="hidden sm:col-span-2 bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-2 text-xs">
-          <span class="font-semibold text-slate-800 block">ระบุข้างที่ปวดศีรษะ:</span>
+      ${renderHeadacheGrid('grid-cols-1 sm:grid-cols-2 lg:grid-cols-3', [
+        { kind: 'checkbox', id: 'headache_loc_unilateral', onchange: 'handleHeadacheLocationChange()', title: ['ปวดขมับซีกเดียว'] },
+        { kind: 'checkbox', id: 'headache_loc_periorbital', onchange: 'handleHeadacheLocationChange()', title: ['ปวดรอบเบ้าตา'] },
+        { kind: 'checkbox', id: 'headache_loc_occipital', title: ['ปวดท้ายทอย /', 'ต้นคอ'] },
+        { kind: 'checkbox', id: 'headache_loc_band', title: ['ปวดตึงรัด', 'รอบศีรษะ'] },
+        { kind: 'checkbox', id: 'headache_loc_diffuse', title: ['ปวดทั่วทั้งศีรษะ'] },
+        { kind: 'checkbox', id: 'headache_loc_facial_sinus', title: ['ปวดหน้าผาก /', 'โหนกแก้ม / จมูก'] },
+        { kind: 'checkbox', id: 'headache_loc_other_chk', onchange: 'handleHeadacheLocOtherToggle(this.checked)', title: ['ตำแหน่งอื่นๆ'] }
+      ])}
+      <div class="space-y-2.5 mt-3">
+        <div id="headache_unilateral_side_wrap" class="hidden bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-2 text-xs">
+          <span class="font-semibold text-slate-800 block">ระบุข้างที่ปวดขมับ:</span>
           ${renderHeadacheGrid('grid-cols-1 sm:grid-cols-3', [
-            { name: 'headacheUnilateralSide', value: 'left', title: 'ข้างซ้าย', compact: true, bgWhite: true },
-            { name: 'headacheUnilateralSide', value: 'right', title: 'ข้างขวา', compact: true, bgWhite: true },
-            { name: 'headacheUnilateralSide', value: 'alternating', title: 'สลับข้างซ้าย-ขวา', compact: true, bgWhite: true }
+            { name: 'headacheUnilateralSide', value: 'left', title: ['ข้างซ้าย'], compact: true, bgWhite: true },
+            { name: 'headacheUnilateralSide', value: 'right', title: ['ข้างขวา'], compact: true, bgWhite: true },
+            { name: 'headacheUnilateralSide', value: 'alternating', title: ['สลับซ้าย-ขวา'], compact: true, bgWhite: true }
           ])}
         </div>
-        ${renderHeadacheCard({
-          kind: 'checkbox', id: 'headache_loc_periorbital', onchange: 'handleHeadacheLocationChange()', colSpan2: true,
-          title: 'ปวดรอบเบ้าตา', desc: 'ปวดเจาะลึกอยู่ข้างในลูกตา หลังกระบอกตา หรือรอบเบ้าตา'
-        })}
-        <div id="headache_periorbital_side_wrap" class="hidden sm:col-span-2 bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-2 text-xs">
+        <div id="headache_periorbital_side_wrap" class="hidden bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-2 text-xs">
           <span class="font-semibold text-slate-800 block">ระบุข้างที่ปวดเบ้าตา:</span>
           ${renderHeadacheGrid('grid-cols-1 sm:grid-cols-3', [
-            { name: 'headachePeriorbitalSide', value: 'left', title: 'ข้างซ้าย', compact: true, bgWhite: true },
-            { name: 'headachePeriorbitalSide', value: 'right', title: 'ข้างขวา', compact: true, bgWhite: true },
-            { name: 'headachePeriorbitalSide', value: 'both', title: 'ทั้งสองข้าง', compact: true, bgWhite: true }
+            { name: 'headachePeriorbitalSide', value: 'left', title: ['ข้างซ้าย'], compact: true, bgWhite: true },
+            { name: 'headachePeriorbitalSide', value: 'right', title: ['ข้างขวา'], compact: true, bgWhite: true },
+            { name: 'headachePeriorbitalSide', value: 'both', title: ['ทั้งสองข้าง'], compact: true, bgWhite: true }
           ])}
         </div>
-        ${renderHeadacheCard({ kind: 'checkbox', id: 'headache_loc_occipital', title: 'ปวดท้ายทอย', desc: 'ปวดตึงหรือปวดบริเวณด้านหลังศีรษะ ท้ายทอย หรือร้าวลงต้นคอและบ่า' })}
-        ${renderHeadacheCard({ kind: 'checkbox', id: 'headache_loc_band', title: 'ปวดตึงรัดรอบศีรษะ', desc: 'รู้สึกตึงแน่นเหมือนมีแถบยางหรือหมวกรัดรอบหน้าผากและขมับสองข้าง' })}
-        ${renderHeadacheCard({ kind: 'checkbox', id: 'headache_loc_diffuse', title: 'ปวดทั่วทั้งศีรษะ', desc: 'ปวดกระจายทั่วทั้งหัว ไม่สามารถชี้ตำแหน่งเดียวได้' })}
-        ${renderHeadacheCard({ kind: 'checkbox', id: 'headache_loc_facial_sinus', title: 'ปวดหน้าผาก โหนกแก้ม หรือดั้งจมูก', desc: 'ปวดหน่วงตึงบริเวณใบหน้า หน้าผาก หรือโหนกแก้ม' })}
-        ${renderHeadacheCard({ kind: 'checkbox', id: 'headache_loc_other_chk', onchange: 'handleHeadacheLocOtherToggle(this.checked)', title: 'ตำแหน่งอื่นๆ', colSpan2: true, compact: true })}
-      </div>
-      <div id="headache_loc_other_wrap" class="hidden mt-2">
-        <input type="text" id="headache_loc_other_text" placeholder="ระบุตำแหน่งปวดศีรษะเพิ่มเติม เช่น ยอดกระหม่อม หรือหลังใบหู..." class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-slate-800 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-medical-500 focus:bg-white placeholder:text-slate-400">
+        <div id="headache_loc_other_wrap" class="hidden">
+          <input type="text" id="headache_loc_other_text" placeholder="ระบุตำแหน่งปวดศีรษะเพิ่มเติม เช่น ยอดกระหม่อม หรือหลังใบหู..." class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-slate-800 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-medical-500 focus:bg-white placeholder:text-slate-400">
+        </div>
       </div>
     </div>
 
     <div class="pt-3 border-t border-slate-100">
       <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">2.2 ลักษณะความรู้สึกปวด (เลือกได้หลายข้อ)</label>
-      ${renderHeadacheGrid('grid-cols-1 sm:grid-cols-2', [
-        { kind: 'checkbox', id: 'headache_char_throbbing', title: 'ปวดตุ๊บๆ ตามจังหวะชีพจร', desc: 'ปวดเต้นตุ๊บๆ เป็นจังหวะคล้ายเส้นเลือดเต้น' },
-        { kind: 'checkbox', id: 'headache_char_tight_dull', title: 'ปวดตึงๆ หนักๆ หรือบีบรัดแน่น', desc: 'รู้สึกมึนตื้อ หนักศีรษะ หรือถูกบีบรัดต่อเนื่อง' },
-        { kind: 'checkbox', id: 'headache_char_sharp_stabbing', title: 'ปวดเสียดแทงเหมือนถูกทิ่ม', desc: 'ปวดแปล๊บหรือเสียดแทงรุนแรงเฉพาะจุดเหมือนถูกของแหลมทิ่ม' },
-        { kind: 'checkbox', id: 'headache_char_burning_electric', title: 'ปวดแปล๊บคล้ายไฟช็อต หรือแสบร้อน', desc: 'เสียวแปล๊บสั้นๆ ตามแนวเส้นประสาทใบหน้าหรือหนังศีรษะ' },
-        { kind: 'checkbox', id: 'headache_char_boring_severe', title: 'ปวดลึกๆ รุนแรง', desc: 'ปวดลึกรุนแรงทรมานมากจนอยู่นิ่งไม่ได้ ต้องลุกเดินไปมาหรือกระสับกระส่าย', colSpan2: true }
+      ${renderHeadacheGrid('grid-cols-1 sm:grid-cols-2 lg:grid-cols-3', [
+        { kind: 'checkbox', id: 'headache_char_throbbing', title: ['ปวดตุ๊บๆ', 'ตามจังหวะชีพจร'] },
+        { kind: 'checkbox', id: 'headache_char_tight_dull', title: ['ปวดตึงๆ หนักๆ /', 'บีบรัดแน่น'] },
+        { kind: 'checkbox', id: 'headache_char_sharp_stabbing', title: ['ปวดเสียดแทง', 'เหมือนถูกทิ่ม'] },
+        { kind: 'checkbox', id: 'headache_char_burning_electric', title: ['ปวดแปล๊บไฟช็อต /', 'แสบร้อน'] },
+        { kind: 'checkbox', id: 'headache_char_boring_severe', title: ['ปวดลึกๆ รุนแรง'] }
       ])}
     </div>
 
     <div class="pt-3 border-t border-slate-100">
-      <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">2.3 ท่าทางหรือสิ่งกระตุ้นที่ทำให้ปวดมากขึ้น (เลือกได้หลายข้อ)</label>
+      ${renderHeadacheSysHeader({
+        label: '2.3 ท่าทางหรือสิ่งกระตุ้นที่ทำให้ปวดมากขึ้น (เลือกได้หลายข้อ)',
+        icon: 'zap',
+        colorClass: 'bg-amber-100 text-amber-700',
+        toggleId: 'headache_trig_none',
+        toggleLabel: 'ไม่มีสิ่งกระตุ้นข้างต้น',
+        toggleOnchange: "handleHeadacheGroupNoneToggle('trig', this)"
+      })}
       ${renderHeadacheGrid('grid-cols-1 sm:grid-cols-2', [
-        { kind: 'checkbox', id: 'headache_trig_valsalva', title: 'ปวดมากขึ้นเวลาไอ จาม เบ่ง หรือก้มศีรษะ', desc: 'ปวดสะเทือนในศีรษะมากขึ้นทันทีเวลาไอ จาม เบ่งถ่าย หรือก้มหน้าลงต่ำ' },
-        { kind: 'checkbox', id: 'headache_trig_supine_morning', title: 'ปวดมากขึ้นเวลานอนราบ', desc: 'เมื่อเอนตัวนอนราบจะปวดตื้อในศีรษะมากขึ้น ต้องลุกนั่งจึงดีขึ้น' },
-        { kind: 'checkbox', id: 'headache_trig_upright', title: 'ปวดมากขึ้นเวลาลุกนั่งหรือยืน และดีขึ้นเมื่อนอนราบ', desc: 'ลุกขึ้นนั่งหรือยืนแล้วปวดศีรษะชัดเจน แต่เมื่อนอนราบอาการปวดทุเลาลง' },
-        { kind: 'checkbox', id: 'headache_trig_jaw_claudication', title: 'ปวดหรือเมื่อยขากรรไกรเวลาเคี้ยวอาหาร', desc: 'เคี้ยวอาหารแล้วปวดเมื่อยล้าบริเวณขากรรไกรและขมับจนต้องหยุดพัก' },
-        { kind: 'checkbox', id: 'headache_trig_scalp_tenderness', title: 'เจ็บหนังศีรษะหรือขมับเวลาหวีผมหรือแตะโดน', desc: 'แตะถูกบริเวณขมับหรือหวีผมแล้วรู้สึกเจ็บแปล๊บผิดปกติ' },
-        { kind: 'checkbox', id: 'headache_trig_light_sound', title: 'ปวดมากขึ้นเมื่อเจอแสงจ้า เสียงดัง หรือกลิ่นฉุน', desc: 'ทนแสงสว่างหรือเสียงดังไม่ได้ อยากนอนพักในห้องมืดและเงียบ' },
-        { kind: 'checkbox', id: 'headache_trig_stress_fatigue', title: 'สัมพันธ์กับการอดนอน ความเครียด หรือใช้สายตานาน', desc: 'มีประวัติพักผ่อนน้อย เครียดสะสม หรือจ้องหน้าจอนานก่อนเริ่มปวด' },
-        { kind: 'checkbox', id: 'headache_trig_other_chk', onchange: 'handleHeadacheTrigOtherToggle(this.checked)', title: 'สิ่งกระตุ้นอื่นๆ', compact: true }
+        { kind: 'checkbox', id: 'headache_trig_valsalva', onchange: "handleHeadacheGroupItemChange('headache_trig_none', this)", title: ['ปวดมากขึ้นเวลา', 'ไอ จาม เบ่ง / ก้ม'] },
+        { kind: 'checkbox', id: 'headache_trig_supine_morning', onchange: "handleHeadacheGroupItemChange('headache_trig_none', this)", title: ['ปวดมากขึ้น', 'เวลานอนราบ'] },
+        { kind: 'checkbox', id: 'headache_trig_upright', onchange: "handleHeadacheGroupItemChange('headache_trig_none', this)", title: ['ปวดเวลาลุกยืน /', 'ดีขึ้นเมื่อนอนราบ'] },
+        { kind: 'checkbox', id: 'headache_trig_jaw_claudication', onchange: "handleHeadacheGroupItemChange('headache_trig_none', this)", title: ['ปวดขากรรไกร', 'เวลาเคี้ยวอาหาร'] },
+        { kind: 'checkbox', id: 'headache_trig_scalp_tenderness', onchange: "handleHeadacheGroupItemChange('headache_trig_none', this)", title: ['เจ็บหนังศีรษะ /', 'ขมับเวลาหวีผม'] },
+        { kind: 'checkbox', id: 'headache_trig_light_sound', onchange: "handleHeadacheGroupItemChange('headache_trig_none', this)", title: ['ปวดมากขึ้นเมื่อ', 'เจอแสง / เสียงดัง'] },
+        { kind: 'checkbox', id: 'headache_trig_stress_fatigue', onchange: "handleHeadacheGroupItemChange('headache_trig_none', this)", title: ['อดนอน / เครียด /', 'ใช้สายตานาน'] },
+        { kind: 'checkbox', id: 'headache_trig_other_chk', onchange: 'handleHeadacheTrigOtherToggle(this.checked)', title: ['สิ่งกระตุ้นอื่นๆ'] }
       ])}
-      <div id="headache_trig_other_wrap" class="hidden mt-2">
+      <div id="headache_trig_other_wrap" class="hidden mt-2.5">
         <input type="text" id="headache_trig_other_text" placeholder="ระบุสิ่งกระตุ้นเพิ่มเติม เช่น ช่วงมีประจำเดือน หรืออากาศร้อน..." class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-slate-800 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-medical-500 focus:bg-white placeholder:text-slate-400">
       </div>
     </div>
@@ -888,46 +990,64 @@ const HEADACHE_CARD3_HTML = `
 <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
   <div class="flex items-center space-x-3 mb-4 pb-3 border-b border-slate-100">
     <div class="bg-medical-100 text-medical-700 p-2 rounded-xl"><i data-lucide="shield-alert" class="w-5 h-5"></i></div>
-    <div>
-      <h2 class="text-base font-bold text-slate-900">3. อาการเตือนทางระบบประสาท การมองเห็น และอาการร่วมสำคัญ</h2>
-      <p class="text-xs text-slate-500 font-sans">Neurological, Ocular &amp; Systemic Screening (เลือกได้หลายข้อ)</p>
-    </div>
+    <h2 class="text-base font-bold text-slate-900">3. อาการเตือนทางระบบประสาท การมองเห็น และอาการร่วมสำคัญ</h2>
   </div>
   <div class="space-y-5">
     <div>
-      <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">3.1 อาการทางระบบประสาทและคอแข็งเกร็ง (เลือกได้หลายข้อ)</label>
+      ${renderHeadacheSysHeader({
+        label: '3.1 อาการทางระบบประสาทและคอแข็งเกร็ง (เลือกได้หลายข้อ)',
+        icon: 'zap',
+        colorClass: 'bg-amber-100 text-amber-700',
+        toggleId: 'headache_neuro_none',
+        toggleLabel: 'ไม่มีอาการในหมวดนี้',
+        toggleOnchange: "handleHeadacheGroupNoneToggle('neuro', this)"
+      })}
       ${renderHeadacheGrid('grid-cols-1 sm:grid-cols-2', [
-        { kind: 'checkbox', id: 'headache_rf_weakness_numb', title: 'แขนขาอ่อนแรง หรือชาครึ่งซีก', desc: 'ยกแขนหรือขาไม่ขึ้น หยิบจับของหล่น หรือรู้สึกชาซีกใดซีกหนึ่งของร่างกาย' },
-        { kind: 'checkbox', id: 'headache_rf_facial_speech', title: 'ปากเบี้ยว หรือพูดไม่ชัด', desc: 'มุมปากตก ยิ้มไม่เท่ากัน พูดอ้อแอ้ นึกคำพูดไม่ออก หรือสื่อสารไม่เข้าใจ' },
-        { kind: 'checkbox', id: 'headache_rf_ataxia_walk', title: 'เดินเซ หรือหยิบของไม่ถนัด', desc: 'เดินเซเอียง ทรงตัวไม่ได้ ยืนไม่อยู่ หรือกะระยะมือหยิบจับสิ่งของผิดพลาด' },
-        { kind: 'checkbox', id: 'headache_rf_seizure_syncope', title: 'มีอาการชักเกร็ง หรือวูบหมดสติ', desc: 'มีอาการเกร็งกระตุก หรือหมดสติไม่รู้สึกตัวร่วมกับปวดศีรษะ' },
-        { kind: 'checkbox', id: 'headache_rf_altered_mental', title: 'ง่วงซึม สับสน พฤติกรรมเปลี่ยนไป', desc: 'ดูซึมลง ปลุกตื่นยาก ถามตอบสับสน หรือจำคนและสถานที่ไม่ได้' },
-        { kind: 'checkbox', id: 'headache_rf_stiff_neck', title: 'คอแข็งเกร็ง ก้มไม่ลง', desc: 'รู้สึกตึงแข็งบริเวณต้นคอมาก ก้มคอให้คางชิดอกไม่ได้ หรือก้มแล้วปวดตึงร้าวลงหลัง' },
-        { kind: 'checkbox', id: 'headache_rf_fever', title: 'มีไข้ หรือหนาวสั่น', desc: 'ตัวร้อน หนาวสั่น หรือวัดไข้ได้ตั้งแต่ 38.0 องศาเซลเซียสขึ้นไป', colSpan2: true }
+        { kind: 'checkbox', id: 'headache_rf_weakness_numb', onchange: "handleHeadacheGroupItemChange('headache_neuro_none', this)", title: ['แขนขาอ่อนแรง /', 'ชาครึ่งซีก'] },
+        { kind: 'checkbox', id: 'headache_rf_facial_speech', onchange: "handleHeadacheGroupItemChange('headache_neuro_none', this)", title: ['ปากเบี้ยว /', 'พูดไม่ชัด'] },
+        { kind: 'checkbox', id: 'headache_rf_ataxia_walk', onchange: "handleHeadacheGroupItemChange('headache_neuro_none', this)", title: ['เดินเซ /', 'หยิบของไม่ถนัด'] },
+        { kind: 'checkbox', id: 'headache_rf_seizure_syncope', onchange: "handleHeadacheGroupItemChange('headache_neuro_none', this)", title: ['ชักเกร็ง /', 'วูบหมดสติ'] },
+        { kind: 'checkbox', id: 'headache_rf_altered_mental', onchange: "handleHeadacheGroupItemChange('headache_neuro_none', this)", title: ['ง่วงซึม สับสน /', 'พฤติกรรมเปลี่ยน'] },
+        { kind: 'checkbox', id: 'headache_rf_stiff_neck', onchange: "handleHeadacheGroupItemChange('headache_neuro_none', this)", title: ['คอแข็งเกร็ง', 'ก้มไม่ลง'] },
+        { kind: 'checkbox', id: 'headache_rf_fever', onchange: "handleHeadacheGroupItemChange('headache_neuro_none', this)", title: ['มีไข้ / หนาวสั่น'] }
       ])}
     </div>
 
     <div class="pt-3 border-t border-slate-100">
-      <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">3.2 อาการทางตาและการมองเห็นผิดปกติ (เลือกได้หลายข้อ)</label>
+      ${renderHeadacheSysHeader({
+        label: '3.2 อาการทางตาและการมองเห็นผิดปกติ (เลือกได้หลายข้อ)',
+        icon: 'eye',
+        colorClass: 'bg-purple-100 text-purple-700',
+        toggleId: 'headache_ocular_none',
+        toggleLabel: 'ไม่มีอาการในหมวดนี้',
+        toggleOnchange: "handleHeadacheGroupNoneToggle('ocular', this)"
+      })}
       ${renderHeadacheGrid('grid-cols-1 sm:grid-cols-2', [
-        { kind: 'checkbox', id: 'headache_rf_acute_glaucoma', title: 'ตาแดง ปวดเบ้าตารุนแรง ตามัวลงทันที หรือเห็นรุ้งรอบไฟ', desc: 'ปวดในลูกตาอย่างรุนแรงร่วมกับตาแดง ตามัวลงรวดเร็ว หรือมองไฟเห็นวงสีรุ้ง' },
-        { kind: 'checkbox', id: 'headache_rf_diplopia_field', title: 'มองเห็นภาพซ้อน หรือลานสายตามืดไปบางส่วน', desc: 'มองเห็นภาพแยกเป็น 2 ชิ้น หรือมองไม่เห็นภาพด้านซ้าย/ขวา' },
-        { kind: 'checkbox', id: 'headache_has_visual_aura', title: 'เห็นแสงวูบวาบ หรือเส้นซิกแซกนำมาก่อนปวดศีรษะ', desc: 'เห็นแสงระยิบระยับ เส้นหยัก หรือจุดบอดในสายตาประมาณ 10–30 นาทีก่อนปวด' },
-        { kind: 'checkbox', id: 'headache_has_autonomic', title: 'ตาแดง น้ำตาไหล หนังตาตก หรือคัดจมูกข้างเดียวกับที่ปวด', desc: 'มีน้ำตาไหล เปลือกตาตก หรือน้ำมูกไหลเฉพาะฝั่งเดียวกับข้างที่ปวดศีรษะ' }
+        { kind: 'checkbox', id: 'headache_rf_acute_glaucoma', onchange: "handleHeadacheGroupItemChange('headache_ocular_none', this)", title: ['ตาแดง ปวดตา /', 'ตามัว / เห็นรุ้ง'] },
+        { kind: 'checkbox', id: 'headache_rf_diplopia_field', onchange: "handleHeadacheGroupItemChange('headache_ocular_none', this)", title: ['เห็นภาพซ้อน /', 'ลานสายตามืดบางส่วน'] },
+        { kind: 'checkbox', id: 'headache_has_visual_aura', onchange: "handleHeadacheGroupItemChange('headache_ocular_none', this)", title: ['เห็นแสงวูบวาบ /', 'ซิกแซกก่อนปวด'], desc: 'แสงระยิบระยับ เส้นหยัก ก่อนปวด 10–30 นาที' },
+        { kind: 'checkbox', id: 'headache_has_autonomic', onchange: "handleHeadacheGroupItemChange('headache_ocular_none', this)", title: ['น้ำตาไหล ตาตก /', 'คัดจมูกข้างปวด'] }
       ])}
     </div>
 
     <div class="pt-3 border-t border-slate-100">
-      <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">3.3 อาการคลื่นไส้ อาเจียน</label>
+      ${renderHeadacheSysHeader({
+        label: '3.3 อาการคลื่นไส้ อาเจียน',
+        icon: 'activity',
+        colorClass: 'bg-emerald-100 text-emerald-700',
+        toggleId: 'headache_vomit_none',
+        toggleLabel: 'ไม่มีคลื่นไส้อาเจียน',
+        toggleOnchange: "handleHeadacheGroupNoneToggle('vomit', this)"
+      })}
       ${renderHeadacheCard({
         kind: 'checkbox', id: 'headache_has_nausea_vomit', onchange: 'handleHeadacheVomitChange()',
-        title: 'มีอาการคลื่นไส้ หรืออาเจียน', desc: 'รู้สึกพะอืดพะอม คลื่นไส้ หรืออาเจียนร่วมกับอาการปวดศีรษะ'
+        title: ['มีอาการคลื่นไส้', 'หรืออาเจียน']
       })}
       <div id="headache_vomit_detail_wrap" class="hidden mt-2.5 bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-2 text-xs">
         <span class="font-semibold text-slate-800 block">ลักษณะอาการคลื่นไส้หรืออาเจียน:</span>
         ${renderHeadacheGrid('grid-cols-1 sm:grid-cols-3', [
-          { name: 'headacheVomitStatus', value: 'nausea_only', title: 'คลื่นไส้ พะอืดพะอมอย่างเดียว ยังไม่อาเจียน', compact: true, bgWhite: true },
-          { name: 'headacheVomitStatus', value: 'vomiting', title: 'มีอาเจียนออกมาตามปกติ', compact: true, bgWhite: true },
+          { name: 'headacheVomitStatus', value: 'nausea_only', title: ['คลื่นไส้', 'พะอืดพะอม', 'ยังไม่อาเจียน'], compact: true, bgWhite: true },
+          { name: 'headacheVomitStatus', value: 'vomiting', title: ['มีอาเจียนออกมา', 'ตามปกติ'], compact: true, bgWhite: true },
           { name: 'headacheVomitStatus', value: 'projectile', title: 'มีอาการอาเจียนพุ่งรุนแรงทันทีโดยไม่คลื่นไส้นำมาก่อน', compact: true, bgWhite: true }
         ])}
       </div>
@@ -939,38 +1059,42 @@ const HEADACHE_CARD4_HTML = `
 <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
   <div class="flex items-center space-x-3 mb-4 pb-3 border-b border-slate-100">
     <div class="bg-medical-100 text-medical-700 p-2 rounded-xl"><i data-lucide="clipboard-check" class="w-5 h-5"></i></div>
-    <div>
-      <h2 class="text-base font-bold text-slate-900">4. ประวัติเสี่ยงสำคัญ การใช้ยา และข้อมูลเฉพาะสตรี</h2>
-      <p class="text-xs text-slate-500 font-sans">High-Risk History, Analgesic Overuse &amp; Female Reproductive History</p>
-    </div>
+    <h2 class="text-base font-bold text-slate-900">4. ประวัติเสี่ยงสำคัญ และการใช้ยา</h2>
   </div>
   <div class="space-y-5">
     <div>
-      <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">4.1 ประวัติเสี่ยงและเหตุการณ์สำคัญที่เกี่ยวข้อง (เลือกได้หลายข้อ)</label>
+      ${renderHeadacheSysHeader({
+        label: '4.1 ประวัติเสี่ยงและเหตุการณ์สำคัญที่เกี่ยวข้อง (เลือกได้หลายข้อ)',
+        icon: 'alert-circle',
+        colorClass: 'bg-rose-100 text-rose-700',
+        toggleId: 'headache_risk_none',
+        toggleLabel: 'ไม่มีประวัติเสี่ยงข้างต้น',
+        toggleOnchange: "handleHeadacheGroupNoneToggle('risk', this)"
+      })}
       ${renderHeadacheGrid('grid-cols-1 sm:grid-cols-2', [
-        { kind: 'checkbox', id: 'headache_risk_new_onset_age50', title: 'เพิ่งเคยปวดศีรษะรุนแรงลักษณะนี้เป็นครั้งแรกในชีวิต', desc: 'ไม่เคยมีประวัติปวดศีรษะแบบนี้มาก่อนเลย โดยเฉพาะผู้ที่อายุตั้งแต่ 50 ปีขึ้นไป' },
-        { kind: 'checkbox', id: 'headache_risk_recent_trauma', title: 'เคยศีรษะกระแทก หกล้ม หรือเกิดอุบัติเหตุภายใน 3 เดือนที่ผ่านมา', desc: 'มีประวัติศีรษะชนกระแทกหรืออุบัติเหตุ แม้ในตอนนั้นจะดูไม่รุนแรง' },
-        { kind: 'checkbox', id: 'headache_risk_anticoagulants', title: 'รับประทานยาละลายลิ่มเลือด หรือยาต้านเกล็ดเลือดอยู่ประจำ', desc: 'เช่น ยาวาร์ฟาริน ยาป้องกันลิ่มเลือด หรือยาแอสไพริน' },
-        { kind: 'checkbox', id: 'headache_risk_cancer', onchange: 'syncHeadacheCancerPmh()', title: 'มีประวัติโรคมะเร็ง', desc: 'ได้รับการวินิจฉัยหรืออยู่ระหว่างการรักษาโรคมะเร็งชนิดใดๆ' },
-        { kind: 'checkbox', id: 'headache_risk_immunocompromised', title: 'มีภาวะภูมิคุ้มกันบกพร่อง หรือทานยากดภูมิคุ้มกัน', desc: 'ติดเชื้อเอชไอวี หรือรับประทานยาสเตียรอยด์/ยากดภูมิต่อเนื่อง' },
-        { kind: 'checkbox', id: 'headache_risk_co_exposure', title: 'สูดดมควันในที่อับ หรือมีคนใกล้ชิดปวดศีรษะพร้อมกัน', desc: 'เช่น อยู่ในห้องปิดที่ใช้เครื่องทำความร้อน/เตาถ่าน ในรถที่ติดเครื่องทิ้งไว้ หรือเพื่อนร่วมบ้านมีอาการคล้ายกัน' },
-        { kind: 'checkbox', id: 'headache_risk_severe_htn', title: 'ความดันโลหิต สูงมากผิดปกติ', desc: 'เช่น วัดความดันโลหิตก่อนมาโรงพยาบาลได้ตัวบนตั้งแต่ 180 หรือตัวล่างตั้งแต่ 110 มิลลิเมตรปรอทขึ้นไป' },
-        { kind: 'checkbox', id: 'headache_risk_med_overuse', title: 'รับประทานยาแก้ปวดศีรษะบ่อยเกือบทุกวันติดต่อกันนานหลายสัปดาห์', desc: 'ต้องทานยาพาราเซตามอล ยาชุด หรือยาแก้ปวดไมเกรนเกิน 10–15 วันต่อเดือน' }
+        { kind: 'checkbox', id: 'headache_risk_new_onset_age50', onchange: "handleHeadacheGroupItemChange('headache_risk_none', this)", title: ['เพิ่งปวดรุนแรง', 'แบบนี้ครั้งแรก'] },
+        { kind: 'checkbox', id: 'headache_risk_recent_trauma', onchange: "handleHeadacheGroupItemChange('headache_risk_none', this)", title: ['ศีรษะกระแทก /', 'ล้มใน 3 เดือน'] },
+        { kind: 'checkbox', id: 'headache_risk_anticoagulants', onchange: "handleHeadacheGroupItemChange('headache_risk_none', this)", title: ['ทานยาละลายลิ่มเลือด'], desc: 'เช่น วาร์ฟาริน แอสไพริน ยาป้องกันลิ่มเลือด' },
+        { kind: 'checkbox', id: 'headache_risk_cancer', onchange: 'syncHeadacheCancerPmh()', title: ['มีประวัติ', 'โรคมะเร็ง'] },
+        { kind: 'checkbox', id: 'headache_risk_immunocompromised', onchange: "handleHeadacheGroupItemChange('headache_risk_none', this)", title: ['ภูมิคุ้มกันต่ำ /', 'ทานยากดภูมิ'] },
+        { kind: 'checkbox', id: 'headache_risk_co_exposure', onchange: "handleHeadacheGroupItemChange('headache_risk_none', this)", title: ['สูดควันในที่อับ /', 'ปวดพร้อมกันหลายคน'], desc: 'เช่น เตาถ่าน ห้องปิด รถติดเครื่องทิ้งไว้' },
+        { kind: 'checkbox', id: 'headache_risk_severe_htn', onchange: "handleHeadacheGroupItemChange('headache_risk_none', this)", title: ['ความดันโลหิต', 'สูงมากผิดปกติ'], desc: 'เช่น ตัวบน ≥ 180 หรือตัวล่าง ≥ 110' },
+        { kind: 'checkbox', id: 'headache_risk_med_overuse', onchange: "handleHeadacheGroupItemChange('headache_risk_none', this)", title: ['ทานยาแก้ปวดบ่อย', 'เกือบทุกวัน'], desc: 'ทานยาแก้ปวด/ยาชุดเกิน 10–15 วัน/เดือน' }
       ])}
     </div>
 
     <div id="headacheFemaleSection" class="hidden pt-4 border-t border-slate-100 space-y-4">
       <div class="p-3 bg-pink-50 border border-pink-200 rounded-xl text-xs text-pink-900">
-        <strong>4.2 เฉพาะผู้ป่วยหญิง:</strong> ข้อมูลประจำเดือน การตั้งครรภ์ และการใช้ยาฮอร์โมนช่วยคัดกรองภาวะครรภ์เป็นพิษและลิ่มเลือดในหลอดเลือดดำสมอง
+        <strong>4.2 เฉพาะผู้ป่วยหญิง:</strong> ข้อมูลประจำเดือน การตั้งครรภ์ และการใช้ยาฮอร์โมน
       </div>
       <div>
         <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">สถานะการตั้งครรภ์หรือหลังคลอด</label>
         ${renderHeadacheGrid('grid-cols-1 sm:grid-cols-2', [
-          { name: 'headachePregnancyStatus', value: 'not_pregnant', onchange: 'handleHeadachePregnancyChange()', title: 'ไม่ได้ตั้งครรภ์', compact: true },
-          { name: 'headachePregnancyStatus', value: 'pregnant', onchange: 'handleHeadachePregnancyChange()', title: 'กำลังตั้งครรภ์', compact: true },
-          { name: 'headachePregnancyStatus', value: 'postpartum_6w', onchange: 'handleHeadachePregnancyChange()', title: 'เพิ่งคลอดบุตร หรือแท้งบุตรภายใน 6 สัปดาห์ที่ผ่านมา', compact: true },
-          { name: 'headachePregnancyStatus', value: 'menopause_hysterectomy', onchange: 'handleHeadachePregnancyChange()', title: 'วัยหมดประจำเดือน หรือผ่าตัดมดลูกแล้ว', compact: true },
-          { name: 'headachePregnancyStatus', value: 'unsure', onchange: 'handleHeadachePregnancyChange()', title: 'ไม่แน่ใจ / ไม่ทราบ', compact: true, colSpan2: true }
+          { name: 'headachePregnancyStatus', value: 'not_pregnant', onchange: 'handleHeadachePregnancyChange()', title: ['ไม่ได้ตั้งครรภ์'], compact: true },
+          { name: 'headachePregnancyStatus', value: 'pregnant', onchange: 'handleHeadachePregnancyChange()', title: ['กำลังตั้งครรภ์'], compact: true },
+          { name: 'headachePregnancyStatus', value: 'postpartum_6w', onchange: 'handleHeadachePregnancyChange()', title: ['คลอด / แท้งบุตร', 'ภายใน 6 สัปดาห์'], compact: true },
+          { name: 'headachePregnancyStatus', value: 'menopause_hysterectomy', onchange: 'handleHeadachePregnancyChange()', title: ['หมดประจำเดือน /', 'ผ่าตัดมดลูกแล้ว'], compact: true },
+          { name: 'headachePregnancyStatus', value: 'unsure', onchange: 'handleHeadachePregnancyChange()', title: ['ไม่แน่ใจ /', 'ไม่ทราบ'], compact: true }
         ])}
         <div id="headachePregnancyWeeksWrap" class="hidden mt-2.5 bg-slate-50 border border-slate-200 rounded-xl p-3">
           <label class="block text-xs font-semibold text-slate-700 mb-1.5">อายุครรภ์โดยประมาณ</label>
@@ -980,8 +1104,8 @@ const HEADACHE_CARD4_HTML = `
       <div>
         <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">การใช้ยาฮอร์โมนและประวัติครรภ์เป็นพิษ (เลือกได้หลายข้อ)</label>
         ${renderHeadacheGrid('grid-cols-1 sm:grid-cols-2', [
-          { kind: 'checkbox', id: 'headache_fem_ocp', title: 'กำลังรับประทานยาคุมกำเนิด หรือใช้ฮอร์โมนทดแทน', compact: true },
-          { kind: 'checkbox', id: 'headache_fem_preeclampsia', title: 'มีประวัติความดันโลหิตสูงขณะตั้งครรภ์ หรือครรภ์เป็นพิษ', compact: true }
+          { kind: 'checkbox', id: 'headache_fem_ocp', title: ['ทานยาคุมกำเนิด /', 'ใช้ฮอร์โมนทดแทน'], compact: true },
+          { kind: 'checkbox', id: 'headache_fem_preeclampsia', title: ['ความดันสูงขณะท้อง', '/ ครรภ์เป็นพิษ'], compact: true }
         ])}
       </div>
       <div>
@@ -1013,14 +1137,69 @@ const HEADACHE_FORM_HTML = `
   <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
     <div class="flex items-center space-x-3 mb-3 pb-3 border-b border-slate-100">
       <div class="bg-medical-100 text-medical-700 p-2 rounded-xl"><i data-lucide="message-square-plus" class="w-5 h-5"></i></div>
-      <div>
-        <h2 class="text-base font-bold text-slate-900">อาการอื่นๆ ที่ต้องการแจ้งเพิ่มเติม</h2>
-        <p class="text-xs text-slate-500 font-sans">Additional Symptoms or Concerns (ระบุอิสระ)</p>
-      </div>
+      <h2 class="text-base font-bold text-slate-900">อาการอื่นๆ ที่ต้องการแจ้งเพิ่มเติม</h2>
     </div>
     <textarea id="headache_other_free" rows="2" placeholder="ระบุอาการผิดปกติอื่นๆ หรือรายละเอียดเพิ่มเติมที่ต้องการแจ้งแพทย์หรือพยาบาล..." class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-slate-800 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-medical-500 focus:bg-white placeholder:text-slate-400"></textarea>
   </div>
 </div>`;
+
+function makeHeadacheSeed(overrides) {
+  return Object.assign({
+    chief_complaint: 'headache',
+    chief_complaint_title: 'ปวดศีรษะ',
+    status: 'waiting',
+    headacheUnilateralSide: 'none',
+    headachePeriorbitalSide: 'none',
+    headacheLocOther: '',
+    headache_trig_valsalva: false,
+    headache_trig_supine_morning: false,
+    headache_trig_upright: false,
+    headache_trig_jaw_claudication: false,
+    headache_trig_scalp_tenderness: false,
+    headache_trig_light_sound: false,
+    headache_trig_stress_fatigue: false,
+    headache_trig_other: '',
+    headache_trig_none: false,
+    headache_rf_weakness_numb: false,
+    headache_rf_facial_speech: false,
+    headache_rf_ataxia_walk: false,
+    headache_rf_seizure_syncope: false,
+    headache_rf_altered_mental: false,
+    headache_rf_fever: false,
+    headache_rf_stiff_neck: false,
+    headache_rf_fever_stiff_neck: false,
+    headache_neuro_none: false,
+    headache_rf_acute_glaucoma: false,
+    headache_rf_diplopia_field: false,
+    headache_has_visual_aura: false,
+    headache_has_autonomic: false,
+    headache_ocular_none: false,
+    headache_has_nausea_vomit: false,
+    headacheVomitStatus: 'none',
+    headache_vomit_none: false,
+    headache_risk_recent_trauma: false,
+    headache_risk_pregnancy_postpartum: false,
+    headache_risk_cancer: false,
+    headache_risk_immunocompromised: false,
+    headache_risk_anticoagulants: false,
+    headache_risk_new_onset_age50: false,
+    headache_risk_co_exposure: false,
+    headache_risk_severe_htn: false,
+    headache_risk_med_overuse: false,
+    headache_risk_none: false,
+    headachePregnancyStatus: 'not_applicable',
+    headachePregnancyWeeks: '',
+    headache_fem_ocp: false,
+    headache_fem_preeclampsia: false,
+    headacheLmpDate: '',
+    otherSymptomsFree: '',
+    hospRecordStatus: 'self',
+    underlying: ['ปฏิเสธ'],
+    drugAllergy: 'ปฏิเสธ',
+    currentMeds: 'ไม่มี',
+    doctor_notes: { additional_hpi: '', physical_exam: '', preliminary_dx: '', plan: '' }
+  }, overrides);
+}
 
 const headacheModule = {
   id: 'headache',
@@ -1094,14 +1273,16 @@ const headacheModule = {
       'headache_char_burning_electric', 'headache_char_boring_severe',
       'headache_trig_valsalva', 'headache_trig_supine_morning', 'headache_trig_upright',
       'headache_trig_jaw_claudication', 'headache_trig_scalp_tenderness', 'headache_trig_light_sound',
-      'headache_trig_stress_fatigue', 'headache_trig_other_chk',
+      'headache_trig_stress_fatigue', 'headache_trig_other_chk', 'headache_trig_none',
       'headache_rf_weakness_numb', 'headache_rf_facial_speech', 'headache_rf_ataxia_walk',
       'headache_rf_seizure_syncope', 'headache_rf_altered_mental', 'headache_rf_stiff_neck', 'headache_rf_fever',
+      'headache_neuro_none',
       'headache_rf_acute_glaucoma', 'headache_rf_diplopia_field', 'headache_has_visual_aura',
-      'headache_has_autonomic', 'headache_has_nausea_vomit',
+      'headache_has_autonomic', 'headache_ocular_none',
+      'headache_has_nausea_vomit', 'headache_vomit_none',
       'headache_risk_new_onset_age50', 'headache_risk_recent_trauma', 'headache_risk_anticoagulants',
       'headache_risk_cancer', 'headache_risk_immunocompromised', 'headache_risk_co_exposure',
-      'headache_risk_severe_htn', 'headache_risk_med_overuse',
+      'headache_risk_severe_htn', 'headache_risk_med_overuse', 'headache_risk_none',
       'headache_fem_ocp', 'headache_fem_preeclampsia'
     ]);
     this.branchIds.forEach(bId => toggleHeadacheBranch(bId, false));
@@ -1114,16 +1295,13 @@ const headacheModule = {
   },
 
   seedPatients: [
-    {
+    makeHeadacheSeed({
       id: 'case-071',
       queue_number: 'A-071',
       hn: '6705519',
       name: 'นางกานดา มณีรัตน์',
       age: 46,
       gender: 'หญิง',
-      chief_complaint: 'headache',
-      chief_complaint_title: 'ปวดศีรษะ',
-      status: 'waiting',
       timestamp: '2026-10-26T02:21:26.424Z',
       durationVal: 1,
       durationUnit: 'hours',
@@ -1131,50 +1309,17 @@ const headacheModule = {
       headacheOnsetMode: 'thunderclap',
       headacheOnsetActivity: 'exertion_valsalva',
       headacheLocs: ['occipital', 'diffuse'],
-      headacheUnilateralSide: 'none',
-      headachePeriorbitalSide: 'none',
-      headacheLocOther: '',
       headacheChars: ['sharp_stabbing', 'throbbing'],
       headache_trig_valsalva: true,
-      headache_trig_supine_morning: false,
-      headache_trig_upright: false,
-      headache_trig_jaw_claudication: false,
-      headache_trig_scalp_tenderness: false,
-      headache_trig_light_sound: false,
-      headache_trig_stress_fatigue: false,
-      headache_trig_other: '',
-      headache_rf_weakness_numb: false,
-      headache_rf_facial_speech: false,
-      headache_rf_ataxia_walk: false,
-      headache_rf_seizure_syncope: false,
-      headache_rf_altered_mental: false,
-      headache_rf_fever: false,
-      headache_rf_stiff_neck: false,
-      headache_rf_fever_stiff_neck: false,
-      headache_rf_acute_glaucoma: false,
-      headache_rf_diplopia_field: false,
-      headache_has_visual_aura: false,
+      headache_neuro_none: true,
+      headache_ocular_none: true,
       headache_has_nausea_vomit: true,
       headacheVomitStatus: 'projectile',
-      headache_has_autonomic: false,
-      headache_risk_recent_trauma: false,
-      headache_risk_pregnancy_postpartum: false,
-      headache_risk_cancer: false,
-      headache_risk_immunocompromised: false,
-      headache_risk_anticoagulants: false,
-      headache_risk_new_onset_age50: false,
-      headache_risk_co_exposure: false,
       headache_risk_severe_htn: true,
-      headache_risk_med_overuse: false,
       headachePregnancyStatus: 'not_pregnant',
-      headachePregnancyWeeks: '',
-      headache_fem_ocp: false,
-      headache_fem_preeclampsia: false,
       headacheLmpDate: '04/11/2026',
-      otherSymptomsFree: '',
       hospRecordStatus: 'ratchaburi',
       underlying: ['ความดันสูง (HT)'],
-      drugAllergy: 'ปฏิเสธ',
       currentMeds: 'Amlodipine 5 mg 1 tab po od pc',
       doctor_notes: {
         additional_hpi: 'ผู้ป่วยปวดศีรษะรุนแรงเฉียบพลันระดับ 10/10 ภายใน 30 วินาทีขณะยกถังน้ำ ปวดมากบริเวณท้ายทอย มีอาเจียนพุ่งรุนแรง 2 ครั้ง ปฏิเสธอุบัติเหตุ ไม่มีไข้ ไม่มีแขนขาอ่อนแรง',
@@ -1182,17 +1327,14 @@ const headacheModule = {
         preliminary_dx: 'Suspected Spontaneous Aneurysmal Subarachnoid Hemorrhage (SAH)',
         plan: 'STAT Non-contrast CT Brain, Keep SBP < 140 mmHg (Nicardipine IV), Nimodipine 60 mg po q4h, urgent Neurosurgery consult'
       }
-    },
-    {
+    }),
+    makeHeadacheSeed({
       id: 'case-072',
       queue_number: 'A-072',
       hn: '6706188',
       name: 'นายปิยะพงษ์ ศรีวิชัย',
       age: 29,
       gender: 'ชาย',
-      chief_complaint: 'headache',
-      chief_complaint_title: 'ปวดศีรษะ',
-      status: 'waiting',
       timestamp: '2026-10-26T02:01:26.424Z',
       durationVal: 2,
       durationUnit: 'days',
@@ -1200,50 +1342,16 @@ const headacheModule = {
       headacheOnsetMode: 'gradual',
       headacheOnsetActivity: 'resting_normal',
       headacheLocs: ['diffuse', 'occipital'],
-      headacheUnilateralSide: 'none',
-      headachePeriorbitalSide: 'none',
-      headacheLocOther: '',
       headacheChars: ['tight_dull', 'throbbing'],
-      headache_trig_valsalva: false,
-      headache_trig_supine_morning: false,
-      headache_trig_upright: false,
-      headache_trig_jaw_claudication: false,
-      headache_trig_scalp_tenderness: false,
       headache_trig_light_sound: true,
-      headache_trig_stress_fatigue: false,
-      headache_trig_other: '',
-      headache_rf_weakness_numb: false,
-      headache_rf_facial_speech: false,
-      headache_rf_ataxia_walk: false,
-      headache_rf_seizure_syncope: false,
       headache_rf_altered_mental: true,
       headache_rf_fever: true,
       headache_rf_stiff_neck: true,
       headache_rf_fever_stiff_neck: true,
-      headache_rf_acute_glaucoma: false,
-      headache_rf_diplopia_field: false,
-      headache_has_visual_aura: false,
+      headache_ocular_none: true,
       headache_has_nausea_vomit: true,
       headacheVomitStatus: 'vomiting',
-      headache_has_autonomic: false,
-      headache_risk_recent_trauma: false,
-      headache_risk_pregnancy_postpartum: false,
-      headache_risk_cancer: false,
-      headache_risk_immunocompromised: false,
-      headache_risk_anticoagulants: false,
-      headache_risk_new_onset_age50: false,
-      headache_risk_co_exposure: false,
-      headache_risk_severe_htn: false,
-      headache_risk_med_overuse: false,
-      headachePregnancyStatus: 'not_applicable',
-      headachePregnancyWeeks: '',
-      headache_fem_ocp: false,
-      headache_fem_preeclampsia: false,
-      headacheLmpDate: '',
-      otherSymptomsFree: '',
-      hospRecordStatus: 'self',
-      underlying: ['ปฏิเสธ'],
-      drugAllergy: 'ปฏิเสธ',
+      headache_risk_none: true,
       currentMeds: 'ไม่มี (ซื้อ Paracetamol ทานเอง)',
       doctor_notes: {
         additional_hpi: '2 วันก่อนเริ่มมีไข้สูง หนาวสั่น ปวดศีรษะทั่วศีรษะรุนแรงขึ้นเรื่อยๆ วันนี้ญาติสังเกตว่าซึมลง สับสน ก้มคอไม่ได้ มีอาเจียน 3 ครั้ง',
@@ -1251,17 +1359,14 @@ const headacheModule = {
         preliminary_dx: 'Acute Bacterial Meningitis with Encephalopathy',
         plan: 'Hemoculture x2, Empirical IV Ceftriaxone 2g + Vancomycin + Dexamethasone 10mg IV, STAT CT Brain prior to LP'
       }
-    },
-    {
+    }),
+    makeHeadacheSeed({
       id: 'case-073',
       queue_number: 'A-073',
       hn: '6708214',
       name: 'นางสาวพิมพ์ชนก รัตนโกสินทร์',
       age: 32,
       gender: 'หญิง',
-      chief_complaint: 'headache',
-      chief_complaint_title: 'ปวดศีรษะ',
-      status: 'waiting',
       timestamp: '2026-10-26T01:46:26.424Z',
       durationVal: 4,
       durationUnit: 'hours',
@@ -1270,49 +1375,17 @@ const headacheModule = {
       headacheOnsetActivity: 'resting_normal',
       headacheLocs: ['unilateral'],
       headacheUnilateralSide: 'left',
-      headachePeriorbitalSide: 'none',
-      headacheLocOther: '',
       headacheChars: ['throbbing'],
-      headache_trig_valsalva: false,
-      headache_trig_supine_morning: false,
-      headache_trig_upright: false,
-      headache_trig_jaw_claudication: false,
-      headache_trig_scalp_tenderness: false,
       headache_trig_light_sound: true,
       headache_trig_stress_fatigue: true,
-      headache_trig_other: '',
-      headache_rf_weakness_numb: false,
-      headache_rf_facial_speech: false,
-      headache_rf_ataxia_walk: false,
-      headache_rf_seizure_syncope: false,
-      headache_rf_altered_mental: false,
-      headache_rf_fever: false,
-      headache_rf_stiff_neck: false,
-      headache_rf_fever_stiff_neck: false,
-      headache_rf_acute_glaucoma: false,
-      headache_rf_diplopia_field: false,
+      headache_neuro_none: true,
       headache_has_visual_aura: true,
       headache_has_nausea_vomit: true,
       headacheVomitStatus: 'nausea_only',
-      headache_has_autonomic: false,
-      headache_risk_recent_trauma: false,
-      headache_risk_pregnancy_postpartum: false,
-      headache_risk_cancer: false,
-      headache_risk_immunocompromised: false,
-      headache_risk_anticoagulants: false,
-      headache_risk_new_onset_age50: false,
-      headache_risk_co_exposure: false,
-      headache_risk_severe_htn: false,
-      headache_risk_med_overuse: false,
+      headache_risk_none: true,
       headachePregnancyStatus: 'not_pregnant',
-      headachePregnancyWeeks: '',
-      headache_fem_ocp: false,
-      headache_fem_preeclampsia: false,
       headacheLmpDate: '09/11/2026',
-      otherSymptomsFree: '',
-      hospRecordStatus: 'self',
       underlying: ['ไมเกรน (Migraine)'],
-      drugAllergy: 'ปฏิเสธ',
       currentMeds: 'Paracetamol prn, Ibuprofen 400 mg prn',
       doctor_notes: {
         additional_hpi: 'มีประวัติไมเกรนเดิม 4 ชม. ก่อนเห็นแสงซิกแซกประมาณ 20 นาที จากนั้นปวดตุ๊บๆ ขมับซ้าย 7/10 คลื่นไส้ ทนแสงจ้าเสียงดังไม่ได้ ไม่มีไข้ คอไม่แข็ง',
@@ -1320,17 +1393,14 @@ const headacheModule = {
         preliminary_dx: 'Acute Migraine with Typical Visual Aura',
         plan: 'Rest in quiet dark room, 0.9% NSS 500 ml IV, Metoclopramide 10 mg IV, Ketorolac 30 mg IV'
       }
-    },
-    {
+    }),
+    makeHeadacheSeed({
       id: 'case-074',
       queue_number: 'A-074',
       hn: '6709322',
       name: 'นายสมศักดิ์ วัฒนากูล',
       age: 36,
       gender: 'ชาย',
-      chief_complaint: 'headache',
-      chief_complaint_title: 'ปวดศีรษะ',
-      status: 'waiting',
       timestamp: '2026-11-16T04:20:00.000Z',
       durationVal: 2,
       durationUnit: 'days',
@@ -1338,61 +1408,25 @@ const headacheModule = {
       headacheOnsetMode: 'chronic',
       headacheOnsetActivity: 'resting_normal',
       headacheLocs: ['band', 'occipital'],
-      headacheUnilateralSide: 'none',
-      headachePeriorbitalSide: 'none',
-      headacheLocOther: '',
       headacheChars: ['tight_dull'],
-      headache_trig_valsalva: false,
-      headache_trig_supine_morning: false,
-      headache_trig_upright: false,
-      headache_trig_jaw_claudication: false,
-      headache_trig_scalp_tenderness: false,
-      headache_trig_light_sound: false,
       headache_trig_stress_fatigue: true,
-      headache_trig_other: '',
-      headache_rf_weakness_numb: false,
-      headache_rf_facial_speech: false,
-      headache_rf_ataxia_walk: false,
-      headache_rf_seizure_syncope: false,
-      headache_rf_altered_mental: false,
-      headache_rf_fever: false,
-      headache_rf_stiff_neck: false,
-      headache_rf_fever_stiff_neck: false,
-      headache_rf_acute_glaucoma: false,
-      headache_rf_diplopia_field: false,
-      headache_has_visual_aura: false,
-      headache_has_nausea_vomit: false,
-      headacheVomitStatus: 'none',
-      headache_has_autonomic: false,
-      headache_risk_recent_trauma: false,
-      headache_risk_pregnancy_postpartum: false,
-      headache_risk_cancer: false,
-      headache_risk_immunocompromised: false,
-      headache_risk_anticoagulants: false,
-      headache_risk_new_onset_age50: false,
-      headache_risk_co_exposure: false,
-      headache_risk_severe_htn: false,
-      headache_risk_med_overuse: false,
-      headachePregnancyStatus: 'not_applicable',
-      headachePregnancyWeeks: '',
-      headache_fem_ocp: false,
-      headache_fem_preeclampsia: false,
-      headacheLmpDate: '',
+      headache_neuro_none: true,
+      headache_ocular_none: true,
+      headache_vomit_none: true,
+      headache_risk_none: true,
       otherSymptomsFree: 'ช่วง 2 วันที่ผ่านมาทำงานหน้าจอคอมพิวเตอร์ดึก พักผ่อนน้อย รู้สึกตึงขมับและท้ายทอย',
-      hospRecordStatus: 'self',
-      underlying: ['ปฏิเสธ'],
-      drugAllergy: 'ปฏิเสธ',
-      currentMeds: 'ไม่มี',
       doctor_notes: {
         additional_hpi: 'ชายอายุ 36 ปี แข็งแรงดี ปวดตื้อๆ ตึงรัดรอบศีรษะและท้ายทอยมา 2 วัน หลังนอนดึกทำงานหน้าคอมพิวเตอร์ ไม่คลื่นไส้อาเจียน ไม่มีไข้ ไม่มีสัญญาณอันตรายทางระบบประสาท',
         physical_exam: 'BT 36.7 C, PR 74/min, RR 16/min, BP 122/78 mmHg. Alert, normal cranial nerves, motor V all, mild pericranial & trapezius muscle tenderness.',
         preliminary_dx: 'Tension-Type Headache (TTH)',
         plan: 'Paracetamol 1000 mg po or Ibuprofen 400 mg po pc, ergonomics & sleep hygiene advice, return if red flags'
       }
-    }
+    })
   ],
 
   hydrateForm(patient) {
+    if (!patient) return;
+    this.resetForm();
     const setVal = (id, val) => {
       const el = document.getElementById(id);
       if (el) el.value = val !== undefined && val !== null ? val : '';
@@ -1454,6 +1488,7 @@ const headacheModule = {
     setChk('headache_trig_other_chk', hasTrigOther);
     toggleHeadacheBranch('headache_trig_other_wrap', hasTrigOther);
     setVal('headache_trig_other_text', hasTrigOther ? patient.headache_trig_other : '');
+    setChk('headache_trig_none', patient.headache_trig_none);
 
     // Neuro & Ocular
     setChk('headache_rf_weakness_numb', patient.headache_rf_weakness_numb);
@@ -1463,17 +1498,21 @@ const headacheModule = {
     setChk('headache_rf_altered_mental', patient.headache_rf_altered_mental);
     setChk('headache_rf_fever', patient.headache_rf_fever !== undefined ? patient.headache_rf_fever : patient.headache_rf_fever_stiff_neck);
     setChk('headache_rf_stiff_neck', patient.headache_rf_stiff_neck !== undefined ? patient.headache_rf_stiff_neck : patient.headache_rf_fever_stiff_neck);
+    setChk('headache_neuro_none', patient.headache_neuro_none);
+
     setChk('headache_rf_acute_glaucoma', patient.headache_rf_acute_glaucoma);
     setChk('headache_rf_diplopia_field', patient.headache_rf_diplopia_field);
     setChk('headache_has_visual_aura', patient.headache_has_visual_aura);
     setChk('headache_has_autonomic', patient.headache_has_autonomic);
+    setChk('headache_ocular_none', patient.headache_ocular_none);
 
     // Nausea / Vomiting
     setChk('headache_has_nausea_vomit', patient.headache_has_nausea_vomit);
     handleHeadacheVomitChange();
-    if (patient.headache_has_nausea_vomit && patient.headacheVomitStatus && patient.headacheVomitStatus !== 'none') {
+    if (patient.headache_has_nausea_vomit && patient.headacheVomitStatus && patient.headacheVomitStatus !== 'none' && patient.headacheVomitStatus !== 'unspecified') {
       setHeadacheRadioChecked('headacheVomitStatus', patient.headacheVomitStatus);
     }
+    setChk('headache_vomit_none', patient.headache_vomit_none);
 
     // High-Risk Background
     setChk('headache_risk_new_onset_age50', patient.headache_risk_new_onset_age50);
@@ -1484,6 +1523,7 @@ const headacheModule = {
     setChk('headache_risk_co_exposure', patient.headache_risk_co_exposure);
     setChk('headache_risk_severe_htn', patient.headache_risk_severe_htn);
     setChk('headache_risk_med_overuse', patient.headache_risk_med_overuse);
+    setChk('headache_risk_none', patient.headache_risk_none);
 
     // Female section (C-AP13)
     const isFem = patient.gender === 'หญิง' || isHeadacheFemaleTitle();
@@ -1505,21 +1545,20 @@ const headacheModule = {
   },
 
   collectIntake(ctx) {
-    const {
-      recordId,
-      queueNumber,
-      randomHn,
-      patientName,
-      patientAge,
-      gender,
-      recordStatus,
-      hospRecordStatus,
-      underlying,
-      drugAllergy,
-      currentMeds,
-      preservedDoctorNotes,
-      otherSymptomsFree
-    } = ctx;
+    ctx = ctx || {};
+    const recordId = ctx.recordId || `case-${Date.now()}`;
+    const queueNumber = ctx.queueNumber || 'ER-NEW';
+    const randomHn = ctx.randomHn || '-';
+    const patientName = ctx.patientName || 'ไม่ระบุชื่อ';
+    const patientAge = ctx.patientAge !== undefined ? ctx.patientAge : 'ไม่ระบุ';
+    const gender = ctx.gender || 'ไม่ระบุ';
+    const recordStatus = ctx.recordStatus || 'waiting';
+    const hospRecordStatus = ctx.hospRecordStatus || 'unspecified';
+    const underlying = Array.isArray(ctx.underlying) ? ctx.underlying : [];
+    const drugAllergy = ctx.drugAllergy || 'ไม่ได้ระบุ';
+    const currentMeds = ctx.currentMeds || 'ไม่ได้ระบุ';
+    const preservedDoctorNotes = ctx.preservedDoctorNotes || { additional_hpi: '', physical_exam: '', preliminary_dx: '', plan: '' };
+    const otherSymptomsFree = document.getElementById('headache_other_free')?.value.trim() || ctx.otherSymptomsFree || '';
 
     const rawDur = parseFloat(document.getElementById('headacheDurationVal')?.value);
     const durationVal = (!isNaN(rawDur) && rawDur > 0) ? rawDur : null;
@@ -1562,6 +1601,7 @@ const headacheModule = {
     const headache_trig_stress_fatigue = document.getElementById('headache_trig_stress_fatigue')?.checked || false;
     const isTrigOther = document.getElementById('headache_trig_other_chk')?.checked || false;
     const headache_trig_other = isTrigOther ? (document.getElementById('headache_trig_other_text')?.value.trim() || '') : '';
+    const headache_trig_none = document.getElementById('headache_trig_none')?.checked || false;
 
     const headache_rf_weakness_numb = document.getElementById('headache_rf_weakness_numb')?.checked || false;
     const headache_rf_facial_speech = document.getElementById('headache_rf_facial_speech')?.checked || false;
@@ -1571,15 +1611,19 @@ const headacheModule = {
     const headache_rf_fever = document.getElementById('headache_rf_fever')?.checked || false;
     const headache_rf_stiff_neck = document.getElementById('headache_rf_stiff_neck')?.checked || false;
     const headache_rf_fever_stiff_neck = headache_rf_fever && headache_rf_stiff_neck;
+    const headache_neuro_none = document.getElementById('headache_neuro_none')?.checked || false;
+
     const headache_rf_acute_glaucoma = document.getElementById('headache_rf_acute_glaucoma')?.checked || false;
     const headache_rf_diplopia_field = document.getElementById('headache_rf_diplopia_field')?.checked || false;
     const headache_has_visual_aura = document.getElementById('headache_has_visual_aura')?.checked || false;
     const headache_has_autonomic = document.getElementById('headache_has_autonomic')?.checked || false;
+    const headache_ocular_none = document.getElementById('headache_ocular_none')?.checked || false;
 
     const headache_has_nausea_vomit = document.getElementById('headache_has_nausea_vomit')?.checked || false;
     const headacheVomitStatus = headache_has_nausea_vomit
-      ? (getHeadacheRadioValue('headacheVomitStatus') || 'nausea_only')
+      ? (getHeadacheRadioValue('headacheVomitStatus') || 'unspecified')
       : 'none';
+    const headache_vomit_none = document.getElementById('headache_vomit_none')?.checked || false;
 
     const headache_risk_new_onset_age50 = document.getElementById('headache_risk_new_onset_age50')?.checked || false;
     const headache_risk_recent_trauma = document.getElementById('headache_risk_recent_trauma')?.checked || false;
@@ -1589,6 +1633,7 @@ const headacheModule = {
     const headache_risk_co_exposure = document.getElementById('headache_risk_co_exposure')?.checked || false;
     const headache_risk_severe_htn = document.getElementById('headache_risk_severe_htn')?.checked || false;
     const headache_risk_med_overuse = document.getElementById('headache_risk_med_overuse')?.checked || false;
+    const headache_risk_none = document.getElementById('headache_risk_none')?.checked || false;
 
     const isFem = gender === 'หญิง' || isHeadacheFemaleTitle();
     const headachePregnancyStatus = isFem ? (getHeadacheRadioValue('headachePregnancyStatus') || '') : 'not_applicable';
@@ -1606,7 +1651,7 @@ const headacheModule = {
       hn: randomHn,
       name: patientName,
       age: patientAge,
-      gender: gender,
+      gender,
       chief_complaint: 'headache',
       chief_complaint_title: 'ปวดศีรษะ',
       status: recordStatus,
@@ -1629,6 +1674,7 @@ const headacheModule = {
       headache_trig_light_sound,
       headache_trig_stress_fatigue,
       headache_trig_other,
+      headache_trig_none,
       headache_rf_weakness_numb,
       headache_rf_facial_speech,
       headache_rf_ataxia_walk,
@@ -1637,12 +1683,15 @@ const headacheModule = {
       headache_rf_fever,
       headache_rf_stiff_neck,
       headache_rf_fever_stiff_neck,
+      headache_neuro_none,
       headache_rf_acute_glaucoma,
       headache_rf_diplopia_field,
       headache_has_visual_aura,
       headache_has_autonomic,
+      headache_ocular_none,
       headache_has_nausea_vomit,
       headacheVomitStatus,
+      headache_vomit_none,
       headache_risk_new_onset_age50,
       headache_risk_recent_trauma,
       headache_risk_pregnancy_postpartum,
@@ -1652,16 +1701,17 @@ const headacheModule = {
       headache_risk_co_exposure,
       headache_risk_severe_htn,
       headache_risk_med_overuse,
+      headache_risk_none,
       headachePregnancyStatus,
       headachePregnancyWeeks,
       headache_fem_ocp,
       headache_fem_preeclampsia,
       headacheLmpDate,
-      otherSymptomsFree: otherSymptomsFree || '',
-      hospRecordStatus: hospRecordStatus || 'unspecified',
-      underlying: underlying && underlying.length > 0 ? underlying : ((hospRecordStatus === 'self' || hospRecordStatus === 'additional') ? ['ปฏิเสธ'] : []),
-      drugAllergy: drugAllergy || 'ไม่ได้ระบุ',
-      currentMeds: currentMeds || 'ไม่ได้ระบุ',
+      otherSymptomsFree,
+      hospRecordStatus,
+      underlying: underlying.length > 0 ? underlying : ((hospRecordStatus === 'self' || hospRecordStatus === 'additional') ? ['ปฏิเสธ'] : []),
+      drugAllergy,
+      currentMeds,
       doctor_notes: preservedDoctorNotes
     };
   },
@@ -1696,4 +1746,6 @@ if (typeof window !== 'undefined') {
   window.handleHeadacheVomitChange = handleHeadacheVomitChange;
   window.handleHeadachePregnancyChange = handleHeadachePregnancyChange;
   window.syncHeadacheCancerPmh = syncHeadacheCancerPmh;
+  window.handleHeadacheGroupItemChange = handleHeadacheGroupItemChange;
+  window.handleHeadacheGroupNoneToggle = handleHeadacheGroupNoneToggle;
 }

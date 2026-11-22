@@ -9,6 +9,87 @@
 // --- Module-scoped State & Helpers ---
 let venomPainScoreTouched = false;
 
+function wrapVenomWords(chunks) {
+  if (!Array.isArray(chunks)) return chunks;
+  return chunks.map(c => `<span class="inline-block whitespace-nowrap">${c}</span>`).join(' ');
+}
+
+function renderVenomOption(cfg) {
+  const {
+    kind = 'checkbox',
+    id = '',
+    name = '',
+    value = '',
+    title,
+    desc = '',
+    onchange = '',
+    compact = false,
+    colSpan2 = false
+  } = cfg;
+  const idAttr = id ? `id="${id}" ` : '';
+  const nameAttr = name ? `name="${name}" ` : '';
+  const valAttr = value ? `value="${value}" ` : '';
+  const chgAttr = onchange ? `onchange="${onchange}" ` : '';
+  const alignCls = desc ? 'items-start' : 'items-center';
+  const padCls = compact ? 'p-2.5' : 'p-3';
+  const spanCls = colSpan2 ? ' sm:col-span-2' : '';
+  const roundCls = kind === 'checkbox' ? 'rounded ' : '';
+  const topCls = desc ? 'mt-0.5 ' : '';
+  const szCls = compact ? 'h-3.5 w-3.5' : 'h-4 w-4';
+  const titleHtml = Array.isArray(title) ? wrapVenomWords(title) : title;
+  const bodyHtml = desc
+    ? `<div class="ml-3 leading-snug"><span class="block text-xs sm:text-sm font-semibold text-slate-800">${titleHtml}</span><span class="block text-xs text-slate-500 font-normal mt-0.5">${desc}</span></div>`
+    : `<span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800 leading-snug">${titleHtml}</span>`;
+  return `<label class="selectable-card bg-white flex ${alignCls} ${padCls} rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition${spanCls}"><input type="${kind}" ${idAttr}${nameAttr}${valAttr}${chgAttr}class="${topCls}${roundCls}text-medical-600 focus:ring-medical-500 ${szCls} flex-shrink-0">${bodyHtml}</label>`;
+}
+
+function renderVenomGrid(colsCls, items, shared = {}) {
+  return `<div class="grid ${colsCls} gap-2.5">${items.map(it => renderVenomOption({ ...shared, ...it })).join('\n')}</div>`;
+}
+
+function renderVenomSysHeader({
+  label,
+  icon,
+  colorClass,
+  toggleKind = 'checkbox',
+  toggleId = '',
+  toggleLabel = '',
+  toggleName = '',
+  toggleValue = '',
+  toggleOnchange = ''
+}) {
+  const nameAttr = toggleName ? `name="${toggleName}" ` : '';
+  const valAttr = toggleValue ? `value="${toggleValue}" ` : '';
+  const chgAttr = toggleOnchange ? `onchange="${toggleOnchange}" ` : '';
+  const roundCls = toggleKind === 'checkbox' ? ' rounded' : '';
+  const toggleHtml = toggleId
+    ? `<label class="inline-flex items-center px-2.5 py-1 rounded-lg bg-white hover:bg-slate-100 border border-slate-200 text-xs font-medium text-slate-700 cursor-pointer transition select-none flex-shrink-0">
+      <input type="${toggleKind}" id="${toggleId}" ${nameAttr}${valAttr}${chgAttr}class="text-medical-600 focus:ring-medical-500 h-3.5 w-3.5${roundCls}">
+      <span class="ml-1.5 whitespace-nowrap">${toggleLabel}</span>
+    </label>`
+    : '';
+  return `<div class="flex flex-wrap items-center justify-between gap-2 mb-2.5">
+    <label class="flex items-center text-xs sm:text-sm font-bold text-slate-800">
+      <span class="${colorClass} p-1.5 rounded-lg mr-2 inline-flex items-center justify-center"><i data-lucide="${icon}" class="w-4 h-4"></i></span>
+      <span>${label}</span>
+    </label>
+    ${toggleHtml}
+  </div>`;
+}
+
+function handleVenomGroupNoneToggle(noneEl, inputName) {
+  if (!noneEl || !noneEl.checked || typeof document === 'undefined') return;
+  document.querySelectorAll(`input[name="${inputName}"]`).forEach(cb => {
+    if (cb !== noneEl) cb.checked = false;
+  });
+}
+
+function handleVenomGroupItemChange(itemEl, noneId) {
+  if (!itemEl || !itemEl.checked || !noneId || typeof document === 'undefined') return;
+  const noneEl = document.getElementById(noneId);
+  if (noneEl) noneEl.checked = false;
+}
+
 function isVenomFemalePatient(p) {
   if (!p) return false;
   if (p.gender === 'หญิง' || p.gender === 'female') return true;
@@ -36,9 +117,8 @@ function toggleVenomFemaleSection(isFemale) {
   femSec.classList.toggle('hidden', !isFemale);
   if (!isFemale) {
     const lmpEl = document.getElementById('venomLmpDate');
-    const pregEl = document.getElementById('venomPregnancyStatus');
     if (lmpEl) lmpEl.value = '';
-    if (pregEl) { pregEl.selectedIndex = 0; pregEl.value = ''; }
+    document.querySelectorAll('input[name="venomPregnancyStatus"]').forEach(r => { r.checked = false; });
   }
 }
 
@@ -54,18 +134,92 @@ function checkAndDisplayVenomLmp(patient) {
 }
 
 function renderVenomPart(id, label, hasCenter = false) {
-  const sides = [['left', 'ซ้าย'], ['right', 'ขวา']];
-  if (hasCenter) sides.push(['center', 'ตรงกลาง']);
-  const sHtml = sides.map(([v, th]) => `<label class="flex items-center"><input type="checkbox" name="${id}Sides" value="${v}" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">${th}</span></label>`).join('');
-  const iHtml = [['wound', 'มีแผล'], ['pain_swelling', 'ปวด/บวม'], ['deformity', 'ผิดรูป']].map(([v, th]) => `<label class="flex items-center"><input type="checkbox" name="${id}Injuries" value="${v}" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">${th}</span></label>`).join('');
-  return `<div class="flex flex-col sm:flex-row sm:items-center justify-between text-xs py-1 border-b border-slate-100 gap-2"><label class="flex items-center"><input type="checkbox" id="${id}" name="${id}" onchange="toggleVenomGroup('${id}SidesContainer', this.checked)" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-1.5 text-slate-800">${label}</span></label><div id="${id}SidesContainer" class="hidden flex flex-wrap items-center gap-2 bg-slate-50 border border-slate-200 px-2 py-1 rounded-lg text-xs"><span class="text-slate-500 font-medium">ด้าน:</span>${sHtml}<span class="text-slate-300 mx-1.5">|</span><span class="text-slate-500 font-medium">การบาดเจ็บ:</span>${iHtml}</div></div>`;
+  return `<div class="p-2.5 rounded-xl border border-slate-200 bg-white">
+  <label class="flex items-center cursor-pointer">
+    <input type="checkbox" id="${id}" name="${id}" onchange="toggleVenomGroup('${id}SidesContainer', this.checked)" class="text-medical-600 h-4 w-4 rounded flex-shrink-0">
+    <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800">${label}</span>
+  </label>
+  <div id="${id}SidesContainer" class="hidden mt-2 pl-6 flex flex-col gap-1.5 text-xs border-t border-slate-100 pt-2">
+    <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
+      <span class="text-xs font-semibold text-slate-500">ด้าน / ข้าง:</span>
+      <label class="inline-flex items-center cursor-pointer"><input type="checkbox" name="${id}Sides" value="left" class="mr-1 text-medical-600 rounded"> ซ้าย</label>
+      <label class="inline-flex items-center cursor-pointer"><input type="checkbox" name="${id}Sides" value="right" class="mr-1 text-medical-600 rounded"> ขวา</label>
+      ${hasCenter ? `<label class="inline-flex items-center cursor-pointer"><input type="checkbox" name="${id}Sides" value="center" class="mr-1 text-medical-600 rounded"> ตรงกลาง</label>` : ''}
+    </div>
+    <div class="flex flex-wrap items-center gap-x-3 gap-y-1 pt-1 border-t border-slate-50">
+      <span class="text-xs font-semibold text-slate-500">ลักษณะบาดเจ็บ:</span>
+      <label class="inline-flex items-center cursor-pointer"><input type="checkbox" name="${id}Injuries" value="wound" class="mr-1 text-medical-600 rounded"> มีแผล</label>
+      <label class="inline-flex items-center cursor-pointer"><input type="checkbox" name="${id}Injuries" value="pain_swelling" class="mr-1 text-medical-600 rounded"> ปวด/บวม</label>
+      <label class="inline-flex items-center cursor-pointer"><input type="checkbox" name="${id}Injuries" value="deformity" class="mr-1 text-medical-600 rounded"> ผิดรูป</label>
+    </div>
+  </div>
+</div>`;
 }
 
 function renderVenomDigits(id, label) {
-  const d = [['thumb', 'โป้ง'], ['index', 'ชี้'], ['middle', 'กลาง'], ['ring', 'นาง'], ['little', 'ก้อย']];
-  const row = (side, sl) => `<div class="flex flex-wrap items-center gap-2"><span class="font-medium text-slate-600 w-10">${sl}:</span>${d.map(([k, th]) => `<label class="flex items-center"><input type="checkbox" name="${id}${side}Digits" value="${k}" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">${th}</span></label>`).join('')}</div>`;
-  const inj = [['wound', 'มีแผล'], ['pain_swelling', 'ปวด/บวม'], ['deformity', 'ผิดรูป']].map(([v, th]) => `<label class="flex items-center"><input type="checkbox" name="${id}Injuries" value="${v}" class="rounded text-medical-600 h-3 w-3"><span class="ml-1 text-slate-800">${th}</span></label>`).join('');
-  return `<div class="space-y-1 py-1"><label class="flex items-center text-xs"><input type="checkbox" id="${id}" name="${id}" onchange="toggleVenomGroup('${id}SidesContainer', this.checked)" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-1.5 text-slate-800">${label}</span></label><div id="${id}SidesContainer" class="hidden ml-5 p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs space-y-1.5">${row('Left', 'ซ้าย')}${row('Right', 'ขวา')}<div class="flex flex-wrap items-center gap-2 pt-1 border-t border-slate-200"><span class="font-medium text-slate-600">การบาดเจ็บ:</span>${inj}</div></div></div>`;
+  const digits = [['thumb', 'โป้ง'], ['index', 'ชี้'], ['middle', 'กลาง'], ['ring', 'นาง'], ['little', 'ก้อย']];
+  const row = (side, sl) => `<div class="flex items-center flex-wrap gap-2"><span class="text-xs font-semibold text-slate-500 w-9">${sl}:</span>${digits.map(([k, th]) => `<label class="inline-flex items-center cursor-pointer"><input type="checkbox" name="${id}${side}Digits" value="${k}" class="mr-1 text-medical-600 rounded"> ${th}</label>`).join('')}</div>`;
+  return `<div class="p-2.5 rounded-xl border border-slate-200 bg-white">
+  <label class="flex items-center cursor-pointer">
+    <input type="checkbox" id="${id}" name="${id}" onchange="toggleVenomGroup('${id}SidesContainer', this.checked)" class="text-medical-600 h-4 w-4 rounded flex-shrink-0">
+    <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800">${label}</span>
+  </label>
+  <div id="${id}SidesContainer" class="hidden mt-2 pl-6 flex flex-col gap-1.5 text-xs border-t border-slate-100 pt-2">
+    ${row('Left', 'ซ้าย')}${row('Right', 'ขวา')}
+    <div class="flex items-center flex-wrap gap-x-3 gap-y-1 pt-1 border-t border-slate-50">
+      <span class="text-xs font-semibold text-slate-500">ลักษณะบาดเจ็บ:</span>
+      <label class="inline-flex items-center cursor-pointer"><input type="checkbox" name="${id}Injuries" value="wound" class="mr-1 text-medical-600 rounded"> มีแผล</label>
+      <label class="inline-flex items-center cursor-pointer"><input type="checkbox" name="${id}Injuries" value="pain_swelling" class="mr-1 text-medical-600 rounded"> ปวด/บวม</label>
+      <label class="inline-flex items-center cursor-pointer"><input type="checkbox" name="${id}Injuries" value="deformity" class="mr-1 text-medical-600 rounded"> ผิดรูป</label>
+    </div>
+  </div>
+</div>`;
+}
+
+function renderVenomRegionBox({
+  parentId,
+  subGroupId,
+  title,
+  desc,
+  partsHtml,
+  signsName = '',
+  signsNoneId = '',
+  signsCols = 'grid-cols-1 sm:grid-cols-2',
+  signs = []
+}) {
+  const signsBlock = (signsName && Array.isArray(signs) && signs.length > 0)
+    ? `<div class="p-3 bg-slate-50 rounded-xl border border-slate-200">
+        ${renderVenomSysHeader({
+          label: 'อาการสำคัญที่พบร่วมด้วย (เลือกได้หลายข้อ)',
+          icon: 'alert-circle',
+          colorClass: 'bg-amber-100 text-amber-700',
+          toggleId: signsNoneId,
+          toggleLabel: 'ไม่มีอาการร่วม',
+          toggleOnchange: `handleVenomGroupNoneToggle(this, '${signsName}')`
+        })}
+        ${renderVenomGrid(signsCols, signs, {
+          name: signsName,
+          compact: true,
+          onchange: `handleVenomGroupItemChange(this, '${signsNoneId}')`
+        })}
+      </div>`
+    : '';
+  return `<div class="space-y-3">
+    <label class="selectable-card flex items-center p-3.5 rounded-xl border-2 border-slate-200 bg-slate-50 hover:border-medical-400 transition cursor-pointer">
+      <input type="checkbox" id="${parentId}" onchange="toggleVenomGroup('${subGroupId}', this.checked)" class="text-medical-600 focus:ring-medical-500 h-5 w-5 rounded flex-shrink-0">
+      <div class="ml-3 leading-snug">
+        <span class="text-xs sm:text-sm font-bold text-slate-900">${Array.isArray(title) ? wrapVenomWords(title) : title}</span>
+        ${desc ? `<p class="text-xs text-slate-500 mt-0.5">${desc}</p>` : ''}
+      </div>
+    </label>
+    <div id="${subGroupId}" class="hidden pl-4 sm:pl-6 space-y-4 border-l-2 border-medical-200">
+      <div>
+        <p class="text-xs sm:text-sm text-slate-700 font-semibold mb-2">จุดที่บาดเจ็บ (เลือกแล้วระบุด้านและลักษณะบาดเจ็บ):</p>
+        <div class="space-y-2">${partsHtml}</div>
+      </div>
+      ${signsBlock}
+    </div>
+  </div>`;
 }
 
 function toggleVenomGroup(subId, show) {
@@ -82,9 +236,15 @@ function toggleVenomGroup(subId, show) {
   }
 }
 
+function handleVenomSnakeTypeChange() {
+  const otherSnakeRb = document.querySelector('input[name="venomSnakeType"][value="other_snake"]');
+  toggleVenomGroup('venomOtherSnakeDetailContainer', !!(otherSnakeRb && otherSnakeRb.checked));
+}
+
 function handleVenomCreatureChange() {
   const snakeCb = document.querySelector('input[name="venomCreatureTypes"][value="snake"]');
   toggleVenomGroup('venomSnakeDetailsContainer', snakeCb && snakeCb.checked);
+  handleVenomSnakeTypeChange();
 
   const otherArthropodCb = document.querySelector('input[name="venomCreatureTypes"][value="spider_other_arthropod"]');
   toggleVenomGroup('venomOtherCreatureDetailsContainer', otherArthropodCb && otherArthropodCb.checked);
@@ -132,34 +292,39 @@ function clearVenomPainScore() {
 
 function handleVenomPainScoreChange(val) {
   venomPainScoreTouched = true;
-  const num = parseInt(val, 10);
+  const num = parseInt(val, 10) || 0;
   const slider = document.getElementById('venomPainScore');
-  if (slider) slider.value = num;
-  const emojiEl = document.getElementById('venomPainScoreEmoji');
-  const textEl = document.getElementById('venomPainScoreText');
-  const badgeEl = document.getElementById('venomPainScoreBadge');
-  const clearBtn = document.getElementById('venomPainScoreClearBtn');
+  if (slider && String(slider.value) !== String(num)) slider.value = num;
+  const emojiEl = document.getElementById('venomPainScoreEmoji'), textEl = document.getElementById('venomPainScoreText');
+  const badgeEl = document.getElementById('venomPainScoreBadge'), clearBtn = document.getElementById('venomPainScoreClearBtn');
   if (clearBtn) clearBtn.classList.remove('hidden');
   if (!emojiEl || !textEl || !badgeEl) return;
 
   let emoji = '😐', label = 'ปวดปานกลาง', badgeClass = 'bg-amber-100 text-amber-800 border-amber-300';
-  if (num === 0) {
-    emoji = '😊'; label = 'สบายดี (ไม่ปวดเลย)'; badgeClass = 'bg-emerald-100 text-emerald-800 border-emerald-300';
-  } else if (num <= 3) {
-    emoji = '🙂'; label = 'ปวดเล็กน้อย (ทนได้)'; badgeClass = 'bg-lime-100 text-lime-800 border-lime-300';
-  } else if (num <= 6) {
-    emoji = '😐'; label = 'ปวดปานกลาง (รบกวนสมาธิ)'; badgeClass = 'bg-amber-100 text-amber-800 border-amber-300';
-  } else if (num <= 8) {
-    emoji = '😣'; label = 'ปวดรุนแรง (ทนแทบไม่ไหว)'; badgeClass = 'bg-orange-100 text-orange-800 border-orange-300';
-  } else {
-    emoji = '😫'; label = 'ปวดรุนแรงที่สุดในชีวิต'; badgeClass = 'bg-rose-100 text-rose-800 border-rose-300';
-  }
+  if (num === 0) { emoji = '😊'; label = 'สบายดี (ไม่ปวดเลย)'; badgeClass = 'bg-emerald-100 text-emerald-800 border-emerald-300'; }
+  else if (num <= 3) { emoji = '🙂'; label = 'ปวดเล็กน้อย (ทนได้)'; badgeClass = 'bg-lime-100 text-lime-800 border-lime-300'; }
+  else if (num <= 6) { emoji = '😐'; label = 'ปวดปานกลาง (รบกวนสมาธิ)'; badgeClass = 'bg-amber-100 text-amber-800 border-amber-300'; }
+  else if (num <= 9) { emoji = '😣'; label = 'ปวดมาก (ทนแทบไม่ไหว)'; badgeClass = 'bg-rose-100 text-rose-800 border-rose-300'; }
+  else { emoji = '😭'; label = 'เจ็บปวดรุนแรงที่สุดในชีวิต'; badgeClass = 'bg-red-200 text-red-900 border-red-400 animate-pulse'; }
 
   emojiEl.textContent = emoji;
-  textEl.textContent = `${num}/10 คะแนน - ${label}`;
-  badgeEl.className = `inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-bold border self-start sm:self-auto transition-all ${badgeClass}`;
+  textEl.textContent = `${num} / 10 (${label})`;
+  badgeEl.className = `inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-bold border transition ${badgeClass}`;
 }
+function setVenomPainScore(score) { venomPainScoreTouched = true; const s = document.getElementById('venomPainScore'); if (s) s.value = score; handleVenomPainScoreChange(score); }
 const handleVenomPainSliderTouch = handleVenomPainScoreChange;
+if (typeof window !== 'undefined') {
+  window.toggleVenomGroup = toggleVenomGroup;
+  window.handleVenomGroupNoneToggle = handleVenomGroupNoneToggle;
+  window.handleVenomGroupItemChange = handleVenomGroupItemChange;
+  window.handleVenomSnakeTypeChange = handleVenomSnakeTypeChange;
+  window.handleVenomCreatureChange = handleVenomCreatureChange;
+  window.handleVenomLocalSignsChange = handleVenomLocalSignsChange;
+  window.handleVenomPriorAllergyChange = handleVenomPriorAllergyChange;
+  window.clearVenomPainScore = clearVenomPainScore;
+  window.handleVenomPainScoreChange = handleVenomPainScoreChange;
+  window.setVenomPainScore = setVenomPainScore;
+}
 
 // --- Clinical Decision Support & Evaluation Functions ---
 function evaluateVenomRedFlags(patient) {
@@ -320,6 +485,60 @@ function updateVenomOutputs(rec) {
 
   const redFlags = evaluateVenomRedFlags(rec);
   rec.redFlags = redFlags;
+
+  const jsonOutput = {
+    encounter: {
+      chief_complaint: 'venomous_bite',
+      schema_code: 'venomous_bite_sting',
+      chief_complaint_title_th: 'แมลง / งู / สัตว์มีพิษกัดต่อย',
+      timestamp: rec.timestamp || new Date().toISOString(),
+      duration_val: rec.durationVal || null,
+      duration_unit: rec.durationUnit || 'hours'
+    },
+    patient_identification: {
+      id: rec.id || null,
+      queue_number: rec.queue_number || null,
+      hn: rec.hn || null,
+      name: rec.name || null,
+      age: rec.age || null,
+      gender: rec.gender || null
+    },
+    triage_assessment: {
+      creature_types: Array.isArray(rec.venomCreatureTypes) ? rec.venomCreatureTypes : [],
+      snake_type: rec.venomSnakeType || null,
+      snake_other_detail: rec.venomOtherSnakeDetail || '',
+      stings_count: rec.venomStingsCount || null,
+      first_aid: Array.isArray(rec.venomFirstAid) ? rec.venomFirstAid : [],
+      local_signs: Array.isArray(rec.venomLocalSigns) ? rec.venomLocalSigns : [],
+      stinger_status: rec.venomStingerStatus || null,
+      systemic_allergy_signs: Array.isArray(rec.venomSystemicAllergySigns) ? rec.venomSystemicAllergySigns : [],
+      snake_signs: Array.isArray(rec.venomSnakeSigns) ? rec.venomSnakeSigns : [],
+      hymenoptera_signs: Array.isArray(rec.venomHymenopteraSigns) ? rec.venomHymenopteraSigns : [],
+      arthropod_signs: Array.isArray(rec.venomArthropodSigns) ? rec.venomArthropodSigns : [],
+      marine_signs: Array.isArray(rec.venomMarineSigns) ? rec.venomMarineSigns : [],
+      pain_score: rec.painScore,
+      prior_allergy_hx: rec.venomPriorAllergyHx || null,
+      tetanus_history: rec.venomTetanusHx || null,
+      other_symptoms_free: rec.otherSymptomsFree || ''
+    },
+    safety_and_red_flags: {
+      red_flags_detected: redFlags.map(rf => ({
+        key: rf.key,
+        level: rf.level,
+        title_th: rf.textTh || rf.title,
+        clinical_risk: rf.risk || rf.detail,
+        action: rf.suggestedAction || rf.action
+      })),
+      total_red_flags: redFlags.length
+    }
+  };
+  rec.rapidHpi = rapidText;
+  rec.narrativeHpi = narrativeText;
+  rec.medicalJson = jsonOutput;
+
+  const jsonEl = document.getElementById('jsonViewer');
+  if (jsonEl) jsonEl.textContent = JSON.stringify(jsonOutput, null, 2);
+  return { rapid: rapidText, narrative: narrativeText, json: jsonOutput };
 }
 
 function formatVenomCreature(patient) {
@@ -348,9 +567,14 @@ function formatVenomCreature(patient) {
       krait: 'งูสามเหลี่ยม หรือ งูทับสมิงคลา',
       sea_snake: 'งูทะเล',
       non_venomous_snake: 'งูไม่มีพิษ',
+      other_snake: 'งูชนิดอื่นๆ',
       unknown_snake: 'ไม่ทราบชนิดงู/มองไม่ชัด'
     };
-    if (patient.venomSnakeType) list.push(`ชนิดงู: ${sMap[patient.venomSnakeType] || patient.venomSnakeType}`);
+    if (patient.venomSnakeType === 'other_snake' && patient.venomOtherSnakeDetail && patient.venomOtherSnakeDetail.trim()) {
+      list.push(`ชนิดงู: งูชนิดอื่นๆ (${patient.venomOtherSnakeDetail.trim()})`);
+    } else if (patient.venomSnakeType) {
+      list.push(`ชนิดงู: ${sMap[patient.venomSnakeType] || patient.venomSnakeType}`);
+    }
     if (patient.venomSnakeDetailFree && patient.venomSnakeDetailFree.trim()) {
       list.push(`รายละเอียดงู: ${patient.venomSnakeDetailFree.trim()}`);
     }
@@ -560,6 +784,11 @@ function renderVenomRapidHpi(patient) {
     ? 'ไม่ได้ระบุ'
     : (patient.currentMeds === 'ไม่มี' ? 'ไม่มี' : patient.currentMeds);
 
+  const rfs = evaluateVenomRedFlags(patient);
+  const rfText = rfs.length > 0
+    ? `🚩 RED FLAGS DETECTED:\n${rfs.map(rf => `  * ${rf.title}\n    ความเสี่ยง: ${rf.detail}\n    ข้อแนะนำการดูแลเร่งด่วน: ${rf.action}`).join('\n\n')}`
+    : '✅ ไม่พบสัญญาณเตือนวิกฤตความเสี่ยงสูง (Non-Red Flag)';
+
   return `[Chief Complaint (CC)]
 แมลง / งู / สัตว์มีพิษกัดต่อย เป็นมา ${durStr}
 
@@ -581,7 +810,10 @@ ${negatives.length > 0 ? negatives.map(n => `  - ${n}`).join('\n') : '  - ผู
 • ประวัติแพ้พิษแมลง/สัตว์มีพิษในอดีต: ${priorAllergyStr}
 • ประวัติวัคซีนบาดทะยัก: ${tetanusStr}${femStr ? `\n• ประวัติสตรี: ${femStr}` : ''}
 • โรคประจำตัว (U/D): ${udDisplay}
-• ยาประจำตัว: ${medsDisplay} | แพ้ยา: ${allergyDisplay}`;
+• ยาประจำตัว: ${medsDisplay} | แพ้ยา: ${allergyDisplay}
+
+[Emergency Risk Assessment (Red Flags)]
+${rfText}`;
 }
 
 function renderVenomNarrativeHpi(patient) {
@@ -620,82 +852,6 @@ function renderVenomNarrativeHpi(patient) {
   return text;
 }
 
-function generateVenomCds(patient, ctx) {
-  const rfs = (ctx && Array.isArray(ctx.rfs)) ? ctx.rfs : evaluateVenomRedFlags(patient);
-  let highestEsi = 4;
-  if (rfs.some(r => r.level.includes('ESI 1'))) highestEsi = 1;
-  else if (rfs.some(r => r.level.includes('ESI 2'))) highestEsi = 2;
-  else if (rfs.some(r => r.level.includes('ESI 3'))) highestEsi = 3;
-
-  const ddx = [];
-  const plan = [];
-  const setPlan = (d, p) => { ddx.push(d); plan.push(...p); };
-
-  if (rfs.some(r => r.key === 'rf_venom_anaphylaxis_airway_shock')) {
-    setPlan('Acute Anaphylaxis / Severe Hymenoptera Allergy with Airway Compromise', [
-      'IM Adrenaline (1:1,000) 0.3-0.5 mg เข้า Vastus lateralis ทันที (ฉีดซ้ำได้ทุก 5-15 นาที)',
-      'High-flow Oxygen via Non-rebreather mask, เตรียม Endotracheal Intubation หากมี Stridor/Laryngeal edema',
-      '0.9% NaCl 1,000 mL IV bolus, IV Dexamethasone/Hydrocortisone, IV Chlorpheniramine/Diphenhydramine'
-    ]);
-  }
-
-  if (rfs.some(r => r.key === 'rf_venom_neurotoxic_snake_ptosis_resp')) {
-    setPlan('Neurotoxic Snake Envenomation (Cobra / King Cobra / Krait) with Bulbar Palsy', [
-      'เฝ้าระวังทางเดินหายใจใกล้ชิด (Negative Inspiratory Force / SpO2), เตรียมใส่ท่อช่วยหายใจทันทีหากมี Bulbar palsy',
-      'หากมัดขันชะเนาะมา ห้ามคลายสายรัดจนกว่าจะเตรียมท่อช่วยหายใจและเซรุ่มพร้อม',
-      'ให้ Monovalent Cobra Antivenom หรือ Neuro-polyvalent Antivenom ตามข้อบ่งชี้ทางคลินิกของสถานเสาวภา'
-    ]);
-  }
-
-  if (rfs.some(r => r.key === 'rf_venom_hematotoxic_snake_bleeding_vicc')) {
-    setPlan('Hematotoxic Snake Envenomation (Pit Viper / Russell Viper) with Suspected VICC', [
-      'เจาะตรวจ 20WBCT, VCT, Venous Platelet, PT/INR, BUN/Cr, Electrolytes ทันทีและตรวจซ้ำทุก 6 ชั่วโมง',
-      'พิจารณาให้ Monovalent หรือ Hemato-polyvalent Antivenom หาก 20WBCT ไม่แข็งตัว หรือเกล็ดเลือด < 50,000',
-      'งดฉีดยาเข้ากล้ามเนื้อ (Avoid IM injections) และยกขาสูง/ประคบสังเกตอาการบวม'
-    ]);
-  }
-
-  if (rfs.some(r => r.key === 'rf_venom_myotoxic_massive_stings_rhabdo_compartment')) {
-    setPlan('Massive Envenomation / Rhabdomyolysis / Suspected Compartment Syndrome', [
-      'ส่งตรวจ EKG, CPK, Electrolytes (เฝ้าระวัง Hyperkalemia), BUN/Cr, และ Urinalysis (Myoglobin)',
-      'Aggressive IV Hydration ด้วย Isotonic crystalloid เพื่อป้องกัน Myoglobinuric Acute Tubular Necrosis',
-      'วัด Compartment pressure หากแขนขาบวมตึงแข็งและปวดมากเวลา passive stretch'
-    ]);
-  }
-
-  if (ddx.length === 0) {
-    setPlan('Localized Venomous Bite / Arthropod Sting without Systemic Envenomation (Low-Risk)', [
-      'ทำความสะอาดบาดแผลด้วยน้ำสะอาดและสบู่, คีบเหล็กในออกหากมีค้าง',
-      'ให้ยาแก้ปวด (Paracetamol หรือ NSAIDs) และยาทา/ยากิน Antihistamine ลดอาการคันบวม',
-      'หากถูกเงี่ยงปลาดุก/ปลากระเบน ให้แช่น้ำอุ่น 40-45°C นาน 30-90 นาทีเพื่อสลายพิษ',
-      'พิจารณาฉีด Tetanus toxoid booster หากเข็มล่าสุดเกิน 5-10 ปี และสังเกตอาการที่ ER อย่างน้อย 1-2 ชม.'
-    ]);
-  }
-
-  const workupItems = plan.filter(p => p.includes('ตรวจ') || p.includes('เจาะ') || p.includes('EKG') || p.includes('20WBCT'));
-  if (workupItems.length === 0) workupItems.push('ประเมิน Vital signs, SpO2, และสังเกตอาการระบบทางเดินหายใจ/ประสาทอย่างใกล้ชิด');
-  if (isVenomFemalePatient(patient)) workupItems.push('Urine Pregnancy Test (UPT) หากสงสัยตั้งครรภ์ก่อนให้ยา');
-  const mgmtItems = plan.filter(p => !p.includes('ตรวจ') && !p.includes('เจาะ') && !p.includes('EKG') && !p.includes('20WBCT'));
-  if (mgmtItems.length === 0) mgmtItems.push('ดูแลบาดแผลเฉพาะที่ พิจารณาวัคซีนป้องกันบาดทะยัก และสังเกตอาการ');
-  if (ctx) {
-    if (!Array.isArray(ctx.ddxList)) ctx.ddxList = [];
-    if (!Array.isArray(ctx.workupList)) ctx.workupList = [];
-    if (!Array.isArray(ctx.managementList)) ctx.managementList = [];
-    ctx.ddxList.push(...ddx);
-    ctx.workupList.push(...workupItems);
-    ctx.managementList.push(...mgmtItems);
-    return rfs;
-  }
-  return {
-    chiefComplaint: 'venomous_bite',
-    calculatedEsi: highestEsi,
-    redFlags: rfs,
-    differentialDiagnosis: ddx,
-    suggestedInvestigations: workupItems,
-    suggestedManagement: mgmtItems
-  };
-}
-
 // --- FORM HTML TEMPLATE ---
 const VENOMOUS_BITE_FORM_HTML = `
 <div id="cc-venomous-bite-section" class="space-y-6">
@@ -704,41 +860,41 @@ const VENOMOUS_BITE_FORM_HTML = `
   <div class="bg-amber-50 border border-amber-300 rounded-2xl p-4 text-xs sm:text-sm text-amber-900 flex items-start space-x-3 shadow-xs">
     <i data-lucide="alert-circle" class="w-5 h-5 text-amber-600 shrink-0 mt-0.5"></i>
     <div class="space-y-1">
-      <strong class="font-bold block text-amber-950 text-sm sm:text-base">ข้อแนะนำการปฏิบัติตัวเบื้องต้นเมื่อถูกงู แมลง หรือสัตว์มีพิษกัดต่อย:</strong>
-      <ol class="list-decimal list-inside space-y-0.5 text-amber-800">
-        <li><strong>ถอดแหวน นาฬิกา กำไล หรือเครื่องประดับออกทันที:</strong> ก่อนที่นิ้วมือ ข้อมือ หรือข้อเท้าจะบวมจนรัดแน่นและขาดเลือด</li>
-        <li><strong>กรณีถูกงูกัด:</strong> พยายามอยู่นิ่งๆ ขยับส่วนที่ถูกกัดให้น้อยที่สุด <strong>ห้ามขันชะเนาะ</strong> และห้ามกรีดแผลหรือดูดพิษเด็ดขาด</li>
-        <li><strong>หากมีอาการแน่นคอ หายใจลำบาก หน้ามืด หรือลืมตาไม่ขึ้น:</strong> กรุณาแจ้งพยาบาลหน้าห้องฉุกเฉินทันที</li>
-      </ol>
+      <strong class="font-bold block text-amber-950 text-sm">คำแนะนำเบื้องต้นระหว่างรอตรวจ:</strong>
+      <ul class="list-disc list-inside space-y-0.5 text-amber-800 text-xs sm:text-sm">
+        <li><strong>ถอดเครื่องประดับทันที:</strong> ถอดแหวน นาฬิกา หรือกำไลก่อนนิ้วมือ/ข้อเท้าบวมรัด</li>
+        <li><strong>กรณีถูกงูกัด:</strong> อยู่นิ่งๆ ขยับส่วนที่ถูกกัดให้น้อยที่สุด <strong>ห้ามขันชะเนาะ</strong> กรีดแผล หรือดูดพิษ</li>
+        <li><strong>อาการฉุกเฉิน:</strong> แน่นคอ หายใจลำบาก หน้ามืด หรือลืมตาไม่ขึ้น รีบแจ้งพยาบาลทันที</li>
+      </ul>
     </div>
   </div>
   </div></div>
 
-  <!-- CARD 1: ชนิดสัตว์มีพิษ ลักษณะเหตุการณ์ และการปฐมพยาบาลเบื้องต้น -->
-  <div class="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-xs space-y-5">
-    <div class="flex items-center space-x-2 border-b border-slate-100 pb-3">
+  <!-- CARD 1: ข้อมูลสัตว์มีพิษ จำนวนจุด และการปฐมพยาบาลเบื้องต้น -->
+  <div class="bg-white rounded-2xl p-5 sm:p-6 shadow-sm border border-slate-200 space-y-5">
+    <div class="flex items-center space-x-3 pb-3 border-b border-slate-100">
       <div class="p-2 rounded-xl bg-medical-100 text-medical-700">
         <i data-lucide="bug" class="w-5 h-5"></i>
       </div>
       <div>
-        <h3 class="text-sm sm:text-base font-bold text-slate-900">1. ข้อมูลสัตว์มีพิษ จำนวนจุด และการปฐมพยาบาลเบื้องต้น</h3>
-        <p class="text-xs text-slate-500">ระบุชนิดสัตว์ที่กัด/ต่อย และสิ่งที่ได้ดูแลเบื้องต้นก่อนมาโรงพยาบาล</p>
+        <h2 class="text-base font-bold text-slate-900">1. ข้อมูลสัตว์มีพิษ จำนวนจุด และการปฐมพยาบาลเบื้องต้น</h2>
+        <p class="text-xs text-slate-500">ชนิดสัตว์ที่กัด/ต่อย จำนวนแผล และการดูแลเบื้องต้น</p>
       </div>
     </div>
 
-    <!-- 1.1 เหตุการณ์ถูกกัดหรือต่อยเกิดขึ้นมานานเท่าใด -->
+    <!-- 1.1 เหตุการณ์เกิดขึ้นมานานเท่าใด -->
     <div>
       <label class="block text-xs sm:text-sm font-semibold text-slate-800 mb-2">
         1.1 เหตุการณ์ถูกกัดหรือต่อยเกิดขึ้นมานานเท่าใด:
       </label>
-      <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+      <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 max-w-md">
         <div class="col-span-1 sm:col-span-2">
           <input type="number" id="venomDurationVal" min="1" max="365" placeholder="ระบุตัวเลข เช่น 30"
-            class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-medical-500 focus:bg-white transition">
+            class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2 text-slate-900 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-medical-500 focus:bg-white transition">
         </div>
         <div class="col-span-1">
           <select id="venomDurationUnit"
-            class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-medical-500 focus:bg-white transition">
+            class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-slate-900 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-medical-500 focus:bg-white transition">
             <option value="minutes">นาที</option>
             <option value="hours" selected>ชั่วโมง</option>
             <option value="days">วัน</option>
@@ -750,570 +906,473 @@ const VENOMOUS_BITE_FORM_HTML = `
     </div>
 
     <!-- 1.2 ชนิดสัตว์มีพิษ -->
-    <div>
-      <label class="block text-xs sm:text-sm font-semibold text-slate-800 mb-2">1.2 ชนิดของสัตว์มีพิษหรือแมลงที่กัด/ต่อย (เลือกได้หลายข้อ):</label>
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs sm:text-sm">
-        <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50">
-          <input type="checkbox" name="venomCreatureTypes" value="snake" onchange="handleVenomCreatureChange()" class="rounded text-medical-600 h-4 w-4">
-          <span class="ml-2.5 font-medium text-slate-800">งู (มีพิษ / ไม่มีพิษ)</span>
-        </label>
-        <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50">
-          <input type="checkbox" name="venomCreatureTypes" value="bee_wasp_hornet" onchange="handleVenomCreatureChange()" class="rounded text-medical-600 h-4 w-4">
-          <span class="ml-2.5 font-medium text-slate-800">ผึ้ง / ต่อ / แตน (เช่น ต่อหัวเสือ, ผึ้งหลวง)</span>
-        </label>
-        <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50">
-          <input type="checkbox" name="venomCreatureTypes" value="ant" onchange="handleVenomCreatureChange()" class="rounded text-medical-600 h-4 w-4">
-          <span class="ml-2.5 font-medium text-slate-800">มดมีพิษ (มดตะนอย / มดคันไฟ)</span>
-        </label>
-        <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50">
-          <input type="checkbox" name="venomCreatureTypes" value="centipede" onchange="handleVenomCreatureChange()" class="rounded text-medical-600 h-4 w-4">
-          <span class="ml-2.5 font-medium text-slate-800">ตะขาบ</span>
-        </label>
-        <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50">
-          <input type="checkbox" name="venomCreatureTypes" value="scorpion" onchange="handleVenomCreatureChange()" class="rounded text-medical-600 h-4 w-4">
-          <span class="ml-2.5 font-medium text-slate-800">แมงป่อง (แมงป่องช้าง / แมงป่องบ้าน)</span>
-        </label>
-        <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50">
-          <input type="checkbox" name="venomCreatureTypes" value="poisonous_fish" onchange="handleVenomCreatureChange()" class="rounded text-medical-600 h-4 w-4">
-          <span class="ml-2.5 font-medium text-slate-800">ปลามีเงี่ยงพิษ (ปลาดุก / ปลาแขยง / ปลากระเบน)</span>
-        </label>
-        <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50">
-          <input type="checkbox" name="venomCreatureTypes" value="jellyfish_sea_urchin" onchange="handleVenomCreatureChange()" class="rounded text-medical-600 h-4 w-4">
-          <span class="ml-2.5 font-medium text-slate-800">แมงกะพรุน (แมงกะพรุนไฟ / กล่อง) หรือเม่นทะเล</span>
-        </label>
-        <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50">
-          <input type="checkbox" name="venomCreatureTypes" value="spider_other_arthropod" onchange="handleVenomCreatureChange()" class="rounded text-medical-600 h-4 w-4">
-          <span class="ml-2.5 font-medium text-slate-800">แมงมุม / บึ้ง / ก้นกระดก / บุ้ง / อื่นๆ</span>
-        </label>
-        <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50 sm:col-span-2">
-          <input type="checkbox" name="venomCreatureTypes" value="unknown_creature" onchange="handleVenomCreatureChange()" class="rounded text-medical-600 h-4 w-4">
-          <span class="ml-2.5 font-medium text-slate-700">ไม่ทราบชนิดสัตว์ที่กัดหรือต่อย (รู้สึกเจ็บแปล๊บหรือพบรอยแผลโดยไม่เห็นตัว)</span>
-        </label>
-      </div>
-    </div>
+    <div class="pt-3 border-t border-slate-100 space-y-3">
+      <label class="block text-xs sm:text-sm font-semibold text-slate-800">1.2 ชนิดของสัตว์มีพิษหรือแมลงที่กัด/ต่อย (เลือกได้หลายข้อ):</label>
+      ${renderVenomGrid('grid-cols-1 sm:grid-cols-2', [
+        { name: 'venomCreatureTypes', value: 'snake', title: ['งู', '(มีพิษ / ไม่มีพิษ)'], onchange: 'handleVenomCreatureChange()' },
+        { name: 'venomCreatureTypes', value: 'bee_wasp_hornet', title: ['ผึ้ง / ต่อ / แตน'], desc: 'เช่น ต่อหัวเสือ ผึ้งหลวง', onchange: 'handleVenomCreatureChange()' },
+        { name: 'venomCreatureTypes', value: 'ant', title: ['มดมีพิษ'], desc: 'เช่น มดตะนอย มดคันไฟ', onchange: 'handleVenomCreatureChange()' },
+        { name: 'venomCreatureTypes', value: 'centipede', title: ['ตะขาบ'], onchange: 'handleVenomCreatureChange()' },
+        { name: 'venomCreatureTypes', value: 'scorpion', title: ['แมงป่อง'], desc: 'แมงป่องช้าง / แมงป่องบ้าน', onchange: 'handleVenomCreatureChange()' },
+        { name: 'venomCreatureTypes', value: 'poisonous_fish', title: ['ปลามีเงี่ยงพิษ'], desc: 'ปลาดุก ปลาแขยง ปลากระเบน', onchange: 'handleVenomCreatureChange()' },
+        { name: 'venomCreatureTypes', value: 'jellyfish_sea_urchin', title: ['แมงกะพรุน /', 'เม่นทะเล'], desc: 'แมงกะพรุนไฟ / แมงกะพรุนกล่อง', onchange: 'handleVenomCreatureChange()' },
+        { name: 'venomCreatureTypes', value: 'spider_other_arthropod', title: ['แมงมุม / บึ้ง /', 'ก้นกระดก / บุ้ง'], desc: 'หรือสัตว์มีพิษอื่นๆ', onchange: 'handleVenomCreatureChange()' },
+        { name: 'venomCreatureTypes', value: 'unknown_creature', title: ['ไม่ทราบชนิดสัตว์', 'ที่กัดหรือต่อย'], desc: 'เจ็บแปล๊บหรือพบรอยแผลโดยไม่เห็นตัว', onchange: 'handleVenomCreatureChange()', colSpan2: true }
+      ])}
 
-    <!-- กิ่งย่อยเมื่องูถูกเลือก -->
-    <div id="venomSnakeDetailsContainer" class="hidden bg-slate-50 border border-slate-200 rounded-xl p-3.5 sm:p-4 space-y-3">
-      <label class="block text-xs sm:text-sm font-bold text-slate-900">ชนิดหรือลักษณะของงูที่กัด (หากทราบหรือถ่ายรูปมา):</label>
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs sm:text-sm">
-        <label class="selectable-card flex items-center p-2.5 bg-white rounded-lg border border-slate-200 cursor-pointer">
-          <input type="radio" name="venomSnakeType" value="cobra_king_cobra" class="text-medical-600 h-4 w-4">
-          <span class="ml-2 font-medium text-slate-800">งูเห่า หรือ งูจงอาง (งูแผ่แม่เบี้ย)</span>
-        </label>
-        <label class="selectable-card flex items-center p-2.5 bg-white rounded-lg border border-slate-200 cursor-pointer">
-          <input type="radio" name="venomSnakeType" value="spitting_cobra_eye" class="text-medical-600 h-4 w-4">
-          <span class="ml-2 font-medium text-slate-800">งูเห่าพ่นพิษเข้าตา</span>
-        </label>
-        <label class="selectable-card flex items-center p-2.5 bg-white rounded-lg border border-slate-200 cursor-pointer">
-          <input type="radio" name="venomSnakeType" value="green_pit_viper" class="text-medical-600 h-4 w-4">
-          <span class="ml-2 font-medium text-slate-800">งูเขียวหางไหม้ (ตัวสีเขียว หางสีแดงคล้ำ)</span>
-        </label>
-        <label class="selectable-card flex items-center p-2.5 bg-white rounded-lg border border-slate-200 cursor-pointer">
-          <input type="radio" name="venomSnakeType" value="malayan_pit_viper" class="text-medical-600 h-4 w-4">
-          <span class="ml-2 font-medium text-slate-800">งูกะปะ (ตัวสีน้ำตาล ลายสามเหลี่ยม)</span>
-        </label>
-        <label class="selectable-card flex items-center p-2.5 bg-white rounded-lg border border-slate-200 cursor-pointer">
-          <input type="radio" name="venomSnakeType" value="russells_viper" class="text-medical-600 h-4 w-4">
-          <span class="ml-2 font-medium text-slate-800">งูแมวเซา (ตัวอ้วนสีน้ำตาล ลายวงกลมคล้ายโซ่)</span>
-        </label>
-        <label class="selectable-card flex items-center p-2.5 bg-white rounded-lg border border-slate-200 cursor-pointer">
-          <input type="radio" name="venomSnakeType" value="krait" class="text-medical-600 h-4 w-4">
-          <span class="ml-2 font-medium text-slate-800">งูสามเหลี่ยม หรือ งูทับสมิงคลา (มีปล้องดำ-เหลือง / ดำ-ขาว)</span>
-        </label>
-        <label class="selectable-card flex items-center p-2.5 bg-white rounded-lg border border-slate-200 cursor-pointer">
-          <input type="radio" name="venomSnakeType" value="sea_snake" class="text-medical-600 h-4 w-4">
-          <span class="ml-2 font-medium text-slate-800">งูทะเล</span>
-        </label>
-        <label class="selectable-card flex items-center p-2.5 bg-white rounded-lg border border-slate-200 cursor-pointer">
-          <input type="radio" name="venomSnakeType" value="non_venomous_snake" class="text-medical-600 h-4 w-4">
-          <span class="ml-2 font-medium text-slate-800">งูไม่มีพิษ (งูเหลือม, งูหลาม, งูสิง)</span>
-        </label>
-        <label class="selectable-card flex items-center p-2.5 bg-white rounded-lg border border-slate-200 cursor-pointer sm:col-span-2">
-          <input type="radio" name="venomSnakeType" value="unknown_snake" class="text-medical-600 h-4 w-4">
-          <span class="ml-2 font-medium text-slate-700">ไม่ทราบชนิดงู / มองไม่เห็นตัวงูชัดเจน</span>
-        </label>
+      <!-- กิ่งย่อยเมื่องูถูกเลือก -->
+      <div id="venomSnakeDetailsContainer" class="hidden bg-slate-50 border border-slate-200 rounded-xl p-3.5 sm:p-4 space-y-3">
+        <label class="block text-xs sm:text-sm font-semibold text-slate-800">ชนิดหรือลักษณะของงูที่กัด (หากทราบหรือถ่ายรูปมา):</label>
+        ${renderVenomGrid('grid-cols-1 sm:grid-cols-2', [
+          { kind: 'radio', name: 'venomSnakeType', value: 'cobra_king_cobra', title: ['งูเห่า หรือ', 'งูจงอาง'], desc: 'งูแผ่แม่เบี้ย', compact: true },
+          { kind: 'radio', name: 'venomSnakeType', value: 'spitting_cobra_eye', title: ['งูเห่าพ่นพิษเข้าตา'], compact: true },
+          { kind: 'radio', name: 'venomSnakeType', value: 'green_pit_viper', title: ['งูเขียวหางไหม้'], desc: 'ตัวสีเขียว หางสีแดงคล้ำ', compact: true },
+          { kind: 'radio', name: 'venomSnakeType', value: 'malayan_pit_viper', title: ['งูกะปะ'], desc: 'ตัวสีน้ำตาล ลายสามเหลี่ยม', compact: true },
+          { kind: 'radio', name: 'venomSnakeType', value: 'russells_viper', title: ['งูแมวเซา'], desc: 'ตัวอ้วนสีน้ำตาล ลายวงกลมคล้ายโซ่', compact: true },
+          { kind: 'radio', name: 'venomSnakeType', value: 'krait', title: ['งูสามเหลี่ยม /', 'งูทับสมิงคลา'], desc: 'ปล้องดำ-เหลือง หรือดำ-ขาว', compact: true },
+          { kind: 'radio', name: 'venomSnakeType', value: 'sea_snake', title: ['งูทะเล'], compact: true },
+          { kind: 'radio', name: 'venomSnakeType', value: 'non_venomous_snake', title: ['งูไม่มีพิษ'], desc: 'งูเหลือม งูหลาม งูสิง', compact: true },
+          { kind: 'radio', name: 'venomSnakeType', value: 'other_snake', title: ['งูชนิดอื่นๆ'], desc: 'ระบุชนิดหรือลักษณะงู', compact: true },
+          { kind: 'radio', name: 'venomSnakeType', value: 'unknown_snake', title: ['ไม่ทราบชนิดงู /', 'มองไม่เห็นตัวชัด'], compact: true }
+        ], { onchange: 'handleVenomSnakeTypeChange()' })}
+        <div id="venomOtherSnakeDetailContainer" class="hidden pl-3 border-l-2 border-medical-200">
+          <input type="text" id="venomOtherSnakeDetail" placeholder="พิมพ์ระบุชนิดหรือลักษณะของงู เช่น งูแสงอาทิตย์, งูปล้องฉนวน, สี/ลายของงู..." class="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2 text-xs sm:text-sm text-slate-800 placeholder:text-slate-400 focus:ring-2 focus:ring-medical-500">
+        </div>
+        <input type="text" id="venomSnakeDetailFree" placeholder="ระบุลักษณะงูเพิ่มเติม หรือระบุว่ามีรูปถ่าย/ซากงูนำมาด้วย..." class="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2 text-xs sm:text-sm text-slate-800 placeholder:text-slate-400 focus:ring-2 focus:ring-medical-500">
       </div>
-      <div>
-        <input type="text" id="venomSnakeDetailFree" placeholder="ระบุลักษณะงูเพิ่มเติม หรือระบุว่ามีรูปถ่าย/ซากงูนำมาด้วย..." class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs sm:text-sm text-slate-800 placeholder:text-slate-400 focus:ring-2 focus:ring-medical-500">
-      </div>
-    </div>
 
-    <!-- กิ่งย่อยสัตว์มีพิษอื่นๆ -->
-    <div id="venomOtherCreatureDetailsContainer" class="hidden">
-      <input type="text" id="venomOtherCreatureDetail" placeholder="พิมพ์ระบุชนิดสัตว์หรือแมลงที่กัดต่อย..." class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2 text-xs sm:text-sm text-slate-800 placeholder:text-slate-400 focus:ring-2 focus:ring-medical-500">
+      <!-- กิ่งย่อยสัตว์มีพิษอื่นๆ -->
+      <div id="venomOtherCreatureDetailsContainer" class="hidden">
+        <input type="text" id="venomOtherCreatureDetail" placeholder="พิมพ์ระบุชนิดสัตว์หรือแมลงที่กัดต่อย..." class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2 text-xs sm:text-sm text-slate-800 placeholder:text-slate-400 focus:ring-2 focus:ring-medical-500">
+      </div>
     </div>
 
     <!-- 1.3 จำนวนจุดที่ถูกกัด/ต่อย -->
     <div class="pt-3 border-t border-slate-100">
       <label class="block text-xs sm:text-sm font-semibold text-slate-800 mb-2">1.3 จำนวนจุดหรือจำนวนแผลที่ถูกกัด/ต่อย:</label>
-      <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs sm:text-sm">
-        <label class="selectable-card flex items-center p-2.5 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50">
-          <input type="radio" name="venomStingsCount" value="single_or_few" class="text-medical-600 h-4 w-4">
-          <span class="ml-2 text-slate-800">1 จุด (หรือ 1-2 จุด)</span>
-        </label>
-        <label class="selectable-card flex items-center p-2.5 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50">
-          <input type="radio" name="venomStingsCount" value="several" class="text-medical-600 h-4 w-4">
-          <span class="ml-2 text-slate-800">หลายจุด (ประมาณ 3-9 จุด)</span>
-        </label>
-        <label class="selectable-card flex items-center p-2.5 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50">
-          <input type="radio" name="venomStingsCount" value="massive" class="text-medical-600 h-4 w-4">
-          <span class="ml-2 text-slate-800">รุมต่อยมาก (>= 10 จุด)</span>
-        </label>
-      </div>
+      ${renderVenomGrid('grid-cols-1 sm:grid-cols-3', [
+        { kind: 'radio', name: 'venomStingsCount', value: 'single_or_few', title: ['1–2 จุด'], compact: true },
+        { kind: 'radio', name: 'venomStingsCount', value: 'several', title: ['หลายจุด (3–9 จุด)'], compact: true },
+        { kind: 'radio', name: 'venomStingsCount', value: 'massive', title: ['รุมต่อยมาก', '(>= 10 จุด)'], compact: true }
+      ])}
     </div>
 
     <!-- 1.4 การปฐมพยาบาลเบื้องต้น -->
-    <div class="pt-3 border-t border-slate-100">
-      <label class="block text-xs sm:text-sm font-semibold text-slate-800 mb-2">1.4 การปฐมพยาบาลเบื้องต้นที่ได้ทำไปแล้วก่อนมาโรงพยาบาล (เลือกได้หลายข้อ):</label>
-      <div class="space-y-2 text-xs sm:text-sm">
-        <label class="selectable-card flex items-center p-2.5 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50">
-          <input type="checkbox" name="venomFirstAid" value="wash_water_cold_pack" class="rounded text-medical-600 h-4 w-4">
-          <span class="ml-2 text-slate-800">ล้างแผลด้วยน้ำสะอาด หรือประคบเย็น</span>
-        </label>
-        <label class="selectable-card flex items-center p-2.5 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50">
-          <input type="checkbox" name="venomFirstAid" value="warm_water_soak" class="rounded text-medical-600 h-4 w-4">
-          <span class="ml-2 text-slate-800">แช่แผลในน้ำอุ่น (กรณีถูกเงี่ยงปลาตำหรือสัตว์น้ำมีพิษ)</span>
-        </label>
-        <label class="selectable-card flex items-center p-2.5 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50">
-          <input type="checkbox" name="venomFirstAid" value="vinegar_rinse" class="rounded text-medical-600 h-4 w-4">
-          <span class="ml-2 text-slate-800">ราดแผลด้วยน้ำส้มสายชู (กรณีถูกแมงกะพรุน)</span>
-        </label>
-        <label class="selectable-card flex items-center p-2.5 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50">
-          <input type="checkbox" name="venomFirstAid" value="tourniquet_applied" class="rounded text-medical-600 h-4 w-4">
-          <span class="ml-2 text-slate-800">ใช้เชือก ผ้า หรือสายรัด มัดรัดเหนือแผลไว้ (ขันชะเนาะ) <span class="text-xs text-slate-500">(เป็นวิธีที่ผิด ไม่ควรทำ)</span></span>
-        </label>
-        <label class="selectable-card flex items-center p-2.5 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50">
-          <input type="checkbox" name="venomFirstAid" value="incision_suction_herbal" class="rounded text-medical-600 h-4 w-4">
-          <span class="ml-2 text-slate-800">กรีดแผล ใช้ปากดูดพิษ หรือนำสมุนไพร/สิ่งแปลกปลอมพอกแผล <span class="text-xs text-slate-500">(เป็นวิธีที่ผิด ไม่ควรทำ)</span></span>
-        </label>
-        <label class="selectable-card flex items-center p-2.5 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50">
-          <input type="checkbox" name="venomFirstAid" value="no_first_aid" class="rounded text-medical-600 h-4 w-4">
-          <span class="ml-2 text-slate-600">ยังไม่ได้ทำการปฐมพยาบาลใดๆ</span>
-        </label>
-      </div>
+    <div class="p-3.5 bg-slate-50 rounded-xl border border-slate-200">
+      ${renderVenomSysHeader({
+        label: '1.4 การปฐมพยาบาลเบื้องต้นก่อนมาโรงพยาบาล (เลือกได้หลายข้อ)',
+        icon: 'first-aid-kit',
+        colorClass: 'bg-teal-100 text-teal-700',
+        toggleKind: 'checkbox',
+        toggleId: 'venomFirstAidNoneCb',
+        toggleName: 'venomFirstAid',
+        toggleValue: 'no_first_aid',
+        toggleLabel: 'ยังไม่ได้ทำอะไร',
+        toggleOnchange: "handleVenomGroupNoneToggle(this, 'venomFirstAid')"
+      })}
+      ${renderVenomGrid('grid-cols-1 sm:grid-cols-2', [
+        { name: 'venomFirstAid', value: 'wash_water_cold_pack', title: ['ล้างน้ำสะอาด /', 'ประคบเย็น'], onchange: "handleVenomGroupItemChange(this, 'venomFirstAidNoneCb')", compact: true },
+        { name: 'venomFirstAid', value: 'warm_water_soak', title: ['แช่แผลในน้ำอุ่น'], desc: 'กรณีถูกเงี่ยงปลาตำหรือสัตว์น้ำมีพิษ', onchange: "handleVenomGroupItemChange(this, 'venomFirstAidNoneCb')", compact: true },
+        { name: 'venomFirstAid', value: 'vinegar_rinse', title: ['ราดด้วยน้ำส้มสายชู'], desc: 'กรณีถูกแมงกะพรุน', onchange: "handleVenomGroupItemChange(this, 'venomFirstAidNoneCb')", compact: true },
+        { name: 'venomFirstAid', value: 'tourniquet_applied', title: ['มัดรัดเหนือแผล', '(ขันชะเนาะ)'], desc: 'เป็นวิธีที่ผิด ไม่ควรทำ', onchange: "handleVenomGroupItemChange(this, 'venomFirstAidNoneCb')", compact: true },
+        { name: 'venomFirstAid', value: 'incision_suction_herbal', title: ['กรีดแผล / ดูดพิษ', '/ พอกสมุนไพร'], desc: 'เป็นวิธีที่ผิด ไม่ควรทำ', onchange: "handleVenomGroupItemChange(this, 'venomFirstAidNoneCb')", compact: true, colSpan2: true }
+      ])}
     </div>
   </div>
 
   <!-- CARD 2: ตำแหน่งของร่างกายที่ถูกกัด/ต่อย (7 ส่วน) และลักษณะแผลเฉพาะที่ -->
-  <div class="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-xs space-y-5">
-    <div class="flex items-center space-x-2 border-b border-slate-100 pb-3">
+  <div class="bg-white rounded-2xl p-5 sm:p-6 shadow-sm border border-slate-200 space-y-5">
+    <div class="flex items-center space-x-3 pb-3 border-b border-slate-100">
       <div class="p-2 rounded-xl bg-medical-100 text-medical-700">
         <i data-lucide="user-check" class="w-5 h-5"></i>
       </div>
       <div>
-        <h3 class="text-sm sm:text-base font-bold text-slate-900">2. ตำแหน่งของร่างกายที่ได้รับบาดเจ็บและชนิดการบาดเจ็บ</h3>
-        <p class="text-xs text-slate-500">เลือกตำแหน่งร่างกายที่มีบาดแผล และระบุอาการเฉพาะที่</p>
+        <h2 class="text-base font-bold text-slate-900">2. ตำแหน่งของร่างกายที่ได้รับบาดเจ็บและลักษณะแผลเฉพาะที่</h2>
+        <p class="text-xs text-slate-500">เลือกโซนร่างกายที่มีแผลหรือปวดบวม จากนั้นระบุด้านและลักษณะบาดเจ็บ</p>
       </div>
     </div>
 
-    <!-- 2.1 ศีรษะ ใบหน้า -->
-    <div class="border border-slate-200 rounded-xl p-3 sm:p-4 space-y-3">
-      <label class="flex items-center cursor-pointer">
-        <input type="checkbox" id="venomParentHeadFace" onchange="toggleVenomGroup('venomHeadFaceSubGroup', this.checked)" class="rounded text-medical-600 h-4 w-4">
-        <span class="ml-2 text-xs sm:text-sm font-bold text-slate-900">2.1 บาดแผลที่ศีรษะ ใบหน้า ดวงตา หรือในช่องปาก</span>
-      </label>
-      <div id="venomHeadFaceSubGroup" class="hidden space-y-3 pl-6 pt-2 border-t border-slate-100 text-xs sm:text-sm">
-        <div class="space-y-2">
-          ${renderVenomPart('venomHeadScalp', 'หนังศีรษะ/หน้าผาก/ท้ายทอย', true)}
-          ${renderVenomPart('venomHeadFace', 'ใบหน้า/แก้ม/คาง', true)}
-          ${renderVenomPart('venomHeadEye', 'ดวงตา/เปลือกตา')}
-          ${renderVenomPart('venomHeadEar', 'ใบหู')}
-          ${renderVenomPart('venomHeadNoseMouth', 'จมูก/ริมฝีปาก/ในปาก/ลิ้น', true)}
-        </div>
-        <div class="pt-2 border-t border-slate-100 space-y-1.5">
-          <span class="font-semibold text-slate-700 block">อาการสำคัญที่พบร่วมด้วย:</span>
-          <label class="flex items-center"><input type="checkbox" name="venomHeadSigns" value="venom_in_eye_pain_blurred" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">ถูกพิษงูหรือพิษแมลงเข้าตา มีอาการปวดแสบตารุนแรง น้ำตาไหล หรือตามัว</span></label>
-          <label class="flex items-center"><input type="checkbox" name="venomHeadSigns" value="stung_in_mouth_tongue_swelling" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">ถูกต่อยในปาก ลิ้น หรือริมฝีปาก จนเริ่มบวมคับปาก</span></label>
-        </div>
-      </div>
-    </div>
+    ${renderVenomRegionBox({
+      parentId: 'venomParentHeadFace',
+      subGroupId: 'venomHeadFaceSubGroup',
+      title: ['2.1 ศีรษะ ใบหน้า', 'ดวงตา หรือในปาก'],
+      partsHtml: [
+        renderVenomPart('venomHeadScalp', 'หนังศีรษะ / หน้าผาก / ท้ายทอย', true),
+        renderVenomPart('venomHeadFace', 'ใบหน้า / แก้ม / คาง', true),
+        renderVenomPart('venomHeadEye', 'ดวงตา / เปลือกตา'),
+        renderVenomPart('venomHeadEar', 'ใบหู'),
+        renderVenomPart('venomHeadNoseMouth', 'จมูก / ริมฝีปาก / ในปาก / ลิ้น', true)
+      ].join('\n'),
+      signsName: 'venomHeadSigns',
+      signsNoneId: 'venomHeadSignsNoneCb',
+      signs: [
+        { value: 'venom_in_eye_pain_blurred', title: ['พิษเข้าตา', 'แสบตา / ตามัว'], desc: 'ปวดแสบตารุนแรง น้ำตาไหล หรือตามัว' },
+        { value: 'stung_in_mouth_tongue_swelling', title: ['ถูกต่อยในปาก /', 'ลิ้นบวมคับปาก'], desc: 'บวมในปาก ลิ้น หรือริมฝีปาก' }
+      ]
+    })}
 
-    <!-- 2.2 ลำคอ -->
-    <div class="border border-slate-200 rounded-xl p-3 sm:p-4 space-y-3">
-      <label class="flex items-center cursor-pointer">
-        <input type="checkbox" id="venomParentNeck" onchange="toggleVenomGroup('venomNeckSubGroup', this.checked)" class="rounded text-medical-600 h-4 w-4">
-        <span class="ml-2 text-xs sm:text-sm font-bold text-slate-900">2.2 บาดแผลที่ลำคอ</span>
-      </label>
-      <div id="venomNeckSubGroup" class="hidden space-y-3 pl-6 pt-2 border-t border-slate-100 text-xs sm:text-sm">
-        <div class="space-y-2">
-          ${renderVenomPart('venomNeckFront', 'ลำคอด้านหน้า', true)}
-          ${renderVenomPart('venomNeckSide', 'ลำคอด้านข้าง')}
-          ${renderVenomPart('venomNeckBack', 'ต้นคอด้านหลัง', true)}
-        </div>
-        <div class="pt-2 border-t border-slate-100 space-y-1.5">
-          <span class="font-semibold text-slate-700 block">อาการสำคัญที่พบร่วมด้วย:</span>
-          <label class="flex items-center"><input type="checkbox" name="venomNeckSigns" value="rapid_neck_swelling_stridor_dysphagia" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">คอบวมโตขึ้นอย่างรวดเร็ว อึดอัดแน่นคอ หรือกลืนลำบาก</span></label>
-        </div>
-      </div>
-    </div>
+    ${renderVenomRegionBox({
+      parentId: 'venomParentNeck',
+      subGroupId: 'venomNeckSubGroup',
+      title: ['2.2 ลำคอ'],
+      partsHtml: [
+        renderVenomPart('venomNeckFront', 'ลำคอด้านหน้า', true),
+        renderVenomPart('venomNeckSide', 'ลำคอด้านข้าง'),
+        renderVenomPart('venomNeckBack', 'ต้นคอด้านหลัง', true)
+      ].join('\n'),
+      signsName: 'venomNeckSigns',
+      signsNoneId: 'venomNeckSignsNoneCb',
+      signsCols: 'grid-cols-1',
+      signs: [
+        { value: 'rapid_neck_swelling_stridor_dysphagia', title: ['คอบวมเร็ว แน่นคอ', 'หรือกลืนลำบาก'] }
+      ]
+    })}
 
-    <!-- 2.3 หน้าอก / หลังบน -->
-    <div class="border border-slate-200 rounded-xl p-3 sm:p-4 space-y-3">
-      <label class="flex items-center cursor-pointer">
-        <input type="checkbox" id="venomParentChest" onchange="toggleVenomGroup('venomChestSubGroup', this.checked)" class="rounded text-medical-600 h-4 w-4">
-        <span class="ml-2 text-xs sm:text-sm font-bold text-slate-900">2.3 บาดแผลที่หน้าอก หรือแผ่นหลังส่วนบน/สะบัก</span>
-      </label>
-      <div id="venomChestSubGroup" class="hidden space-y-3 pl-6 pt-2 border-t border-slate-100 text-xs sm:text-sm">
-        <div class="space-y-2">
-          ${renderVenomPart('venomChestFront', 'หน้าอก/ราวนม', true)}
-          ${renderVenomPart('venomChestBack', 'แผ่นหลังส่วนบน/สะบัก', true)}
-        </div>
-        <div class="pt-2 border-t border-slate-100 space-y-1.5">
-          <span class="font-semibold text-slate-700 block">อาการสำคัญที่พบร่วมด้วย:</span>
-          <label class="flex items-center"><input type="checkbox" name="venomChestSigns" value="chest_tightness_dyspnea" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2">เจ็บแน่นหน้าอก หรือหายใจไม่อิ่ม</span></label>
-        </div>
-      </div>
-    </div>
+    ${renderVenomRegionBox({
+      parentId: 'venomParentChest',
+      subGroupId: 'venomChestSubGroup',
+      title: ['2.3 หน้าอก /', 'หลังส่วนบน / สะบัก'],
+      partsHtml: [
+        renderVenomPart('venomChestFront', 'หน้าอก / ราวนม', true),
+        renderVenomPart('venomChestBack', 'แผ่นหลังส่วนบน / สะบัก', true)
+      ].join('\n'),
+      signsName: 'venomChestSigns',
+      signsNoneId: 'venomChestSignsNoneCb',
+      signsCols: 'grid-cols-1',
+      signs: [
+        { value: 'chest_tightness_dyspnea', title: ['เจ็บแน่นหน้าอก', 'หายใจไม่อิ่ม'] }
+      ]
+    })}
 
-    <!-- 2.4 หน้าท้อง / เอว / ก้น -->
-    <div class="border border-slate-200 rounded-xl p-3 sm:p-4 space-y-3">
-      <label class="flex items-center cursor-pointer">
-        <input type="checkbox" id="venomParentAbdomen" onchange="toggleVenomGroup('venomAbdomenSubGroup', this.checked)" class="rounded text-medical-600 h-4 w-4">
-        <span class="ml-2 text-xs sm:text-sm font-bold text-slate-900">2.4 บาดแผลที่หน้าท้อง บั้นเอว หลังส่วนล่าง สะโพก หรืออวัยวะเพศ</span>
-      </label>
-      <div id="venomAbdomenSubGroup" class="hidden space-y-3 pl-6 pt-2 border-t border-slate-100 text-xs sm:text-sm">
-        <div class="space-y-2">
-          ${renderVenomPart('venomAbdFront', 'หน้าท้อง', true)}
-          ${renderVenomPart('venomAbdFlank', 'สีข้าง/บั้นเอว')}
-          ${renderVenomPart('venomAbdLowBack', 'หลังส่วนล่าง', true)}
-          ${renderVenomPart('venomAbdButtock', 'สะโพก/ก้น', true)}
-          ${renderVenomPart('venomAbdGroinGenitalia', 'ขาหนีบ/อวัยวะเพศ', true)}
-        </div>
-      </div>
-    </div>
+    ${renderVenomRegionBox({
+      parentId: 'venomParentAbdomen',
+      subGroupId: 'venomAbdomenSubGroup',
+      title: ['2.4 หน้าท้อง เอว', 'หลังล่าง สะโพก ก้น'],
+      partsHtml: [
+        renderVenomPart('venomAbdFront', 'หน้าท้อง', true),
+        renderVenomPart('venomAbdFlank', 'สีข้าง / บั้นเอว'),
+        renderVenomPart('venomAbdLowBack', 'หลังส่วนล่าง', true),
+        renderVenomPart('venomAbdButtock', 'สะโพก / ก้น', true),
+        renderVenomPart('venomAbdGroinGenitalia', 'ขาหนีบ / อวัยวะเพศ', true)
+      ].join('\n')
+    })}
 
-    <!-- 2.5 ไหล่ แขน มือ นิ้วมือ -->
-    <div class="border border-slate-200 rounded-xl p-3 sm:p-4 space-y-3">
-      <label class="flex items-center cursor-pointer">
-        <input type="checkbox" id="venomParentUpperExtremity" onchange="toggleVenomGroup('venomUpperExtSubGroup', this.checked)" class="rounded text-medical-600 h-4 w-4">
-        <span class="ml-2 text-xs sm:text-sm font-bold text-slate-900">2.5 บาดแผลที่ไหล่ แขน ข้อศอก ข้อมือ หรือมือ/นิ้วมือ</span>
-      </label>
-      <div id="venomUpperExtSubGroup" class="hidden space-y-3 pl-6 pt-2 border-t border-slate-100 text-xs sm:text-sm">
-        <div class="space-y-2">
-          ${renderVenomPart('venomArmShoulder', 'หัวไหล่/ต้นแขน')}
-          ${renderVenomPart('venomArmElbowForearm', 'ข้อศอก/แขนท่อนล่าง')}
-          ${renderVenomPart('venomArmWristHand', 'ข้อมือ/ฝ่ามือ/หลังมือ')}
-          ${renderVenomDigits('venomArmFingers', 'นิ้วมือ')}
-        </div>
-        <div class="pt-2 border-t border-slate-100 space-y-1.5">
-          <span class="font-semibold text-slate-700 block">อาการสำคัญที่พบร่วมด้วย:</span>
-          <label class="flex items-center"><input type="checkbox" name="venomUpperExtSigns" value="arm_tense_compartment_ischemia" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">แขน มือ หรือนิ้วมือบวมตึงมาก ขยับนิ้วแล้วปวดรุนแรง หรือมีอาการชา/ปลายนิ้วซีดเย็น</span></label>
-        </div>
-      </div>
-    </div>
+    ${renderVenomRegionBox({
+      parentId: 'venomParentUpperExtremity',
+      subGroupId: 'venomUpperExtSubGroup',
+      title: ['2.5 ไหล่ แขน มือ', 'และนิ้วมือ'],
+      partsHtml: [
+        renderVenomPart('venomArmShoulder', 'หัวไหล่ / ต้นแขน'),
+        renderVenomPart('venomArmElbowForearm', 'ข้อศอก / แขนท่อนล่าง'),
+        renderVenomPart('venomArmWristHand', 'ข้อมือ / ฝ่ามือ / หลังมือ'),
+        renderVenomDigits('venomArmFingers', 'นิ้วมือ')
+      ].join('\n'),
+      signsName: 'venomUpperExtSigns',
+      signsNoneId: 'venomUpperExtSignsNoneCb',
+      signsCols: 'grid-cols-1',
+      signs: [
+        { value: 'arm_tense_compartment_ischemia', title: ['บวมตึง ปวดรุนแรง', 'หรือปลายนิ้วซีดเย็น'], desc: 'แขน/มือบวมตึงมาก ขยับนิ้วแล้วปวดมาก หรือมีอาการชา/ปลายนิ้วซีด' }
+      ]
+    })}
 
-    <!-- 2.6 ขา ข้อเท้า เท้า นิ้วเท้า -->
-    <div class="border border-slate-200 rounded-xl p-3 sm:p-4 space-y-3">
-      <label class="flex items-center cursor-pointer">
-        <input type="checkbox" id="venomParentLowerExtremity" onchange="toggleVenomGroup('venomLowerExtSubGroup', this.checked)" class="rounded text-medical-600 h-4 w-4">
-        <span class="ml-2 text-xs sm:text-sm font-bold text-slate-900">2.6 บาดแผลที่ต้นขา เข่า หน้าแข้ง น่อง ข้อเท้า หรือเท้า/นิ้วเท้า</span>
-      </label>
-      <div id="venomLowerExtSubGroup" class="hidden space-y-3 pl-6 pt-2 border-t border-slate-100 text-xs sm:text-sm">
-        <div class="space-y-2">
-          ${renderVenomPart('venomLegThigh', 'ต้นขา')}
-          ${renderVenomPart('venomLegKneeShinCalf', 'เข่า/หน้าแข้ง/น่อง')}
-          ${renderVenomPart('venomLegAnkleFoot', 'ข้อเท้า/ฝ่าเท้า/หลังเท้า/ส้นเท้า')}
-          ${renderVenomDigits('venomLegToes', 'นิ้วเท้า')}
-        </div>
-        <div class="pt-2 border-t border-slate-100 space-y-1.5">
-          <span class="font-semibold text-slate-700 block">อาการสำคัญที่พบร่วมด้วย:</span>
-          <label class="flex items-center"><input type="checkbox" name="venomLowerExtSigns" value="leg_tense_compartment_ischemia" class="rounded text-medical-600 h-3.5 w-3.5"><span class="ml-2 text-slate-800">ขา ข้อเท้า หรือเท้าบวมตึงมาก เดินลงน้ำหนักไม่ได้ หรือมีอาการชา/ปลายเท้าซีดเย็น</span></label>
-        </div>
-      </div>
-    </div>
+    ${renderVenomRegionBox({
+      parentId: 'venomParentLowerExtremity',
+      subGroupId: 'venomLowerExtSubGroup',
+      title: ['2.6 ต้นขา เข่า', 'ข้อเท้าและนิ้วเท้า'],
+      partsHtml: [
+        renderVenomPart('venomLegThigh', 'ต้นขา'),
+        renderVenomPart('venomLegKneeShinCalf', 'เข่า / หน้าแข้ง / น่อง'),
+        renderVenomPart('venomLegAnkleFoot', 'ข้อเท้า / ฝ่าเท้า / หลังเท้า / ส้นเท้า'),
+        renderVenomDigits('venomLegToes', 'นิ้วเท้า')
+      ].join('\n'),
+      signsName: 'venomLowerExtSigns',
+      signsNoneId: 'venomLowerExtSignsNoneCb',
+      signsCols: 'grid-cols-1',
+      signs: [
+        { value: 'leg_tense_compartment_ischemia', title: ['บวมตึง ลงน้ำหนักยาก', 'หรือปลายเท้าซีดเย็น'], desc: 'ขา/เท้าบวมตึงมาก เดินลงน้ำหนักไม่ได้ หรือมีอาการชา/ปลายเท้าซีด' }
+      ]
+    })}
 
     <!-- 2.7 ตำแหน่งอื่นๆ -->
-    <div class="border border-slate-200 rounded-xl p-3 sm:p-4 space-y-3">
-      <label class="flex items-center cursor-pointer">
-        <input type="checkbox" id="venomParentOther" onchange="toggleVenomGroup('venomOtherSubGroup', this.checked)" class="rounded text-medical-600 h-4 w-4">
-        <span class="ml-2 text-xs sm:text-sm font-bold text-slate-900">2.7 บาดแผลที่ตำแหน่งอื่นๆ (พิมพ์ระบุ)</span>
+    <div class="space-y-3">
+      <label class="selectable-card flex items-center p-3.5 rounded-xl border-2 border-slate-200 bg-slate-50 hover:border-medical-400 transition cursor-pointer">
+        <input type="checkbox" id="venomParentOther" onchange="toggleVenomGroup('venomOtherSubGroup', this.checked)" class="text-medical-600 focus:ring-medical-500 h-5 w-5 rounded flex-shrink-0">
+        <span class="ml-3 text-xs sm:text-sm font-bold text-slate-900">2.7 ตำแหน่งอื่นๆ (พิมพ์ระบุ)</span>
       </label>
-      <div id="venomOtherSubGroup" class="hidden pl-6 pt-2 border-t border-slate-100">
-        <input type="text" id="venomOtherLocationDetail" placeholder="ระบุตำแหน่งของร่างกายที่ถูกกัดหรือต่อย เช่น ซอกคอ, ใบหู..." class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2 text-xs sm:text-sm text-slate-800 placeholder:text-slate-400 focus:ring-2 focus:ring-medical-500">
+      <div id="venomOtherSubGroup" class="hidden pl-4 sm:pl-6 border-l-2 border-medical-200">
+        <input type="text" id="venomOtherLocationDetail" placeholder="ระบุตำแหน่งของร่างกายที่ถูกกัดหรือต่อย เช่น ซอกคอ, ใบหู..." class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2 text-xs sm:text-sm text-slate-800 placeholder:text-slate-400 focus:ring-2 focus:ring-medical-500 focus:bg-white">
       </div>
     </div>
 
     <!-- 2.8 ลักษณะบาดแผลเฉพาะที่ -->
-    <div class="pt-3 border-t border-slate-100">
-      <label class="block text-xs sm:text-sm font-semibold text-slate-800 mb-2">2.8 ลักษณะบาดแผลและอาการเฉพาะที่ในขณะนี้ (เลือกได้หลายข้อหากมีอาการ):</label>
-      <div class="space-y-2 text-xs sm:text-sm">
-        <label class="selectable-card flex items-center p-2.5 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50">
-          <input type="checkbox" name="venomLocalSigns" value="fang_marks" class="rounded text-medical-600 h-4 w-4">
-          <span class="ml-2 text-slate-800">มีรอยเขี้ยวชัดเจน (1-2 รอย)</span>
-        </label>
-        <label class="selectable-card flex items-center p-2.5 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50">
-          <input type="checkbox" name="venomLocalSigns" value="active_bleeding_from_wound" class="rounded text-medical-600 h-4 w-4">
-          <span class="ml-2 text-slate-800">มีเลือดไหลซึมออกจากรอยแผลไม่หยุด</span>
-        </label>
+    <div class="pt-3 border-t border-slate-100 space-y-2.5">
+      <label class="block text-xs sm:text-sm font-semibold text-slate-800">2.8 ลักษณะบาดแผลและอาการเฉพาะที่ในขณะนี้ (เลือกได้หลายข้อ):</label>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+        ${renderVenomOption({ name: 'venomLocalSigns', value: 'fang_marks', title: ['มีรอยเขี้ยวชัดเจน'], desc: '1–2 รอย', compact: true })}
+        ${renderVenomOption({ name: 'venomLocalSigns', value: 'active_bleeding_from_wound', title: ['เลือดไหลซึมจากแผล', 'ไม่หยุด'], compact: true })}
         <div>
-          <label class="selectable-card flex items-center p-2.5 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50">
-            <input type="checkbox" name="venomLocalSigns" value="retained_stinger_spine" onchange="handleVenomLocalSignsChange()" class="rounded text-medical-600 h-4 w-4">
-            <span class="ml-2 text-slate-800">มีเหล็กในแมลง หรือเงี่ยงปลา/หนามสัตว์มีพิษ หักฝังค้างอยู่ในแผล</span>
-          </label>
-          <div id="venomStingerStatusContainer" class="hidden ml-6 mt-2 p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs space-y-1.5">
-            <span class="font-bold text-slate-700 block">สถานะของเหล็กในหรือเงี่ยงสัตว์มีพิษในขณะนี้:</span>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              <label class="flex items-center cursor-pointer"><input type="radio" name="venomStingerStatus" value="not_removed" class="text-medical-600 h-3.5 w-3.5"><span class="ml-1.5 text-slate-800">ยังไม่ได้เอาออก (ยังคงฝังค้างอยู่ในแผล)</span></label>
-              <label class="flex items-center cursor-pointer"><input type="radio" name="venomStingerStatus" value="already_removed" class="text-medical-600 h-3.5 w-3.5"><span class="ml-1.5 text-slate-700">เอาออกเรียบร้อยแล้ว</span></label>
-            </div>
+          ${renderVenomOption({ name: 'venomLocalSigns', value: 'retained_stinger_spine', title: ['มีเหล็กใน / เงี่ยง', 'ฝังค้างในแผล'], onchange: 'handleVenomLocalSignsChange()', compact: true })}
+          <div id="venomStingerStatusContainer" class="hidden mt-2 p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs space-y-2">
+            <span class="text-xs sm:text-sm font-semibold text-slate-700 block">สถานะของเหล็กในหรือเงี่ยงสัตว์มีพิษในขณะนี้:</span>
+            ${renderVenomGrid('grid-cols-1 sm:grid-cols-2', [
+              { kind: 'radio', name: 'venomStingerStatus', value: 'not_removed', title: ['ยังไม่ได้เอาออก', '(ยังฝังค้าง)'], compact: true },
+              { kind: 'radio', name: 'venomStingerStatus', value: 'already_removed', title: ['เอาออกเรียบร้อยแล้ว'], compact: true }
+            ])}
           </div>
         </div>
-        <label class="selectable-card flex items-center p-2.5 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50">
-          <input type="checkbox" name="venomLocalSigns" value="severe_rapid_spreading_swelling" class="rounded text-medical-600 h-4 w-4">
-          <span class="ml-2 text-slate-800">ปวดบวมรุนแรงและบวมลามเร็ว</span>
-        </label>
-        <label class="selectable-card flex items-center p-2.5 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50">
-          <input type="checkbox" name="venomLocalSigns" value="necrosis_hemorrhagic_blebs" class="rounded text-medical-600 h-4 w-4">
-          <span class="ml-2 text-slate-800">ผิวหนังรอบแผลเปลี่ยนเป็นสีม่วงคล้ำ ดำ หรือมีตุ่มน้ำพองใส/ตุ่มน้ำปนเลือด</span>
-        </label>
-        <label class="selectable-card flex items-center p-2.5 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50">
-          <input type="checkbox" name="venomLocalSigns" value="secondary_infection_pus" class="rounded text-medical-600 h-4 w-4">
-          <span class="ml-2 text-slate-800">แผลบวมแดงร้อน มีหนองซึม หรือมีรอยแดงลามตามเส้นเลือด</span>
-        </label>
-        <label class="selectable-card flex items-center p-2.5 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50">
-          <input type="checkbox" name="venomLocalSigns" value="mild_local_pain_only" class="rounded text-medical-600 h-4 w-4">
-          <span class="ml-2 text-slate-800">มีอาการปวด บวม แดง หรือคันเฉพาะจุดเพียงเล็กน้อย</span>
-        </label>
+        ${renderVenomOption({ name: 'venomLocalSigns', value: 'severe_rapid_spreading_swelling', title: ['ปวดบวมรุนแรง', 'และบวมลามเร็ว'], compact: true })}
+        ${renderVenomOption({ name: 'venomLocalSigns', value: 'necrosis_hemorrhagic_blebs', title: ['ผิวรอบแผลม่วงคล้ำ', '/ ตุ่มน้ำพอง'], desc: 'สีม่วงดำ ตุ่มน้ำใส หรือตุ่มเลือด', compact: true })}
+        ${renderVenomOption({ name: 'venomLocalSigns', value: 'secondary_infection_pus', title: ['แผลบวมแดงร้อน', 'มีหนองซึม'], desc: 'หรือรอยแดงลามตามแนวเส้นเลือด', compact: true })}
+        ${renderVenomOption({ name: 'venomLocalSigns', value: 'mild_local_pain_only', title: ['ปวด บวม แดง / คัน', 'เฉพาะจุดเล็กน้อย'], compact: true, colSpan2: true })}
       </div>
     </div>
   </div>
 
-  <!-- CARD 3: อาการแพ้รุนแรง อาการจำเพาะตามสัตว์ที่กัด และระดับความปวด -->
-  <div class="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-xs space-y-5">
-    <div class="flex items-center space-x-2 border-b border-slate-100 pb-3">
+  <!-- CARD 3: อาการแพ้รุนแรง อาการผิดปกติของร่างกาย และระดับความปวด -->
+  <div class="bg-white rounded-2xl p-5 sm:p-6 shadow-sm border border-slate-200 space-y-5">
+    <div class="flex items-center space-x-3 pb-3 border-b border-slate-100">
       <div class="p-2 rounded-xl bg-medical-100 text-medical-700">
         <i data-lucide="activity" class="w-5 h-5"></i>
       </div>
       <div>
-        <h3 class="text-sm sm:text-base font-bold text-slate-900">3. อาการแพ้รุนแรง อาการผิดปกติของร่างกาย และระดับความปวด</h3>
-        <p class="text-xs text-slate-500">คัดกรองภาวะแพ้รุนแรง (Anaphylaxis) พิษงู และระดับความปวด</p>
+        <h2 class="text-base font-bold text-slate-900">3. อาการแพ้รุนแรง อาการผิดปกติของร่างกาย และระดับความปวด</h2>
+        <p class="text-xs text-slate-500">คัดกรองอาการแพ้รุนแรง พิษงู และระดับความปวด</p>
       </div>
     </div>
 
     <!-- 3.1 อาการแพ้รุนแรง / ทั่วร่างกาย -->
-    <div>
-      <label class="block text-xs sm:text-sm font-semibold text-slate-800 mb-2">3.1 อาการแพ้รุนแรงเฉียบพลัน หรืออาการผิดปกติทั่วร่างกาย (เลือกได้หลายข้อหากมีอาการ):</label>
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs sm:text-sm">
-        <label class="selectable-card flex items-center p-2.5 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50">
-          <input type="checkbox" name="venomSystemicAllergySigns" value="urticaria_itching_erythema" class="rounded text-medical-600 h-4 w-4">
-          <span class="ml-2 text-slate-800">มีผื่นลมพิษเห่อขึ้นตามตัว คันทั่วตัว หรือตัวแดงร้อน</span>
-        </label>
-        <label class="selectable-card flex items-center p-2.5 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50">
-          <input type="checkbox" name="venomSystemicAllergySigns" value="facial_angioedema" class="rounded text-medical-600 h-4 w-4">
-          <span class="ml-2 text-slate-800">หน้าบวม ตาบวม หรือริมฝีปากบวม</span>
-        </label>
-        <label class="selectable-card flex items-center p-2.5 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50">
-          <input type="checkbox" name="venomSystemicAllergySigns" value="laryngeal_edema_hoarseness" class="rounded text-medical-600 h-4 w-4">
-          <span class="ml-2 text-slate-800">แน่นในลำคอ กลืนลำบาก เสียงแหบ คอตีบตัน</span>
-        </label>
-        <label class="selectable-card flex items-center p-2.5 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50">
-          <input type="checkbox" name="venomSystemicAllergySigns" value="bronchospasm_dyspnea_wheezing" class="rounded text-medical-600 h-4 w-4">
-          <span class="ml-2 text-slate-800">หายใจหอบเหนื่อย มีเสียงหวีด หรือแน่นหน้าอก</span>
-        </label>
-        <label class="selectable-card flex items-center p-2.5 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50">
-          <input type="checkbox" name="venomSystemicAllergySigns" value="hypotensive_syncope_shock" class="rounded text-medical-600 h-4 w-4">
-          <span class="ml-2 text-slate-800">หน้ามืด เวียนศีรษะ วูบจะเป็นลม หรือเหงื่อแตกตัวเย็น</span>
-        </label>
-        <label class="selectable-card flex items-center p-2.5 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50">
-          <input type="checkbox" name="venomSystemicAllergySigns" value="gi_cramps_vomiting" class="rounded text-medical-600 h-4 w-4">
-          <span class="ml-2 text-slate-800">คลื่นไส้อาเจียนรุนแรง หรือปวดบิดท้อง</span>
-        </label>
-        <label class="selectable-card flex items-center p-2.5 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50">
-          <input type="checkbox" name="venomSystemicAllergySigns" value="fever_chills" class="rounded text-medical-600 h-4 w-4">
-          <span class="ml-2 text-slate-800">มีไข้ หนาวสั่น</span>
-        </label>
-        <label class="selectable-card flex items-center p-2.5 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50">
-          <input type="checkbox" name="venomSystemicAllergySigns" value="no_systemic_allergy_signs" class="rounded text-medical-600 h-4 w-4">
-          <span class="ml-2 text-slate-600">ไม่มีอาการแพ้รุนแรงหรืออาการผิดปกติทั่วร่างกาย</span>
-        </label>
-      </div>
+    <div class="p-3.5 bg-slate-50 rounded-xl border border-slate-200">
+      ${renderVenomSysHeader({
+        label: '3.1 อาการแพ้รุนแรงเฉียบพลัน หรืออาการทั่วร่างกาย (เลือกได้หลายข้อ)',
+        icon: 'alert-triangle',
+        colorClass: 'bg-amber-100 text-amber-700',
+        toggleKind: 'checkbox',
+        toggleId: 'venomSystemicNoneCb',
+        toggleName: 'venomSystemicAllergySigns',
+        toggleValue: 'no_systemic_allergy_signs',
+        toggleLabel: 'ไม่มีอาการในหมวดนี้',
+        toggleOnchange: "handleVenomGroupNoneToggle(this, 'venomSystemicAllergySigns')"
+      })}
+      ${renderVenomGrid('grid-cols-1 sm:grid-cols-2', [
+        { name: 'venomSystemicAllergySigns', value: 'urticaria_itching_erythema', title: ['ผื่นลมพิษ คัน', 'หรือตัวแดงร้อน'], onchange: "handleVenomGroupItemChange(this, 'venomSystemicNoneCb')", compact: true },
+        { name: 'venomSystemicAllergySigns', value: 'facial_angioedema', title: ['หน้าบวม ตาบวม', 'หรือปากบวม'], onchange: "handleVenomGroupItemChange(this, 'venomSystemicNoneCb')", compact: true },
+        { name: 'venomSystemicAllergySigns', value: 'laryngeal_edema_hoarseness', title: ['แน่นลำคอ กลืนยาก', 'เสียงแหบ คอตีบ'], onchange: "handleVenomGroupItemChange(this, 'venomSystemicNoneCb')", compact: true },
+        { name: 'venomSystemicAllergySigns', value: 'bronchospasm_dyspnea_wheezing', title: ['หายใจหอบเหนื่อย', 'มีเสียงหวีด'], desc: 'หรือแน่นหน้าอก', onchange: "handleVenomGroupItemChange(this, 'venomSystemicNoneCb')", compact: true },
+        { name: 'venomSystemicAllergySigns', value: 'hypotensive_syncope_shock', title: ['หน้ามืด วูบเป็นลม', 'เหงื่อแตกตัวเย็น'], onchange: "handleVenomGroupItemChange(this, 'venomSystemicNoneCb')", compact: true },
+        { name: 'venomSystemicAllergySigns', value: 'gi_cramps_vomiting', title: ['คลื่นไส้อาเจียน', 'หรือปวดบิดท้อง'], onchange: "handleVenomGroupItemChange(this, 'venomSystemicNoneCb')", compact: true },
+        { name: 'venomSystemicAllergySigns', value: 'fever_chills', title: ['มีไข้ หนาวสั่น'], onchange: "handleVenomGroupItemChange(this, 'venomSystemicNoneCb')", compact: true }
+      ])}
     </div>
 
-    <!-- 3.2 กิ่งเจาะลึกอาการพิษงู (เปิดเฉพาะเมื่องูถูกเลือก) -->
-    <div id="venomSnakeSignsContainer" class="hidden bg-slate-50 border border-slate-200 rounded-xl p-3.5 sm:p-4 space-y-2">
-      <label class="block text-xs sm:text-sm font-bold text-slate-900">3.2 อาการผิดปกติจากพิษงู (ระบบประสาท ระบบเลือด และกล้ามเนื้อ):</label>
-      <div class="space-y-1.5 text-xs sm:text-sm">
-        <label class="selectable-card flex items-center p-2 bg-white rounded-lg border border-slate-200 cursor-pointer">
-          <input type="checkbox" name="venomSnakeSigns" value="ptosis_diplopia_blurred_vision" class="rounded text-medical-600 h-4 w-4">
-          <span class="ml-2 text-slate-800">หนังตาตก ลืมตาไม่ค่อยขึ้น มองเห็นภาพซ้อน หรือตาพร่ามัว <span class="text-xs font-normal text-slate-500">(เตือนพิษงูเห่า/จงอาง/สามเหลี่ยม/ทับสมิงคลา)</span></span>
-        </label>
-        <label class="selectable-card flex items-center p-2 bg-white rounded-lg border border-slate-200 cursor-pointer">
-          <input type="checkbox" name="venomSnakeSigns" value="dysarthria_bulbar_palsy" class="rounded text-medical-600 h-4 w-4">
-          <span class="ml-2 text-slate-800">พูดไม่ชัด ลิ้นแข็ง อ้าปากหรือกลืนน้ำลายลำบาก ชารอบปาก</span>
-        </label>
-        <label class="selectable-card flex items-center p-2 bg-white rounded-lg border border-slate-200 cursor-pointer">
-          <input type="checkbox" name="venomSnakeSigns" value="motor_weakness_resp_depression" class="rounded text-medical-600 h-4 w-4">
-          <span class="ml-2 text-slate-800">แขนขาอ่อนแรง ยกแขนขาไม่ขึ้น หรือรู้สึกหายใจเข้าได้ไม่เต็มอิ่ม</span>
-        </label>
-        <label class="selectable-card flex items-center p-2 bg-white rounded-lg border border-slate-200 cursor-pointer">
-          <input type="checkbox" name="venomSnakeSigns" value="systemic_bleeding_vicc" class="rounded text-medical-600 h-4 w-4">
-          <span class="ml-2 text-slate-800">มีเลือดออกผิดปกติ เช่น เลือดออกตามไรฟัน เลือดกำเดา จ้ำเลือด ปัสสาวะเป็นเลือด อาเจียนหรือถ่ายดำปนเลือด <span class="text-xs font-normal text-slate-500">(เตือนพิษงูกะปะ/เขียวหางไหม้/แมวเซา)</span></span>
-        </label>
-        <label class="selectable-card flex items-center p-2 bg-white rounded-lg border border-slate-200 cursor-pointer">
-          <input type="checkbox" name="venomSnakeSigns" value="severe_myalgia_dark_coke_urine" class="rounded text-medical-600 h-4 w-4">
-          <span class="ml-2 text-slate-800">ปวดเมื่อยกล้ามเนื้อทั่วตัวมาก หรือปัสสาวะสีเข้มผิดปกติ (สีโค้ก/น้ำตาลคล้ำ)</span>
-        </label>
-        <label class="selectable-card flex items-center p-2 bg-white rounded-lg border border-slate-200 cursor-pointer">
-          <input type="checkbox" name="venomSnakeSigns" value="no_snake_systemic_signs" class="rounded text-medical-600 h-4 w-4">
-          <span class="ml-2 text-slate-600">ไม่มีอาการผิดปกติจากพิษงูดังกล่าว</span>
-        </label>
-      </div>
+    <!-- 3.2 กิ่งเจาะลึกอาการพิษงู (เปิดเฉพาะเมื่องูหรือสัตว์ไม่ทราบชนิดถูกเลือก) -->
+    <div id="venomSnakeSignsContainer" class="hidden bg-slate-50 border border-slate-200 rounded-xl p-3.5 sm:p-4">
+      ${renderVenomSysHeader({
+        label: '3.2 อาการผิดปกติหลังถูกงูกัด (ระบบประสาท ระบบเลือด กล้ามเนื้อ)',
+        icon: 'eye',
+        colorClass: 'bg-indigo-100 text-indigo-700',
+        toggleKind: 'checkbox',
+        toggleId: 'venomSnakeSignsNoneCb',
+        toggleName: 'venomSnakeSigns',
+        toggleValue: 'no_snake_systemic_signs',
+        toggleLabel: 'ไม่มีอาการพิษงู',
+        toggleOnchange: "handleVenomGroupNoneToggle(this, 'venomSnakeSigns')"
+      })}
+      ${renderVenomGrid('grid-cols-1 sm:grid-cols-2', [
+        { name: 'venomSnakeSigns', value: 'ptosis_diplopia_blurred_vision', title: ['หนังตาตก', 'มองเห็นภาพซ้อน'], desc: 'ลืมตาไม่ค่อยขึ้น หรือตาพร่ามัว', onchange: "handleVenomGroupItemChange(this, 'venomSnakeSignsNoneCb')", compact: true },
+        { name: 'venomSnakeSigns', value: 'dysarthria_bulbar_palsy', title: ['พูดไม่ชัด ลิ้นแข็ง', 'กลืนน้ำลายลำบาก'], desc: 'หรือมีอาการชารอบริมฝีปาก', onchange: "handleVenomGroupItemChange(this, 'venomSnakeSignsNoneCb')", compact: true },
+        { name: 'venomSnakeSigns', value: 'motor_weakness_resp_depression', title: ['แขนขาอ่อนแรง', 'หายใจเข้าไม่เต็มอิ่ม'], desc: 'ยกแขนขาไม่ขึ้น หรือรู้สึกหายใจเหนื่อย', onchange: "handleVenomGroupItemChange(this, 'venomSnakeSignsNoneCb')", compact: true },
+        { name: 'venomSnakeSigns', value: 'systemic_bleeding_vicc', title: ['มีเลือดออกผิดปกติ', 'ตามร่างกาย'], desc: 'เช่น เลือดออกตามไรฟัน เลือดกำเดา จ้ำเลือด ปัสสาวะเป็นเลือด ถ่ายดำ', onchange: "handleVenomGroupItemChange(this, 'venomSnakeSignsNoneCb')", compact: true },
+        { name: 'venomSnakeSigns', value: 'severe_myalgia_dark_coke_urine', title: ['ปวดเมื่อยกล้ามเนื้อ', 'หรือปัสสาวะสีโค้ก'], desc: 'ปวดกล้ามเนื้อทั่วตัวมาก หรือปัสสาวะสีน้ำตาลคล้ำ', onchange: "handleVenomGroupItemChange(this, 'venomSnakeSignsNoneCb')", compact: true, colSpan2: true }
+      ])}
     </div>
 
-    <!-- กิ่งเจาะลึกแมลงต่อย (เปิดเฉพาะเมื่อผึ้ง/ต่อ/แตน/มดถูกเลือก) -->
-    <div id="venomHymenopteraSignsContainer" class="hidden bg-slate-50 border border-slate-200 rounded-xl p-3.5 sm:p-4 space-y-2">
-      <label class="block text-xs sm:text-sm font-bold text-slate-900">อาการเพิ่มเติมหลังถูกผึ้ง ต่อ แตน หรือมดกัดต่อย:</label>
-      <div class="space-y-1.5 text-xs sm:text-sm">
-        <label class="selectable-card flex items-center p-2 bg-white rounded-lg border border-slate-200 cursor-pointer">
-          <input type="checkbox" name="venomHymenopteraSigns" value="massive_stings_myalgia_jaundice_dark_urine" class="rounded text-medical-600 h-4 w-4">
-          <span class="ml-2 font-medium text-slate-800">ปวดเมื่อยกล้ามเนื้อทั่วตัวมาก ตัวเหลือง หรือปัสสาวะสีน้ำตาลคล้ำ <span class="text-xs text-slate-500">(หลังถูกต่อยหลายจุด)</span></span>
-        </label>
-        <label class="selectable-card flex items-center p-2 bg-white rounded-lg border border-slate-200 cursor-pointer">
-          <input type="checkbox" name="venomHymenopteraSigns" value="no_hymenoptera_signs" class="rounded text-medical-600 h-4 w-4">
-          <span class="ml-2 text-slate-600">ไม่มีอาการปวดเมื่อยกล้ามเนื้อหรือปัสสาวะสีเข้ม</span>
-        </label>
-      </div>
+    <!-- กิ่งเจาะลึกแมลงต่อย -->
+    <div id="venomHymenopteraSignsContainer" class="hidden bg-slate-50 border border-slate-200 rounded-xl p-3.5 sm:p-4">
+      ${renderVenomSysHeader({
+        label: 'อาการเพิ่มเติมหลังถูกผึ้ง ต่อ แตน หรือมดกัดต่อย',
+        icon: 'sparkles',
+        colorClass: 'bg-amber-100 text-amber-700',
+        toggleKind: 'checkbox',
+        toggleId: 'venomHymenopteraNoneCb',
+        toggleName: 'venomHymenopteraSigns',
+        toggleValue: 'no_hymenoptera_signs',
+        toggleLabel: 'ไม่มีอาการในหมวดนี้',
+        toggleOnchange: "handleVenomGroupNoneToggle(this, 'venomHymenopteraSigns')"
+      })}
+      ${renderVenomGrid('grid-cols-1', [
+        { name: 'venomHymenopteraSigns', value: 'massive_stings_myalgia_jaundice_dark_urine', title: ['ปวดเมื่อยทั่วตัวมาก', 'ตัวเหลือง / ฉี่คล้ำ'], desc: 'ปวดกล้ามเนื้อ ตัวเหลือง หรือปัสสาวะสีน้ำตาลคล้ำหลังถูกต่อยหลายจุด', onchange: "handleVenomGroupItemChange(this, 'venomHymenopteraNoneCb')", compact: true }
+      ])}
     </div>
 
-    <!-- กิ่งเจาะลึกสัตว์ขาปล้อง (ตะขาบ/แมงป่อง/แมงมุม) -->
-    <div id="venomArthropodSignsContainer" class="hidden bg-slate-50 border border-slate-200 rounded-xl p-3.5 sm:p-4 space-y-2">
-      <label class="block text-xs sm:text-sm font-bold text-slate-900">อาการเพิ่มเติมหลังถูกตะขาบ แมงป่อง หรือแมงมุมกัดต่อย:</label>
-      <div class="space-y-1.5 text-xs sm:text-sm">
-        <label class="selectable-card flex items-center p-2 bg-white rounded-lg border border-slate-200 cursor-pointer">
-          <input type="checkbox" name="venomArthropodSigns" value="radicular_pain_cramps_fasciculation" class="rounded text-medical-600 h-4 w-4">
-          <span class="ml-2 text-slate-800">ปวดชาหรือปวดแปล๊บร้าวไปตามแขนขา หรือกล้ามเนื้อเกร็งกระตุก</span>
-        </label>
-        <label class="selectable-card flex items-center p-2 bg-white rounded-lg border border-slate-200 cursor-pointer">
-          <input type="checkbox" name="venomArthropodSigns" value="autonomic_excess_diaphoresis_salivation" class="rounded text-medical-600 h-4 w-4">
-          <span class="ml-2 text-slate-800">เหงื่อแตกมากผิดปกติ น้ำลายไหลมาก หรือกระสับกระส่าย</span>
-        </label>
-      </div>
+    <!-- กิ่งเจาะลึกสัตว์ขาปล้อง -->
+    <div id="venomArthropodSignsContainer" class="hidden bg-slate-50 border border-slate-200 rounded-xl p-3.5 sm:p-4">
+      ${renderVenomSysHeader({
+        label: 'อาการเพิ่มเติมหลังถูกตะขาบ แมงป่อง หรือแมงมุมกัดต่อย',
+        icon: 'zap',
+        colorClass: 'bg-purple-100 text-purple-700',
+        toggleKind: 'checkbox',
+        toggleId: 'venomArthropodNoneCb',
+        toggleLabel: 'ไม่มีอาการในหมวดนี้',
+        toggleOnchange: "handleVenomGroupNoneToggle(this, 'venomArthropodSigns')"
+      })}
+      ${renderVenomGrid('grid-cols-1 sm:grid-cols-2', [
+        { name: 'venomArthropodSigns', value: 'radicular_pain_cramps_fasciculation', title: ['ปวดชาร้าวแขนขา', 'กล้ามเนื้อกระตุก'], desc: 'ปวดแปล๊บร้าวไปตามแขนขา หรือกล้ามเนื้อเกร็งกระตุก', onchange: "handleVenomGroupItemChange(this, 'venomArthropodNoneCb')", compact: true },
+        { name: 'venomArthropodSigns', value: 'autonomic_excess_diaphoresis_salivation', title: ['เหงื่อแตก น้ำลายไหล', 'หรือกระสับกระส่าย'], onchange: "handleVenomGroupItemChange(this, 'venomArthropodNoneCb')", compact: true }
+      ])}
     </div>
 
-    <!-- กิ่งเจาะลึกสัตว์น้ำมีพิษ (ปลาดุก/ปลากระเบน/แมงกะพรุน) -->
-    <div id="venomMarineSignsContainer" class="hidden bg-slate-50 border border-slate-200 rounded-xl p-3.5 sm:p-4 space-y-2">
-      <label class="block text-xs sm:text-sm font-bold text-slate-900">อาการเพิ่มเติมหลังถูกเงี่ยงปลาตำหรือสัตว์น้ำมีพิษ:</label>
-      <div class="space-y-1.5 text-xs sm:text-sm">
-        <label class="selectable-card flex items-center p-2 bg-white rounded-lg border border-slate-200 cursor-pointer">
-          <input type="checkbox" name="venomMarineSigns" value="excruciating_marine_pain_radiating" class="rounded text-medical-600 h-4 w-4">
-          <span class="ml-2 font-medium text-slate-800">ปวดแสบปวดร้อนรุนแรงมาก หรือปวดร้าวขึ้นไปรักแร้/ขาหนีบ</span>
-        </label>
-        <label class="selectable-card flex items-center p-2 bg-white rounded-lg border border-slate-200 cursor-pointer">
-          <input type="checkbox" name="venomMarineSigns" value="muscle_spasm_confusion" class="rounded text-medical-600 h-4 w-4">
-          <span class="ml-2 text-slate-800">เป็นตะคริวเกร็งกล้ามเนื้อ หรือรู้สึกสับสนมึนงง</span>
-        </label>
-      </div>
+    <!-- กิ่งเจาะลึกสัตว์น้ำมีพิษ -->
+    <div id="venomMarineSignsContainer" class="hidden bg-slate-50 border border-slate-200 rounded-xl p-3.5 sm:p-4">
+      ${renderVenomSysHeader({
+        label: 'อาการเพิ่มเติมหลังถูกเงี่ยงปลาตำหรือสัตว์น้ำมีพิษ',
+        icon: 'waves',
+        colorClass: 'bg-cyan-100 text-cyan-700',
+        toggleKind: 'checkbox',
+        toggleId: 'venomMarineNoneCb',
+        toggleLabel: 'ไม่มีอาการในหมวดนี้',
+        toggleOnchange: "handleVenomGroupNoneToggle(this, 'venomMarineSigns')"
+      })}
+      ${renderVenomGrid('grid-cols-1 sm:grid-cols-2', [
+        { name: 'venomMarineSigns', value: 'excruciating_marine_pain_radiating', title: ['ปวดแสบปวดร้อนรุนแรง', 'ปวดร้าวขึ้นโคนแขนขา'], desc: 'ปวดร้าวขึ้นไปบริเวณรักแร้หรือขาหนีบ', onchange: "handleVenomGroupItemChange(this, 'venomMarineNoneCb')", compact: true },
+        { name: 'venomMarineSigns', value: 'muscle_spasm_confusion', title: ['กล้ามเนื้อเป็นตะคริว', 'หรือรู้สึกสับสนมึนงง'], onchange: "handleVenomGroupItemChange(this, 'venomMarineNoneCb')", compact: true }
+      ])}
     </div>
 
-    <!-- 3.3 ระดับความปวด Pain Score -->
-    <div class="pt-3 border-t border-slate-100">
-      <div class="flex items-center justify-between mb-2">
-        <label class="text-xs sm:text-sm font-semibold text-slate-800">3.3 ระดับความปวดบริเวณที่ถูกกัดหรือต่อยในขณะนี้ (Pain Score 0-10):</label>
-        <button type="button" id="venomPainScoreClearBtn" onclick="clearVenomPainScore()" class="hidden text-xs text-medical-600 hover:text-medical-700 underline font-medium">ล้างค่า</button>
-      </div>
-      <div class="space-y-3">
-        <input type="range" id="venomPainScore" min="0" max="10" value="0" step="1" oninput="handleVenomPainScoreChange(this.value)" onchange="handleVenomPainScoreChange(this.value)" class="w-full accent-medical-600 cursor-pointer h-2 bg-slate-200 rounded-lg">
-        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 text-xs text-slate-500">
-          <div id="venomPainScoreBadge" class="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-600 border border-slate-300 self-start sm:self-auto transition-all">
-            <span id="venomPainScoreEmoji">⚪</span>
+    <!-- 3.3 ระดับความปวด -->
+    <div class="bg-slate-50/80 border border-slate-200 rounded-2xl p-4 sm:p-5 space-y-3">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+        <label class="block text-xs sm:text-sm font-semibold text-slate-800 tracking-wider">3.3 ระดับความปวดบริเวณที่ถูกกัดหรือต่อยในขณะนี้ (0 – 10)</label>
+        <div class="flex items-center space-x-2">
+          <span id="venomPainScoreBadge" class="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-600 border border-slate-300 self-start sm:self-auto transition-all">
+            <span id="venomPainScoreEmoji" class="text-base">⚪</span>
             <span id="venomPainScoreText">ยังไม่ได้ระบุ (แตะแถบเพื่อระบุ)</span>
-          </div>
-          <span class="text-[11px] text-slate-400">0 = ไม่ปวดเลย, 10 = ปวดรุนแรงที่สุดในชีวิต</span>
+          </span>
+          <button type="button" id="venomPainScoreClearBtn" onclick="clearVenomPainScore()" class="text-xs text-slate-400 hover:text-rose-600 underline hidden transition" title="ล้างค่าเพื่อให้เป็นไม่ได้ระบุ">ล้างค่า</button>
         </div>
+      </div>
+      <div class="px-1 pt-1">
+        <input type="range" id="venomPainScore" min="0" max="10" value="0" step="1" oninput="handleVenomPainScoreChange(this.value)" class="w-full h-2.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-medical-600 focus:outline-none focus:ring-2 focus:ring-medical-500">
+      </div>
+      <div class="grid grid-cols-5 text-center text-[10px] sm:text-[11px] pt-1 gap-1 text-slate-500 font-medium">
+        <div class="cursor-pointer hover:text-medical-600 transition" onclick="setVenomPainScore(0)"><span class="text-lg sm:text-xl block">😊</span><span>0: สบายดี</span></div>
+        <div class="cursor-pointer hover:text-medical-600 transition" onclick="setVenomPainScore(2)"><span class="text-lg sm:text-xl block">🙂</span><span>1–3: เล็กน้อย</span></div>
+        <div class="cursor-pointer hover:text-medical-600 transition" onclick="setVenomPainScore(5)"><span class="text-lg sm:text-xl block">😐</span><span>4–6: ปานกลาง</span></div>
+        <div class="cursor-pointer hover:text-medical-600 transition" onclick="setVenomPainScore(8)"><span class="text-lg sm:text-xl block">😣</span><span>7–9: ปวดมาก</span></div>
+        <div class="cursor-pointer hover:text-medical-600 transition" onclick="setVenomPainScore(10)"><span class="text-lg sm:text-xl block">😭</span><span>10: ปวดที่สุด</span></div>
       </div>
     </div>
   </div>
 
   <!-- CARD 4: ประวัติการแพ้ในอดีต และประวัติวัคซีนบาดทะยัก -->
-  <div class="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-xs space-y-5">
-    <div class="flex items-center space-x-2 border-b border-slate-100 pb-3">
+  <div class="bg-white rounded-2xl p-5 sm:p-6 shadow-sm border border-slate-200 space-y-5">
+    <div class="flex items-center space-x-3 pb-3 border-b border-slate-100">
       <div class="p-2 rounded-xl bg-medical-100 text-medical-700">
         <i data-lucide="shield-plus" class="w-5 h-5"></i>
       </div>
       <div>
-        <h3 class="text-sm sm:text-base font-bold text-slate-900">4. ประวัติการแพ้ในอดีต และประวัติวัคซีนป้องกันบาดทะยัก</h3>
-        <p class="text-xs text-slate-500">ข้อมูลประวัติเพื่อความปลอดภัยในการรักษา</p>
+        <h2 class="text-base font-bold text-slate-900">4. ประวัติการแพ้ในอดีต และประวัติวัคซีนป้องกันโรคบาดทะยัก</h2>
+        <p class="text-xs text-slate-500">ข้อมูลประวัติเพื่อความปลอดภัยในการรักษาและการให้ยา</p>
       </div>
     </div>
 
     <!-- 4.1 ประวัติการแพ้ -->
-    <div>
-      <label class="block text-xs sm:text-sm font-semibold text-slate-800 mb-2">4.1 เคยมีอาการแพ้จากการโดนแมลงหรือสัตว์มีพิษกัดต่อยมาก่อนหรือไม่:</label>
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs sm:text-sm">
-        <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50">
-          <input type="radio" name="venomPriorAllergyHx" value="no_prior_allergy" onchange="handleVenomPriorAllergyChange(this.value)" class="text-medical-600 h-4 w-4">
-          <span class="ml-2 text-slate-800">ไม่เคยมีประวัติแพ้มาก่อน</span>
-        </label>
-        <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50">
-          <input type="radio" name="venomPriorAllergyHx" value="has_prior_allergy" onchange="handleVenomPriorAllergyChange(this.value)" class="text-medical-600 h-4 w-4">
-          <span class="ml-2 text-slate-800">เคยมีอาการแพ้มาก่อน</span>
-        </label>
-      </div>
+    <div class="p-3.5 bg-slate-50 rounded-xl border border-slate-200">
+      ${renderVenomSysHeader({
+        label: '4.1 เคยมีอาการแพ้จากการโดนแมลงหรือสัตว์มีพิษกัดต่อยมาก่อนหรือไม่',
+        icon: 'shield-alert',
+        colorClass: 'bg-blue-100 text-blue-700',
+        toggleKind: 'radio',
+        toggleId: 'venomPriorAllergyNoneRb',
+        toggleName: 'venomPriorAllergyHx',
+        toggleValue: 'no_prior_allergy',
+        toggleLabel: 'ไม่เคยแพ้',
+        toggleOnchange: 'handleVenomPriorAllergyChange(this.value)'
+      })}
+      ${renderVenomGrid('grid-cols-1', [
+        { kind: 'radio', name: 'venomPriorAllergyHx', value: 'has_prior_allergy', title: ['เคยมีอาการแพ้', 'มาก่อน'], onchange: 'handleVenomPriorAllergyChange(this.value)', compact: true }
+      ])}
       <div id="venomPriorAllergyDetailContainer" class="hidden mt-2">
-        <input type="text" id="venomPriorAllergyDetail" placeholder="พิมพ์ระบุว่าเคยแพ้แมลงหรือสัตว์ชนิดใด และมีอาการแพ้อย่างไร..." class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2 text-xs sm:text-sm text-slate-800 placeholder:text-slate-400 focus:ring-2 focus:ring-medical-500">
+        <input type="text" id="venomPriorAllergyDetail" placeholder="พิมพ์ระบุว่าเคยแพ้แมลงหรือสัตว์ชนิดใด และมีอาการแพ้อย่างไร..." class="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2 text-xs sm:text-sm text-slate-800 placeholder:text-slate-400 focus:ring-2 focus:ring-medical-500">
       </div>
     </div>
 
-    <!-- 4.2 ประวัติการได้รับวัคซีนป้องกันบาดทะยัก -->
+    <!-- 4.2 ประวัติการได้รับวัคซีนป้องกันบาดทะยัก (Locked Tetanus Standard) -->
     <div class="pt-3 border-t border-slate-100">
-      <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">4.2 ประวัติการได้รับวัคซีนป้องกันบาดทะยัก (Tetanus Vaccine)</label>
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-        <label class="selectable-card flex items-start p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-          <input type="radio" name="venomTetanusHx" value="within_5_years" class="mt-0.5 text-medical-600 focus:ring-medical-500 h-4 w-4">
-          <div class="ml-3"><span class="block text-xs sm:text-sm font-semibold text-slate-800">เคยฉีดเข็มกระตุ้นภายใน 5 ปีที่ผ่านมา</span><span class="block text-[11px] text-slate-500 font-normal mt-0.5">เคยฉีดครบ (3 เข็ม) มาก่อน และเข็มสุดท้ายหรือเข็มกระตุ้น &lt; 5 ปี</span></div>
-        </label>
-        <label class="selectable-card flex items-start p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-          <input type="radio" name="venomTetanusHx" value="5_to_10_years" class="mt-0.5 text-medical-600 focus:ring-medical-500 h-4 w-4">
-          <div class="ml-3"><span class="block text-xs sm:text-sm font-semibold text-slate-800">เคยฉีดในช่วง 5 ถึง 10 ปีที่ผ่านมา</span><span class="block text-[11px] text-slate-500 font-normal mt-0.5">เคยฉีดครบ (3 เข็ม) มาก่อน และเข็มสุดท้ายหรือเข็มกระตุ้นห่างมาแล้ว 5–10 ปี</span></div>
-        </label>
-        <label class="selectable-card flex items-start p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-          <input type="radio" name="venomTetanusHx" value="over_10_years" class="mt-0.5 text-medical-600 focus:ring-medical-500 h-4 w-4">
-          <div class="ml-3"><span class="block text-xs sm:text-sm font-semibold text-slate-800">เคยฉีดครบ แต่เกิน 10 ปีแล้ว</span><span class="block text-[11px] text-slate-500 font-normal mt-0.5">เคยฉีดครบ (3 เข็ม) มาก่อน แต่เข็มสุดท้ายมานานเกิน 10 ปีแล้ว</span></div>
-        </label>
-        <label class="selectable-card flex items-start p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-          <input type="radio" name="venomTetanusHx" value="unknown_or_never" class="mt-0.5 text-medical-600 focus:ring-medical-500 h-4 w-4">
-          <div class="ml-3"><span class="block text-xs sm:text-sm font-semibold text-slate-800">ไม่เคยฉีด หรือจำประวัติไม่ได้</span><span class="block text-[11px] text-slate-500 font-normal mt-0.5">ไม่เคยฉีด เคยฉีดไม่ครบ 3 เข็ม หรือจำประวัติไม่ได้</span></div>
-        </label>
-      </div>
+      <label class="block text-xs sm:text-sm font-semibold text-slate-800 mb-2">4.2 ประวัติการได้รับวัคซีนป้องกันบาดทะยัก</label>
+      ${renderVenomGrid('grid-cols-1 sm:grid-cols-2', [
+        {
+          kind: 'radio',
+          name: 'venomTetanusHx',
+          value: 'within_5_years',
+          title: ['ฉีดกระตุ้น', 'ภายใน 5 ปี'],
+          desc: 'เคยฉีดครบ (3 เข็ม) มาก่อน และเข็มสุดท้ายหรือกระตุ้นไม่เกิน 5 ปี',
+          compact: true
+        },
+        {
+          kind: 'radio',
+          name: 'venomTetanusHx',
+          value: '5_to_10_years',
+          title: ['ฉีดล่าสุด', '5–10 ปีก่อน'],
+          desc: 'เคยฉีดครบ (3 เข็ม) มาก่อน และเข็มสุดท้ายหรือกระตุ้นอยู่ในช่วง 5–10 ปี',
+          compact: true
+        },
+        {
+          kind: 'radio',
+          name: 'venomTetanusHx',
+          value: 'over_10_years',
+          title: ['ฉีดครบ', 'เกิน 10 ปีแล้ว'],
+          desc: 'เคยฉีดครบ (3 เข็ม) มาก่อน แต่เข็มสุดท้ายนานเกิน 10 ปีแล้ว',
+          compact: true
+        },
+        {
+          kind: 'radio',
+          name: 'venomTetanusHx',
+          value: 'unknown_or_never',
+          title: ['ไม่เคยฉีด', '/ จำไม่ได้'],
+          desc: 'ไม่เคยได้รับวัคซีนบาดทะยัก ฉีดไม่ครบ 3 เข็ม หรือไม่ทราบประวัติ',
+          compact: true
+        }
+      ])}
     </div>
 
     <!-- 4.3 ส่วนเฉพาะผู้ป่วยสตรี (Hidden by default - C-AP13) -->
-    <div id="venomFemaleSection" class="hidden pt-3 border-t border-slate-100 space-y-3">
-      <div class="flex items-center space-x-2">
-        <span class="px-2 py-0.5 text-[10px] font-bold bg-pink-100 text-pink-700 rounded-md">เฉพาะสตรี</span>
-        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider">4.3 ประจำเดือนและการตั้งครรภ์ (LMP &amp; Pregnancy)</label>
-      </div>
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-pink-50/50 p-3.5 rounded-xl border border-pink-200">
-        <div class="min-w-0">
-          <span class="block text-xs font-semibold text-slate-700 mb-1">วันแรกของประจำเดือนครั้งสุดท้าย (LMP):</span>
-          <input type="text" id="venomLmpDate" data-universal-date="true" placeholder="วว/ดด/ปปปป เช่น 28/10/2026" class="w-full min-w-0 text-xs sm:text-sm border-slate-300 rounded-lg p-2 focus:ring-medical-500 focus:border-medical-500 bg-white">
-        </div>
-        <div class="min-w-0">
-          <span class="block text-xs font-semibold text-slate-700 mb-1">สถานะการตั้งครรภ์:</span>
-          <select id="venomPregnancyStatus" class="w-full min-w-0 text-xs sm:text-sm border-slate-300 rounded-lg p-2 focus:ring-medical-500 focus:border-medical-500 bg-white">
-            <option value="">-- ไม่ระบุ --</option>
-            <option value="not_pregnant">ไม่ได้ตั้งครรภ์ / ประจำเดือนมาปกติ</option>
-            <option value="suspected_or_missed">ขาดประจำเดือน / สงสัยอาจตั้งครรภ์</option>
-            <option value="confirmed_pregnant">ได้รับการยืนยันว่ากำลังตั้งครรภ์</option>
-            <option value="menopause_or_hysterectomy">วัยหมดประจำเดือน / ผ่าตัดมดลูกแล้ว</option>
-            <option value="unknown">ไม่ทราบ</option>
-          </select>
+    <div id="venomFemaleSection" class="hidden pt-3 border-t border-slate-100">
+      <div class="p-3.5 bg-pink-50/40 rounded-xl border border-pink-100 space-y-3">
+        ${renderVenomSysHeader({
+          label: '4.3 ประจำเดือนและการตั้งครรภ์ (เฉพาะสตรี)',
+          icon: 'heart-pulse',
+          colorClass: 'bg-pink-100 text-pink-700',
+          toggleKind: 'radio',
+          toggleId: 'venomPregNotPregRb',
+          toggleName: 'venomPregnancyStatus',
+          toggleValue: 'not_pregnant',
+          toggleLabel: 'ไม่ได้ตั้งครรภ์'
+        })}
+        ${renderVenomGrid('grid-cols-1 sm:grid-cols-2', [
+          { kind: 'radio', name: 'venomPregnancyStatus', value: 'suspected_or_missed', title: ['ขาดประจำเดือน', '/ สงสัยตั้งครรภ์'], compact: true },
+          { kind: 'radio', name: 'venomPregnancyStatus', value: 'confirmed_pregnant', title: ['ยืนยัน', 'กำลังตั้งครรภ์'], compact: true },
+          { kind: 'radio', name: 'venomPregnancyStatus', value: 'menopause_or_hysterectomy', title: ['หมดประจำเดือน', '/ ผ่าตัดมดลูกแล้ว'], compact: true },
+          { kind: 'radio', name: 'venomPregnancyStatus', value: 'unknown', title: ['ไม่ทราบ'], compact: true }
+        ])}
+        <div class="max-w-xs">
+          <label class="block text-xs sm:text-sm font-semibold text-slate-700 mb-1">วันแรกของประจำเดือนครั้งล่าสุด (ถ้าจำได้):</label>
+          <input type="text" id="venomLmpDate" data-universal-date="true" placeholder="วว/ดด/ปปปป เช่น 28/10/2026" class="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2 text-xs sm:text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-medical-500">
         </div>
       </div>
     </div>
   </div>
 
   <!-- อาการอื่นๆ เป็นช่องกรอกอิสระ -->
-  <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+  <div class="bg-white rounded-2xl p-5 sm:p-6 shadow-sm border border-slate-200">
     <div class="flex items-center space-x-3 mb-3 pb-2 border-b border-slate-100">
       <div class="bg-slate-100 text-slate-600 p-2 rounded-xl"><i data-lucide="message-square-plus" class="w-5 h-5"></i></div>
       <div>
-        <h2 class="text-base font-bold text-slate-800">อาการอื่นๆ ที่ต้องการแจ้งเพิ่มเติม</h2>
+        <h2 class="text-base font-bold text-slate-900">อาการอื่นๆ ที่ต้องการแจ้งเพิ่มเติม</h2>
         <p class="text-xs text-slate-500">ระบุอาการอื่นๆ ที่ท่านมีหรือต้องการบอกแพทย์เพิ่มเติม (ถ้ามี)</p>
       </div>
     </div>
     <textarea id="venomous_bite_other_free" rows="2" placeholder="พิมพ์ระบุอาการอื่นๆ ที่ท่านมีหรือต้องการบอกแพทย์เพิ่มเติม (ถ้ามี)..."
-      class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-medical-500 focus:bg-white"></textarea>
+      class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2 text-xs sm:text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-medical-500 focus:bg-white"></textarea>
   </div>
 </div>
 `;
@@ -1327,6 +1386,8 @@ const venomousBiteModule = {
   titleEn: 'Insect sting / Snake & Venomous creature bites',
   icon: 'bug',
   doctorCcBadgeHtml: '<i data-lucide="bug" class="w-3.5 h-3.5 mr-1 text-emerald-600"></i> CC: แมลง / งู / สัตว์มีพิษกัดต่อย (Venomous Bites & Stings)',
+  pmhSectionNumber: 5,
+  dateFields: ['venomLmpDate'],
   algorithm: 'venomous-bite-protocol',
   sectionDomId: 'cc-venomous-bite-section',
   formHtml: VENOMOUS_BITE_FORM_HTML,
@@ -1384,7 +1445,7 @@ const venomousBiteModule = {
       status: ctx.recordStatus || 'waiting',
       durationVal,
       durationUnit,
-      hospRecordStatus: ctx.hospRecordStatus || 'unspecified',
+      hospRecordStatus: ctx.hospRecordStatus || '',
       underlying: ctx.underlying || [],
       drugAllergy: ctx.drugAllergy || 'ไม่ได้ระบุ',
       currentMeds: ctx.currentMeds || 'ไม่ได้ระบุ',
@@ -1395,6 +1456,7 @@ const venomousBiteModule = {
 
       venomCreatureTypes: getCheckedValues('venomCreatureTypes'),
       venomSnakeType: getRadioValue('venomSnakeType'),
+      venomOtherSnakeDetail: getText('venomOtherSnakeDetail'),
       venomSnakeDetailFree: getText('venomSnakeDetailFree'),
       venomOtherCreatureDetail: getText('venomOtherCreatureDetail'),
       venomStingsCount: getRadioValue('venomStingsCount'),
@@ -1498,7 +1560,7 @@ const venomousBiteModule = {
       })(),
       ...(isVenomFemaleCtx(ctx) ? {
         venomLmpDate: getText('venomLmpDate'),
-        venomPregnancyStatus: document.getElementById('venomPregnancyStatus')?.value || ''
+        venomPregnancyStatus: getRadioValue('venomPregnancyStatus') || ''
       } : {})
     };
 
@@ -1546,6 +1608,7 @@ const venomousBiteModule = {
 
     setCheckedValues('venomCreatureTypes', patient.venomCreatureTypes);
     setRadioValue('venomSnakeType', patient.venomSnakeType);
+    setText('venomOtherSnakeDetail', patient.venomOtherSnakeDetail);
     setText('venomSnakeDetailFree', patient.venomSnakeDetailFree);
     setText('venomOtherCreatureDetail', patient.venomOtherCreatureDetail);
     setRadioValue('venomStingsCount', patient.venomStingsCount);
@@ -1639,8 +1702,7 @@ const venomousBiteModule = {
     toggleVenomFemaleSection(isFem);
     if (isFem) {
       setText('venomLmpDate', patient.venomLmpDate || '');
-      const pregEl = document.getElementById('venomPregnancyStatus');
-      if (pregEl) pregEl.value = patient.venomPregnancyStatus || '';
+      setRadioValue('venomPregnancyStatus', patient.venomPregnancyStatus || '');
     }
     checkAndDisplayVenomLmp(patient);
 
@@ -1705,18 +1767,16 @@ const venomousBiteModule = {
     sec.querySelectorAll('input[type="radio"]').forEach(rb => { rb.checked = false; });
     sec.querySelectorAll('input[type="text"], textarea').forEach(ti => { ti.value = ''; });
     sec.querySelectorAll('select').forEach(sel => { sel.selectedIndex = 0; });
-    const pregEl = document.getElementById('venomPregnancyStatus');
-    if (pregEl) pregEl.value = '';
     sec.querySelectorAll('input[type="number"]').forEach(ni => { ni.value = ''; });
 
-    ['venomDurationVal', 'venomSnakeDetailFree', 'venomOtherCreatureDetail', 'venomOtherLocationDetail', 'venomPriorAllergyDetail'].forEach(id => {
+    ['venomDurationVal', 'venomOtherSnakeDetail', 'venomSnakeDetailFree', 'venomOtherCreatureDetail', 'venomOtherLocationDetail', 'venomPriorAllergyDetail'].forEach(id => {
       const el = document.getElementById(id); if (el) el.value = '';
     });
     const durUnit = document.getElementById('venomDurationUnit');
     if (durUnit) durUnit.value = 'hours';
 
     const hiddenContainers = [
-      'venomSnakeDetailsContainer', 'venomOtherCreatureDetailsContainer',
+      'venomSnakeDetailsContainer', 'venomOtherSnakeDetailContainer', 'venomOtherCreatureDetailsContainer',
       'venomSnakeSignsContainer', 'venomHymenopteraSignsContainer', 'venomArthropodSignsContainer', 'venomMarineSignsContainer',
       'venomStingerStatusContainer', 'venomPriorAllergyDetailContainer',
       'venomHeadFaceSubGroup', 'venomHeadScalpSidesContainer', 'venomHeadFaceSidesContainer', 'venomHeadEyeSidesContainer', 'venomHeadEarSidesContainer', 'venomHeadNoseMouthSidesContainer',
@@ -1755,10 +1815,6 @@ const venomousBiteModule = {
 
   renderNarrativeHpi(patient) {
     return renderVenomNarrativeHpi(patient);
-  },
-
-  generateCds(patient, ctx) {
-    return generateVenomCds(patient, ctx);
   },
 
   // --- Standardized Seed Cases (บริบทประเทศไทย) ---

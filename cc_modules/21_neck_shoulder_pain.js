@@ -24,7 +24,9 @@ function clearNeckpainPainScore() {
 
 function handleNeckpainPainScoreChange(val) {
   neckpainPainScoreTouched = true;
-  const num = parseInt(val, 10);
+  const num = parseInt(val, 10) || 0;
+  const slider = document.getElementById('neckpainPainScore');
+  if (slider && String(slider.value) !== String(num)) slider.value = num;
   const emojiEl = document.getElementById('neckpainPainScoreEmoji');
   const textEl = document.getElementById('neckpainPainScoreText');
   const badgeEl = document.getElementById('neckpainPainScoreBadge');
@@ -32,38 +34,37 @@ function handleNeckpainPainScoreChange(val) {
   if (clearBtn) clearBtn.classList.remove('hidden');
   if (!emojiEl || !textEl || !badgeEl) return;
 
-  let emoji = '😐';
-  let label = 'ปวดปานกลาง';
-  let badgeClass = 'bg-amber-100 text-amber-800 border-amber-300';
-
-  if (num === 0) {
-    emoji = '😊';
-    label = 'สบายดี (ไม่ปวดเลย)';
-    badgeClass = 'bg-emerald-100 text-emerald-800 border-emerald-300';
-  } else if (num <= 3) {
-    emoji = '🙂';
-    label = 'ปวดเล็กน้อย (ทนได้)';
-    badgeClass = 'bg-lime-100 text-lime-800 border-lime-300';
-  } else if (num <= 6) {
-    emoji = '😐';
-    label = 'ปวดปานกลาง (รบกวนสมาธิ)';
-    badgeClass = 'bg-amber-100 text-amber-800 border-amber-300';
-  } else if (num <= 8) {
-    emoji = '😣';
-    label = 'ปวดรุนแรง (ทนแทบไม่ไหว)';
-    badgeClass = 'bg-orange-100 text-orange-800 border-orange-300';
-  } else {
-    emoji = '😫';
-    label = 'ปวดรุนแรงที่สุดในชีวิต';
-    badgeClass = 'bg-rose-100 text-rose-800 border-rose-300';
-  }
+  let emoji = '😐', label = 'ปวดปานกลาง', badgeClass = 'bg-amber-100 text-amber-800 border-amber-300';
+  if (num === 0) { emoji = '😊'; label = 'สบายดี (ไม่ปวดเลย)'; badgeClass = 'bg-emerald-100 text-emerald-800 border-emerald-300'; }
+  else if (num <= 3) { emoji = '🙂'; label = 'ปวดเล็กน้อย (ทนได้)'; badgeClass = 'bg-lime-100 text-lime-800 border-lime-300'; }
+  else if (num <= 6) { emoji = '😐'; label = 'ปวดปานกลาง (รบกวนสมาธิ)'; badgeClass = 'bg-amber-100 text-amber-800 border-amber-300'; }
+  else if (num <= 9) { emoji = '😣'; label = 'ปวดมาก (ทนแทบไม่ไหว)'; badgeClass = 'bg-rose-100 text-rose-800 border-rose-300'; }
+  else { emoji = '😭'; label = 'เจ็บปวดรุนแรงที่สุดในชีวิต'; badgeClass = 'bg-red-200 text-red-900 border-red-400 animate-pulse'; }
 
   emojiEl.textContent = emoji;
-  textEl.textContent = `${num}/10 คะแนน - ${label}`;
-  badgeEl.className = `inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-bold border self-start sm:self-auto transition-all ${badgeClass}`;
+  textEl.textContent = `${num} / 10 (${label})`;
+  badgeEl.className = `inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-bold border transition ${badgeClass}`;
 }
 
+function setNeckpainPainScore(score) {
+  neckpainPainScoreTouched = true;
+  const slider = document.getElementById('neckpainPainScore');
+  if (slider) slider.value = score;
+  handleNeckpainPainScoreChange(score);
+}
+if (typeof window !== 'undefined') { window.clearNeckpainPainScore = clearNeckpainPainScore; window.handleNeckpainPainScoreChange = handleNeckpainPainScoreChange; window.setNeckpainPainScore = setNeckpainPainScore; }
+
 // --- Toggle UI Helper Functions ---
+function syncNeckpainSideWrap() {
+  const wrap = document.getElementById('neckSideBranchesWrap');
+  if (!wrap) return;
+  const anyVisible = ['neckPostSideGroup', 'neckLatSideGroup', 'neckTrapSideGroup', 'neckScapSideGroup'].some(id => {
+    const g = document.getElementById(id);
+    return g && !g.classList.contains('hidden');
+  });
+  wrap.classList.toggle('hidden', !anyVisible);
+}
+
 function toggleNeckpainSideGroup(groupId, isVisible) {
   const el = document.getElementById(groupId);
   if (el) {
@@ -72,6 +73,7 @@ function toggleNeckpainSideGroup(groupId, isVisible) {
       el.querySelectorAll('input[type="checkbox"]').forEach(cb => { cb.checked = false; });
     }
   }
+  syncNeckpainSideWrap();
 }
 
 function toggleNeckpainRadiationSub(isVisible) {
@@ -84,15 +86,42 @@ function toggleNeckpainRadiationSub(isVisible) {
   }
 }
 
-function toggleNeckpainWarningGroup(groupId, isVisible) {
-  const el = document.getElementById(groupId);
-  if (el) {
-    el.classList.toggle('hidden', !isVisible);
-    if (!isVisible) {
-      el.querySelectorAll('input[type="checkbox"]').forEach(cb => { cb.checked = false; });
-    }
+const NECK_WARN_GROUPS = {
+  arm: ['hand_clumsy_weak', 'arm_weakness_abduction', 'arm_numbness_fingers', 'gait_ataxia_spastic'],
+  neuro: ['nuchal_rigidity_headache', 'diplopia_ptosis_horner', 'facial_numb_speech', 'ataxia_vertigo_syncope'],
+  sys: ['fever_chills', 'dysphagia_stridor', 'chest_dyspnea_sweat', 'local_mass_wound_pus', 'cancer_weight_loss']
+};
+
+function handleNeckWarningItemChange(noneId, el) {
+  if (el && el.checked) {
+    const noneEl = document.getElementById(noneId);
+    if (noneEl) noneEl.checked = false;
   }
 }
+
+function handleNeckWarningNoneToggle(groupKey, el) {
+  if (!el || !el.checked) return;
+  const keys = NECK_WARN_GROUPS[groupKey] || [];
+  document.querySelectorAll('input[name="neckpainWarningSigns"]').forEach(cb => {
+    if (keys.includes(cb.value)) cb.checked = false;
+  });
+}
+
+function handleNeckErgoItemChange(el) {
+  if (el && el.checked) {
+    const noneEl = document.getElementById('neck_ergo_none');
+    if (noneEl) noneEl.checked = false;
+  }
+}
+
+function handleNeckErgoNoneToggle(el) {
+  if (!el || !el.checked) return;
+  document.querySelectorAll('input[name="neckpainErgonomics"]').forEach(cb => {
+    cb.checked = false;
+  });
+}
+
+function toggleNeckpainWarningGroup() {}
 
 function toggleNeckpainTraumaSub(isVisible) {
   const el = document.getElementById('neckpainTraumaSub');
@@ -117,6 +146,74 @@ function toggleNeckpainTraumaOther(isVisible) {
       if (input) input.value = '';
     }
   }
+}
+
+// --- Golden UI Helpers & Word-Wrap Guard (P-AP10 / P-AP12 / C-AP1 / C-AP18) ---
+function wrapNeckWords(chunks) {
+  if (!Array.isArray(chunks)) return chunks;
+  return chunks.map(c => `<span class="inline-block whitespace-nowrap">${c}</span>`).join(' ');
+}
+
+function renderNeckCard(opt) {
+  const kind = opt.kind || 'checkbox';
+  const idAttr = opt.id ? `id="${opt.id}"` : '';
+  const nameAttr = opt.name ? `name="${opt.name}"` : '';
+  const valAttr = opt.value !== undefined ? `value="${opt.value}"` : '';
+  const onchangeAttr = opt.onchange ? `onchange="${opt.onchange}"` : '';
+  const onclickAttr = opt.onclick ? `onclick="${opt.onclick}"` : '';
+  const titleHtml = Array.isArray(opt.title) ? wrapNeckWords(opt.title) : opt.title;
+
+  if (opt.desc) {
+    return `<label ${onclickAttr} class="selectable-card flex items-start p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
+      <input type="${kind}" ${idAttr} ${nameAttr} ${valAttr} ${onchangeAttr} class="mt-0.5 text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
+      <div class="ml-3 leading-snug">
+        <span class="block text-xs sm:text-sm font-semibold text-slate-800">${titleHtml}</span>
+        <span class="block text-[11px] text-slate-500 font-normal mt-0.5">${opt.desc}</span>
+      </div>
+    </label>`;
+  }
+
+  return `<label ${onclickAttr} class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
+    <input type="${kind}" ${idAttr} ${nameAttr} ${valAttr} ${onchangeAttr} class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
+    <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800 leading-snug">${titleHtml}</span>
+  </label>`;
+}
+
+function renderNeckGrid(colsClass, options) {
+  return `<div class="grid ${colsClass} gap-2.5">${options.map(renderNeckCard).join('')}</div>`;
+}
+
+function renderNeckSysHeader({ label, icon, colorClass, toggleId, toggleLabel, toggleOnchange }) {
+  return `<div class="flex flex-wrap items-center justify-between gap-2 mb-2.5">
+    <label class="flex items-center text-xs sm:text-sm font-bold text-slate-800">
+      <span class="${colorClass} p-1.5 rounded-lg mr-2 inline-flex items-center justify-center"><i data-lucide="${icon}" class="w-4 h-4"></i></span>
+      <span>${label}</span>
+    </label>
+    <label class="inline-flex items-center px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 border border-slate-200 text-xs font-medium text-slate-700 cursor-pointer transition select-none flex-shrink-0">
+      <input type="checkbox" id="${toggleId}" onchange="${toggleOnchange}" class="text-medical-600 focus:ring-medical-500 h-3.5 w-3.5 rounded">
+      <span class="ml-1.5 whitespace-nowrap">${toggleLabel}</span>
+    </label>
+  </div>`;
+}
+
+function renderNeckSidePickerRow(id, label, name) {
+  return `<div id="${id}" class="hidden flex flex-wrap items-center justify-between gap-2 bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs">
+    <span class="font-semibold text-slate-700 whitespace-nowrap">${label} — ข้างที่ปวด:</span>
+    <div class="flex flex-wrap items-center gap-2">
+      <label class="selectable-card inline-flex items-center px-2.5 py-1 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg cursor-pointer transition">
+        <input type="checkbox" name="${name}" value="left" class="h-3.5 w-3.5 text-medical-600 rounded">
+        <span class="ml-3 font-medium text-slate-800 whitespace-nowrap">ซ้าย</span>
+      </label>
+      <label class="selectable-card inline-flex items-center px-2.5 py-1 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg cursor-pointer transition">
+        <input type="checkbox" name="${name}" value="right" class="h-3.5 w-3.5 text-medical-600 rounded">
+        <span class="ml-3 font-medium text-slate-800 whitespace-nowrap">ขวา</span>
+      </label>
+      <label class="selectable-card inline-flex items-center px-2.5 py-1 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg cursor-pointer transition">
+        <input type="checkbox" name="${name}" value="both" class="h-3.5 w-3.5 text-medical-600 rounded">
+        <span class="ml-3 font-medium text-slate-800 whitespace-nowrap">ทั้งสองข้าง</span>
+      </label>
+    </div>
+  </div>`;
 }
 
 // --- Clinical Red Flag Evaluator ---
@@ -231,102 +328,34 @@ function evaluateNeckpainRedFlags(patient) {
   return rfs;
 }
 
-// --- Clinical Decision Support Generator ---
-function generateNeckpainCds(patient, context) {
-  const { rfs, ddxList, workupList, managementList } = context;
-  const radLocs = Array.isArray(patient.neckpainRadLoc) ? patient.neckpainRadLoc : [];
-
-  const hasDissection = rfs.some(r => r.key === 'rf_vertebral_carotid_dissection');
-  const hasAcsAorta = rfs.some(r => r.key === 'rf_acs_aortic_dissection_referred');
-  const hasCsm = rfs.some(r => r.key === 'rf_cervical_myelopathy');
-  const hasInfection = rfs.some(r => r.key === 'rf_cervical_infection_airway');
-  const hasTrauma = rfs.some(r => r.key === 'rf_cervical_trauma_unstable');
-  const hasRadiculopathy = rfs.some(r => r.key === 'rf_cervical_radiculopathy_motor') || radLocs.includes('rad_arm_fingers');
-
-  if (hasDissection) {
-    ddxList.push('1. Vertebral / Carotid Artery Dissection with Posterior Circulation Stroke / TIA');
-    ddxList.push('2. Subarachnoid Hemorrhage (SAH) / Thunderclap Headache');
-    ddxList.push('3. Cervicogenic Headache with Acute Labyrinthitis');
-    workupList.push('Stat CT Brain Non-contrast & CTA Whole Cervical & Intracranial Vessels');
-    workupList.push('ตรวจประเมินระบบประสาทครบ 12 คู่ (Cranial nerves), Horner syndrome, Ataxia');
-    workupList.push('เปิดเส้น IV, สารน้ำ, เฝ้าระวังความดันโลหิตและสัญญาณชีพทุก 15 นาที');
-    managementList.push('งดน้ำและอาหาร (NPO) ทันที');
-    managementList.push('ปรึกษา อายุรแพทย์ประสาทวิทยา (Neurologist) / ศัลยแพทย์หลอดเลือดด่วน');
-    managementList.push('ห้ามบิด ดัด ดึง หรือกดนวดบริเวณต้นคอโดยเด็ดขาด');
-    return;
-  }
-
-  if (hasAcsAorta) {
-    ddxList.push('1. Acute Coronary Syndrome (NSTEMI / STEMI) with Atypical Neck/Shoulder Radiation');
-    ddxList.push('2. Acute Aortic Dissection (Stanford Type A / DeBakey I)');
-    ddxList.push('3. Acute Pericarditis / Myocarditis');
-    workupList.push('Stat 12-lead EKG ภายใน 10 นาทีแรกรับ');
-    workupList.push('เจาะเลือดตรวจ Cardiac Biomarkers: High-sensitivity Troponin-T, CK-MB, CBC, Electrolytes');
-    workupList.push('Stat Chest X-ray หรือ CTA Whole Aorta หากสงสัย Aortic dissection');
-    managementList.push('เปิดเส้น IV เบอร์ใหญ่ 2 เส้น พร้อมให้ออกซิเจนหาก SpO2 < 94%');
-    managementList.push('ให้ยาตามมาตรฐาน ACS (ASA, Clopidogrel, Heparin) ภายหลัง Rule out Aortic Dissection แล้วเท่านั้น');
-    managementList.push('ประสานทีมห้องฉุกเฉินและปรึกษาอายุรแพทย์โรคหัวใจทันที');
-    return;
-  }
-
-  if (hasCsm) {
-    ddxList.push('1. Cervical Spondylotic Myelopathy (CSM) with Cord Compression');
-    ddxList.push('2. Cervical Spinal Epidural Abscess / Mass compressing Cervical Cord');
-    ddxList.push('3. Amyotrophic Lateral Sclerosis (ALS) / Motor Neuron Disease');
-    workupList.push('Stat MRI Cervical Spine Whole Spine ประเมินความรุนแรงของการกดทับไขสันหลัง');
-    workupList.push('ตรวจประเมิน Hoffmann sign, Inverted radial reflex, Babinski sign, Spastic gait');
-    managementList.push('ใส่ Hard/Soft Cervical Collar เพื่อจำกัดการเคลื่อนไหวของคอ');
-    managementList.push('งดการดัดดึงหรือบิดคอทุกชนิด');
-    managementList.push('ประสานส่งต่อ ศัลยแพทย์กระดูกสันหลัง (Spine Surgeon) เพื่อพิจารณาผ่าตัดคลายการกดทับ');
-    return;
-  }
-
-  if (hasInfection) {
-    ddxList.push('1. Retropharyngeal / Deep Neck Space Abscess (Ludwig Angina / Parapharyngeal)');
-    ddxList.push('2. Acute Bacterial Meningitis');
-    ddxList.push('3. Acute Epiglottitis / Severe Pharyngotonsillitis with Airway Compromise');
-    workupList.push('ประเมินทางเดินหายใจทันที (Airway assessment: Stridor, Drooling, Tripod position)');
-    workupList.push('Stat CT Soft Tissue Neck with IV Contrast (เตรียมพร้อมก่อนส่งตรวจหากเสี่ยงทางเดินหายใจ)');
-    workupList.push('เพาะเชื้อในเลือด (Hemoculture x 2 bottles), CBC, ESR, hs-CRP');
-    managementList.push('เตรียมอุปกรณ์ใส่ท่อช่วยหายใจ (Difficult Airway Cart) ข้างเตียงคนไข้');
-    managementList.push('เริ่มยาปฏิชีวนะทางหลอดเลือดดำ (Empiric IV Broad-spectrum Antibiotics) ทันที');
-    managementList.push('ปรึกษา ศัลยแพทย์หูคอจมูก (ENT) และแพทย์กู้ชีพฉุกเฉินร่วมดูแล');
-    return;
-  }
-
-  if (hasTrauma) {
-    ddxList.push('1. Acute Cervical Spine Fracture / Subluxation (High-Risk Trauma)');
-    ddxList.push('2. Severe Cervical Ligamentous Injury with Instability');
-    ddxList.push('3. Traumatic Cervical Disc Herniation');
-    workupList.push('ใส่ Hard Cervical Collar ขนาดพอดีทันที และตรึงกระดูกสันหลัง (Spinal Immobilization)');
-    workupList.push('Stat CT Cervical Spine with 3D Reconstruction ครอบคลุม C1-T1');
-    managementList.push('ห้ามถอด Hard Collar จนกว่าจะได้รับการ Clear C-Spine โดยแพทย์ผู้เชี่ยวชาญ');
-    managementList.push('ควบคุมการเคลื่อนไหวด้วยวิธี Log-roll เท่านั้น');
-    managementList.push('ปรึกษา ศัลยแพทย์กระดูกและข้อ (Orthopedics) หรือ ประสาทศัลยแพทย์');
-    return;
-  }
-
-  if (hasRadiculopathy) {
-    ddxList.push('1. Cervical Radiculopathy (Herniated Disc C5-C6 / C6-C7)');
-    ddxList.push('2. Cervical Spondylosis with Foraminal Stenosis');
-    ddxList.push('3. Thoracic Outlet Syndrome / Brachial Plexopathy');
-    workupList.push('ตรวจ Spurling test, Shoulder abduction relief test, Motor/Sensory C5, C6, C7, C8, T1');
-    workupList.push('พิจารณา Plain Film Cervical Spine AP/Lateral/Oblique');
-    managementList.push('ให้ยาบรรเทาอาการปวด: Oral NSAIDs ร่วมกับยาลดปวดประสาท (Pregabalin / Gabapentin)');
-    managementList.push('ใส่ Soft Cervical Collar ระยะสั้น (1-2 สัปดาห์) เพื่อพักกล้ามเนื้อ');
-    managementList.push('แนะนำหลีกเลี่ยงการก้มเงยคอสุด และนัดตรวจติดตามที่คลินิกกระดูกและข้อ');
-    return;
-  }
-
-  // Musculoskeletal Strain / MPS (Standard Low-Risk)
-  ddxList.push('1. Myofascial Pain Syndrome (MPS) of Upper Trapezius / Levator Scapulae');
-  ddxList.push('2. Acute Cervical Strain / Torticollis (ตกหมอน / คอเคล็ด)');
-  ddxList.push('3. Postural Neck Pain / Office Syndrome');
-  workupList.push('ตรวจคลำหากล้ามเนื้อเกร็งตัว (Trigger points) บริเวณบ่า สะบัก และต้นคอ');
-  workupList.push('ตรวจ Range of Motion ของคอ (ก้ม เงย หันซ้ายขวา)');
-  managementList.push('ให้ยาแก้ปวดลดการอักเสบ: Oral Paracetamol หรือ Short-course NSAIDs (3-5 วัน)');
-  managementList.push('ให้ยาคลายกล้ามเนื้อ (Muscle Relaxants) รับประทานหลังอาหาร');
-  managementList.push('แนะนำการประคบอุ่น ยืดเหยียดกล้ามเนื้อ และปรับหลักสรีรศาสตร์ในการทำงาน (Ergonomics)');
+function makeNeckSeed(overrides) {
+  return Object.assign({
+    chief_complaint: 'neck_shoulder_pain',
+    chief_complaint_title: 'ปวดต้นคอ / บ่า / หลังช่วงบน',
+    status: 'waiting',
+    hospRecordStatus: 'complete',
+    underlying: [],
+    drugAllergy: 'ปฏิเสธ',
+    currentMeds: 'ไม่มี',
+    otherSymptomsFree: '',
+    doctor_notes: { additional_hpi: '', physical_exam: '', preliminary_dx: '', plan: '' },
+    neckpainLocPostSide: [],
+    neckpainLocLatSide: [],
+    neckpainLocTrapSide: [],
+    neckpainLocScapSide: [],
+    neckpainRadLoc: [],
+    neckpainWarningSigns: [],
+    neckWarningArmMovementParent: false,
+    neckWarningNeuroHeadParent: false,
+    neckWarnArmNone: false,
+    neckWarnNeuroNone: false,
+    neckWarnSysNone: false,
+    neckpainTraumaMaster: 'no',
+    neckpainTraumaTypes: [],
+    neckpainTraumaOtherText: '',
+    neckpainErgonomics: [],
+    neckErgoNone: false
+  }, overrides);
 }
 
 // --- Register Module to Core Knowledge Base ---
@@ -337,13 +366,35 @@ registerCcModule({
   titleEn: 'Neck / Shoulder / Upper back pain',
   icon: 'activity',
   sectionDomId: 'neck_shoulder_painQuestionnaireSection',
+  headerTh: 'แบบฟอร์มซักประวัติ: ปวดต้นคอ / บ่า / หลังช่วงบน (Neck / Shoulder / Upper Back Pain)',
+  headerEn: '(Cervical Myelopathy, Dissection & Cardiovascular Triage)',
+  patientBadgeHtml: '<i data-lucide="activity" class="w-5 h-5 sm:w-6 sm:h-6 flex-shrink-0 text-amber-500"></i><span class="whitespace-nowrap">ปวดต้นคอ / บ่า / หลังช่วงบน</span>',
   doctorCcBadgeHtml: '<i data-lucide="activity" class="w-3.5 h-3.5 mr-1 text-amber-500"></i> CC: ปวดต้นคอ / บ่า / หลังช่วงบน (Neck & Shoulder pain)',
+  pmhSectionNumber: 5,
+  getPmhSectionNumber: () => 5,
+  dateFields: [],
+  timeFields: [],
+  branchIds: [
+    'neckSideBranchesWrap',
+    'neckPostSideGroup',
+    'neckLatSideGroup',
+    'neckTrapSideGroup',
+    'neckScapSideGroup',
+    'neckpainRadiationSub',
+    'neckpainTraumaSub',
+    'neckpainTraumaOtherWrap'
+  ],
+  inputIdsToClear: [
+    'neckpainDurationVal',
+    'neckpainTraumaOtherText',
+    'neckpain_other_free'
+  ],
 
   algorithm: {
     chiefComplaint: 'neck_shoulder_pain',
     titleTh: 'ปวดต้นคอ / บ่า / หลังช่วงบน',
     schemaCode: 'neck_shoulder_pain',
-    version: '2.0.0',
+    version: '3.0.0',
     redFlagDefinitions: [
       { key: 'rf_vertebral_carotid_dissection', level: 1, textTh: 'Vertebral / Carotid Artery Dissection (สงสัยหลอดเลือดแดงคอฉีกขาดร่วมกับภาวะสมองขาดเลือด)' },
       { key: 'rf_acs_aortic_dissection_referred', level: 1, textTh: 'Acute Coronary Syndrome / Aortic Dissection (สงสัยหลอดเลือดหัวใจอุดกั้นหรือหลอดเลือดใหญ่ฉีกขาดทะลุสะบัก)' },
@@ -358,24 +409,31 @@ registerCcModule({
   // --- HTML Template for Patient Intake Form ---
   formHtml: `
     <div id="neck_shoulder_painQuestionnaireSection" class="hidden space-y-6">
+      <div data-cc-top-banner="neck_shoulder_pain"><div class="flex flex-col gap-4">
+        <div class="p-4 bg-sky-50 border border-sky-200 rounded-2xl flex items-start space-x-3 text-xs text-slate-800 leading-relaxed">
+          <i data-lucide="info" class="w-5 h-5 text-medical-600 mt-0.5 flex-shrink-0"></i>
+          <div class="space-y-1">
+            <p class="font-bold text-slate-900">ข้อแนะนำความปลอดภัยระหว่างรอตรวจ:</p>
+            <p>1. <strong>งดบิด ดัด สะบัด หรือกดนวดคอแรงๆ ระหว่างรอตรวจ</strong> เพื่อป้องกันการบาดเจ็บต่อหลอดเลือดและเส้นประสาทต้นคอ</p>
+            <p>2. <strong>หากเพิ่งประสบอุบัติเหตุกระแทกหรือตกจากที่สูง:</strong> ให้นั่งหรือนอนนิ่งๆ หลีกเลี่ยงการก้มเงยหรือหันคอ</p>
+            <p>3. <strong>แจ้งพยาบาลทันทีหากมีอาการต่อไปนี้:</strong> แขนขาอ่อนแรง ชาตามแขน/มือ เดินเซ เห็นภาพซ้อน พูดไม่ชัด กลืนลำบาก หรือแน่นหน้าอก</p>
+          </div>
+        </div>
+      </div></div>
 
-      <!-- CARD 1: ระยะเวลา และตำแหน่งที่ปวด -->
+      <!-- CARD 1: ระยะเวลาและตำแหน่งที่ปวด -->
       <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
         <div class="flex items-center space-x-3 mb-4 pb-3 border-b border-slate-100">
           <div class="bg-medical-100 text-medical-700 p-2 rounded-xl">
             <i data-lucide="clock" class="w-5 h-5"></i>
           </div>
-          <div>
-            <h2 class="text-base font-bold text-slate-900">1. ระยะเวลาและตำแหน่งที่ปวด (Duration & Location)</h2>
-            <p class="text-xs text-slate-500">ข้อมูลเบื้องต้นเกี่ยวกับระยะเวลาและตำแหน่งที่ท่านมีอาการปวด</p>
-          </div>
+          <h2 class="text-base font-bold text-slate-900">1. ระยะเวลาและตำแหน่งที่ปวด</h2>
         </div>
 
-        <div class="space-y-4">
-          <!-- 1.1 ระยะเวลาที่มีอาการ -->
+        <div class="space-y-5">
           <div>
             <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
-              มีอาการปวดมานานเท่าไรแล้ว?
+              1.1 มีอาการปวดมานานเท่าไรแล้ว?
             </label>
             <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
               <div class="col-span-1 sm:col-span-2">
@@ -387,7 +445,7 @@ registerCcModule({
                   class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 text-slate-800 font-medium focus:outline-none focus:ring-2 focus:ring-medical-500 focus:bg-white text-sm">
                   <option value="minutes">นาที</option>
                   <option value="hours">ชั่วโมง</option>
-                  <option value="days">วัน</option>
+                  <option value="days" selected>วัน</option>
                   <option value="weeks">สัปดาห์</option>
                   <option value="months">เดือน</option>
                   <option value="years">ปี</option>
@@ -396,159 +454,35 @@ registerCcModule({
             </div>
           </div>
 
-          <!-- 1.2 ตำแหน่งที่ปวด (เลือกได้หลายข้อ พร้อมระบุข้าง) -->
-          <div>
+          <div class="pt-3 border-t border-slate-100">
             <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
-              ตำแหน่งที่ปวด (เลือกได้หลายข้อ และระบุข้าง)
+              1.2 ตำแหน่งที่ปวด (เลือกได้หลายข้อ)
             </label>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <!-- 1. ต้นคอด้านหลัง -->
-              <div class="border border-slate-200 rounded-xl p-3 bg-white hover:border-medical-300 transition">
-                <label class="flex items-start cursor-pointer">
-                  <input type="checkbox" name="neckpainLoc" value="suboccipital_posterior"
-                    onchange="toggleNeckpainSideGroup('neckPostSideGroup', this.checked)"
-                    class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0 mt-0.5">
-                  <div class="ml-3">
-                    <span class="text-xs sm:text-sm font-semibold text-slate-800 block">ต้นคอด้านหลัง</span>
-                    <span class="text-[11px] text-slate-500 font-normal block mt-0.5">บริเวณท้ายทอยลงมาถึงหลังคอ</span>
-                  </div>
-                </label>
-                <div id="neckPostSideGroup" class="hidden pl-7 pt-2.5 mt-2 border-t border-slate-100 flex items-center space-x-2 text-xs">
-                  <span class="text-slate-500 text-[11px] font-medium mr-1">ข้างที่ปวด:</span>
-                  <label class="inline-flex items-center px-2 py-1 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg cursor-pointer">
-                    <input type="checkbox" name="neckpainLocPostSide" value="left" class="mr-1.5 h-3.5 w-3.5 text-medical-600 rounded">
-                    <span>ซ้าย</span>
-                  </label>
-                  <label class="inline-flex items-center px-2 py-1 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg cursor-pointer">
-                    <input type="checkbox" name="neckpainLocPostSide" value="right" class="mr-1.5 h-3.5 w-3.5 text-medical-600 rounded">
-                    <span>ขวา</span>
-                  </label>
-                  <label class="inline-flex items-center px-2 py-1 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg cursor-pointer">
-                    <input type="checkbox" name="neckpainLocPostSide" value="both" class="mr-1.5 h-3.5 w-3.5 text-medical-600 rounded">
-                    <span>ทั้งสองข้าง</span>
-                  </label>
-                </div>
-              </div>
+            ${renderNeckGrid('grid-cols-1 sm:grid-cols-2 lg:grid-cols-3', [
+              { name: 'neckpainLoc', value: 'suboccipital_posterior', onchange: "toggleNeckpainSideGroup('neckPostSideGroup', this.checked)", title: ['ต้นคอด้านหลัง /', 'ท้ายทอย'] },
+              { name: 'neckpainLoc', value: 'lateral_neck', onchange: "toggleNeckpainSideGroup('neckLatSideGroup', this.checked)", title: ['ต้นคอด้านข้าง'], desc: 'แนวลำคอใต้ใบหูหรือขากรรไกร' },
+              { name: 'neckpainLoc', value: 'trapezius_shoulder', onchange: "toggleNeckpainSideGroup('neckTrapSideGroup', this.checked)", title: ['บ่า / หัวไหล่'] },
+              { name: 'neckpainLoc', value: 'interscapular_upper', onchange: "toggleNeckpainSideGroup('neckScapSideGroup', this.checked)", title: ['สะบัก / หลังช่วงบน'], desc: 'ร่องระหว่างสะบักสองข้าง' },
+              { name: 'neckpainLoc', value: 'diffuse', title: ['ปวดเมื่อยระบม', 'ทั่วคอบ่าไหล่'] }
+            ])}
 
-              <!-- 2. ต้นคอด้านข้าง -->
-              <div class="border border-slate-200 rounded-xl p-3 bg-white hover:border-medical-300 transition">
-                <label class="flex items-start cursor-pointer">
-                  <input type="checkbox" name="neckpainLoc" value="lateral_neck"
-                    onchange="toggleNeckpainSideGroup('neckLatSideGroup', this.checked)"
-                    class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0 mt-0.5">
-                  <div class="ml-3">
-                    <span class="text-xs sm:text-sm font-semibold text-slate-800 block">ต้นคอด้านข้าง</span>
-                    <span class="text-[11px] text-slate-500 font-normal block mt-0.5">แนวด้านข้างลำคอ ใต้ใบหูหรือขากรรไกร</span>
-                  </div>
-                </label>
-                <div id="neckLatSideGroup" class="hidden pl-7 pt-2.5 mt-2 border-t border-slate-100 flex items-center space-x-2 text-xs">
-                  <span class="text-slate-500 text-[11px] font-medium mr-1">ข้างที่ปวด:</span>
-                  <label class="inline-flex items-center px-2 py-1 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg cursor-pointer">
-                    <input type="checkbox" name="neckpainLocLatSide" value="left" class="mr-1.5 h-3.5 w-3.5 text-medical-600 rounded">
-                    <span>ซ้าย</span>
-                  </label>
-                  <label class="inline-flex items-center px-2 py-1 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg cursor-pointer">
-                    <input type="checkbox" name="neckpainLocLatSide" value="right" class="mr-1.5 h-3.5 w-3.5 text-medical-600 rounded">
-                    <span>ขวา</span>
-                  </label>
-                  <label class="inline-flex items-center px-2 py-1 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg cursor-pointer">
-                    <input type="checkbox" name="neckpainLocLatSide" value="both" class="mr-1.5 h-3.5 w-3.5 text-medical-600 rounded">
-                    <span>ทั้งสองข้าง</span>
-                  </label>
-                </div>
-              </div>
-
-              <!-- 3. บ่า / ไหล่ -->
-              <div class="border border-slate-200 rounded-xl p-3 bg-white hover:border-medical-300 transition">
-                <label class="flex items-start cursor-pointer">
-                  <input type="checkbox" name="neckpainLoc" value="trapezius_shoulder"
-                    onchange="toggleNeckpainSideGroup('neckTrapSideGroup', this.checked)"
-                    class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0 mt-0.5">
-                  <div class="ml-3">
-                    <span class="text-xs sm:text-sm font-semibold text-slate-800 block">บ่า / ไหล่</span>
-                    <span class="text-[11px] text-slate-500 font-normal block mt-0.5">แนวกล้ามเนื้อบ่าและหัวไหล่</span>
-                  </div>
-                </label>
-                <div id="neckTrapSideGroup" class="hidden pl-7 pt-2.5 mt-2 border-t border-slate-100 flex items-center space-x-2 text-xs">
-                  <span class="text-slate-500 text-[11px] font-medium mr-1">ข้างที่ปวด:</span>
-                  <label class="inline-flex items-center px-2 py-1 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg cursor-pointer">
-                    <input type="checkbox" name="neckpainLocTrapSide" value="left" class="mr-1.5 h-3.5 w-3.5 text-medical-600 rounded">
-                    <span>ซ้าย</span>
-                  </label>
-                  <label class="inline-flex items-center px-2 py-1 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg cursor-pointer">
-                    <input type="checkbox" name="neckpainLocTrapSide" value="right" class="mr-1.5 h-3.5 w-3.5 text-medical-600 rounded">
-                    <span>ขวา</span>
-                  </label>
-                  <label class="inline-flex items-center px-2 py-1 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg cursor-pointer">
-                    <input type="checkbox" name="neckpainLocTrapSide" value="both" class="mr-1.5 h-3.5 w-3.5 text-medical-600 rounded">
-                    <span>ทั้งสองข้าง</span>
-                  </label>
-                </div>
-              </div>
-
-              <!-- 4. สะบัก / หลังช่วงบน -->
-              <div class="border border-slate-200 rounded-xl p-3 bg-white hover:border-medical-300 transition">
-                <label class="flex items-start cursor-pointer">
-                  <input type="checkbox" name="neckpainLoc" value="interscapular_upper"
-                    onchange="toggleNeckpainSideGroup('neckScapSideGroup', this.checked)"
-                    class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0 mt-0.5">
-                  <div class="ml-3">
-                    <span class="text-xs sm:text-sm font-semibold text-slate-800 block">สะบัก / หลังช่วงบน</span>
-                    <span class="text-[11px] text-slate-500 font-normal block mt-0.5">ร่องระหว่างสะบักสองข้างหรือหลังช่วงบน</span>
-                  </div>
-                </label>
-                <div id="neckScapSideGroup" class="hidden pl-7 pt-2.5 mt-2 border-t border-slate-100 flex items-center space-x-2 text-xs">
-                  <span class="text-slate-500 text-[11px] font-medium mr-1">ข้างที่ปวด:</span>
-                  <label class="inline-flex items-center px-2 py-1 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg cursor-pointer">
-                    <input type="checkbox" name="neckpainLocScapSide" value="left" class="mr-1.5 h-3.5 w-3.5 text-medical-600 rounded">
-                    <span>ซ้าย</span>
-                  </label>
-                  <label class="inline-flex items-center px-2 py-1 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg cursor-pointer">
-                    <input type="checkbox" name="neckpainLocScapSide" value="right" class="mr-1.5 h-3.5 w-3.5 text-medical-600 rounded">
-                    <span>ขวา</span>
-                  </label>
-                  <label class="inline-flex items-center px-2 py-1 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg cursor-pointer">
-                    <input type="checkbox" name="neckpainLocScapSide" value="both" class="mr-1.5 h-3.5 w-3.5 text-medical-600 rounded">
-                    <span>ทั้งสองข้าง</span>
-                  </label>
-                </div>
-              </div>
-
-              <!-- 5. ปวดเมื่อยระบมทั่วคอบ่าไหล่ -->
-              <div class="border border-slate-200 rounded-xl p-3 bg-white hover:border-medical-300 transition flex items-center sm:col-span-2">
-                <label class="flex items-start cursor-pointer w-full">
-                  <input type="checkbox" name="neckpainLoc" value="diffuse"
-                    class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0 mt-0.5">
-                  <div class="ml-3">
-                    <span class="text-xs sm:text-sm font-semibold text-slate-800 block">ปวดเมื่อยระบมทั่วคอบ่าไหล่</span>
-                    <span class="text-[11px] text-slate-500 font-normal block mt-0.5">ตึงเกร็งกระจายทั่วบริเวณ ไม่จำเพาะจุด</span>
-                  </div>
-                </label>
-              </div>
+            <div id="neckSideBranchesWrap" class="hidden bg-slate-50 border border-slate-200 rounded-2xl p-4 mt-3 space-y-2.5">
+              <span class="text-xs font-bold text-slate-800 block">ระบุข้างที่มีอาการปวด:</span>
+              ${renderNeckSidePickerRow('neckPostSideGroup', 'ต้นคอด้านหลัง / ท้ายทอย', 'neckpainLocPostSide')}
+              ${renderNeckSidePickerRow('neckLatSideGroup', 'ต้นคอด้านข้าง', 'neckpainLocLatSide')}
+              ${renderNeckSidePickerRow('neckTrapSideGroup', 'บ่า / หัวไหล่', 'neckpainLocTrapSide')}
+              ${renderNeckSidePickerRow('neckScapSideGroup', 'สะบัก / หลังช่วงบน', 'neckpainLocScapSide')}
             </div>
           </div>
 
-          <!-- 1.3 ลักษณะการเริ่มปวด -->
-          <div>
+          <div class="pt-3 border-t border-slate-100">
             <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
-              ลักษณะการเริ่มปวด
+              1.3 ลักษณะการเริ่มปวด
             </label>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <label class="selectable-card flex items-start p-3.5 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-                <input type="radio" name="neckpainOnsetMode" value="sudden_severe" class="text-medical-600 focus:ring-medical-500 h-4 w-4 flex-shrink-0 mt-0.5">
-                <div class="ml-3">
-                  <span class="text-xs sm:text-sm font-semibold text-slate-800 block">ปวดรุนแรงทันทีทันใด (ฉับพลัน)</span>
-                  <span class="text-[11px] text-slate-500 font-normal block mt-0.5">ปวดพุ่งขึ้นสูงสุดในไม่กี่วินาทีหรือนาทีแรก</span>
-                </div>
-              </label>
-              <label class="selectable-card flex items-start p-3.5 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-                <input type="radio" name="neckpainOnsetMode" value="gradual_worsening" class="text-medical-600 focus:ring-medical-500 h-4 w-4 flex-shrink-0 mt-0.5">
-                <div class="ml-3">
-                  <span class="text-xs sm:text-sm font-semibold text-slate-800 block">ค่อยๆ ปวดเพิ่มขึ้นเรื่อยๆ</span>
-                  <span class="text-[11px] text-slate-500 font-normal block mt-0.5">เริ่มจากเมื่อย ตึง แล้วค่อยๆ รุนแรงขึ้นตามเวลา</span>
-                </div>
-              </label>
-            </div>
+            ${renderNeckGrid('grid-cols-1 sm:grid-cols-2', [
+              { kind: 'radio', name: 'neckpainOnsetMode', value: 'sudden_severe', title: ['ปวดรุนแรงทันทีทันใด', '(เฉียบพลัน)'] },
+              { kind: 'radio', name: 'neckpainOnsetMode', value: 'gradual_worsening', title: ['ค่อยๆ ปวดเพิ่มขึ้นเรื่อยๆ'] }
+            ])}
           </div>
         </div>
       </div>
@@ -559,389 +493,207 @@ registerCcModule({
           <div class="bg-medical-100 text-medical-700 p-2 rounded-xl">
             <i data-lucide="activity" class="w-5 h-5"></i>
           </div>
-          <div>
-            <h2 class="text-base font-bold text-slate-900">2. การปวดร้าว ลักษณะปวด และระดับความปวด (Pain Profile)</h2>
-            <p class="text-xs text-slate-500">ลักษณะความเจ็บปวด การร้าวไปยังอวัยวะอื่น และคะแนนความปวด</p>
-          </div>
+          <h2 class="text-base font-bold text-slate-900">2. การปวดร้าว ลักษณะปวด และระดับความปวด</h2>
         </div>
 
-        <div class="space-y-4">
-          <!-- 2.1 อาการปวดร้าว -->
+        <div class="space-y-5">
           <div>
             <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
-              อาการปวดร้าวไปบริเวณอื่น
+              2.1 อาการปวดร้าวไปบริเวณอื่น
             </label>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <label class="selectable-card flex items-center p-3.5 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition"
-                onclick="toggleNeckpainRadiationSub(false)">
-                <input type="radio" name="neckpainRadMaster" value="none" class="text-medical-600 focus:ring-medical-500 h-4 w-4 flex-shrink-0">
-                <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800">ปวดเฉพาะที่ ไม่ร้าวไปไหน</span>
-              </label>
-              <label class="selectable-card flex items-center p-3.5 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition"
-                onclick="toggleNeckpainRadiationSub(true)">
-                <input type="radio" name="neckpainRadMaster" value="yes" class="text-medical-600 focus:ring-medical-500 h-4 w-4 flex-shrink-0">
-                <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800">มีปวดร้าวไปบริเวณอื่น</span>
-              </label>
-            </div>
+            ${renderNeckGrid('grid-cols-1 sm:grid-cols-2', [
+              { kind: 'radio', name: 'neckpainRadMaster', value: 'none', onchange: 'toggleNeckpainRadiationSub(false)', title: ['ปวดเฉพาะที่ ไม่ร้าวไปไหน'] },
+              { kind: 'radio', name: 'neckpainRadMaster', value: 'yes', onchange: 'toggleNeckpainRadiationSub(true)', title: ['มีปวดร้าวไปบริเวณอื่น'] }
+            ])}
 
-            <!-- กล่องแตกกิ่ง: บริเวณที่ปวดร้าว -->
-            <div id="neckpainRadiationSub" class="hidden bg-slate-50 border border-slate-200 rounded-xl p-4 mt-3 space-y-2">
-              <span class="text-xs font-bold text-slate-800 block mb-1 flex items-center">
-                <i data-lucide="corner-down-right" class="w-3.5 h-3.5 mr-1 text-medical-600"></i> ระบุบริเวณที่ปวดร้าว (เลือกได้หลายข้อ)
-              </span>
-              <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-                <label class="selectable-card flex items-center p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer">
-                  <input type="checkbox" name="neckpainRadLoc" value="rad_arm_fingers" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
-                  <span class="ml-2.5 text-xs font-medium text-slate-800">ร้าวลงแขน ข้อศอก หรือปลายนิ้วมือ</span>
-                </label>
-                <label class="selectable-card flex items-center p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer">
-                  <input type="checkbox" name="neckpainRadLoc" value="rad_head_occiput" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
-                  <span class="ml-2.5 text-xs font-medium text-slate-800">ร้าวขึ้นศีรษะ ท้ายทอย หรือขมับ</span>
-                </label>
-                <label class="selectable-card flex items-center p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer">
-                  <input type="checkbox" name="neckpainRadLoc" value="rad_jaw_chest" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
-                  <span class="ml-2.5 text-xs font-medium text-slate-800">ร้าวไปขากรรไกร คอหอย หรือหน้าอก</span>
-                </label>
-                <label class="selectable-card flex items-center p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer">
-                  <input type="checkbox" name="neckpainRadLoc" value="rad_interscapular_tearing" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
-                  <span class="ml-2.5 text-xs font-medium text-slate-800">ร้าวทะลุหลังไประหว่างสะบักสองข้าง</span>
-                </label>
-              </div>
+            <div id="neckpainRadiationSub" class="hidden bg-slate-50 border border-slate-200 rounded-2xl p-4 mt-3 space-y-2.5">
+              <span class="text-xs font-bold text-slate-800 block">ระบุบริเวณที่ปวดร้าว (เลือกได้หลายข้อ):</span>
+              ${renderNeckGrid('grid-cols-1 sm:grid-cols-2', [
+                { name: 'neckpainRadLoc', value: 'rad_arm_fingers', title: ['ร้าวลงแขน ข้อศอก /', 'ปลายนิ้วมือ'] },
+                { name: 'neckpainRadLoc', value: 'rad_head_occiput', title: ['ร้าวขึ้นศีรษะ ท้ายทอย /', 'ขมับ'] },
+                { name: 'neckpainRadLoc', value: 'rad_jaw_chest', title: ['ร้าวไปขากรรไกร คอหอย /', 'หน้าอก'] },
+                { name: 'neckpainRadLoc', value: 'rad_interscapular_tearing', title: ['ร้าวทะลุหลัง', 'ไประหว่างสะบัก'] }
+              ])}
             </div>
           </div>
 
-          <!-- 2.2 ลักษณะอาการปวด -->
-          <div>
+          <div class="pt-3 border-t border-slate-100">
             <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
-              ลักษณะอาการปวด (เลือกได้หลายข้อ)
+              2.2 ลักษณะอาการปวด (เลือกได้หลายข้อ)
             </label>
-            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
-              <label class="selectable-card flex items-start p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-                <input type="checkbox" name="neckpainChar" value="dull_muscle_tight" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0 mt-0.5">
-                <div class="ml-3">
-                  <span class="text-xs sm:text-sm font-semibold text-slate-800 block">ปวดเมื่อย ตึง ระบม</span>
-                  <span class="text-[11px] text-slate-500 font-normal block mt-0.5">เมื่อยล้า กล้ามเนื้อตึงเกร็ง</span>
-                </div>
-              </label>
-              <label class="selectable-card flex items-start p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-                <input type="checkbox" name="neckpainChar" value="sharp_electric" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0 mt-0.5">
-                <div class="ml-3">
-                  <span class="text-xs sm:text-sm font-semibold text-slate-800 block">ปวดแปล๊บ เหมือนไฟช็อต</span>
-                  <span class="text-[11px] text-slate-500 font-normal block mt-0.5">เสียวแปล๊บแล่นลงแขนตามแนวประสาท</span>
-                </div>
-              </label>
-              <label class="selectable-card flex items-start p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-                <input type="checkbox" name="neckpainChar" value="throbbing_pulsatile" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0 mt-0.5">
-                <div class="ml-3">
-                  <span class="text-xs sm:text-sm font-semibold text-slate-800 block">ปวดเต้นตุบๆ ตามชีพจร</span>
-                  <span class="text-[11px] text-slate-500 font-normal block mt-0.5">เต้นตุบๆ ที่ขมับหรือต้นคอ</span>
-                </div>
-              </label>
-              <label class="selectable-card flex items-start p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-                <input type="checkbox" name="neckpainChar" value="tearing_ripping" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0 mt-0.5">
-                <div class="ml-3">
-                  <span class="text-xs sm:text-sm font-semibold text-slate-800 block">ปวดฉีกขาด รุนแรงจัด</span>
-                  <span class="text-[11px] text-slate-500 font-normal block mt-0.5">เจ็บรุนแรงคล้ายมีอะไรฉีกขาดอยู่ลึกๆ</span>
-                </div>
-              </label>
-            </div>
+            ${renderNeckGrid('grid-cols-1 sm:grid-cols-2 lg:grid-cols-4', [
+              { name: 'neckpainChar', value: 'dull_muscle_tight', title: ['ปวดเมื่อย ตึง ระบม'] },
+              { name: 'neckpainChar', value: 'sharp_electric', title: ['ปวดแปล๊บ /', 'เหมือนไฟช็อต'] },
+              { name: 'neckpainChar', value: 'throbbing_pulsatile', title: ['ปวดเต้นตุบๆ', 'ตามชีพจร'] },
+              { name: 'neckpainChar', value: 'tearing_ripping', title: ['ปวดฉีกขาด', 'รุนแรงจัด'] }
+            ])}
           </div>
 
           <!-- 2.3 ระดับความเจ็บปวด (Universal Slider 0-10) -->
-          <div>
-            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-2">
-              <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider">
-                ระดับความเจ็บปวด (Pain Score 0-10)
-              </label>
+          <div class="bg-slate-50/80 border border-slate-200 rounded-2xl p-4 sm:p-5 space-y-3">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <label class="block text-xs font-semibold text-slate-800 uppercase tracking-wider">ระดับความเจ็บปวดในขณะนี้ (Pain Score: 0 – 10)</label>
               <div class="flex items-center space-x-2">
                 <span id="neckpainPainScoreBadge" class="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-600 border border-slate-300 self-start sm:self-auto transition-all">
-                  <span id="neckpainPainScoreEmoji">⚪</span>
+                  <span id="neckpainPainScoreEmoji" class="text-base">⚪</span>
                   <span id="neckpainPainScoreText">ยังไม่ได้ระบุ (แตะแถบเพื่อระบุ)</span>
                 </span>
-                <button type="button" id="neckpainPainScoreClearBtn" onclick="clearNeckpainPainScore()" class="hidden text-xs text-slate-400 hover:text-slate-600 underline">ล้างค่า</button>
+                <button type="button" id="neckpainPainScoreClearBtn" onclick="clearNeckpainPainScore()" class="text-xs text-slate-400 hover:text-rose-600 underline hidden transition" title="ล้างค่าเพื่อให้เป็นไม่ได้ระบุ">ล้างค่า</button>
               </div>
             </div>
-            <div class="pt-2 px-1">
-              <input type="range" id="neckpainPainScore" min="0" max="10" value="0"
-                oninput="handleNeckpainPainScoreChange(this.value)"
-                class="w-full h-2.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-medical-600">
-              <div class="flex justify-between text-[11px] text-slate-400 mt-1 font-medium">
-                <span>0 ไม่ปวดเลย</span>
-                <span>5 ปวดปานกลาง</span>
-                <span>10 ปวดมากที่สุด</span>
-              </div>
+            <div class="px-1 pt-1">
+              <input type="range" id="neckpainPainScore" min="0" max="10" value="0" step="1" oninput="handleNeckpainPainScoreChange(this.value)" class="w-full h-2.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-medical-600 focus:outline-none focus:ring-2 focus:ring-medical-500">
+            </div>
+            <div class="grid grid-cols-5 text-center text-[10px] sm:text-[11px] pt-1 gap-1 text-slate-500 font-medium">
+              <div class="cursor-pointer hover:text-medical-600 transition" onclick="setNeckpainPainScore(0)"><span class="text-lg sm:text-xl block">😊</span><span>0: สบายดี</span></div>
+              <div class="cursor-pointer hover:text-medical-600 transition" onclick="setNeckpainPainScore(2)"><span class="text-lg sm:text-xl block">🙂</span><span>1–3: เล็กน้อย</span></div>
+              <div class="cursor-pointer hover:text-medical-600 transition" onclick="setNeckpainPainScore(5)"><span class="text-lg sm:text-xl block">😐</span><span>4–6: ปานกลาง</span></div>
+              <div class="cursor-pointer hover:text-medical-600 transition" onclick="setNeckpainPainScore(8)"><span class="text-lg sm:text-xl block">😣</span><span>7–9: ปวดมาก</span></div>
+              <div class="cursor-pointer hover:text-medical-600 transition" onclick="setNeckpainPainScore(10)"><span class="text-lg sm:text-xl block">😭</span><span>10: ปวดที่สุด</span></div>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- CARD 3: สัญญาณเตือน สภาวะอันตราย / ความเสี่ยงสูง -->
+      <!-- CARD 3: สัญญาณเตือนและอาการร่วมสำคัญทางระบบประสาท -->
       <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
         <div class="flex items-center space-x-3 mb-4 pb-3 border-b border-slate-100">
           <div class="bg-medical-100 text-medical-700 p-2 rounded-xl">
             <i data-lucide="shield-alert" class="w-5 h-5"></i>
           </div>
-          <div>
-            <h2 class="text-base font-bold text-slate-900">3. สัญญาณเตือน สภาวะอันตราย / ความเสี่ยงสูง (Warning Signs)</h2>
-            <p class="text-xs text-slate-500">คัดกรองอาการทางระบบประสาท แขน การเคลื่อนไหว และหลอดเลือด</p>
-          </div>
+          <h2 class="text-base font-bold text-slate-900">3. สัญญาณเตือนและอาการร่วมสำคัญทางระบบประสาท</h2>
         </div>
 
-        <div class="space-y-3">
-          <!-- กลุ่ม 1: มีความผิดปกติที่แขน มือ หรือการเคลื่อนไหว -->
-          <div class="border border-slate-200 rounded-xl p-3 bg-white hover:border-medical-300 transition">
-            <label class="flex items-start cursor-pointer">
-              <input type="checkbox" id="neckWarningArmMovementParent"
-                onchange="toggleNeckpainWarningGroup('neckWarningArmMovementSub', this.checked)"
-                class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0 mt-0.5">
-              <div class="ml-3">
-                <span class="text-xs sm:text-sm font-semibold text-slate-800 block">มีความผิดปกติที่แขน มือ หรือการเคลื่อนไหว</span>
-                <span class="text-[11px] text-slate-500 font-normal block mt-0.5">กล้ามเนื้อแขนอ่อนแรง มือหยิบของหลุด หรือเดินเซ</span>
-              </div>
-            </label>
-            <div id="neckWarningArmMovementSub" class="hidden pl-7 pt-3 mt-2 border-t border-slate-100 space-y-2">
-              <span class="text-[11px] font-bold text-slate-700 block mb-1">
-                ระบุรายละเอียดอาการที่พบ (เลือกได้หลายข้อ):
-              </span>
-              <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-                <label class="selectable-card flex items-center p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer hover:bg-slate-50">
-                  <input type="checkbox" name="neckpainWarningSigns" value="hand_clumsy_weak" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
-                  <span class="ml-2.5 text-xs font-medium text-slate-800">มืออ่อนแรง หยิบจับของหลุดง่าย หรือติดกระดุมเสื้อลำบาก</span>
-                </label>
-                <label class="selectable-card flex items-center p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer hover:bg-slate-50">
-                  <input type="checkbox" name="neckpainWarningSigns" value="arm_weakness_abduction" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
-                  <span class="ml-2.5 text-xs font-medium text-slate-800">แขนอ่อนแรง ยกแขนไม่ขึ้น หรืองอข้อศอกไม่ได้</span>
-                </label>
-                <label class="selectable-card flex items-center p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer hover:bg-slate-50">
-                  <input type="checkbox" name="neckpainWarningSigns" value="arm_numbness_fingers" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
-                  <span class="ml-2.5 text-xs font-medium text-slate-800">ชาตามแนวแขน ฝ่ามือ หรือปลายนิ้ว</span>
-                </label>
-                <label class="selectable-card flex items-center p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer hover:bg-slate-50">
-                  <input type="checkbox" name="neckpainWarningSigns" value="gait_ataxia_spastic" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
-                  <span class="ml-2.5 text-xs font-medium text-slate-800">เดินเซ ขาแข็งกระตุก หรือก้าวขาลำบาก</span>
-                </label>
-              </div>
-            </div>
+        <div class="space-y-5">
+          <div>
+            ${renderNeckSysHeader({
+              label: '3.1 อาการผิดปกติที่แขน มือ หรือการเดิน (เลือกได้หลายข้อ)',
+              icon: 'zap',
+              colorClass: 'bg-amber-100 text-amber-700',
+              toggleId: 'neck_warn_arm_none',
+              toggleLabel: 'ไม่มีอาการในหมวดนี้',
+              toggleOnchange: "handleNeckWarningNoneToggle('arm', this)"
+            })}
+            ${renderNeckGrid('grid-cols-1 sm:grid-cols-2', [
+              { name: 'neckpainWarningSigns', value: 'hand_clumsy_weak', onchange: "handleNeckWarningItemChange('neck_warn_arm_none', this)", title: ['มืออ่อนแรง', 'หยิบของหลุด /', 'ติดกระดุมลำบาก'] },
+              { name: 'neckpainWarningSigns', value: 'arm_weakness_abduction', onchange: "handleNeckWarningItemChange('neck_warn_arm_none', this)", title: ['แขนอ่อนแรง', 'ยกไม่ขึ้น /', 'งอศอกไม่ได้'] },
+              { name: 'neckpainWarningSigns', value: 'arm_numbness_fingers', onchange: "handleNeckWarningItemChange('neck_warn_arm_none', this)", title: ['ชาตามแนวแขน /', 'ฝ่ามือ /', 'ปลายนิ้ว'] },
+              { name: 'neckpainWarningSigns', value: 'gait_ataxia_spastic', onchange: "handleNeckWarningItemChange('neck_warn_arm_none', this)", title: ['เดินเซ /', 'ขาแข็งกระตุก /', 'ก้าวลำบาก'] }
+            ])}
           </div>
 
-          <!-- กลุ่ม 2: มีอาการทางระบบประสาท ศีรษะ และการมองเห็น -->
-          <div class="border border-slate-200 rounded-xl p-3 bg-white hover:border-medical-300 transition">
-            <label class="flex items-start cursor-pointer">
-              <input type="checkbox" id="neckWarningNeuroHeadParent"
-                onchange="toggleNeckpainWarningGroup('neckWarningNeuroHeadSub', this.checked)"
-                class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0 mt-0.5">
-              <div class="ml-3">
-                <span class="text-xs sm:text-sm font-semibold text-slate-800 block">มีอาการทางระบบประสาท ศีรษะ และการมองเห็น</span>
-                <span class="text-[11px] text-slate-500 font-normal block mt-0.5">ปวดท้ายทอยเฉับพลัน ตาพร่ามัว หน้าชา หรือพูดไม่ชัด</span>
-              </div>
-            </label>
-            <div id="neckWarningNeuroHeadSub" class="hidden pl-7 pt-3 mt-2 border-t border-slate-100 space-y-2">
-              <span class="text-[11px] font-bold text-slate-700 block mb-1">
-                ระบุรายละเอียดอาการที่พบ (เลือกได้หลายข้อ):
-              </span>
-              <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-                <label class="selectable-card flex items-center p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer hover:bg-slate-50">
-                  <input type="checkbox" name="neckpainWarningSigns" value="nuchal_rigidity_headache" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
-                  <span class="ml-2.5 text-xs font-medium text-slate-800">ปวดท้ายทอยรุนแรงฉับพลัน หรือคอแข็งก้มไม่ลง</span>
-                </label>
-                <label class="selectable-card flex items-center p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer hover:bg-slate-50">
-                  <input type="checkbox" name="neckpainWarningSigns" value="diplopia_ptosis_horner" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
-                  <span class="ml-2.5 text-xs font-medium text-slate-800">ตาพร่ามัว เห็นภาพซ้อน หรือหนังตาตกข้างหนึ่ง</span>
-                </label>
-                <label class="selectable-card flex items-center p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer hover:bg-slate-50">
-                  <input type="checkbox" name="neckpainWarningSigns" value="facial_numb_speech" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
-                  <span class="ml-2.5 text-xs font-medium text-slate-800">หน้าชา ปากเบี้ยว หรือพูดไม่ชัด</span>
-                </label>
-                <label class="selectable-card flex items-center p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer hover:bg-slate-50">
-                  <input type="checkbox" name="neckpainWarningSigns" value="ataxia_vertigo_syncope" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
-                  <span class="ml-2.5 text-xs font-medium text-slate-800">วูบ หน้ามืด หรือมีอาการบ้านหมุนโคลงเคลงรุนแรง</span>
-                </label>
-              </div>
-            </div>
+          <div class="pt-3 border-t border-slate-100">
+            ${renderNeckSysHeader({
+              label: '3.2 อาการทางระบบประสาท ศีรษะ และการมองเห็น (เลือกได้หลายข้อ)',
+              icon: 'eye',
+              colorClass: 'bg-purple-100 text-purple-700',
+              toggleId: 'neck_warn_neuro_none',
+              toggleLabel: 'ไม่มีอาการในหมวดนี้',
+              toggleOnchange: "handleNeckWarningNoneToggle('neuro', this)"
+            })}
+            ${renderNeckGrid('grid-cols-1 sm:grid-cols-2', [
+              { name: 'neckpainWarningSigns', value: 'nuchal_rigidity_headache', onchange: "handleNeckWarningItemChange('neck_warn_neuro_none', this)", title: ['ปวดท้ายทอย', 'เฉียบพลัน /', 'คอแข็งก้มไม่ลง'] },
+              { name: 'neckpainWarningSigns', value: 'diplopia_ptosis_horner', onchange: "handleNeckWarningItemChange('neck_warn_neuro_none', this)", title: ['ตาพร่า /', 'เห็นภาพซ้อน /', 'หนังตาตกข้างเดียว'] },
+              { name: 'neckpainWarningSigns', value: 'facial_numb_speech', onchange: "handleNeckWarningItemChange('neck_warn_neuro_none', this)", title: ['หน้าชา /', 'ปากเบี้ยว /', 'พูดไม่ชัด'] },
+              { name: 'neckpainWarningSigns', value: 'ataxia_vertigo_syncope', onchange: "handleNeckWarningItemChange('neck_warn_neuro_none', this)", title: ['วูบ / หน้ามืด /', 'บ้านหมุน', 'โคลงเคลง'] }
+            ])}
           </div>
 
-          <!-- รายการเตือน Standalone (5 ข้อ) -->
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-            <div class="border border-slate-200 rounded-xl p-3 bg-white hover:border-medical-300 transition">
-              <label class="flex items-start cursor-pointer">
-                <input type="checkbox" name="neckpainWarningSigns" value="fever_chills"
-                  class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0 mt-0.5">
-                <div class="ml-3">
-                  <span class="text-xs sm:text-sm font-semibold text-slate-800 block">มีไข้สูง หนาวสั่นสะท้าน</span>
-                  <span class="text-[11px] text-slate-500 font-normal block mt-0.5">ตัวร้อน วัดอุณหภูมิได้สูง หรือมีไข้สั่น</span>
-                </div>
-              </label>
-            </div>
-            <div class="border border-slate-200 rounded-xl p-3 bg-white hover:border-medical-300 transition">
-              <label class="flex items-start cursor-pointer">
-                <input type="checkbox" name="neckpainWarningSigns" value="dysphagia_stridor"
-                  class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0 mt-0.5">
-                <div class="ml-3">
-                  <span class="text-xs sm:text-sm font-semibold text-slate-800 block">กลืนลำบาก เจ็บคอมาก หรือหายใจมีเสียงหวีด</span>
-                  <span class="text-[11px] text-slate-500 font-normal block mt-0.5">กลืนน้ำลายเจ็บ หายใจติดขัด หรือเสียงเปลี่ยน</span>
-                </div>
-              </label>
-            </div>
-            <div class="border border-slate-200 rounded-xl p-3 bg-white hover:border-medical-300 transition">
-              <label class="flex items-start cursor-pointer">
-                <input type="checkbox" name="neckpainWarningSigns" value="chest_dyspnea_sweat"
-                  class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0 mt-0.5">
-                <div class="ml-3">
-                  <span class="text-xs sm:text-sm font-semibold text-slate-800 block">แน่นหน้าอก หอบเหนื่อย หรือเหงื่อแตกตัวเย็น</span>
-                  <span class="text-[11px] text-slate-500 font-normal block mt-0.5">รู้สึกอึดอัดแน่นหน้าอก หายใจไม่อิ่มร่วมด้วย</span>
-                </div>
-              </label>
-            </div>
-            <div class="border border-slate-200 rounded-xl p-3 bg-white hover:border-medical-300 transition">
-              <label class="flex items-start cursor-pointer">
-                <input type="checkbox" name="neckpainWarningSigns" value="local_mass_wound_pus"
-                  class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0 mt-0.5">
-                <div class="ml-3">
-                  <span class="text-xs sm:text-sm font-semibold text-slate-800 block">มีก้อน แผล หนอง ผื่น ฝี บริเวณที่มีอาการ</span>
-                  <span class="text-[11px] text-slate-500 font-normal block mt-0.5">คลำได้ก้อนบวม รอยแผล ตุ่มหนอง หรือผื่นแดงแสบร้อน</span>
-                </div>
-              </label>
-            </div>
-            <div class="border border-slate-200 rounded-xl p-3 bg-white hover:border-medical-300 transition sm:col-span-2">
-              <label class="flex items-start cursor-pointer">
-                <input type="checkbox" name="neckpainWarningSigns" value="cancer_weight_loss"
-                  class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0 mt-0.5">
-                <div class="ml-3">
-                  <span class="text-xs sm:text-sm font-semibold text-slate-800 block">มีประวัติโรคมะเร็ง และน้ำหนักลดลงฮวบผิดปกติ</span>
-                  <span class="text-[11px] text-slate-500 font-normal block mt-0.5">มีประวัติมะเร็งเดิม หรือปวดทรมานตอนกลางคืนจนนอนไม่ได้</span>
-                </div>
-              </label>
-            </div>
+          <div class="pt-3 border-t border-slate-100">
+            ${renderNeckSysHeader({
+              label: '3.3 อาการเตือนสำคัญอื่นร่วมด้วย (เลือกได้หลายข้อ)',
+              icon: 'shield-alert',
+              colorClass: 'bg-rose-100 text-rose-700',
+              toggleId: 'neck_warn_sys_none',
+              toggleLabel: 'ไม่มีอาการในหมวดนี้',
+              toggleOnchange: "handleNeckWarningNoneToggle('sys', this)"
+            })}
+            ${renderNeckGrid('grid-cols-1 sm:grid-cols-2', [
+              { name: 'neckpainWarningSigns', value: 'fever_chills', onchange: "handleNeckWarningItemChange('neck_warn_sys_none', this)", title: ['มีไข้สูง /', 'หนาวสั่นสะท้าน'] },
+              { name: 'neckpainWarningSigns', value: 'dysphagia_stridor', onchange: "handleNeckWarningItemChange('neck_warn_sys_none', this)", title: ['กลืนลำบาก /', 'เจ็บคอมาก /', 'หายใจมีเสียงหวีด'] },
+              { name: 'neckpainWarningSigns', value: 'chest_dyspnea_sweat', onchange: "handleNeckWarningItemChange('neck_warn_sys_none', this)", title: ['แน่นหน้าอก /', 'หอบเหนื่อย /', 'เหงื่อแตกตัวเย็น'] },
+              { name: 'neckpainWarningSigns', value: 'local_mass_wound_pus', onchange: "handleNeckWarningItemChange('neck_warn_sys_none', this)", title: ['มีก้อน แผล', 'หนอง ผื่น /', 'ฝีบริเวณที่มีอาการ'] },
+              { name: 'neckpainWarningSigns', value: 'cancer_weight_loss', onchange: "handleNeckWarningItemChange('neck_warn_sys_none', this)", title: ['ประวัติโรคมะเร็ง /', 'น้ำหนักลดฮวบ', 'ผิดปกติ'] }
+            ])}
           </div>
         </div>
       </div>
 
-      <!-- CARD 4: ประวัติอุบัติเหตุ และการบาดเจ็บที่คอ -->
+      <!-- CARD 4: ประวัติอุบัติเหตุ และพฤติกรรมการทำงานหรือท่าทาง -->
       <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
         <div class="flex items-center space-x-3 mb-4 pb-3 border-b border-slate-100">
           <div class="bg-medical-100 text-medical-700 p-2 rounded-xl">
             <i data-lucide="alert-triangle" class="w-5 h-5"></i>
           </div>
-          <div>
-            <h2 class="text-base font-bold text-slate-900">4. ประวัติอุบัติเหตุ และการบาดเจ็บที่คอ (Trauma History)</h2>
-            <p class="text-xs text-slate-500">ประวัติการกระแทก การสะบัดของคอ หรืออุบัติเหตุจราจร</p>
-          </div>
+          <h2 class="text-base font-bold text-slate-900">4. ประวัติอุบัติเหตุ และพฤติกรรมการทำงานหรือท่าทาง</h2>
         </div>
 
-        <div class="space-y-4">
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <label class="selectable-card flex items-center p-3.5 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition"
-              onclick="toggleNeckpainTraumaSub(false)">
-              <input type="radio" name="neckpainTraumaMaster" value="no" class="text-medical-600 focus:ring-medical-500 h-4 w-4 flex-shrink-0">
-              <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800">ไม่มีประวัติอุบัติเหตุ (เริ่มปวดเอง)</span>
+        <div class="space-y-5">
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
+              4.1 ประวัติอุบัติเหตุและการบาดเจ็บที่คอ
             </label>
-            <label class="selectable-card flex items-center p-3.5 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition"
-              onclick="toggleNeckpainTraumaSub(true)">
-              <input type="radio" name="neckpainTraumaMaster" value="yes" class="text-medical-600 focus:ring-medical-500 h-4 w-4 flex-shrink-0">
-              <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800">มีประวัติอุบัติเหตุนำมาก่อน</span>
-            </label>
+            ${renderNeckGrid('grid-cols-1 sm:grid-cols-2', [
+              { kind: 'radio', name: 'neckpainTraumaMaster', value: 'no', onchange: 'toggleNeckpainTraumaSub(false)', title: ['ไม่มีประวัติอุบัติเหตุ', '(เริ่มปวดเอง)'] },
+              { kind: 'radio', name: 'neckpainTraumaMaster', value: 'yes', onchange: 'toggleNeckpainTraumaSub(true)', title: ['มีประวัติอุบัติเหตุนำมาก่อน'] }
+            ])}
+
+            <div id="neckpainTraumaSub" class="hidden bg-slate-50 border border-slate-200 rounded-2xl p-4 mt-3 space-y-3">
+              <span class="text-xs font-bold text-slate-800 block">ระบุประเภทอุบัติเหตุ (เลือกได้หลายข้อ):</span>
+              ${renderNeckGrid('grid-cols-1 sm:grid-cols-2', [
+                { name: 'neckpainTraumaTypes', value: 'high_impact_mva_whiplash', title: ['รถชน / ถูกชนท้าย /', 'คอกระชากสะบัดแรง'] },
+                { name: 'neckpainTraumaTypes', value: 'fall_diving_head_neck', title: ['พลัดตกจากที่สูง / หกล้ม /', 'กระโดดน้ำกระแทก'] },
+                { name: 'neckpainTraumaTypes', value: 'sports_neck_injury', title: ['อุบัติเหตุเล่นกีฬา', 'ที่มีการกระแทกคอ'] },
+                { name: 'neckpainTraumaTypes', value: 'trauma_other', onchange: 'toggleNeckpainTraumaOther(this.checked)', title: ['อุบัติเหตุอื่นๆ (ระบุ)'] }
+              ])}
+              <div id="neckpainTraumaOtherWrap" class="hidden pt-1">
+                <input type="text" id="neckpainTraumaOtherText" placeholder="ระบุเหตุการณ์ เช่น ศีรษะชนขอบประตู..."
+                  class="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2 text-xs sm:text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-medical-500">
+              </div>
+            </div>
           </div>
 
-          <!-- กล่องแตกกิ่ง: ระบุประเภทอุบัติเหตุ -->
-          <div id="neckpainTraumaSub" class="hidden bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3">
-            <span class="text-xs font-bold text-slate-800 block mb-1 flex items-center">
-              <i data-lucide="corner-down-right" class="w-3.5 h-3.5 mr-1 text-medical-600"></i> ระบุประเภทอุบัติเหตุ (เลือกได้หลายข้อ)
-            </span>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-              <label class="selectable-card flex items-center p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer">
-                <input type="checkbox" name="neckpainTraumaTypes" value="high_impact_mva_whiplash" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
-                <span class="ml-2.5 text-xs font-medium text-slate-800">รถชน ถูกชนท้าย หรือคอกระชากสะบัดอย่างแรง (Whiplash)</span>
-              </label>
-              <label class="selectable-card flex items-center p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer">
-                <input type="checkbox" name="neckpainTraumaTypes" value="fall_diving_head_neck" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
-                <span class="ml-2.5 text-xs font-medium text-slate-800">พลัดตกจากที่สูง หกล้ม หรือกระโดดน้ำศีรษะกระแทก</span>
-              </label>
-              <label class="selectable-card flex items-center p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer">
-                <input type="checkbox" name="neckpainTraumaTypes" value="sports_neck_injury" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
-                <span class="ml-2.5 text-xs font-medium text-slate-800">อุบัติเหตุจากการเล่นกีฬาที่มีการกระแทกคอ</span>
-              </label>
-              <label class="selectable-card flex items-center p-2.5 rounded-lg border border-slate-200 bg-white cursor-pointer"
-                onchange="toggleNeckpainTraumaOther(this.querySelector('input').checked)">
-                <input type="checkbox" name="neckpainTraumaTypes" value="trauma_other" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
-                <span class="ml-2.5 text-xs font-medium text-slate-800">อุบัติเหตุอื่นๆ (ระบุ)</span>
-              </label>
-            </div>
-            <div id="neckpainTraumaOtherWrap" class="hidden pt-2">
-              <input type="text" id="neckpainTraumaOtherText" placeholder="ระบุเหตุการณ์ เช่น ศีรษะชนขอบประตูบานเลื่อน..."
-                class="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-medical-500">
-            </div>
+          <div class="pt-3 border-t border-slate-100">
+            ${renderNeckSysHeader({
+              label: '4.2 พฤติกรรมการทำงาน ท่าทาง และปัจจัยกระตุ้น (เลือกได้หลายข้อ)',
+              icon: 'laptop',
+              colorClass: 'bg-sky-100 text-sky-700',
+              toggleId: 'neck_ergo_none',
+              toggleLabel: 'ไม่มีปัจจัยท่าทางข้างต้น',
+              toggleOnchange: 'handleNeckErgoNoneToggle(this)'
+            })}
+            ${renderNeckGrid('grid-cols-1 sm:grid-cols-2 lg:grid-cols-3', [
+              { name: 'neckpainErgonomics', value: 'office_tech_neck', onchange: 'handleNeckErgoItemChange(this)', title: ['นั่งหน้าคอมฯ /', 'ก้มดูจอนาน'] },
+              { name: 'neckpainErgonomics', value: 'awkward_twist_strain', onchange: 'handleNeckErgoItemChange(this)', title: ['บิดตัว / ออกแรงผิดท่า'] },
+              { name: 'neckpainErgonomics', value: 'poor_sleep_posture', onchange: 'handleNeckErgoItemChange(this)', title: ['นอนตกหมอน /', 'คอบิดเกร็ง'] },
+              { name: 'neckpainErgonomics', value: 'heavy_bag_shoulder', onchange: 'handleNeckErgoItemChange(this)', title: ['สะพายกระเป๋าหนัก'] },
+              { name: 'neckpainErgonomics', value: 'worse_neck_motion', onchange: 'handleNeckErgoItemChange(this)', title: ['ปวดมากขึ้นเมื่อ', 'ก้ม เงย / เอียงคอ'] }
+            ])}
           </div>
         </div>
       </div>
 
-      <!-- CARD 5: พฤติกรรมการทำงาน ท่าทาง และปัจจัยกระตุ้น -->
+      <!-- CARD Universal: อาการอื่นๆ ที่ต้องการแจ้งเพิ่มเติม -->
       <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
-        <div class="flex items-center space-x-3 mb-4 pb-3 border-b border-slate-100">
-          <div class="bg-medical-100 text-medical-700 p-2 rounded-xl">
-            <i data-lucide="laptop" class="w-5 h-5"></i>
-          </div>
-          <div>
-            <h2 class="text-base font-bold text-slate-900">5. พฤติกรรมการทำงาน ท่าทาง และอาการร่วมอื่นๆ</h2>
-            <p class="text-xs text-slate-500">ประวัติการทำงานหน้าจอ ท่าทางการนอน และรายละเอียดเพิ่มเติม</p>
-          </div>
+        <div class="flex items-center space-x-3 mb-3 pb-3 border-b border-slate-100">
+          <div class="bg-medical-100 text-medical-700 p-2 rounded-xl"><i data-lucide="message-square-plus" class="w-5 h-5"></i></div>
+          <h2 class="text-base font-bold text-slate-900">อาการอื่นๆ ที่ต้องการแจ้งเพิ่มเติม</h2>
         </div>
-
-        <div class="space-y-4">
-          <div>
-            <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
-              พฤติกรรม ท่าทาง และปัจจัยกระตุ้น (เลือกได้หลายข้อ)
-            </label>
-            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-              <label class="selectable-card flex items-start p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-                <input type="checkbox" name="neckpainErgonomics" value="office_tech_neck" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0 mt-0.5">
-                <div class="ml-3">
-                  <span class="text-xs sm:text-sm font-semibold text-slate-800 block">นั่งหน้าคอมฯ หรือก้มดูจอนาน</span>
-                  <span class="text-[11px] text-slate-500 font-normal block mt-0.5">ทำงานออฟฟิศ หรือใช้มือถือนานหลายชั่วโมง</span>
-                </div>
-              </label>
-              <label class="selectable-card flex items-start p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-                <input type="checkbox" name="neckpainErgonomics" value="awkward_twist_strain" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0 mt-0.5">
-                <div class="ml-3">
-                  <span class="text-xs sm:text-sm font-semibold text-slate-800 block">บิดตัว หรือออกแรงผิดท่า</span>
-                  <span class="text-[11px] text-slate-500 font-normal block mt-0.5">เอี้ยวตัวเร็ว หรือเกร็งกล้ามเนื้อผิดจังหวะ</span>
-                </div>
-              </label>
-              <label class="selectable-card flex items-start p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-                <input type="checkbox" name="neckpainErgonomics" value="poor_sleep_posture" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0 mt-0.5">
-                <div class="ml-3">
-                  <span class="text-xs sm:text-sm font-semibold text-slate-800 block">นอนตกหมอน หรือคอบิดเกร็ง</span>
-                  <span class="text-[11px] text-slate-500 font-normal block mt-0.5">ตื่นเช้ามาคอแข็ง หันคอลำบากเฉับพลัน</span>
-                </div>
-              </label>
-              <label class="selectable-card flex items-start p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-                <input type="checkbox" name="neckpainErgonomics" value="heavy_bag_shoulder" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0 mt-0.5">
-                <div class="ml-3">
-                  <span class="text-xs sm:text-sm font-semibold text-slate-800 block">สะพายกระเป๋าหนักข้างเดียว</span>
-                  <span class="text-[11px] text-slate-500 font-normal block mt-0.5">สะพายของหนักเป็นประจำจนบ่าเอียง</span>
-                </div>
-              </label>
-              <label class="selectable-card flex items-start p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition sm:col-span-2">
-                <input type="checkbox" name="neckpainErgonomics" value="worse_neck_motion" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0 mt-0.5">
-                <div class="ml-3">
-                  <span class="text-xs sm:text-sm font-semibold text-slate-800 block">ปวดมากขึ้นเมื่อก้ม เงย หรือเอียงคอ</span>
-                  <span class="text-[11px] text-slate-500 font-normal block mt-0.5">ขยับคอแล้วเจ็บสะดุ้ง หรือมีอาการร้าว</span>
-                </div>
-              </label>
-            </div>
-          </div>
-
-          <!-- บันทึกอาการเพิ่มเติมอิสระ -->
-          <div>
-            <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
-              อาการอื่นๆ เพิ่มเติม (กรอกอิสระ ถ้ามี)
-            </label>
-            <textarea id="neckpain_other_free" rows="2" placeholder="เช่น เคยไปนวดดัดคอมาก่อนหน้านี้ 2 วัน, รู้สึกตึงรั้งขึ้นขมับ..."
-              class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-medical-500"></textarea>
-          </div>
-        </div>
+        <textarea id="neckpain_other_free" rows="2" placeholder="เช่น เคยไปนวดดัดคอมาก่อนหน้านี้ 2 วัน, รู้สึกตึงรั้งขึ้นขมับ..."
+          class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-slate-800 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-medical-500 focus:bg-white placeholder:text-slate-400"></textarea>
       </div>
     </div>
   `,
+
+  onTitleChange() {},
+
+  onSelectForm() {
+    syncNeckpainSideWrap();
+  },
+
+  onActivate() {
+    syncNeckpainSideWrap();
+  },
 
   onMounted: function() {
     clearNeckpainPainScore();
@@ -949,15 +701,24 @@ registerCcModule({
 
   // --- Collect Intake Hook ---
   collectIntake: function(ctx) {
+    ctx = ctx || {};
     const _rawDur = parseFloat(document.getElementById('neckpainDurationVal')?.value);
     const durationVal = (!isNaN(_rawDur) && _rawDur > 0) ? _rawDur : null;
     const durationUnit = document.getElementById('neckpainDurationUnit')?.value || 'days';
 
     const neckpainLoc = Array.from(document.querySelectorAll('input[name="neckpainLoc"]:checked')).map(el => el.value);
-    const neckpainLocPostSide = Array.from(document.querySelectorAll('input[name="neckpainLocPostSide"]:checked')).map(el => el.value);
-    const neckpainLocLatSide = Array.from(document.querySelectorAll('input[name="neckpainLocLatSide"]:checked')).map(el => el.value);
-    const neckpainLocTrapSide = Array.from(document.querySelectorAll('input[name="neckpainLocTrapSide"]:checked')).map(el => el.value);
-    const neckpainLocScapSide = Array.from(document.querySelectorAll('input[name="neckpainLocScapSide"]:checked')).map(el => el.value);
+    const neckpainLocPostSide = neckpainLoc.includes('suboccipital_posterior')
+      ? Array.from(document.querySelectorAll('input[name="neckpainLocPostSide"]:checked')).map(el => el.value)
+      : [];
+    const neckpainLocLatSide = neckpainLoc.includes('lateral_neck')
+      ? Array.from(document.querySelectorAll('input[name="neckpainLocLatSide"]:checked')).map(el => el.value)
+      : [];
+    const neckpainLocTrapSide = neckpainLoc.includes('trapezius_shoulder')
+      ? Array.from(document.querySelectorAll('input[name="neckpainLocTrapSide"]:checked')).map(el => el.value)
+      : [];
+    const neckpainLocScapSide = neckpainLoc.includes('interscapular_upper')
+      ? Array.from(document.querySelectorAll('input[name="neckpainLocScapSide"]:checked')).map(el => el.value)
+      : [];
 
     const neckpainOnsetMode = document.querySelector('input[name="neckpainOnsetMode"]:checked')?.value || '';
 
@@ -975,37 +736,43 @@ registerCcModule({
     }
 
     const neckpainWarningSigns = Array.from(document.querySelectorAll('input[name="neckpainWarningSigns"]:checked')).map(el => el.value);
-    const neckWarningArmMovementParent = !!document.getElementById('neckWarningArmMovementParent')?.checked;
-    const neckWarningNeuroHeadParent = !!document.getElementById('neckWarningNeuroHeadParent')?.checked;
+    const neckWarnArmNone = !!document.getElementById('neck_warn_arm_none')?.checked;
+    const neckWarnNeuroNone = !!document.getElementById('neck_warn_neuro_none')?.checked;
+    const neckWarnSysNone = !!document.getElementById('neck_warn_sys_none')?.checked;
+    const neckWarningArmMovementParent = NECK_WARN_GROUPS.arm.some(k => neckpainWarningSigns.includes(k));
+    const neckWarningNeuroHeadParent = NECK_WARN_GROUPS.neuro.some(k => neckpainWarningSigns.includes(k));
 
     const neckpainTraumaMaster = document.querySelector('input[name="neckpainTraumaMaster"]:checked')?.value || '';
     const neckpainTraumaTypes = neckpainTraumaMaster === 'yes'
       ? Array.from(document.querySelectorAll('input[name="neckpainTraumaTypes"]:checked')).map(el => el.value)
       : [];
-    const neckpainTraumaOtherText = document.getElementById('neckpainTraumaOtherText')?.value?.trim() || '';
+    const neckpainTraumaOtherText = (neckpainTraumaMaster === 'yes' && neckpainTraumaTypes.includes('trauma_other'))
+      ? (document.getElementById('neckpainTraumaOtherText')?.value?.trim() || '')
+      : '';
 
     const neckpainErgonomics = Array.from(document.querySelectorAll('input[name="neckpainErgonomics"]:checked')).map(el => el.value);
+    const neckErgoNone = !!document.getElementById('neck_ergo_none')?.checked;
     const otherSymptomsFree = document.getElementById('neckpain_other_free')?.value?.trim() || ctx.otherSymptomsFree || '';
 
     const rec = {
-      id: ctx.recordId,
-      queue_number: ctx.queueNumber,
-      hn: ctx.randomHn,
-      name: ctx.patientName,
-      age: ctx.patientAge,
-      gender: ctx.gender,
+      id: ctx.recordId || `case-${Date.now()}`,
+      queue_number: ctx.queueNumber || 'ER-NEW',
+      hn: ctx.randomHn || '-',
+      name: ctx.patientName || 'ไม่ระบุชื่อ',
+      age: ctx.patientAge !== undefined ? ctx.patientAge : 'ไม่ระบุ',
+      gender: ctx.gender || 'ไม่ระบุ',
       chief_complaint: 'neck_shoulder_pain',
       chief_complaint_title: 'ปวดต้นคอ / บ่า / หลังช่วงบน',
       timestamp: new Date().toISOString(),
-      status: ctx.recordStatus,
+      status: ctx.recordStatus || 'waiting',
       durationVal,
       durationUnit,
-      hospRecordStatus: ctx.hospRecordStatus,
-      underlying: ctx.underlying,
-      drugAllergy: ctx.drugAllergy,
-      currentMeds: ctx.currentMeds,
+      hospRecordStatus: ctx.hospRecordStatus || 'unspecified',
+      underlying: (Array.isArray(ctx.underlying) && ctx.underlying.length > 0) ? ctx.underlying : ((ctx.hospRecordStatus === 'self' || ctx.hospRecordStatus === 'additional') ? ['ปฏิเสธ'] : []),
+      drugAllergy: ctx.drugAllergy || 'ไม่ได้ระบุ',
+      currentMeds: ctx.currentMeds || 'ไม่ได้ระบุ',
       otherSymptomsFree,
-      doctor_notes: ctx.preservedDoctorNotes,
+      doctor_notes: ctx.preservedDoctorNotes || { additional_hpi: '', physical_exam: '', preliminary_dx: '', plan: '' },
 
       neckpainLoc,
       neckpainLocPostSide,
@@ -1018,12 +785,16 @@ registerCcModule({
       neckpainChar,
       painScore,
       neckpainWarningSigns,
+      neckWarnArmNone,
+      neckWarnNeuroNone,
+      neckWarnSysNone,
       neckWarningArmMovementParent,
       neckWarningNeuroHeadParent,
       neckpainTraumaMaster,
       neckpainTraumaTypes,
       neckpainTraumaOtherText,
-      neckpainErgonomics
+      neckpainErgonomics,
+      neckErgoNone
     };
 
     updateNeckpainOutputs(rec);
@@ -1033,6 +804,7 @@ registerCcModule({
   // --- Populate / Hydrate Form Hook ---
   populateForm: function(patient) {
     if (!patient) return;
+    this.resetForm();
 
     const setVal = (id, val) => {
       const el = document.getElementById(id);
@@ -1060,6 +832,7 @@ registerCcModule({
     toggleNeckpainSideGroup('neckLatSideGroup', locs.includes('lateral_neck'));
     toggleNeckpainSideGroup('neckTrapSideGroup', locs.includes('trapezius_shoulder'));
     toggleNeckpainSideGroup('neckScapSideGroup', locs.includes('interscapular_upper'));
+    syncNeckpainSideWrap();
 
     if (patient.neckpainOnsetMode) {
       const r = document.querySelector(`input[name="neckpainOnsetMode"][value="${patient.neckpainOnsetMode}"]`);
@@ -1084,19 +857,12 @@ registerCcModule({
     }
 
     setCheckedArr('neckpainWarningSigns', patient.neckpainWarningSigns);
-    const warnSigns = Array.isArray(patient.neckpainWarningSigns) ? patient.neckpainWarningSigns : [];
-
-    const armKeys = ['hand_clumsy_weak', 'arm_weakness_abduction', 'arm_numbness_fingers', 'gait_ataxia_spastic'];
-    const hasArm = patient.neckWarningArmMovementParent || warnSigns.some(k => armKeys.includes(k));
-    const pArm = document.getElementById('neckWarningArmMovementParent');
-    if (pArm) pArm.checked = !!hasArm;
-    toggleNeckpainWarningGroup('neckWarningArmMovementSub', !!hasArm);
-
-    const neuroKeys = ['nuchal_rigidity_headache', 'diplopia_ptosis_horner', 'facial_numb_speech', 'ataxia_vertigo_syncope'];
-    const hasNeuro = patient.neckWarningNeuroHeadParent || warnSigns.some(k => neuroKeys.includes(k));
-    const pNeuro = document.getElementById('neckWarningNeuroHeadParent');
-    if (pNeuro) pNeuro.checked = !!hasNeuro;
-    toggleNeckpainWarningGroup('neckWarningNeuroHeadSub', !!hasNeuro);
+    const armNone = document.getElementById('neck_warn_arm_none');
+    if (armNone) armNone.checked = Boolean(patient.neckWarnArmNone);
+    const neuroNone = document.getElementById('neck_warn_neuro_none');
+    if (neuroNone) neuroNone.checked = Boolean(patient.neckWarnNeuroNone);
+    const sysNone = document.getElementById('neck_warn_sys_none');
+    if (sysNone) sysNone.checked = Boolean(patient.neckWarnSysNone);
 
     if (patient.neckpainTraumaMaster) {
       const r = document.querySelector(`input[name="neckpainTraumaMaster"][value="${patient.neckpainTraumaMaster}"]`);
@@ -1110,6 +876,8 @@ registerCcModule({
     setVal('neckpainTraumaOtherText', patient.neckpainTraumaOtherText);
 
     setCheckedArr('neckpainErgonomics', patient.neckpainErgonomics);
+    const ergoNone = document.getElementById('neck_ergo_none');
+    if (ergoNone) ergoNone.checked = Boolean(patient.neckErgoNone);
     setVal('neckpain_other_free', patient.otherSymptomsFree);
   },
 
@@ -1137,14 +905,13 @@ registerCcModule({
       document.querySelectorAll(`input[name="${name}"]`).forEach(cb => { cb.checked = false; });
     });
 
-    ['neckWarningArmMovementParent', 'neckWarningNeuroHeadParent'].forEach(id => {
+    ['neck_warn_arm_none', 'neck_warn_neuro_none', 'neck_warn_sys_none', 'neck_ergo_none'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.checked = false;
     });
 
-    ['neckPostSideGroup', 'neckLatSideGroup', 'neckTrapSideGroup', 'neckScapSideGroup',
-     'neckpainRadiationSub', 'neckWarningArmMovementSub', 'neckWarningNeuroHeadSub',
-     'neckpainTraumaSub', 'neckpainTraumaOtherWrap'].forEach(id => {
+    ['neckSideBranchesWrap', 'neckPostSideGroup', 'neckLatSideGroup', 'neckTrapSideGroup', 'neckScapSideGroup',
+     'neckpainRadiationSub', 'neckpainTraumaSub', 'neckpainTraumaOtherWrap'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.classList.add('hidden');
     });
@@ -1164,38 +931,28 @@ registerCcModule({
   renderNarrative: renderNeckpainNarrative,
   renderDoctorHpi: renderNeckpainDoctorHpi,
   evaluateRedFlags: evaluateNeckpainRedFlags,
-  generateCds: generateNeckpainCds,
 
   // --- Seed Patients Registry ---
   seedPatients: [
     // Case 1: Cervical Spondylotic Myelopathy (CSM) (ESI 2)
-    {
+    makeNeckSeed({
       id: 'case-neck-01',
       queue_number: 'E2-101',
       hn: '6789101',
       name: 'นายสมศักดิ์ มือชาติดกระดุมไม่ได้',
       age: 64,
       gender: 'ชาย',
-      chief_complaint: 'neck_shoulder_pain',
-      chief_complaint_title: 'ปวดต้นคอ / บ่า / หลังช่วงบน',
       timestamp: '2026-11-03T08:15:00.000Z',
-      status: 'waiting',
       durationVal: 2,
       durationUnit: 'months',
-      hospRecordStatus: 'complete',
       underlying: ['เบาหวาน (DM)', 'ความดันสูง (HT)'],
-      drugAllergy: 'ปฏิเสธประวัติแพ้ยาและแพ้อาหาร',
       currentMeds: 'Metformin (500 mg) 1 tab bid pc, Enalapril (10 mg) 1 tab od pc',
       otherSymptomsFree: 'ปวดคอร้าวลงบ่า มือล้าหยิบช้อนหล่น ติดกระดุมเสื้อลำบาก เดินขากระตุกก้าวขาลำบาก',
-      doctor_notes: { additional_hpi: '', physical_exam: '', preliminary_dx: '', plan: '' },
       vital_signs: { bt: 36.8, sbp: 138, dbp: 82, bp: '138/82', pr: 76, rr: 18, spo2: 98 },
       esi_level: 2,
-
       neckpainLoc: ['suboccipital_posterior', 'trapezius_shoulder'],
       neckpainLocPostSide: ['both'],
-      neckpainLocLatSide: [],
       neckpainLocTrapSide: ['both'],
-      neckpainLocScapSide: [],
       neckpainOnsetMode: 'gradual_worsening',
       neckpainRadMaster: 'yes',
       neckpainRadLoc: ['rad_arm_fingers'],
@@ -1203,83 +960,58 @@ registerCcModule({
       painScore: 6,
       neckpainWarningSigns: ['hand_clumsy_weak', 'arm_numbness_fingers', 'gait_ataxia_spastic'],
       neckWarningArmMovementParent: true,
-      neckWarningNeuroHeadParent: false,
-      neckpainTraumaMaster: 'no',
-      neckpainTraumaTypes: [],
-      neckpainTraumaOtherText: '',
+      neckWarnNeuroNone: true,
+      neckWarnSysNone: true,
       neckpainErgonomics: ['worse_neck_motion']
-    },
+    }),
 
     // Case 2: Vertebral Artery Dissection with Brainstem Ischemia (ESI 1)
-    {
+    makeNeckSeed({
       id: 'case-neck-02',
       queue_number: 'E1-102',
       hn: '6789102',
       name: 'นางวราภรณ์ ปวดคอเห็นภาพซ้อน',
       age: 42,
       gender: 'หญิง',
-      chief_complaint: 'neck_shoulder_pain',
-      chief_complaint_title: 'ปวดต้นคอ / บ่า / หลังช่วงบน',
       timestamp: '2026-11-03T08:45:00.000Z',
-      status: 'waiting',
       durationVal: 3,
       durationUnit: 'hours',
-      hospRecordStatus: 'complete',
       underlying: ['ไมเกรน (Migraine)'],
-      drugAllergy: 'ปฏิเสธประวัติแพ้ยาและแพ้อาหาร',
-      currentMeds: 'ไม่มี',
       otherSymptomsFree: 'ปวดคอด้านซ้ายร้าวขึ้นท้ายทอยรุนแรงฉับพลันหลังไปนวดดัดคอ ตาเห็นภาพซ้อน เวียนศีรษะเดินเซ ทรงตัวไม่อยู่',
-      doctor_notes: { additional_hpi: '', physical_exam: '', preliminary_dx: '', plan: '' },
       vital_signs: { bt: 36.6, sbp: 155, dbp: 95, bp: '155/95', pr: 88, rr: 20, spo2: 99 },
       esi_level: 1,
-
       neckpainLoc: ['lateral_neck', 'suboccipital_posterior'],
       neckpainLocPostSide: ['left'],
       neckpainLocLatSide: ['left'],
-      neckpainLocTrapSide: [],
-      neckpainLocScapSide: [],
       neckpainOnsetMode: 'sudden_severe',
       neckpainRadMaster: 'yes',
       neckpainRadLoc: ['rad_head_occiput'],
       neckpainChar: ['throbbing_pulsatile', 'tearing_ripping'],
       painScore: 9,
       neckpainWarningSigns: ['diplopia_ptosis_horner', 'ataxia_vertigo_syncope'],
-      neckWarningArmMovementParent: false,
       neckWarningNeuroHeadParent: true,
-      neckpainTraumaMaster: 'no',
-      neckpainTraumaTypes: [],
-      neckpainTraumaOtherText: '',
-      neckpainErgonomics: []
-    },
+      neckWarnArmNone: true,
+      neckWarnSysNone: true
+    }),
 
     // Case 3: Acute Cervical Radiculopathy with Motor Deficit C6/C7 (ESI 3)
-    {
+    makeNeckSeed({
       id: 'case-neck-03',
       queue_number: 'E3-103',
       hn: '6789103',
       name: 'นายธีระ แปล๊บลงแขนยกของไม่ขึ้น',
       age: 47,
       gender: 'ชาย',
-      chief_complaint: 'neck_shoulder_pain',
-      chief_complaint_title: 'ปวดต้นคอ / บ่า / หลังช่วงบน',
       timestamp: '2026-11-03T09:15:00.000Z',
-      status: 'waiting',
       durationVal: 4,
       durationUnit: 'days',
-      hospRecordStatus: 'complete',
-      underlying: [],
       drugAllergy: 'Aspirin (แน่นหน้าอกผื่นลมพิษ)',
-      currentMeds: 'ไม่มี',
       otherSymptomsFree: 'ปวดคอร้าวแปล๊บเหมือนไฟช็อตลงแขนขวาถึงนิ้วชี้และกลาง งอข้อศอกและยกแขนขวาไม่ค่อยขึ้น',
-      doctor_notes: { additional_hpi: '', physical_exam: '', preliminary_dx: '', plan: '' },
       vital_signs: { bt: 36.7, sbp: 126, dbp: 78, bp: '126/78', pr: 72, rr: 16, spo2: 100 },
       esi_level: 3,
-
       neckpainLoc: ['suboccipital_posterior', 'trapezius_shoulder'],
       neckpainLocPostSide: ['right'],
-      neckpainLocLatSide: [],
       neckpainLocTrapSide: ['right'],
-      neckpainLocScapSide: [],
       neckpainOnsetMode: 'gradual_worsening',
       neckpainRadMaster: 'yes',
       neckpainRadLoc: ['rad_arm_fingers'],
@@ -1287,54 +1019,37 @@ registerCcModule({
       painScore: 7,
       neckpainWarningSigns: ['arm_weakness_abduction', 'arm_numbness_fingers'],
       neckWarningArmMovementParent: true,
-      neckWarningNeuroHeadParent: false,
-      neckpainTraumaMaster: 'no',
-      neckpainTraumaTypes: [],
-      neckpainTraumaOtherText: '',
+      neckWarnNeuroNone: true,
+      neckWarnSysNone: true,
       neckpainErgonomics: ['awkward_twist_strain', 'worse_neck_motion']
-    },
+    }),
 
     // Case 4: Musculoskeletal Trapezius Myalgia / Office Syndrome (ESI 4)
-    {
+    makeNeckSeed({
       id: 'case-neck-04',
       queue_number: 'E4-104',
       hn: '6789104',
       name: 'นางสาวกุลธิดา ตึงบ่าทำงานหน้าจอ',
       age: 28,
       gender: 'หญิง',
-      chief_complaint: 'neck_shoulder_pain',
-      chief_complaint_title: 'ปวดต้นคอ / บ่า / หลังช่วงบน',
       timestamp: '2026-11-03T09:40:00.000Z',
-      status: 'waiting',
       durationVal: 3,
       durationUnit: 'weeks',
-      hospRecordStatus: 'complete',
-      underlying: [],
-      drugAllergy: 'ปฏิเสธประวัติแพ้ยาและแพ้อาหาร',
-      currentMeds: 'ไม่มี',
       otherSymptomsFree: 'นั่งทำงานคอมพิวเตอร์วันละ 8-10 ชม. ปวดเมื่อยตึงบ่าและสะบักทั้งสองข้าง ขยับแล้วตึงตัว ไม่ชา ไม่อ่อนแรง',
-      doctor_notes: { additional_hpi: '', physical_exam: '', preliminary_dx: '', plan: '' },
       vital_signs: { bt: 36.5, sbp: 118, dbp: 74, bp: '118/74', pr: 68, rr: 16, spo2: 99 },
       esi_level: 4,
-
       neckpainLoc: ['trapezius_shoulder', 'interscapular_upper'],
-      neckpainLocPostSide: [],
-      neckpainLocLatSide: [],
       neckpainLocTrapSide: ['both'],
       neckpainLocScapSide: ['both'],
       neckpainOnsetMode: 'gradual_worsening',
       neckpainRadMaster: 'none',
-      neckpainRadLoc: [],
       neckpainChar: ['dull_muscle_tight'],
       painScore: 4,
-      neckpainWarningSigns: [],
-      neckWarningArmMovementParent: false,
-      neckWarningNeuroHeadParent: false,
-      neckpainTraumaMaster: 'no',
-      neckpainTraumaTypes: [],
-      neckpainTraumaOtherText: '',
+      neckWarnArmNone: true,
+      neckWarnNeuroNone: true,
+      neckWarnSysNone: true,
       neckpainErgonomics: ['office_tech_neck', 'poor_sleep_posture']
-    }
+    })
   ]
 });
 
@@ -1380,9 +1095,9 @@ function formatNeckpainRadiation(patient) {
   const rads = Array.isArray(patient.neckpainRadLoc) ? patient.neckpainRadLoc : [];
   if (rads.length === 0) return 'มีปวดร้าว (ไม่ได้ระบุตำแหน่ง)';
   const map = {
-    rad_arm_fingers: 'ร้าวลงแขน ข้อศอก หรือปลายนิ้วมือ (Radiculopathy)',
-    rad_head_occiput: 'ร้าวขึ้นศีษะ ท้ายทอย หรือขมับ',
-    rad_jaw_chest: 'ร้าวไปขากรรไกร คอหอย หรือหน้าอก (ACS/Aortic risk)',
+    rad_arm_fingers: 'ร้าวลงแขน ข้อศอก หรือปลายนิ้วมือ',
+    rad_head_occiput: 'ร้าวขึ้นศีรษะ ท้ายทอย หรือขมับ',
+    rad_jaw_chest: 'ร้าวไปขากรรไกร คอหอย หรือหน้าอก',
     rad_interscapular_tearing: 'ร้าวทะลุหลังไประหว่างสะบักสองข้าง'
   };
   return `ปวดร้าวไปยัง: ${rads.map(r => map[r] || r).join(', ')}`;
@@ -1390,12 +1105,12 @@ function formatNeckpainRadiation(patient) {
 
 function formatNeckpainErgonomics(patient) {
   const ergos = Array.isArray(patient.neckpainErgonomics) ? patient.neckpainErgonomics : [];
-  if (ergos.length === 0) return 'ไม่ได้ระบุ';
+  if (ergos.length === 0) return patient.neckErgoNone ? 'ปฏิเสธปัจจัยท่าทางข้างต้น' : 'ไม่ได้ระบุ';
   const map = {
     office_tech_neck: 'นั่งทำงานหน้าจอคอมฯ หรือก้มดูจอนาน',
     awkward_twist_strain: 'บิดตัวหรือออกแรงผิดท่าก่อนมีอาการ',
     poor_sleep_posture: 'นอนตกหมอนหรือคอบิดเกร็ง',
-    heavy_bag_shoulder: 'สะพายกระเป๋าหนักข้างเดียวบ่อยๆ',
+    heavy_bag_shoulder: 'สะพายกระเป๋าหนักบ่อยๆ',
     worse_neck_motion: 'ปวดมากขึ้นเมื่อก้ม เงย หรือเอียงคอ'
   };
   return ergos.map(e => map[e] || e).join(', ');
@@ -1416,7 +1131,7 @@ function renderNeckpainRapidHpi(patient) {
 
   const pScore = (typeof patient.painScore === 'number' && patient.painScore > 0)
     ? `${patient.painScore}/10 คะแนน`
-    : (patient.painScore === 0 ? '0/10 คะแนน (ไม่ปวด)' : 'ไม่ได้ระบุ');
+    : (patient.painScore === 0 ? '0/10 คะแนน (ไม่ปวด / สบายดี)' : 'ไม่ได้ระบุ');
 
   const warnSigns = Array.isArray(patient.neckpainWarningSigns) ? patient.neckpainWarningSigns : [];
   const traumaTypes = Array.isArray(patient.neckpainTraumaTypes) ? patient.neckpainTraumaTypes : [];
@@ -1424,36 +1139,33 @@ function renderNeckpainRapidHpi(patient) {
   const posList = [];
   const negList = [];
 
-  // Positives evaluation
   if (patient.neckpainOnsetMode === 'sudden_severe') posList.push('ปวดรุนแรงทันทีทันใด (ฉับพลัน)');
   if (Array.isArray(patient.neckpainRadLoc) && patient.neckpainRadLoc.includes('rad_arm_fingers')) {
-    posList.push('ปวดร้าวลงแขนถึงปลายนิ้ว (Cervical Radiculopathy signs)');
+    posList.push('ปวดร้าวลงแขนถึงปลายนิ้ว');
   }
   if (Array.isArray(patient.neckpainRadLoc) && patient.neckpainRadLoc.includes('rad_jaw_chest')) {
-    posList.push('ปวดร้าวไปขากรรไกรหรือหน้าอก (ACS/Angina referred pain risk)');
+    posList.push('ปวดร้าวไปขากรรไกรหรือหน้าอก');
   }
   if (Array.isArray(patient.neckpainRadLoc) && patient.neckpainRadLoc.includes('rad_interscapular_tearing')) {
-    posList.push('ปวดร้าวทะลุหลังระหว่างสะบักสองข้าง (Aortic dissection risk)');
+    posList.push('ปวดร้าวทะลุหลังระหว่างสะบักสองข้าง');
   }
 
-  // Warning signs positives
-  if (warnSigns.includes('hand_clumsy_weak')) posList.push('มืออ่อนแรง หยิบของหลุดง่าย ติดกระดุมเสื้อลำบาก (Myelopathy/Clumsy hand)');
-  if (warnSigns.includes('arm_weakness_abduction')) posList.push('แขนอ่อนแรง ยกแขนไม่ขึ้น หรืองอข้อศอกไม่ได้ (Motor deficit)');
-  if (warnSigns.includes('arm_numbness_fingers')) posList.push('ชาตามแนวแขน ฝ่ามือ หรือปลายนิ้ว (Sensory deficit)');
-  if (warnSigns.includes('gait_ataxia_spastic')) posList.push('เดินเซ ขาแข็งกระตุก ทรงตัวไม่อยู่ (Spastic gait / Ataxia)');
-  if (warnSigns.includes('nuchal_rigidity_headache')) posList.push('ปวดท้ายทอยรุนแรงฉับพลัน หรือคอแข็งก้มไม่ลง (Nuchal rigidity / Meningeal signs)');
-  if (warnSigns.includes('diplopia_ptosis_horner')) posList.push('ตาพร่ามัว เห็นภาพซ้อน หรือหนังตาตกข้างหนึ่ง (Horner / Dissection signs)');
-  if (warnSigns.includes('facial_numb_speech')) posList.push('หน้าชา ปากเบี้ยว หรือพูดไม่ชัด (Stroke / Brainstem ischemia signs)');
-  if (warnSigns.includes('ataxia_vertigo_syncope')) posList.push('วูบ หน้ามืด หรือมีอาการบ้านหมุนโคลงเคลงรุนแรง (Vertebrobasilar)');
-  if (warnSigns.includes('fever_chills')) posList.push('มีไข้สูง หนาวสั่นสะท้าน (Spinal/Deep neck infection)');
-  if (warnSigns.includes('dysphagia_stridor')) posList.push('กลืนอาหารลำบาก เจ็บคอมาก หรือหายใจมีเสียงหวีด (Airway threat)');
-  if (warnSigns.includes('chest_dyspnea_sweat')) posList.push('แน่นหน้าอก หอบเหนื่อย หรือเหงื่อแตกตัวเย็น (Cardiovascular compromise)');
-  if (warnSigns.includes('local_mass_wound_pus')) posList.push('มีก้อน แผล หนอง ผื่น หรือฝีบริเวณคอบ่า (Local lesion / Abscess)');
-  if (warnSigns.includes('cancer_weight_loss')) posList.push('มีประวัติโรคมะเร็ง และน้ำหนักลดลงฮวบผิดปกติ (Malignancy risk)');
+  if (warnSigns.includes('hand_clumsy_weak')) posList.push('มืออ่อนแรง หยิบของหลุดง่าย ติดกระดุมเสื้อลำบาก');
+  if (warnSigns.includes('arm_weakness_abduction')) posList.push('แขนอ่อนแรง ยกแขนไม่ขึ้น หรืองอข้อศอกไม่ได้');
+  if (warnSigns.includes('arm_numbness_fingers')) posList.push('ชาตามแนวแขน ฝ่ามือ หรือปลายนิ้ว');
+  if (warnSigns.includes('gait_ataxia_spastic')) posList.push('เดินเซ ขาแข็งกระตุก ทรงตัวไม่อยู่');
+  if (warnSigns.includes('nuchal_rigidity_headache')) posList.push('ปวดท้ายทอยรุนแรงฉับพลัน หรือคอแข็งก้มไม่ลง');
+  if (warnSigns.includes('diplopia_ptosis_horner')) posList.push('ตาพร่ามัว เห็นภาพซ้อน หรือหนังตาตกข้างหนึ่ง');
+  if (warnSigns.includes('facial_numb_speech')) posList.push('หน้าชา ปากเบี้ยว หรือพูดไม่ชัด');
+  if (warnSigns.includes('ataxia_vertigo_syncope')) posList.push('วูบ หน้ามืด หรือมีอาการบ้านหมุนโคลงเคลงรุนแรง');
+  if (warnSigns.includes('fever_chills')) posList.push('มีไข้สูง หนาวสั่นสะท้าน');
+  if (warnSigns.includes('dysphagia_stridor')) posList.push('กลืนอาหารลำบาก เจ็บคอมาก หรือหายใจมีเสียงหวีด');
+  if (warnSigns.includes('chest_dyspnea_sweat')) posList.push('แน่นหน้าอก หอบเหนื่อย หรือเหงื่อแตกตัวเย็น');
+  if (warnSigns.includes('local_mass_wound_pus')) posList.push('มีก้อน แผล หนอง ผื่น หรือฝีบริเวณคอบ่า');
+  if (warnSigns.includes('cancer_weight_loss')) posList.push('มีประวัติโรคมะเร็ง และน้ำหนักลดลงฮวบผิดปกติ');
 
-  // Trauma positives
   if (patient.neckpainTraumaMaster === 'yes') {
-    if (traumaTypes.includes('high_impact_mva_whiplash')) posList.push('ประวัติรถชน/ถูกชนท้าย/คอกระชากสะบัดแรง (Whiplash trauma)');
+    if (traumaTypes.includes('high_impact_mva_whiplash')) posList.push('ประวัติรถชน/ถูกชนท้าย/คอกระชากสะบัดแรง');
     if (traumaTypes.includes('fall_diving_head_neck')) posList.push('พลัดตกจากที่สูง/หกล้ม/กระโดดน้ำศีรษะกระแทก');
     if (traumaTypes.includes('sports_neck_injury')) posList.push('อุบัติเหตุจากการเล่นกีฬาที่มีการกระแทกคอ');
     if (traumaTypes.includes('trauma_other') && patient.neckpainTraumaOtherText) {
@@ -1465,35 +1177,37 @@ function renderNeckpainRapidHpi(patient) {
     posList.push(patient.otherSymptomsFree);
   }
 
-  // Negatives (เฉพาะเมื่อมีการคัดกรองหมวดอาการเตือนหรือระบุประวัติอุบัติเหตุ)
-  if (warnSigns.length > 0) {
+  // Per-group Zero Default Bias Prevention (P-AP14 / C-AP20)
+  const armConfirmed = Boolean(patient.neckWarnArmNone) || NECK_WARN_GROUPS.arm.some(k => warnSigns.includes(k));
+  const neuroConfirmed = Boolean(patient.neckWarnNeuroNone) || NECK_WARN_GROUPS.neuro.some(k => warnSigns.includes(k));
+  const sysConfirmed = Boolean(patient.neckWarnSysNone) || NECK_WARN_GROUPS.sys.some(k => warnSigns.includes(k));
+
+  if (armConfirmed) {
     if (!warnSigns.includes('hand_clumsy_weak') && !warnSigns.includes('arm_weakness_abduction')) {
-      negList.push('แขนและมือไม่อ่อนแรง ติดกระดุมได้ปกติ (No motor deficit)');
+      negList.push('แขนและมือไม่อ่อนแรง ติดกระดุมได้ปกติ');
     }
     if (!warnSigns.includes('arm_numbness_fingers')) {
-      negList.push('ไม่มีอาการชาตามแขนหรือปลายนิ้ว (No sensory deficit)');
+      negList.push('ไม่มีอาการชาตามแขนหรือปลายนิ้ว');
     }
     if (!warnSigns.includes('gait_ataxia_spastic')) {
-      negList.push('เดินได้ปกติ ขาไม่แข็งกระตุก ไม่เดินเซ (No spastic gait)');
+      negList.push('เดินได้ปกติ ขาไม่แข็งกระตุก ไม่เดินเซ');
     }
-    if (!warnSigns.includes('nuchal_rigidity_headache') && !warnSigns.includes('diplopia_ptosis_horner') && !warnSigns.includes('facial_numb_speech')) {
-      negList.push('ปฏิเสธคอแข็งก้มไม่ลง ภาพซ้อน หนังตาตก หรือปากเบี้ยว (No dissection/stroke signs)');
+  }
+  if (neuroConfirmed) {
+    if (!warnSigns.includes('nuchal_rigidity_headache') && !warnSigns.includes('diplopia_ptosis_horner') && !warnSigns.includes('facial_numb_speech') && !warnSigns.includes('ataxia_vertigo_syncope')) {
+      negList.push('ปฏิเสธคอแข็ง ภาพซ้อน หนังตาตก ปากเบี้ยว หรือบ้านหมุน');
+    } else {
+      if (!warnSigns.includes('nuchal_rigidity_headache')) negList.push('ปฏิเสธคอแข็งก้มไม่ลง');
+      if (!warnSigns.includes('diplopia_ptosis_horner')) negList.push('ปฏิเสธตาพร่า ภาพซ้อน หรือหนังตาตก');
+      if (!warnSigns.includes('facial_numb_speech')) negList.push('ปฏิเสธหน้าชา ปากเบี้ยว หรือพูดไม่ชัด');
     }
-    if (!warnSigns.includes('fever_chills')) {
-      negList.push('ปฏิเสธไข้หนาวสั่น');
-    }
-    if (!warnSigns.includes('dysphagia_stridor')) {
-      negList.push('กลืนได้ปกติ หายใจไม่มีเสียงหวีด (No airway compromise)');
-    }
-    if (!warnSigns.includes('chest_dyspnea_sweat')) {
-      negList.push('ปฏิเสธแน่นหน้าอก หายใจหอบเหนื่อย หรือเหงื่อแตกตัวเย็น');
-    }
-    if (!warnSigns.includes('local_mass_wound_pus')) {
-      negList.push('ไม่มีก้อนบวม แผล ตุ่มหนอง หรือฝีบริเวณคอบ่า');
-    }
-    if (!warnSigns.includes('cancer_weight_loss')) {
-      negList.push('ปฏิเสธประวัติมะเร็งเดิม และน้ำหนักไม่ลดฮวบ');
-    }
+  }
+  if (sysConfirmed) {
+    if (!warnSigns.includes('fever_chills')) negList.push('ปฏิเสธไข้หนาวสั่น');
+    if (!warnSigns.includes('dysphagia_stridor')) negList.push('กลืนได้ปกติ หายใจไม่มีเสียงหวีด');
+    if (!warnSigns.includes('chest_dyspnea_sweat')) negList.push('ปฏิเสธแน่นหน้าอก หอบเหนื่อย หรือเหงื่อแตกตัวเย็น');
+    if (!warnSigns.includes('local_mass_wound_pus')) negList.push('ไม่มีก้อนบวม แผล ตุ่มหนอง หรือฝีบริเวณคอบ่า');
+    if (!warnSigns.includes('cancer_weight_loss')) negList.push('ปฏิเสธประวัติมะเร็งเดิม และน้ำหนักไม่ลดฮวบ');
   }
   if (patient.neckpainTraumaMaster === 'no') {
     negList.push('ปฏิเสธประวัติอุบัติเหตุหรือแรงกระแทกนำมาก่อน');
@@ -1615,14 +1329,18 @@ function renderNeckpainDoctorHpi(patient) {
 }
 
 function updateNeckpainOutputs(rec) {
-  if (!rec) return;
+  if (!rec) return null;
   const rapidText = renderNeckpainRapidHpi(rec);
   const narrativeText = renderNeckpainNarrative(rec);
 
-  const rapidEl = document.getElementById('rapidTextView');
-  const narrativeEl = document.getElementById('narrativeTextView');
-  if (rapidEl) rapidEl.value = rec.custom_rapid_note || rapidText;
-  if (narrativeEl) narrativeEl.value = rec.custom_narrative_note || narrativeText;
+  rec.rapidHpi = rec.custom_rapid_note || rapidText;
+  rec.narrativeHpi = rec.custom_narrative_note || narrativeText;
+
+  const hasDoc = typeof document !== 'undefined';
+  const rapidEl = hasDoc ? document.getElementById('rapidTextView') : null;
+  const narrativeEl = hasDoc ? document.getElementById('narrativeTextView') : null;
+  if (rapidEl) rapidEl.value = rec.rapidHpi;
+  if (narrativeEl) narrativeEl.value = rec.narrativeHpi;
 
   const posMatch = rapidText.match(/• Pertinent Positives:\n((?:\s*-[^\n]+\n?)+)/);
   if (posMatch) {
@@ -1635,7 +1353,7 @@ function updateNeckpainOutputs(rec) {
   if (negMatch) {
     rec.pertinentNegatives = negMatch[1].trim().split('\n').map(l => l.replace(/^[-*\s]+/, '').trim());
   } else {
-    rec.pertinentNegatives = [];
+    rec.pertinentNegatives = ['ผู้ป่วยไม่ได้ระบุคำตอบยืนยันในหมวดอาการร่วม'];
   }
 
   const redFlags = evaluateNeckpainRedFlags(rec);
@@ -1644,7 +1362,7 @@ function updateNeckpainOutputs(rec) {
   const jsonOutput = {
     encounter: {
       chief_complaint: 'neck_shoulder_pain',
-      chief_complaint_title_th: 'ปวดต้นคอ/บ่า/หลังช่วงบน',
+      chief_complaint_title_th: 'ปวดต้นคอ / บ่า / หลังช่วงบน',
       timestamp: rec.timestamp || new Date().toISOString(),
       duration_val: rec.durationVal || null,
       duration_unit: rec.durationUnit || 'days'
@@ -1654,15 +1372,22 @@ function updateNeckpainOutputs(rec) {
       queue_number: rec.queue_number || null,
       hn: rec.hn || null,
       name: rec.name || null,
-      age: rec.age || null,
+      age: rec.age !== undefined ? rec.age : null,
       gender: rec.gender || null
     },
     triage_assessment: {
-      locations: rec.neckpainLocations || [],
+      locations: Array.isArray(rec.neckpainLoc) ? rec.neckpainLoc : [],
+      location_sides: {
+        posterior: Array.isArray(rec.neckpainLocPostSide) ? rec.neckpainLocPostSide : [],
+        lateral: Array.isArray(rec.neckpainLocLatSide) ? rec.neckpainLocLatSide : [],
+        trapezius_shoulder: Array.isArray(rec.neckpainLocTrapSide) ? rec.neckpainLocTrapSide : [],
+        interscapular: Array.isArray(rec.neckpainLocScapSide) ? rec.neckpainLocScapSide : []
+      },
       onset_mode: rec.neckpainOnsetMode || null,
-      pain_characteristics: rec.neckpainChars || [],
-      radiation: rec.neckpainRadLoc || [],
-      ergonomics: rec.neckpainErgoFactors || [],
+      pain_characteristics: Array.isArray(rec.neckpainChar) ? rec.neckpainChar : [],
+      radiation_master: rec.neckpainRadMaster || null,
+      radiation: Array.isArray(rec.neckpainRadLoc) ? rec.neckpainRadLoc : [],
+      ergonomics: Array.isArray(rec.neckpainErgonomics) ? rec.neckpainErgonomics : [],
       pain_score: rec.painScore !== null && rec.painScore !== undefined ? rec.painScore : null,
       warning_signs: Array.isArray(rec.neckpainWarningSigns) ? rec.neckpainWarningSigns : [],
       trauma_master: rec.neckpainTraumaMaster || null,
@@ -1680,6 +1405,25 @@ function updateNeckpainOutputs(rec) {
       total_red_flags: redFlags.length
     }
   };
-  const jsonEl = document.getElementById('jsonViewer');
+  rec.medicalJson = jsonOutput;
+
+  const jsonEl = hasDoc ? document.getElementById('jsonViewer') : null;
   if (jsonEl) jsonEl.textContent = JSON.stringify(jsonOutput, null, 2);
+
+  return { rapid: rec.rapidHpi, narrative: rec.narrativeHpi, json: jsonOutput };
+}
+
+if (typeof window !== 'undefined') {
+  Object.assign(window, {
+    syncNeckpainSideWrap,
+    toggleNeckpainSideGroup,
+    toggleNeckpainRadiationSub,
+    toggleNeckpainWarningGroup,
+    handleNeckWarningItemChange,
+    handleNeckWarningNoneToggle,
+    handleNeckErgoItemChange,
+    handleNeckErgoNoneToggle,
+    toggleNeckpainTraumaSub,
+    toggleNeckpainTraumaOther
+  });
 }

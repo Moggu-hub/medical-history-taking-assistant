@@ -32,6 +32,8 @@ services:
       COMPLETED_TTL_HOURS: ${COMPLETED_TTL_HOURS:-12}
       CLEANUP_MODE: ${CLEANUP_MODE:-archive}
       CLEANUP_INTERVAL_MIN: ${CLEANUP_INTERVAL_MIN:-30}
+      AI_KEY_SECRET: ${AI_KEY_SECRET:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
     volumes:
       - er_sqlite_fallback:/app/data
 

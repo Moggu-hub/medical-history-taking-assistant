@@ -1,1119 +1,1239 @@
-// =========================================================================
-// MODULAR CHIEF COMPLAINT MODULE: 05_dizziness.js
-// อาการนำ: เวียนศีรษะ / บ้านหมุน (Dizziness / Vertigo)
-// ไฟล์นี้แยกอิสระสำหรับอาการนำ dizziness เพื่อให้ทีมแพทย์และ IT โรงพยาบาลนำไปพัฒนาต่อได้โดยไม่กระทบระบบหลัก
-// =========================================================================
+// ============================================================================
+// CHIEF COMPLAINT MODULE: เวียนศีรษะ / บ้านหมุน (DIZZINESS / VERTIGO)
+// Schema Code: dizziness_vertigo | Golden Standard UI/UX & Zero Default Bias
+// ============================================================================
+
+const DIZZINESS_NONE_GROUPS = {
+  trig: {
+    noneId: 'dizziness_trig_none',
+    itemIds: [
+      'dizziness_trig_head_motion',
+      'dizziness_trig_postural',
+      'dizziness_trig_valsalva',
+      'dizziness_trig_salty_meal',
+      'dizziness_trig_stress_fatigue',
+      'dizziness_trig_other_chk'
+    ]
+  },
+  ear: {
+    noneId: 'dizziness_ear_none',
+    itemIds: [
+      'dizziness_ear_hearing_loss',
+      'dizziness_ear_tinnitus',
+      'dizziness_ear_fullness_pain',
+      'dizziness_ear_recent_uri'
+    ]
+  },
+  neuro: {
+    noneId: 'dizziness_neuro_none',
+    itemIds: [
+      'dizziness_rf_weakness_numb',
+      'dizziness_rf_facial_speech',
+      'dizziness_rf_diplopia_vision',
+      'dizziness_rf_ataxia_walk',
+      'dizziness_rf_dysphagia',
+      'dizziness_rf_headache',
+      'dizziness_has_photophobia_migraine'
+    ]
+  },
+  hemo: {
+    noneId: 'dizziness_hemo_none',
+    itemIds: [
+      'dizziness_rf_syncope',
+      'dizziness_rf_chestpain_palp'
+    ]
+  },
+  gi: {
+    noneId: 'dizziness_gi_none',
+    itemIds: [
+      'dizziness_has_fever',
+      'dizziness_rf_gi_bleed',
+      'dizziness_has_nausea_vomit',
+      'dizziness_has_abdcramps_diarrhea'
+    ]
+  }
+};
+
+function wrapDizzinessWords(...chunks) {
+  return chunks.map(c => `<span class="inline-block whitespace-nowrap">${c}</span>`).join(' ');
+}
+
+function toggleDizzinessBranch(id, show) {
+  if (typeof document === 'undefined') return;
+  const el = document.getElementById(id);
+  if (el) el.classList.toggle('hidden', !show);
+}
+
+function renderDizzinessOption({ type = 'checkbox', id = '', name = '', value = '', title, desc = '', onchange = '', checked = false }) {
+  const checkedAttr = checked ? 'checked' : '';
+  const idAttr = id ? `id="${id}"` : '';
+  const nameAttr = name ? `name="${name}"` : '';
+  const valAttr = value ? `value="${value}"` : '';
+  const onChangeAttr = onchange ? `onchange="${onchange}"` : '';
+  const inputCls = type === 'radio'
+    ? 'text-medical-600 focus:ring-medical-500 h-4 w-4 flex-shrink-0'
+    : 'text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0';
+
+  if (desc) {
+    return `
+      <label class="selectable-card flex items-start p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition bg-white">
+        <input type="${type}" ${idAttr} ${nameAttr} ${valAttr} ${onChangeAttr} ${checkedAttr} class="mt-0.5 ${inputCls}">
+        <div class="ml-3 leading-snug">
+          <span class="block text-xs sm:text-sm font-semibold text-slate-800">${title}</span>
+          <span class="block text-[11px] text-slate-500 font-normal mt-0.5">${desc}</span>
+        </div>
+      </label>`;
+  }
+  return `
+    <label class="selectable-card flex items-center p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition bg-white">
+      <input type="${type}" ${idAttr} ${nameAttr} ${valAttr} ${onChangeAttr} ${checkedAttr} class="${inputCls}">
+      <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800 leading-snug">${title}</span>
+    </label>`;
+}
+
+function renderDizzinessSysHeader(color, icon, title, subtitle, noneId, groupKey, noneLabel = 'ไม่มีอาการในหมวดนี้') {
+  const bgMap = {
+    indigo: 'bg-indigo-50 text-indigo-700 border-indigo-200',
+    teal: 'bg-teal-50 text-teal-700 border-teal-200',
+    rose: 'bg-rose-50 text-rose-700 border-rose-200',
+    amber: 'bg-amber-50 text-amber-700 border-amber-200',
+    emerald: 'bg-emerald-50 text-emerald-700 border-emerald-200'
+  };
+  const badgeCls = bgMap[color] || bgMap.indigo;
+  const subHtml = subtitle ? `<span class="text-[11px] text-slate-500 font-normal ml-1.5">${subtitle}</span>` : '';
+  return `
+    <div class="flex flex-wrap items-center justify-between gap-2 pb-2 mb-3 border-b border-slate-100">
+      <div class="flex items-center gap-2">
+        <span class="w-6 h-6 rounded-lg border ${badgeCls} flex items-center justify-center flex-shrink-0">
+          <i data-lucide="${icon}" class="w-3.5 h-3.5"></i>
+        </span>
+        <span class="text-sm font-semibold text-slate-800">${title}${subHtml}</span>
+      </div>
+      <label class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-slate-200 bg-white hover:border-medical-300 cursor-pointer text-[11px] font-medium text-slate-600 select-none">
+        <input type="checkbox" id="${noneId}" onchange="handleDizzinessGroupNoneToggle('${groupKey}', this)" class="h-3.5 w-3.5 text-medical-600 focus:ring-medical-500 rounded">
+        <span>${noneLabel}</span>
+      </label>
+    </div>`;
+}
+
+function renderDizzinessSideBox(wrapId, labelText, radioName) {
+  const opts = [
+    { val: 'left', label: 'ข้างซ้าย' },
+    { val: 'right', label: 'ข้างขวา' },
+    { val: 'both', label: 'ทั้งสองข้าง' }
+  ];
+  return `
+    <div id="${wrapId}" class="hidden p-3.5 bg-slate-50 rounded-xl border border-slate-200">
+      <label class="block text-xs font-semibold text-slate-700 mb-2">${labelText}</label>
+      <div class="grid grid-cols-3 gap-2">
+        ${opts.map(o => renderDizzinessOption({
+          type: 'radio',
+          name: radioName,
+          value: o.val,
+          title: o.label
+        })).join('')}
+      </div>
+    </div>`;
+}
 
 function handleDizzinessSensationChange() {
-  // Sensation selection callback
+  // Visual hook preserved for module consumers
+}
+
+function handleDizzinessGroupItemChange(noneId, el) {
+  if (typeof document === 'undefined') return;
+  if (el && el.checked && noneId) {
+    const noneEl = document.getElementById(noneId);
+    if (noneEl) noneEl.checked = false;
+  }
+}
+
+function handleDizzinessTrigOtherToggle(checked) {
+  if (typeof document === 'undefined') return;
+  toggleDizzinessBranch('dizziness_trig_other_wrap', !!checked);
+  if (checked) {
+    const chk = document.getElementById('dizziness_trig_other_chk');
+    handleDizzinessGroupItemChange('dizziness_trig_none', chk);
+  } else {
+    const txt = document.getElementById('dizziness_trig_other_text');
+    if (txt) txt.value = '';
+  }
 }
 
 function handleDizzinessEarChange() {
-  const isTinnitus = document.getElementById('dizziness_ear_tinnitus')?.checked || false;
-  const isHearingLoss = document.getElementById('dizziness_ear_hearing_loss')?.checked || false;
-  const isFullnessPain = document.getElementById('dizziness_ear_fullness_pain')?.checked || false;
-  toggleBranch('dizziness_tinnitus_side_wrap', isTinnitus);
-  toggleBranch('dizziness_hearing_loss_side_wrap', isHearingLoss);
-  toggleBranch('dizziness_fullness_side_wrap', isFullnessPain);
-  if (!isTinnitus) {
-    const radios = document.querySelectorAll('input[name="dizzinessTinnitusSide"]');
-    radios.forEach(r => { r.checked = false; });
+  if (typeof document === 'undefined') return;
+  const checks = [
+    { id: 'dizziness_ear_hearing_loss', wrap: 'dizziness_hearing_loss_side_wrap', radio: 'dizzinessHearingLossSide' },
+    { id: 'dizziness_ear_tinnitus', wrap: 'dizziness_tinnitus_side_wrap', radio: 'dizzinessTinnitusSide' },
+    { id: 'dizziness_ear_fullness_pain', wrap: 'dizziness_fullness_side_wrap', radio: 'dizzinessFullnessSide' }
+  ];
+  let anyEar = !!document.getElementById('dizziness_ear_recent_uri')?.checked;
+  for (const c of checks) {
+    const isChk = !!document.getElementById(c.id)?.checked;
+    if (isChk) anyEar = true;
+    toggleDizzinessBranch(c.wrap, isChk);
+    if (!isChk) {
+      document.querySelectorAll(`input[name="${c.radio}"]`).forEach(el => { el.checked = false; });
+    }
   }
-  if (!isHearingLoss) {
-    const radios = document.querySelectorAll('input[name="dizzinessHearingLossSide"]');
-    radios.forEach(r => { r.checked = false; });
-  }
-  if (!isFullnessPain) {
-    const radios = document.querySelectorAll('input[name="dizzinessFullnessSide"]');
-    radios.forEach(r => { r.checked = false; });
+  if (anyEar) {
+    const noneEl = document.getElementById('dizziness_ear_none');
+    if (noneEl) noneEl.checked = false;
   }
 }
 
 function handleDizzinessVomitChange() {
-  const hasVomit = document.getElementById('dizziness_has_nausea_vomit')?.checked || false;
-  toggleBranch('dizziness_vomit_detail_wrap', hasVomit);
-  if (hasVomit) {
-    const vomitStatus = document.querySelector('input[name="dizzinessVomitStatus"]:checked')?.value;
-    const isActualVomiting = vomitStatus === 'vomiting';
-    toggleBranch('dizziness_vomit_actual_wrap', isActualVomiting);
-    if (!isActualVomiting) {
-      const vf = document.getElementById('dizzinessVomitFreq');
-      if (vf) vf.value = '';
-      const cbs = document.querySelectorAll('input[name="dizziness_vomit_content"]');
-      cbs.forEach(cb => { cb.checked = false; });
-    }
-  } else {
-    toggleBranch('dizziness_vomit_actual_wrap', false);
-    const radios = document.querySelectorAll('input[name="dizzinessVomitStatus"]');
-    radios.forEach(r => { r.checked = false; });
-    const vf = document.getElementById('dizzinessVomitFreq');
-    if (vf) vf.value = '';
-    const cbs = document.querySelectorAll('input[name="dizziness_vomit_content"]');
-    cbs.forEach(cb => { cb.checked = false; });
+  if (typeof document === 'undefined') return;
+  const hasNv = !!document.getElementById('dizziness_has_nausea_vomit')?.checked;
+  toggleDizzinessBranch('dizziness_vomit_detail_wrap', hasNv);
+  if (!hasNv) {
+    document.querySelectorAll('input[name="dizzinessVomitStatus"]').forEach(el => { el.checked = false; });
+    toggleDizzinessBranch('dizziness_vomit_actual_wrap', false);
+    const freqEl = document.getElementById('dizzinessVomitFreq');
+    if (freqEl) freqEl.value = '';
+    document.querySelectorAll('input[name="dizziness_vomit_content"]').forEach(el => { el.checked = false; });
+    return;
+  }
+  const noneEl = document.getElementById('dizziness_gi_none');
+  if (noneEl) noneEl.checked = false;
+  const statusEl = document.querySelector('input[name="dizzinessVomitStatus"]:checked');
+  const isVomiting = statusEl && statusEl.value === 'vomiting';
+  toggleDizzinessBranch('dizziness_vomit_actual_wrap', !!isVomiting);
+  if (!isVomiting) {
+    const freqEl = document.getElementById('dizzinessVomitFreq');
+    if (freqEl) freqEl.value = '';
+    document.querySelectorAll('input[name="dizziness_vomit_content"]').forEach(el => { el.checked = false; });
   }
 }
 
 function handleDizzinessDiarrheaChange() {
-  const hasDiarrhea = document.getElementById('dizziness_has_abdcramps_diarrhea')?.checked || false;
-  toggleBranch('dizziness_diarrhea_detail_wrap', hasDiarrhea);
+  if (typeof document === 'undefined') return;
+  const hasDiarrhea = !!document.getElementById('dizziness_has_abdcramps_diarrhea')?.checked;
+  toggleDizzinessBranch('dizziness_diarrhea_detail_wrap', hasDiarrhea);
   if (!hasDiarrhea) {
-    const df = document.getElementById('dizzinessDiarrheaFreq');
-    if (df) df.value = '';
-    const cbs = document.querySelectorAll('input[name="dizziness_diarrhea_stool"]');
-    cbs.forEach(cb => { cb.checked = false; });
+    const freqEl = document.getElementById('dizzinessDiarrheaFreq');
+    if (freqEl) freqEl.value = '';
+    document.querySelectorAll('input[name="dizziness_diarrhea_stool"]').forEach(el => { el.checked = false; });
+    return;
+  }
+  const noneEl = document.getElementById('dizziness_gi_none');
+  if (noneEl) noneEl.checked = false;
+}
+
+function handleDizzinessGroupNoneToggle(groupKey, el) {
+  if (typeof document === 'undefined') return;
+  const cfg = DIZZINESS_NONE_GROUPS[groupKey];
+  if (!cfg || !el || !el.checked) return;
+  for (const itemId of cfg.itemIds) {
+    const itemEl = document.getElementById(itemId);
+    if (itemEl) itemEl.checked = false;
+  }
+  if (groupKey === 'trig') handleDizzinessTrigOtherToggle(false);
+  else if (groupKey === 'ear') handleDizzinessEarChange();
+  else if (groupKey === 'gi') {
+    handleDizzinessVomitChange();
+    handleDizzinessDiarrheaChange();
   }
 }
 
-    function updateDizzinessOutputs(patient) {
-      const unitMap = { minutes: 'นาที', hours: 'ชั่วโมง', days: 'วัน', weeks: 'สัปดาห์', months: 'เดือน', years: 'ปี' };
-      const durationText = patient.durationVal ? `${patient.durationVal} ${unitMap[patient.durationUnit] || 'ชั่วโมง'}` : 'ไม่ระบุ';
+// ============================================================================
+// BUILD PATIENT FORM HTML (4 Cards + Card 5 Universal PMH)
+// ============================================================================
 
-      const onsetMap = {
-        sudden: 'เริ่มมีอาการเวียนฉับพลันทันที (Sudden onset)',
-        gradual: 'ค่อยๆ เริ่มมีอาการ และเป็นเพิ่มขึ้นเรื่อยๆ (Gradual onset)',
-        chronic: 'มีอาการเรื้อรัง เป็นๆ หายๆ มานาน (Chronic recurrent)',
-        unspecified: 'ไม่ได้ระบุรูปแบบการเริ่ม'
-      };
+const DIZZINESS_CARD1_HTML = `
+<div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 sm:p-6">
+  <div class="flex items-center space-x-2.5 pb-4 mb-5 border-b border-slate-100">
+    <div class="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 font-bold text-sm flex items-center justify-center flex-shrink-0">1</div>
+    <h2 class="text-base sm:text-lg font-bold text-slate-800 font-display">1. ระยะเวลา ลักษณะอาการเวียน และสิ่งกระตุ้น</h2>
+  </div>
+  <div class="space-y-6">
+    <div>
+      <label class="block text-sm font-semibold text-slate-800 mb-3">1.1 เริ่มมีอาการเวียนศีรษะมานานเท่าไร และเริ่มเป็นอย่างไร</label>
+      <div class="grid grid-cols-1 md:grid-cols-12 gap-3 mb-3">
+        <div class="md:col-span-5 flex items-center gap-2">
+          <input type="number" min="0" id="dizzinessDurationVal" placeholder="ระบุตัวเลข" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-medical-500 text-sm outline-none">
+          <select id="dizzinessDurationUnit" class="px-3 py-2.5 rounded-xl border border-slate-300 bg-white focus:ring-2 focus:ring-medical-500 text-sm outline-none">
+            <option value="minutes">นาที</option>
+            <option value="hours" selected>ชั่วโมง</option>
+            <option value="days">วัน</option>
+            <option value="weeks">สัปดาห์</option>
+            <option value="months">เดือน</option>
+            <option value="years">ปี</option>
+          </select>
+        </div>
+        <div class="md:col-span-7 grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+          ${renderDizzinessOption({ type: 'radio', name: 'dizzinessOnsetMode', value: 'sudden', title: wrapDizzinessWords('เป็นขึ้นมา', 'ทันทีทันใด') })}
+          ${renderDizzinessOption({ type: 'radio', name: 'dizzinessOnsetMode', value: 'gradual', title: wrapDizzinessWords('ค่อยๆ เวียน', 'มากขึ้น') })}
+          ${renderDizzinessOption({ type: 'radio', name: 'dizzinessOnsetMode', value: 'chronic', title: wrapDizzinessWords('เวียนๆ หายๆ', 'มานาน') })}
+        </div>
+      </div>
+    </div>
 
-      const sensationMap = {
-        vertigo: 'รู้สึกสิ่งแวดล้อมหมุนรอบตัว หรือรู้สึกตัวเองหมุนเคว้ง (True Vertigo / บ้านหมุน)',
-        presyncope: 'หน้ามืด ตาลาย คล้ายจะเป็นลม (Presyncope / Lightheadedness)',
-        disequilibrium: 'ทรงตัวไม่อยู่ รู้สึกโคลงเคลง เดินเซเหมือนจะล้ม (เหมือนเรือโคลง - Disequilibrium / Ataxia)',
-        lightheaded_other: 'มึนศีรษะ ตื้อๆ ลอยๆ โหวงๆ บอกไม่ถูก (Non-specific dizziness)',
-        unspecified: 'ไม่ระบุลักษณะการเวียน'
-      };
+    <div>
+      <label class="block text-sm font-semibold text-slate-800 mb-2.5">1.2 ความรู้สึกเวียนศีรษะที่เป็นมากที่สุดตอนนี้ (เลือก 1 ข้อ)</label>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        ${renderDizzinessOption({ type: 'radio', name: 'dizzinessSensation', value: 'vertigo', title: wrapDizzinessWords('บ้านหมุน /', 'สิ่งรอบตัวหมุน'), desc: 'รู้สึกห้องหมุน โคลงเคลง หรือลอยเหมือนอยู่บนเรือ', onchange: 'handleDizzinessSensationChange()' })}
+        ${renderDizzinessOption({ type: 'radio', name: 'dizzinessSensation', value: 'presyncope', title: wrapDizzinessWords('หน้ามืด /', 'คล้ายจะเป็นลม'), desc: 'ตาลาย ตัวเย็น หวิว เหมือนจะวูบดับ', onchange: 'handleDizzinessSensationChange()' })}
+        ${renderDizzinessOption({ type: 'radio', name: 'dizzinessSensation', value: 'disequilibrium', title: wrapDizzinessWords('ทรงตัวไม่อยู่ /', 'เซเวลาเดิน'), desc: 'ลุกเดินแล้วเหมือนจะล้ม หรือจับของไม่ถนัด', onchange: 'handleDizzinessSensationChange()' })}
+        ${renderDizzinessOption({ type: 'radio', name: 'dizzinessSensation', value: 'lightheaded_other', title: wrapDizzinessWords('มึนงง /', 'หนักศีรษะ'), desc: 'มึนตื้อๆ โหวงๆ ในหัว ไม่หมุนชัดเจน', onchange: 'handleDizzinessSensationChange()' })}
+      </div>
+    </div>
 
-      const episodeMap = {
-        seconds_to_1m: 'เป็นวูบสั้นๆ ไม่กี่วินาทีถึง 1 นาที แล้วทุเลาลง (Seconds to < 1 min - สงสัย BPPV)',
-        minutes_to_hours: 'เป็นครั้งละหลายนาที หรือนาน 2 - 3 ชั่วโมง (Minutes to hours - สงสัย Meniere / TIA / Migraine)',
-        continuous_days: 'เวียนต่อเนื่องตลอดเวลาหลายชั่วโมง หรือติดต่อกันหลายวันไม่หยุด (Continuous hours to days - สงสัย Neuritis / Posterior Circulation Stroke 🚩)',
-        unspecified: 'ไม่แน่ชัด / เวียนเป็นช่วงความรุนแรงไม่เท่ากัน'
-      };
+    <div>
+      <label class="block text-sm font-semibold text-slate-800 mb-2.5">1.3 ระยะเวลาของอาการเวียนแต่ละครั้ง (เป็นนานแค่ไหนต่อรอบ)</label>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        ${renderDizzinessOption({ type: 'radio', name: 'dizzinessEpisodeDuration', value: 'seconds_to_1m', title: wrapDizzinessWords('ไม่กี่วินาที -', 'ไม่เกิน 1 นาที'), desc: 'เป็นช่วงสั้นๆ ตอนพลิกตัวหรือลุกนั่ง' })}
+        ${renderDizzinessOption({ type: 'radio', name: 'dizzinessEpisodeDuration', value: 'minutes_to_hours', title: wrapDizzinessWords('หลายนาที -', 'หลายชั่วโมง') })}
+        ${renderDizzinessOption({ type: 'radio', name: 'dizzinessEpisodeDuration', value: 'continuous_days', title: wrapDizzinessWords('เวียนต่อเนื่อง', 'ตลอดเวลา') })}
+        ${renderDizzinessOption({ type: 'radio', name: 'dizzinessEpisodeDuration', value: 'unspecified', title: wrapDizzinessWords('จำระยะเวลา', 'ไม่ได้ /', 'ไม่แน่ใจ') })}
+      </div>
+    </div>
 
-      // Triggers
-      const triggers = [];
-      if (patient.dizziness_trig_head_motion) triggers.push('ขยับศีรษะ พลิกตัวบนที่นอน หรือก้ม/เงยหน้า');
-      if (patient.dizziness_trig_postural) triggers.push('เปลี่ยนท่า ลุกขึ้นยืนเร็วๆ จากท่านั่งหรือนอน');
-      if (patient.dizziness_trig_valsalva) triggers.push('ไอ จาม เบ่ง หรืออยู่ในที่เสียงดัง');
-      if (patient.dizziness_trig_salty_meal) triggers.push('อาการมากขึ้น หลังมื้ออาหารเค็ม');
-      if (patient.dizziness_trig_spontaneous) triggers.push('เกิดขึ้นเองเฉยๆ ขณะอยู่นิ่งๆ โดยไม่มีสิ่งกระตุ้น');
-      if (patient.dizziness_trig_stress_fatigue) triggers.push('อดนอน พักผ่อนน้อย หรือเครียด');
-      if (patient.dizziness_trig_other) triggers.push(`อื่นๆ: ${patient.dizziness_trig_other}`);
-      const triggersText = triggers.length > 0 ? triggers.join(', ') : 'ไม่ได้ระบุ';
+    <div>
+      ${renderDizzinessSysHeader('indigo', 'compass', '1.4 สิ่งที่กระตุ้นให้เวียนมากขึ้น', 'เลือกได้มากกว่า 1 ข้อ', 'dizziness_trig_none', 'trig', 'ไม่มีสิ่งกระตุ้นชัดเจน')}
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+        ${renderDizzinessOption({ id: 'dizziness_trig_head_motion', title: wrapDizzinessWords('ขยับศีรษะ /', 'พลิกตะแคงตัว'), desc: 'ก้ม เงย หรือล้มตัวนอน', onchange: "handleDizzinessGroupItemChange('dizziness_trig_none', this)" })}
+        ${renderDizzinessOption({ id: 'dizziness_trig_postural', title: wrapDizzinessWords('ลุกขึ้นยืน /', 'เปลี่ยนท่าทาง'), onchange: "handleDizzinessGroupItemChange('dizziness_trig_none', this)" })}
+        ${renderDizzinessOption({ id: 'dizziness_trig_valsalva', title: wrapDizzinessWords('ไอ จาม', 'หรือเบ่ง'), onchange: "handleDizzinessGroupItemChange('dizziness_trig_none', this)" })}
+        ${renderDizzinessOption({ id: 'dizziness_trig_salty_meal', title: wrapDizzinessWords('กินอาหาร', 'เค็มจัด'), onchange: "handleDizzinessGroupItemChange('dizziness_trig_none', this)" })}
+        ${renderDizzinessOption({ id: 'dizziness_trig_stress_fatigue', title: wrapDizzinessWords('อดนอน / เครียด /', 'พักผ่อนน้อย'), onchange: "handleDizzinessGroupItemChange('dizziness_trig_none', this)" })}
+        ${renderDizzinessOption({ id: 'dizziness_trig_other_chk', title: 'อื่นๆ (ระบุ)', onchange: 'handleDizzinessTrigOtherToggle(this.checked)' })}
+      </div>
+      <div id="dizziness_trig_other_wrap" class="hidden mt-3 p-3.5 bg-slate-50 rounded-xl border border-slate-200">
+        <label class="block text-xs font-semibold text-slate-700 mb-1.5">ระบุสิ่งกระตุ้นเพิ่มเติม:</label>
+        <input type="text" id="dizziness_trig_other_text" placeholder="เช่น อยู่ในที่แสงจ้า อากาศร้อนอบอ้าว" class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white text-sm outline-none focus:ring-2 focus:ring-medical-500">
+      </div>
+    </div>
+  </div>
+</div>`;
 
-      const positives = [];
-      const negatives = [];
-      const anyCentralRf = Boolean(patient.dizziness_rf_weakness_numb || patient.dizziness_rf_facial_speech || patient.dizziness_rf_diplopia_vision || patient.dizziness_rf_ataxia_walk || patient.dizziness_rf_dysphagia || patient.dizziness_rf_headache);
-      const anyHemoRf = Boolean(patient.dizziness_rf_syncope || patient.dizziness_rf_chestpain_palp || patient.dizziness_rf_gi_bleed);
-      const anyEarSx = Boolean(patient.dizziness_ear_tinnitus || patient.dizziness_ear_hearing_loss || patient.dizziness_ear_fullness_pain || patient.dizziness_ear_recent_uri);
-      const anyGiSx = Boolean(patient.dizziness_has_nausea_vomit || patient.dizziness_has_abdcramps_diarrhea || patient.dizziness_has_photophobia_migraine);
-      const anySxGroupAnswered = anyCentralRf || anyHemoRf || anyEarSx || anyGiSx;
+const DIZZINESS_CARD2_HTML = `
+<div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 sm:p-6">
+  <div class="flex items-center space-x-2.5 pb-4 mb-5 border-b border-slate-100">
+    <div class="w-8 h-8 rounded-full bg-teal-100 text-teal-700 font-bold text-sm flex items-center justify-center flex-shrink-0">2</div>
+    <h2 class="text-base sm:text-lg font-bold text-slate-800 font-display">2. อาการทางหูและระบบประสาท</h2>
+  </div>
+  <div class="space-y-6">
+    <div>
+      ${renderDizzinessSysHeader('teal', 'ear', '2.1 อาการทางหูร่วมด้วย', 'เลือกได้มากกว่า 1 ข้อ', 'dizziness_ear_none', 'ear', 'ไม่มีอาการในหมวดนี้')}
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        ${renderDizzinessOption({ id: 'dizziness_ear_hearing_loss', title: wrapDizzinessWords('การได้ยินลดลง /', 'หูดับเฉียบพลัน'), onchange: 'handleDizzinessEarChange()' })}
+        ${renderDizzinessOption({ id: 'dizziness_ear_tinnitus', title: wrapDizzinessWords('มีเสียงวิ้ง /', 'เสียงจี่ในหู'), onchange: 'handleDizzinessEarChange()' })}
+        ${renderDizzinessOption({ id: 'dizziness_ear_fullness_pain', title: wrapDizzinessWords('ปวดหู /', 'แน่นอื้อในหู'), onchange: 'handleDizzinessEarChange()' })}
+        ${renderDizzinessOption({ id: 'dizziness_ear_recent_uri', title: wrapDizzinessWords('เพิ่งเป็นหวัด /', 'คัดจมูกมาก่อน'), onchange: 'handleDizzinessEarChange()' })}
+      </div>
+      <div class="space-y-3 mt-3">
+        ${renderDizzinessSideBox('dizziness_hearing_loss_side_wrap', 'ระบุข้างที่การได้ยินลดลง / หูดับ:', 'dizzinessHearingLossSide')}
+        ${renderDizzinessSideBox('dizziness_tinnitus_side_wrap', 'ระบุข้างที่มีเสียงวิ้ง / เสียงจี่ในหู:', 'dizzinessTinnitusSide')}
+        ${renderDizzinessSideBox('dizziness_fullness_side_wrap', 'ระบุข้างที่ปวดหู / แน่นอื้อในหู:', 'dizzinessFullnessSide')}
+      </div>
+    </div>
 
-      // Central Red Flags (Stroke / Cerebellar)
-      if (patient.dizziness_rf_weakness_numb) positives.push('มีอาการแขนขาอ่อนแรง หรือชาครึ่งซีก 🚩');
-      else if (anySxGroupAnswered) negatives.push('ไม่มีแขนขาอ่อนแรงหรือชาครึ่งซีก');
+    <div>
+      ${renderDizzinessSysHeader('rose', 'brain', '2.2 อาการเตือนทางระบบประสาท', 'เลือกทุกอาการที่มีในขณะนี้', 'dizziness_neuro_none', 'neuro', 'ไม่มีอาการในหมวดนี้')}
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        ${renderDizzinessOption({ id: 'dizziness_rf_weakness_numb', title: wrapDizzinessWords('แขนขาอ่อนแรง /', 'ชาครึ่งซีก'), onchange: "handleDizzinessGroupItemChange('dizziness_neuro_none', this)" })}
+        ${renderDizzinessOption({ id: 'dizziness_rf_facial_speech', title: wrapDizzinessWords('ปากเบี้ยว /', 'พูดไม่ชัด /', 'ลิ้นแข็ง'), onchange: "handleDizzinessGroupItemChange('dizziness_neuro_none', this)" })}
+        ${renderDizzinessOption({ id: 'dizziness_rf_diplopia_vision', title: wrapDizzinessWords('เห็นภาพซ้อน /', 'ตามัวมองไม่ชัด'), onchange: "handleDizzinessGroupItemChange('dizziness_neuro_none', this)" })}
+        ${renderDizzinessOption({ id: 'dizziness_rf_ataxia_walk', title: wrapDizzinessWords('เดินเซมาก /', 'ทรงตัวไม่ได้'), desc: 'ต้องมีคนช่วยพยุงตลอดเวลา', onchange: "handleDizzinessGroupItemChange('dizziness_neuro_none', this)" })}
+        ${renderDizzinessOption({ id: 'dizziness_rf_dysphagia', title: wrapDizzinessWords('กลืนลำบาก /', 'สำลักน้ำ-อาหาร'), onchange: "handleDizzinessGroupItemChange('dizziness_neuro_none', this)" })}
+        ${renderDizzinessOption({ id: 'dizziness_rf_headache', title: wrapDizzinessWords('ปวดศีรษะรุนแรง', 'แบบฉับพลัน'), onchange: "handleDizzinessGroupItemChange('dizziness_neuro_none', this)" })}
+        ${renderDizzinessOption({ id: 'dizziness_has_photophobia_migraine', title: wrapDizzinessWords('ปวดศีรษะตึ้บๆ /', 'แพ้แสงหรือเสียง'), onchange: "handleDizzinessGroupItemChange('dizziness_neuro_none', this)" })}
+      </div>
+    </div>
+  </div>
+</div>`;
 
-      if (patient.dizziness_rf_facial_speech) positives.push('มีมุมปากตก ปากเบี้ยว ยิ้มไม่เท่ากัน หรือพูดไม่ชัด 🚩');
-      else if (anySxGroupAnswered) negatives.push('ไม่มีปากเบี้ยวหรือพูดไม่ชัด');
+const DIZZINESS_CARD3_HTML = `
+<div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 sm:p-6">
+  <div class="flex items-center space-x-2.5 pb-4 mb-5 border-b border-slate-100">
+    <div class="w-8 h-8 rounded-full bg-amber-100 text-amber-700 font-bold text-sm flex items-center justify-center flex-shrink-0">3</div>
+    <h2 class="text-base sm:text-lg font-bold text-slate-800 font-display">3. อาการระบบหัวใจและทางเดินอาหารร่วมด้วย</h2>
+  </div>
+  <div class="space-y-6">
+    <div>
+      ${renderDizzinessSysHeader('amber', 'heart-pulse', '3.1 อาการทางหัวใจและวูบหมดสติ', '', 'dizziness_hemo_none', 'hemo', 'ไม่มีอาการในหมวดนี้')}
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        ${renderDizzinessOption({ id: 'dizziness_rf_syncope', title: wrapDizzinessWords('มีอาการวูบ /', 'หมดสติร่วมด้วย'), onchange: "handleDizzinessGroupItemChange('dizziness_hemo_none', this)" })}
+        ${renderDizzinessOption({ id: 'dizziness_rf_chestpain_palp', title: wrapDizzinessWords('เจ็บแน่นหน้าอก', '/ ใจสั่น'), onchange: "handleDizzinessGroupItemChange('dizziness_hemo_none', this)" })}
+      </div>
+    </div>
 
-      if (patient.dizziness_rf_diplopia_vision) positives.push('มองเห็นภาพซ้อน หรือตามัวเฉียบพลัน 🚩');
-      else if (anySxGroupAnswered) negatives.push('การมองเห็นปกติ ไม่มีภาพซ้อน');
+    <div>
+      ${renderDizzinessSysHeader('emerald', 'activity', '3.2 อาการทางเดินอาหารและอาการมีไข้', '', 'dizziness_gi_none', 'gi', 'ไม่มีอาการในหมวดนี้')}
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+        ${renderDizzinessOption({ id: 'dizziness_has_fever', title: 'มีไข้', onchange: "handleDizzinessGroupItemChange('dizziness_gi_none', this)" })}
+        ${renderDizzinessOption({ id: 'dizziness_has_nausea_vomit', title: wrapDizzinessWords('คลื่นไส้', 'หรืออาเจียน'), onchange: 'handleDizzinessVomitChange()' })}
+        ${renderDizzinessOption({ id: 'dizziness_has_abdcramps_diarrhea', title: wrapDizzinessWords('ปวดบิดท้อง /', 'ถ่ายเหลว'), onchange: 'handleDizzinessDiarrheaChange()' })}
+        ${renderDizzinessOption({ id: 'dizziness_rf_gi_bleed', title: wrapDizzinessWords('อาเจียนเป็นเลือด', '/ ถ่ายดำ /', 'ถ่ายเป็นเลือด'), onchange: "handleDizzinessGroupItemChange('dizziness_gi_none', this)" })}
+      </div>
 
-      if (patient.dizziness_rf_ataxia_walk) positives.push('เดินเซมาก ทรงตัวไม่ได้ ปล่อยมือยืนไม่ได้ หรือล้มไปข้างใดข้างหนึ่ง 🚩');
-      else if (anySxGroupAnswered) negatives.push('ไม่มีเดินเซรุนแรง สามารถทรงตัวได้');
+      <div id="dizziness_vomit_detail_wrap" class="hidden mt-3 p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
+        <label class="block text-xs font-semibold text-slate-700">รายละเอียดอาการคลื่นไส้ / อาเจียน:</label>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+          ${renderDizzinessOption({ type: 'radio', name: 'dizzinessVomitStatus', value: 'nausea_only', title: wrapDizzinessWords('คลื่นไส้', 'อย่างเดียว'), onchange: 'handleDizzinessVomitChange()' })}
+          ${renderDizzinessOption({ type: 'radio', name: 'dizzinessVomitStatus', value: 'vomiting', title: wrapDizzinessWords('มีอาเจียน', 'ออกมาด้วย'), onchange: 'handleDizzinessVomitChange()' })}
+        </div>
+        <div id="dizziness_vomit_actual_wrap" class="hidden pt-2 border-t border-slate-200 space-y-3">
+          <div class="flex flex-wrap items-center gap-2">
+            <label class="text-xs font-semibold text-slate-700">จำนวนครั้งที่อาเจียน:</label>
+            <input type="number" min="1" id="dizzinessVomitFreq" placeholder="ครั้ง" class="w-24 px-3 py-1.5 rounded-lg border border-slate-300 bg-white text-sm outline-none focus:ring-2 focus:ring-medical-500">
+            <span class="text-xs text-slate-600">ครั้ง</span>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-2">ลักษณะสิ่งที่อาเจียนออกมา:</label>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              ${renderDizzinessOption({ name: 'dizziness_vomit_content', value: 'food_gastric', title: wrapDizzinessWords('เศษอาหาร /', 'น้ำย่อย') })}
+              ${renderDizzinessOption({ name: 'dizziness_vomit_content', value: 'bilious_green', title: wrapDizzinessWords('น้ำดี', 'สีเขียวเหลือง') })}
+              ${renderDizzinessOption({ name: 'dizziness_vomit_content', value: 'coffee_ground_blood', title: wrapDizzinessWords('เลือดสด /', 'สีกาแฟ') })}
+            </div>
+          </div>
+        </div>
+      </div>
 
-      if (patient.dizziness_rf_dysphagia) positives.push('มีอาการกลืนลำบาก หรือกลืนสำลัก 🚩');
-      else if (anySxGroupAnswered) negatives.push('ไม่มีกลืนลำบากหรือสำลัก');
+      <div id="dizziness_diarrhea_detail_wrap" class="hidden mt-3 p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
+        <div class="flex flex-wrap items-center gap-2">
+          <label class="text-xs font-semibold text-slate-700">จำนวนครั้งที่ถ่ายเหลว:</label>
+          <input type="number" min="1" id="dizzinessDiarrheaFreq" placeholder="ครั้ง" class="w-24 px-3 py-1.5 rounded-lg border border-slate-300 bg-white text-sm outline-none focus:ring-2 focus:ring-medical-500">
+          <span class="text-xs text-slate-600">ครั้ง</span>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-2">ลักษณะอุจจาระ:</label>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            ${renderDizzinessOption({ name: 'dizziness_diarrhea_stool', value: 'watery', title: 'ถ่ายเป็นน้ำเหลว' })}
+            ${renderDizzinessOption({ name: 'dizziness_diarrhea_stool', value: 'mucous_bloody', title: 'ถ่ายมูกเลือดปน' })}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>`;
 
-      if (patient.dizziness_rf_headache) positives.push('มีอาการปวดศีรษะรุนแรงเฉียบพลัน หรือปวดร้าวท้ายทอย/ต้นคอ 🚩');
-      else if (anySxGroupAnswered) negatives.push('ไม่มีปวดศีรษะรุนแรงหรือปวดท้ายทอย');
+const DIZZINESS_CARD4_HTML = `
+<div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 sm:p-6">
+  <div class="flex items-center space-x-2.5 pb-4 mb-4 border-b border-slate-100">
+    <div class="w-8 h-8 rounded-full bg-slate-100 text-slate-700 font-bold text-sm flex items-center justify-center flex-shrink-0">4</div>
+    <h2 class="text-base sm:text-lg font-bold text-slate-800 font-display">4. ข้อมูลเพิ่มเติมเกี่ยวกับอาการเวียนศีรษะ</h2>
+  </div>
+  <label for="dizziness_other_free" class="block text-xs sm:text-sm font-medium text-slate-700 mb-2">อาการหรือรายละเอียดอื่นๆ ที่ต้องการแจ้งแพทย์เพิ่มเติม (ถ้ามี):</label>
+  <textarea id="dizziness_other_free" rows="2" placeholder="เช่น เพิ่งเปลี่ยนแว่นตา เพิ่งปรับขนาดยาความดัน หรืออาการอื่นที่สังเกตได้" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-medical-500 text-sm outline-none"></textarea>
+</div>`;
 
-      // Hemodynamic Red Flags
-      if (patient.dizziness_rf_syncope) positives.push('มีอาการวูบ หมดสติ หรือหมดความรู้สึกตัวไปชั่วขณะ 🚩');
-      else if (anySxGroupAnswered) negatives.push('ไม่มีวูบหมดสติ');
+const DIZZINESS_FORM_HTML = `
+<div id="dizzinessQuestionnaireSection" class="hidden space-y-6">
+  <div data-cc-top-banner="dizziness">
+    <div class="rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3 text-xs sm:text-sm text-sky-900 shadow-sm space-y-1">
+      <div class="font-bold flex items-center gap-1.5 text-sky-950">
+        <i data-lucide="info" class="w-4 h-4 text-sky-600 flex-shrink-0"></i>
+        <span>คำแนะนำเบื้องต้นระหว่างรอตรวจ</span>
+      </div>
+      <p class="leading-relaxed text-sky-900">กรุณานั่งหรือนอนพักนิ่งๆ หลีกเลี่ยงการลุกเดินคนเดียวเพื่อป้องกันการพลัดตกหกล้ม หากมีอาการ <strong>แขนขาอ่อนแรง ปากเบี้ยว พูดไม่ชัด เดินเซมาก หรือวูบหมดสติ</strong> กรุณาแจ้งเจ้าหน้าที่คัดกรองทันที</p>
+    </div>
+  </div>
+  ${DIZZINESS_CARD1_HTML}
+  ${DIZZINESS_CARD2_HTML}
+  ${DIZZINESS_CARD3_HTML}
+  ${DIZZINESS_CARD4_HTML}
+</div>`;
 
-      if (patient.dizziness_rf_chestpain_palp) positives.push('มีอาการเจ็บแน่นหน้าอก หรือใจสั่นเต้นผิดจังหวะ 🚩');
-      else if (anySxGroupAnswered) negatives.push('ไม่มีเจ็บแน่นหน้าอกหรือใจสั่น');
+// ============================================================================
+// CLINICAL ASSESSMENT & RED FLAGS (6 Exact Rules — No Under, No Over)
+// ============================================================================
 
-      if (patient.dizziness_rf_gi_bleed) positives.push('มีประวัติถ่ายดำ ถ่ายเป็นเลือด หรืออาเจียนเป็นเลือด/สีกาแฟ 🚩');
-      else if (anySxGroupAnswered) negatives.push('ไม่มีถ่ายดำหรืออาเจียนเป็นเลือด');
+function evaluateDizzinessRedFlags(p) {
+  if (!p) return [];
+  const flags = [];
+  const vomitContents = Array.isArray(p.dizzinessVomitContents) ? p.dizzinessVomitContents : [];
+  const diarrheaStools = Array.isArray(p.dizzinessDiarrheaStools) ? p.dizzinessDiarrheaStools : [];
 
-      // Auditory / Ear symptoms
-      const sideMap = { left: 'ข้างซ้าย', right: 'ข้างขวา', both: 'ทั้งสองข้าง', unspecified: 'ไม่ระบุข้าง', none: '' };
-      if (patient.dizziness_ear_tinnitus) {
-        const side = patient.dizzinessTinnitusSide ? ` [${sideMap[patient.dizzinessTinnitusSide] || patient.dizzinessTinnitusSide}]` : '';
-        positives.push(`มีเสียงวิ้งๆ อื้อๆ ในหู (Tinnitus)${side}`);
-      } else if (anySxGroupAnswered) {
-        negatives.push('ไม่มีเสียงวิ้งหรืออื้อในหู');
-      }
+  if (
+    p.dizziness_rf_weakness_numb ||
+    p.dizziness_rf_facial_speech ||
+    p.dizziness_rf_diplopia_vision ||
+    p.dizziness_rf_ataxia_walk ||
+    p.dizziness_rf_dysphagia
+  ) {
+    flags.push({
+      key: 'central_vestibular_stroke',
+      textTh: 'สงสัยพยาธิสภาพระบบประสาทส่วนกลาง / โรคหลอดเลือดสมองส่วนท้าย (Central Vertigo / Brainstem-Cerebellar Stroke)',
+      risk: 'Critical (Brainstem / Posterior Circulation Stroke)'
+    });
+  }
+  if (p.dizziness_rf_headache) {
+    flags.push({
+      key: 'cerebellar_subarachnoid_hemorrhage',
+      textTh: 'ปวดศีรษะรุนแรงฉับพลันร่วมกับเวียนศีรษะ (Cerebellar Hemorrhage / SAH / Vertebral Dissection Risk)',
+      risk: 'High Risk (Intracranial Vascular Event)'
+    });
+  }
+  if (p.dizziness_rf_syncope) {
+    flags.push({
+      key: 'cardiogenic_syncope_collapse',
+      textTh: 'มีอาการวูบหรือหมดสติร่วมด้วย (Syncope / Arrhythmia / Structural Heart Risk)',
+      risk: 'High Risk (Cardiogenic / Vascular Collapse)'
+    });
+  }
+  if (p.dizziness_rf_chestpain_palp) {
+    flags.push({
+      key: 'cardiac_ischemia_arrhythmia',
+      textTh: 'เจ็บแน่นหน้าอกหรือใจสั่นร่วมกับอาการหน้ามืดเวียนศีรษะ (ACS / Cardiac Arrhythmia Risk)',
+      risk: 'High Risk (Acute Coronary / Arrhythmia)'
+    });
+  }
+  if (
+    p.dizziness_rf_gi_bleed ||
+    vomitContents.includes('coffee_ground_blood') ||
+    diarrheaStools.includes('mucous_bloody')
+  ) {
+    flags.push({
+      key: 'hypovolemic_shock_gi_bleed',
+      textTh: 'สงสัยภาวะเลือดออกในทางเดินอาหารหรือสูญเสียน้ำรุนแรง (UGIB / LGIB / Hypovolemic Risk)',
+      risk: 'High Risk (Hemodynamic Instability)'
+    });
+  }
+  if (p.dizziness_ear_hearing_loss) {
+    flags.push({
+      key: 'acute_hearing_loss_warning',
+      textTh: 'การได้ยินลดลงหรือหูดับเฉียบพลันร่วมกับเวียนศีรษะ (Sudden SNHL / AICA Stroke vs Labyrinthitis)',
+      risk: 'Moderate-High Risk (Urgent ENT / Neuro Evaluation)'
+    });
+  }
+  return flags;
+}
 
-      if (patient.dizziness_ear_hearing_loss) {
-        const side = patient.dizzinessHearingLossSide ? ` [${sideMap[patient.dizzinessHearingLossSide] || patient.dizzinessHearingLossSide}]` : '';
-        positives.push(`การได้ยินลดลง หรือหูตึงเฉียบพลัน (Acute hearing loss)${side} 🚩`);
-      } else if (anySxGroupAnswered) {
-        negatives.push('การได้ยินปกติ ไม่มีหูอื้อตึงเฉียบพลัน');
-      }
+// ============================================================================
+// DOCTOR REPORT GENERATION (Zero Default Bias & Localized Thai Only)
+// ============================================================================
 
-      if (patient.dizziness_ear_fullness_pain) {
-        const side = (patient.dizzinessFullnessSide && patient.dizzinessFullnessSide !== 'none') ? ` [${sideMap[patient.dizzinessFullnessSide] || patient.dizzinessFullnessSide}]` : '';
-        positives.push(`รู้สึกแน่นตึง อัดอั้นในหู หรือปวดหู (Aural fullness / Otalgia)${side}`);
-      }
-      if (patient.dizziness_ear_recent_uri) positives.push('มีประวัติเป็นหวัด ติดเชื้อทางเดินหายใจ หรือท้องเสียใน 1-2 สัปดาห์ก่อน');
+function buildDizzinessPositivesAndNegatives(p) {
+  const positives = [];
+  const negatives = [];
 
-      // GI & General Symptoms
-      if (patient.dizziness_has_nausea_vomit) {
-        if (patient.dizzinessVomitStatus === 'vomiting') {
-          const vomitContentMap = {
-            food_gastric: 'เศษอาหาร/น้ำย่อย',
-            bilious_green: 'น้ำดีสีเขียว/เหลือง',
-            coffee_ground_blood: 'สีกาแฟหรือมีเลือดปน 🚩'
-          };
-          const contents = (patient.dizzinessVomitContents || []).map(c => vomitContentMap[c] || c).join(', ');
-          positives.push(`มีอาการอาเจียน [จำนวน ${patient.dizzinessVomitFreq || 1} ครั้ง${contents ? `, ลักษณะ: ${contents}` : ''}]`);
-        } else {
-          positives.push('มีอาการคลื่นไส้เด่นชัด (แต่ไม่อาเจียน)');
-        }
-      } else if (anySxGroupAnswered) {
-        negatives.push('ไม่มีอาการคลื่นไส้หรืออาเจียน');
-      }
+  const sideMap = { left: 'ข้างซ้าย', right: 'ข้างขวา', both: 'ทั้งสองข้าง' };
+  const vomitStatusMap = { nausea_only: 'คลื่นไส้พะอืดพะอมอย่างเดียว', vomiting: 'มีอาเจียนออกมาด้วย' };
+  const vomitContentMap = {
+    food_gastric: 'เศษอาหาร / น้ำย่อย',
+    bilious_green: 'น้ำดีสีเขียวเหลือง',
+    coffee_ground_blood: 'เลือดสด / สีกาแฟ'
+  };
+  const stoolMap = { watery: 'ถ่ายเป็นน้ำเหลว', mucous_bloody: 'ถ่ายมูกเลือดปน' };
 
-      if (patient.dizziness_has_abdcramps_diarrhea) {
-        const stoolMap = {
-          watery: 'ถ่ายเป็นน้ำเหลว (Watery)',
-          mucous_bloody: 'ถ่ายเป็นมูกเลือด (Mucous bloody 🚩)'
-        };
-        const stools = (patient.dizzinessDiarrheaStools || []).map(s => stoolMap[s] || s).join(', ');
-        positives.push(`มีอาการปวดมวนท้อง หรือถ่ายเหลว/ท้องเสีย [จำนวน ${patient.dizzinessDiarrheaFreq || 1} ครั้ง${stools ? `, ลักษณะ: ${stools}` : ''}]`);
-      } else if (anySxGroupAnswered) {
-        negatives.push('ไม่มีปวดมวนท้องหรือถ่ายเหลว');
-      }
+  // Group 1.4: Triggers
+  const trigList = [];
+  if (p.dizziness_trig_head_motion) trigList.push('ขยับศีรษะ / พลิกตะแคงตัว');
+  if (p.dizziness_trig_postural) trigList.push('ลุกขึ้นยืน / เปลี่ยนท่าทาง');
+  if (p.dizziness_trig_valsalva) trigList.push('ไอ จาม หรือเบ่ง');
+  if (p.dizziness_trig_salty_meal) trigList.push('รับประทานอาหารเค็มจัด');
+  if (p.dizziness_trig_stress_fatigue) trigList.push('อดนอน / เครียด / พักผ่อนน้อย');
+  if (p.dizziness_trig_other_chk) {
+    const otherTxt = (p.dizziness_trig_other_text || '').trim();
+    trigList.push(otherTxt ? `อื่นๆ (${otherTxt})` : 'ปัจจัยกระตุ้นอื่นๆ');
+  }
+  if (p.dizziness_trig_none) negatives.push('ไม่มีสิ่งกระตุ้นชัดเจน');
 
-      if (patient.dizziness_has_photophobia_migraine) positives.push('มีอาการแพ้แสงจ้า กลัวแสง หรือมีประวัติปวดศีรษะไมเกรน');
+  // Group 2.1: Ear symptoms
+  const earHasItem = !!(
+    p.dizziness_ear_hearing_loss ||
+    p.dizziness_ear_tinnitus ||
+    p.dizziness_ear_fullness_pain ||
+    p.dizziness_ear_recent_uri
+  );
+  if (p.dizziness_ear_hearing_loss) {
+    const side = sideMap[p.dizzinessHearingLossSide];
+    positives.push(`การได้ยินลดลง / หูดับเฉียบพลัน${side ? ' (' + side + ')' : ''}`);
+  }
+  if (p.dizziness_ear_tinnitus) {
+    const side = sideMap[p.dizzinessTinnitusSide];
+    positives.push(`มีเสียงวิ้ง / เสียงจี่ในหู${side ? ' (' + side + ')' : ''}`);
+  }
+  if (p.dizziness_ear_fullness_pain) {
+    const side = sideMap[p.dizzinessFullnessSide];
+    positives.push(`ปวดหู / แน่นอื้อในหู${side ? ' (' + side + ')' : ''}`);
+  }
+  if (p.dizziness_ear_recent_uri) positives.push('เพิ่งเป็นหวัด / คัดจมูกมาก่อนหน้านี้');
 
-      if (patient.otherSymptomsFree) {
-        positives.push(`อาการเพิ่มเติมที่ผู้ป่วยระบุ: "${patient.otherSymptomsFree}"`);
-      }
+  if (p.dizziness_ear_none) {
+    negatives.push('ไม่มีอาการทางหู (หูดับ / เสียงวิ้ง / ปวดแน่นหู)');
+  } else if (earHasItem) {
+    if (!p.dizziness_ear_hearing_loss) negatives.push('การได้ยินลดลง / หูดับ');
+    if (!p.dizziness_ear_tinnitus) negatives.push('เสียงวิ้งในหู');
+    if (!p.dizziness_ear_fullness_pain) negatives.push('ปวด / แน่นหู');
+  }
 
-      patient.pertinentPositives = positives.length > 0 ? positives : ['ผู้ป่วยไม่ได้ระบุอาการร่วมเพิ่มเติม'];
-      patient.pertinentNegatives = negatives.length > 0 ? negatives : ['ผู้ป่วยไม่ได้ระบุคำตอบยืนยันในหมวดอาการร่วม'];
-
-      const hospLabel = {
-        complete: 'มีประวัติกับ รพ.ราชบุรี ครบถ้วน (ดึงข้อมูลเดิมจากระบบ)',
-        additional: 'มีประวัติกับ รพ.ราชบุรี และขอให้ข้อมูลเพิ่มเติม',
-        self: 'ขอให้ข้อมูลด้วยตนเองทั้งหมด',
-        unspecified: 'ไม่ได้ระบุ'
-      }[patient.hospRecordStatus] || 'ไม่ได้ระบุ';
-
-      const docNotes = patient.doctor_notes || {};
-      const medsText = (!patient.currentMeds || patient.currentMeds === 'ไม่ได้ระบุ') ? 'ไม่ได้ระบุ' : patient.currentMeds;
-      const udArr = Array.isArray(patient.underlying) ? patient.underlying.filter(u => u && !u.includes('ปฏิเสธ') && u !== 'ไม่มี' && u !== 'ไม่มีโรคประจำตัว') : [];
-      const udExplicitDeny = Array.isArray(patient.underlying) && patient.underlying.some(u => u && u.includes('ปฏิเสธ'));
-      const udText = udArr.length > 0 ? udArr.join(', ') : ((patient.hospRecordStatus === 'self' || patient.hospRecordStatus === 'additional' || udExplicitDeny) ? 'ปฏิเสธ' : 'ไม่ได้ระบุ');
-      const allergyText = (!patient.drugAllergy || patient.drugAllergy === 'ไม่ได้ระบุ') ? 'ไม่ได้ระบุ' : patient.drugAllergy;
-
-      // A) Rapid Bullet Format for Dizziness
-      const defaultRapid = 
-`[Chief Complaint (CC)]
-เวียนศีรษะ / บ้านหมุนมา ${durationText}
-
-[History of Present Illness (HPI)]
-• การเริ่มต้นและระยะเวลา: ${durationText}, ${onsetMap[patient.dizzinessOnsetMode] || 'ไม่ได้ระบุ'}
-• ลักษณะอาการเวียน: ${sensationMap[patient.dizzinessSensation] || 'ไม่ได้ระบุ'}
-• ระยะเวลาที่มีอาการต่อรอบ: ${episodeMap[patient.dizzinessEpisodeDuration] || 'ไม่ได้ระบุ'}
-• ปัจจัยกระตุ้นและท่าทาง: ${triggersText}
-
-• Pertinent Positives:
-${positives.length > 0 ? positives.map(p => `  - ${p}`).join('\n') : '  - ผู้ป่วยไม่ได้ระบุอาการร่วมเพิ่มเติม'}
-
-• Pertinent Negatives:
-${patient.pertinentNegatives.map(n => `  - ${n}`).join('\n')}
-
-[Past Medical History & Medications]
-• สถานะประวัติ รพ.ราชบุรี: ${hospLabel}
-• โรคประจำตัว (U/D): ${udText}
-• ยาประจำตัว (Current Meds): ${medsText}
-• ประวัติแพ้ยา/แพ้อาหาร (Allergies): ${allergyText}
-
-[Emergency Risk Assessment (Red Flags)]
-${patient.redFlags?.length > 0
-  ? `🚩 RED FLAGS DETECTED:\n${patient.redFlags.map(rf => `  * ${rf.textTh}`).join('\n')}`
-  : '✓ ไม่พบสัญญาณวิกฤต (No Immediate Red Flag)'}
-
-[Doctor's Clinical Addendum & Exam]
-• ประวัติเพิ่มเติม/แก้ไขโดยแพทย์: ${docNotes.additional_hpi || '-'}
-• สัญญาณชีพและการตรวจร่างกาย: ${docNotes.physical_exam || '-'}
-• การวินิจฉัยเบื้องต้น (Impression): ${docNotes.preliminary_dx || '-'}
-• แผนการรักษา (Plan/Orders): ${docNotes.plan || '-'}`;
-
-      // B) Narrative Paragraph Format for Dizziness
-      const defaultNarrative = 
-`ผู้ป่วย [${patient.name}] อายุ ${patient.age || '-'} ปี เพศ ${patient.gender || 'ไม่ระบุ'} มารับการตรวจที่ห้องฉุกเฉิน รพ.ราชบุรี ด้วยอาการเวียนศีรษะ / บ้านหมุนมา ${durationText}
-การเริ่มมีอาการ: ${onsetMap[patient.dizzinessOnsetMode] || 'ไม่ได้ระบุ'} ลักษณะความรู้สึกเวียน: ${sensationMap[patient.dizzinessSensation] || 'ไม่ได้ระบุ'} ระยะเวลาในแต่ละครั้ง: ${episodeMap[patient.dizzinessEpisodeDuration] || 'ไม่ได้ระบุ'} ปัจจัยกระตุ้น: ${triggersText}
-
-อาการร่วมและการซักประวัติตามระบบ: ผู้ป่วยให้ประวัติ ${patient.pertinentPositives.join(', ')}
-อาการสำคัญที่ปฏิเสธ (Pertinent negatives): ${patient.pertinentNegatives.join(', ')}
-
-ประวัติการเจ็บป่วยในอดีต: [${hospLabel}], โรคประจำตัว: ${udText}, ยาประจำตัว: ${medsText}, ประวัติแพ้ยา/แพ้อาหาร: ${allergyText}
-${patient.redFlags?.length > 0 ? `\n[🚩 แจ้งเตือนสัญญาณวิกฤต (Red Flags)]: ตรวจพบอาการ ${patient.redFlags.map(rf => rf.textTh).join(', ')}` : ''}
-
-[บันทึกการตรวจและการประเมินโดยแพทย์]:
-${docNotes.additional_hpi ? `• ประวัติเพิ่มเติม: ${docNotes.additional_hpi}\n` : ''}${docNotes.physical_exam ? `• การตรวจร่างกาย: ${docNotes.physical_exam}\n` : ''}${docNotes.preliminary_dx ? `• การวินิจฉัย: ${docNotes.preliminary_dx}\n` : ''}${docNotes.plan ? `• แผนการรักษา: ${docNotes.plan}` : ''}`;
-
-      document.getElementById('rapidTextView').value = patient.custom_rapid_note || defaultRapid;
-      document.getElementById('narrativeTextView').value = patient.custom_narrative_note || defaultNarrative;
-
-      // C) JSON Payload for Dizziness
-      const jsonPayload = {
-        "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "encounter": {
-          "hospital_site": "Ratchaburi Hospital",
-          "queue_id": patient.queue_number,
-          "hn": patient.hn,
-          "patient_name": patient.name,
-          "age": patient.age,
-          "gender": patient.gender,
-          "timestamp": patient.timestamp,
-          "status": patient.status,
-          "triage_urgency_flag": patient.redFlags?.length > 0,
-          "red_flags_count": patient.redFlags?.length || 0,
-          "hospital_record_status": patient.hospRecordStatus
-        },
-        "chief_complaint": "dizziness",
-        "dizziness_history": {
-          "duration_value": patient.durationVal || null,
-          "duration_unit": patient.durationUnit || null,
-          "onset_mode": patient.dizzinessOnsetMode,
-          "sensation_type": patient.dizzinessSensation,
-          "episode_duration": patient.dizzinessEpisodeDuration,
-          "triggers": {
-            "head_motion": patient.dizziness_trig_head_motion,
-            "postural_change": patient.dizziness_trig_postural,
-            "valsalva_or_loud_sound": patient.dizziness_trig_valsalva,
-            "salty_meal": patient.dizziness_trig_salty_meal,
-            "spontaneous": patient.dizziness_trig_spontaneous,
-            "stress_or_fatigue": patient.dizziness_trig_stress_fatigue,
-            "other": patient.dizziness_trig_other || ""
-          }
-        },
-        "central_and_hemodynamic_red_flags": {
-          "focal_weakness_or_numbness": patient.dizziness_rf_weakness_numb,
-          "facial_droop_or_dysarthria": patient.dizziness_rf_facial_speech,
-          "diplopia_or_visual_field_loss": patient.dizziness_rf_diplopia_vision,
-          "ataxia_or_inability_to_stand": patient.dizziness_rf_ataxia_walk,
-          "dysphagia": patient.dizziness_rf_dysphagia,
-          "severe_headache": patient.dizziness_rf_headache,
-          "syncope_or_collapse": patient.dizziness_rf_syncope,
-          "chest_pain_or_palpitation": patient.dizziness_rf_chestpain_palp,
-          "gi_bleeding": patient.dizziness_rf_gi_bleed
-        },
-        "auditory_and_ear_symptoms": {
-          "tinnitus": {
-            "present": patient.dizziness_ear_tinnitus,
-            "side": patient.dizzinessTinnitusSide
-          },
-          "acute_hearing_loss": {
-            "present": patient.dizziness_ear_hearing_loss,
-            "side": patient.dizzinessHearingLossSide
-          },
-          "aural_fullness_or_pain": {
-            "present": patient.dizziness_ear_fullness_pain,
-            "side": patient.dizzinessFullnessSide || "none"
-          },
-          "recent_uri_or_infection": patient.dizziness_ear_recent_uri
-        },
-        "gastrointestinal_and_associated_symptoms": {
-          "nausea_and_vomiting": {
-            "present": patient.dizziness_has_nausea_vomit,
-            "status": patient.dizzinessVomitStatus,
-            "frequency": patient.dizzinessVomitFreq,
-            "vomit_contents": patient.dizzinessVomitContents
-          },
-          "abdominal_cramps_and_diarrhea": {
-            "present": patient.dizziness_has_abdcramps_diarrhea,
-            "frequency": patient.dizzinessDiarrheaFreq,
-            "stool_types": patient.dizzinessDiarrheaStools
-          },
-          "photophobia_or_migraine_history": patient.dizziness_has_photophobia_migraine,
-          "other_symptoms_free_text": patient.otherSymptomsFree || ""
-        },
-        "red_flags_detected": patient.redFlags?.map(rf => ({ code: rf.key, label: rf.textTh, clinical_risk: rf.risk })) || [],
-        "pertinent_positives": positives,
-        "pertinent_negatives": negatives,
-        "patient_background": {
-          "hospital_record_status": patient.hospRecordStatus,
-          "underlying_diseases": patient.underlying,
-          "drug_and_food_allergies": patient.drugAllergy,
-          "current_medications": patient.currentMeds
-        },
-        "doctor_clinical_addendum": {
-          "additional_or_corrected_history": docNotes.additional_hpi || "",
-          "vitals_and_physical_exam": docNotes.physical_exam || "",
-          "provisional_diagnosis": docNotes.preliminary_dx || "",
-          "treatment_plan": docNotes.plan || ""
-        }
-      };
-
-      document.getElementById('jsonViewer').textContent = JSON.stringify(jsonPayload, null, 2);
-    }
-
-
-
-    // =========================================================================
-    // OUTPUT GENERATION: ปวดศีรษะ (Headache)
-
-registerCcModule({
-  id: 'dizziness',
-  recordCc: 'dizziness',
-  titleTh: 'เวียนศีรษะ / บ้านหมุน',
-  titleEn: 'Dizziness / Vertigo',
-  sectionDomId: 'dizzinessQuestionnaireSection',
-  doctorCcBadgeHtml: "<i data-lucide=\"compass\" class=\"w-3 h-3 mr-1\"></i> CC: เวียนศีรษะ / บ้านหมุน (Dizziness / Vertigo)",
-  formHtml: "        <div id=\"dizzinessQuestionnaireSection\" class=\"hidden space-y-6\">\n\n          <!-- CARD 1: ระยะเวลาและลักษณะของอาการเวียนศีรษะ (Duration, Onset & Sensation) -->\n          <div class=\"bg-white rounded-2xl p-6 shadow-sm border border-slate-200\">\n            <div class=\"flex items-center space-x-3 mb-4 pb-3 border-b border-slate-100\">\n              <div class=\"bg-medical-100 text-medical-700 p-2 rounded-xl\">\n                <i data-lucide=\"compass\" class=\"w-5 h-5\"></i>\n              </div>\n              <div>\n                <h2 class=\"text-base font-bold text-slate-800 section-title\" data-base-title=\"ลักษณะอาการเวียนศีรษะ และระยะเวลา\">1. ลักษณะอาการเวียนศีรษะ และระยะเวลา</h2>\n                <p class=\"text-xs text-slate-500\">โปรดระบุระยะเวลา รูปแบบการเกิด และลักษณะความรู้สึกเวียนที่ตรงกับท่านมากที่สุด</p>\n              </div>\n            </div>\n\n            <div class=\"space-y-5\">\n              <!-- 1.1 ระยะเวลาที่เป็นมา (Universal 6 Units) -->\n              <div>\n                <label class=\"block text-xs font-semibold text-slate-700 mb-1.5\">\n                  1.1 เริ่มมีอาการเวียนศีรษะมานานเท่าไรแล้ว? <span class=\"text-rose-500\">*</span>\n                </label>\n                <div class=\"flex space-x-2\">\n                  <input type=\"number\" id=\"dizzinessDurationVal\" min=\"1\" placeholder=\"เช่น 2\"\n                    class=\"w-1/2 bg-slate-50 border border-slate-300 rounded-xl p-3 text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-medical-500 focus:bg-white text-sm\">\n                  <select id=\"dizzinessDurationUnit\"\n                    class=\"w-1/2 bg-slate-50 border border-slate-300 rounded-xl p-3 text-slate-800 focus:outline-none focus:ring-2 focus:ring-medical-500 focus:bg-white text-sm\">\n                    <option value=\"minutes\">นาที (Minutes)</option>\n                    <option value=\"hours\">ชั่วโมง (Hours)</option>\n                    <option value=\"days\">วัน (Days)</option>\n                    <option value=\"weeks\">สัปดาห์ (Weeks)</option>\n                    <option value=\"months\">เดือน (Months)</option>\n                    <option value=\"years\">ปี (Years)</option>\n                  </select>\n                </div>\n              </div>\n\n              <!-- 1.2 อาการเริ่มต้นเป็นอย่างไร? -->\n              <div>\n                <label class=\"block text-xs font-semibold text-slate-700 mb-1.5\">\n                  1.2 อาการเริ่มต้นเป็นอย่างไร? <span class=\"text-rose-500\">*</span>\n                </label>\n                <div class=\"grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs\">\n                  <label class=\"selectable-card p-3 rounded-xl flex items-center cursor-pointer\">\n                    <input type=\"radio\" name=\"dizzinessOnsetMode\" value=\"sudden\" class=\"text-medical-600 focus:ring-medical-500 h-4 w-4\">\n                    <span class=\"ml-2 font-medium\">เป็นขึ้นมาทันทีทันใดในไม่กี่วินาที</span>\n                  </label>\n                  <label class=\"selectable-card p-3 rounded-xl flex items-center cursor-pointer\">\n                    <input type=\"radio\" name=\"dizzinessOnsetMode\" value=\"gradual\" class=\"text-medical-600 focus:ring-medical-500 h-4 w-4\">\n                    <span class=\"ml-2 font-medium\">ค่อยๆ มึนหรือเวียนมากขึ้นเรื่อยๆ</span>\n                  </label>\n                  <label class=\"selectable-card p-3 rounded-xl flex items-center cursor-pointer\">\n                    <input type=\"radio\" name=\"dizzinessOnsetMode\" value=\"chronic\" class=\"text-medical-600 focus:ring-medical-500 h-4 w-4\">\n                    <span class=\"ml-2 font-medium\">มีอาการเรื้อรัง เป็นๆ หายๆ มานาน</span>\n                  </label>\n                </div>\n              </div>\n\n              <!-- 1.3 ลักษณะความรู้สึกเวียนที่เด่นชัดที่สุด (Single Choice) -->\n              <div>\n                <label class=\"block text-xs font-semibold text-slate-700 mb-1.5\">\n                  1.3 ลักษณะความรู้สึกเวียนที่เด่นชัดที่สุด (เลือกข้อที่ตรงที่สุด) <span class=\"text-rose-500\">*</span>\n                </label>\n                <div class=\"grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs\">\n                  <label class=\"selectable-card p-3 rounded-xl flex items-start cursor-pointer\">\n                    <input type=\"radio\" name=\"dizzinessSensation\" value=\"vertigo\" onchange=\"handleDizzinessSensationChange()\" class=\"mt-0.5 text-medical-600 focus:ring-medical-500 h-4 w-4\">\n                    <div class=\"ml-2.5\">\n                      <span class=\"font-bold text-slate-800 block\">รู้สึกสิ่งแวดล้อมหมุนรอบตัว หรือรู้สึกตัวเองหมุนเคว้ง (บ้านหมุน)</span>\n                      <span class=\"text-[11px] text-slate-500\">มองเห็นเพดานหรือห้องหมุนติ้ว หลับตาแล้วรู้สึกโคลงเคลง</span>\n                    </div>\n                  </label>\n                  <label class=\"selectable-card p-3 rounded-xl flex items-start cursor-pointer\">\n                    <input type=\"radio\" name=\"dizzinessSensation\" value=\"presyncope\" onchange=\"handleDizzinessSensationChange()\" class=\"mt-0.5 text-medical-600 focus:ring-medical-500 h-4 w-4\">\n                    <div class=\"ml-2.5\">\n                      <span class=\"font-bold text-slate-800 block\">หน้ามืด ตาลาย คล้ายจะเป็นลม</span>\n                      <span class=\"text-[11px] text-slate-500\">ตามัว ภาพมืดดับ ชั่วขณะ รู้สึกหวิวๆ เหมือนจะวูบหมดสติ</span>\n                    </div>\n                  </label>\n                  <label class=\"selectable-card p-3 rounded-xl flex items-start cursor-pointer\">\n                    <input type=\"radio\" name=\"dizzinessSensation\" value=\"disequilibrium\" onchange=\"handleDizzinessSensationChange()\" class=\"mt-0.5 text-medical-600 focus:ring-medical-500 h-4 w-4\">\n                    <div class=\"ml-2.5\">\n                      <span class=\"font-bold text-slate-800 block\">ทรงตัวไม่อยู่ รู้สึกโคลงเคลง เดินเซเหมือนจะล้ม (เหมือนเรือโคลง)</span>\n                      <span class=\"text-[11px] text-slate-500\">ศีรษะไม่ได้หมุน แขนขาไม่สัมพันธ์กัน เดินไม่ตรงทาง</span>\n                    </div>\n                  </label>\n                  <label class=\"selectable-card p-3 rounded-xl flex items-start cursor-pointer\">\n                    <input type=\"radio\" name=\"dizzinessSensation\" value=\"lightheaded_other\" onchange=\"handleDizzinessSensationChange()\" class=\"mt-0.5 text-medical-600 focus:ring-medical-500 h-4 w-4\">\n                    <div class=\"ml-2.5\">\n                      <span class=\"font-bold text-slate-800 block\">มึนศีรษะ ตื้อๆ ลอยๆ โหวงๆ บอกไม่ถูก</span>\n                      <span class=\"text-[11px] text-slate-500\">หัวตื้อๆ หนักศีรษะ หรือมีอาการลอยๆ โหวงๆ ในหัว</span>\n                    </div>\n                  </label>\n                </div>\n              </div>\n\n              <!-- 1.4 ระยะเวลาของแต่ละครั้งที่เวียน (Duration of Episodes) -->\n              <div>\n                <label class=\"block text-xs font-semibold text-slate-700 mb-1.5\">\n                  1.4 เมื่อมีอาการเวียน แต่ละครั้งมีอาการนานเท่าไร? (Duration of Episodes) <span class=\"text-rose-500\">*</span>\n                </label>\n                <div class=\"grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs\">\n                  <label class=\"selectable-card p-3 rounded-xl flex items-start cursor-pointer\">\n                    <input type=\"radio\" name=\"dizzinessEpisodeDuration\" value=\"seconds_to_1m\" class=\"mt-0.5 text-medical-600 focus:ring-medical-500 h-4 w-4\">\n                    <div class=\"ml-2\">\n                      <span class=\"font-semibold text-slate-800 block\">เป็นวูบสั้นๆ ไม่กี่วินาทีถึง 1 นาที แล้วทุเลาลง</span>\n                      <span class=\"text-[11px] text-slate-500\">มักเป็นเฉพาะช่วงเปลี่ยนท่า เมื่ออยู่นิ่งๆ อาการจะค่อยๆ สงบ</span>\n                    </div>\n                  </label>\n                  <label class=\"selectable-card p-3 rounded-xl flex items-start cursor-pointer\">\n                    <input type=\"radio\" name=\"dizzinessEpisodeDuration\" value=\"minutes_to_hours\" class=\"mt-0.5 text-medical-600 focus:ring-medical-500 h-4 w-4\">\n                    <div class=\"ml-2\">\n                      <span class=\"font-semibold text-slate-800 block\">เป็นครั้งละหลายนาที หรือนาน 2 - 3 ชั่วโมง</span>\n                      <span class=\"text-[11px] text-slate-500\">เวียนเป็นพักๆ ครั้งละหลายนาทีจนถึงเป็นชั่วโมงแล้วค่อยดีขึ้น</span>\n                    </div>\n                  </label>\n                  <label class=\"selectable-card p-3 rounded-xl flex items-start cursor-pointer\">\n                    <input type=\"radio\" name=\"dizzinessEpisodeDuration\" value=\"continuous_days\" class=\"mt-0.5 text-medical-600 focus:ring-medical-500 h-4 w-4\">\n                    <div class=\"ml-2\">\n                      <span class=\"font-semibold text-slate-800 block\">เวียนต่อเนื่องตลอดเวลาหลายชั่วโมง หรือติดต่อกันหลายวันไม่หยุด</span>\n                      <span class=\"text-[11px] text-slate-500\">นอนพักเฉยๆ ก็ยังเวียนต่อเนื่องตลอดเวลา</span>\n                    </div>\n                  </label>\n                  <label class=\"selectable-card p-3 rounded-xl flex items-start cursor-pointer\">\n                    <input type=\"radio\" name=\"dizzinessEpisodeDuration\" value=\"unspecified\" class=\"mt-0.5 text-medical-600 focus:ring-medical-500 h-4 w-4\">\n                    <div class=\"ml-2\">\n                      <span class=\"font-semibold text-slate-800 block\">ไม่แน่ชัด / เป็นตลอดเวลาแต่ความรุนแรงไม่เท่ากัน</span>\n                      <span class=\"text-[11px] text-slate-500\">บอกระยะเวลาที่แน่นอนไม่ได้</span>\n                    </div>\n                  </label>\n                </div>\n              </div>\n\n            </div>\n          </div>\n\n          <!-- CARD 2: ปัจจัยกระตุ้นและท่าทาง (Triggers & Positional Factors) -->\n          <div class=\"bg-white rounded-2xl p-6 shadow-sm border border-slate-200\">\n            <div class=\"flex items-center space-x-3 mb-4 pb-3 border-b border-slate-100\">\n              <div class=\"bg-medical-100 text-medical-700 p-2 rounded-xl\">\n                <i data-lucide=\"zap\" class=\"w-5 h-5\"></i>\n              </div>\n              <div>\n                <h2 class=\"text-base font-bold text-slate-800 section-title\" data-base-title=\"ปัจจัยกระตุ้นและท่าทาง\">2. ปัจจัยกระตุ้นและท่าทาง</h2>\n                <p class=\"text-xs text-slate-500\">สิ่งกระตุ้นหรือท่าทางที่ทำให้อาการเวียนกำเริบหรือเป็นมากขึ้น (เลือกได้หลายข้อ)</p>\n              </div>\n            </div>\n\n            <div class=\"grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs\">\n              <label class=\"selectable-card p-3 rounded-xl flex items-start cursor-pointer\">\n                <input type=\"checkbox\" id=\"dizziness_trig_head_motion\" class=\"mt-0.5 rounded text-medical-600 h-4 w-4\">\n                <div class=\"ml-2.5\">\n                  <span class=\"font-semibold text-slate-800 block\">ขยับศีรษะ พลิกตัวบนที่นอน หรือก้ม/เงยหน้า</span>\n                  <span class=\"text-[11px] text-slate-500\">เช่น ล้มตัวลงนอน ตะแคงซ้าย/ขวา ก้มหยิบของ หรือเงยหน้ามองที่สูง</span>\n                </div>\n              </label>\n\n              <label class=\"selectable-card p-3 rounded-xl flex items-start cursor-pointer\">\n                <input type=\"checkbox\" id=\"dizziness_trig_postural\" class=\"mt-0.5 rounded text-medical-600 h-4 w-4\">\n                <div class=\"ml-2.5\">\n                  <span class=\"font-semibold text-slate-800 block\">เปลี่ยนท่า ลุกขึ้นยืนเร็วๆ จากท่านั่งหรือนอน</span>\n                  <span class=\"text-[11px] text-slate-500\">รู้สึกวูบหรือหน้ามืดขึ้นมาทันทีที่ลุกขึ้นยืน</span>\n                </div>\n              </label>\n\n              <label class=\"selectable-card p-3 rounded-xl flex items-start cursor-pointer\">\n                <input type=\"checkbox\" id=\"dizziness_trig_valsalva\" class=\"mt-0.5 rounded text-medical-600 h-4 w-4\">\n                <div class=\"ml-2.5\">\n                  <span class=\"font-semibold text-slate-800 block\">ไอ จาม เบ่ง หรืออยู่ในที่เสียงดัง</span>\n                  <span class=\"text-[11px] text-slate-500\">เวียนศีรษะหรือบ้านหมุนขึ้นมาเมื่อไอแรงๆ เบ่งอุจจาระ หรือได้ยินเสียงดัง</span>\n                </div>\n              </label>\n\n              <label class=\"selectable-card p-3 rounded-xl flex items-start cursor-pointer\">\n                <input type=\"checkbox\" id=\"dizziness_trig_salty_meal\" class=\"mt-0.5 rounded text-medical-600 h-4 w-4\">\n                <div class=\"ml-2.5\">\n                  <span class=\"font-semibold text-slate-800 block\">อาการมากขึ้น หลังมื้ออาหารเค็ม</span>\n                  <span class=\"text-[11px] text-slate-500\">เช่น รับประทานอาหารรสเค็มจัด ผงชูรส หรืออาหารหมักดอง</span>\n                </div>\n              </label>\n\n              <label class=\"selectable-card p-3 rounded-xl flex items-start cursor-pointer\">\n                <input type=\"checkbox\" id=\"dizziness_trig_spontaneous\" class=\"mt-0.5 rounded text-medical-600 h-4 w-4\">\n                <div class=\"ml-2.5\">\n                  <span class=\"font-semibold text-slate-800 block\">เกิดขึ้นเองเฉยๆ ขณะอยู่นิ่งๆ โดยไม่มีสิ่งกระตุ้น</span>\n                  <span class=\"text-[11px] text-slate-500\">นั่งหรือนอนเฉยๆ ก็มีอาการขึ้นมาเอง</span>\n                </div>\n              </label>\n\n              <label class=\"selectable-card p-3 rounded-xl flex items-start cursor-pointer\">\n                <input type=\"checkbox\" id=\"dizziness_trig_stress_fatigue\" class=\"mt-0.5 rounded text-medical-600 h-4 w-4\">\n                <div class=\"ml-2.5\">\n                  <span class=\"font-semibold text-slate-800 block\">อดนอน พักผ่อนน้อย หรือเครียด</span>\n                  <span class=\"text-[11px] text-slate-500\">มีภาวะเหนื่อยล้า พักผ่อนไม่เพียงพอ หรือมีความกังวล</span>\n                </div>\n              </label>\n\n              <!-- ปัจจัยกระตุ้นอื่นๆ (พิมพ์ระบุ) -->\n              <div class=\"sm:col-span-2 pt-1\">\n                <label class=\"selectable-card p-3 rounded-xl flex items-center cursor-pointer\">\n                  <input type=\"checkbox\" id=\"dizziness_trig_other_chk\" onchange=\"toggleOtherInput('dizziness_trig_other_wrap', this.checked)\" class=\"rounded text-medical-600 h-4 w-4\">\n                  <span class=\"ml-2.5 text-xs font-semibold text-slate-800\">อื่นๆ (พิมพ์ระบุสิ่งกระตุ้นเพิ่มเติม)</span>\n                </label>\n                <div id=\"dizziness_trig_other_wrap\" class=\"hidden mt-2\">\n                  <input type=\"text\" id=\"dizziness_trig_other_text\" placeholder=\"ระบุปัจจัยกระตุ้นหรือท่าทางเพิ่มเติม...\"\n                    class=\"w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-slate-800 text-xs focus:outline-none focus:ring-2 focus:ring-medical-500 focus:bg-white placeholder:text-slate-400\">\n                </div>\n              </div>\n            </div>\n          </div>\n\n          <!-- CARD 3: อาการร่วมทางหู คอ จมูก (ENT / Otologic Symptoms) -->\n          <div class=\"bg-white rounded-2xl p-6 shadow-sm border border-slate-200\">\n            <div class=\"flex items-center space-x-3 mb-4 pb-3 border-b border-slate-100\">\n              <div class=\"bg-medical-100 text-medical-700 p-2 rounded-xl\">\n                <i data-lucide=\"volume-2\" class=\"w-5 h-5\"></i>\n              </div>\n              <div>\n                <h2 class=\"text-base font-bold text-slate-800 section-title\" data-base-title=\"อาการร่วมทางหู คอ จมูก\">3. อาการร่วมทางหู คอ จมูก</h2>\n                <p class=\"text-xs text-slate-500\">ประเมินอาการทางระบบการได้ยินและการทรงตัวของหูชั้นใน (เลือกได้หลายข้อ หรือไม่ต้องเลือกหากไม่มี)</p>\n              </div>\n            </div>\n\n            <div class=\"space-y-4\">\n              <div class=\"grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs\">\n                <!-- 1. การได้ยินลดลง / หูตึงเฉียบพลัน -->\n                <label class=\"selectable-card p-3 rounded-xl flex items-start cursor-pointer\">\n                  <input type=\"checkbox\" id=\"dizziness_ear_hearing_loss\" onchange=\"handleDizzinessEarChange()\" class=\"mt-0.5 rounded text-medical-600 h-4 w-4\">\n                  <div class=\"ml-2.5\">\n                    <span class=\"font-semibold text-slate-800 block\">การได้ยินลดลง หรือหูตึงเฉียบพลัน (Acute hearing loss)</span>\n                    <span class=\"text-[11px] text-slate-500\">หูตึงทันทีทันใด ได้ยินเสียงพูดไม่ชัดเจนเหมือนมีอะไรมาอุดหู</span>\n                  </div>\n                </label>\n\n                <!-- 2. มีเสียงวิ้งๆ ในหู (Tinnitus) -->\n                <label class=\"selectable-card p-3 rounded-xl flex items-start cursor-pointer\">\n                  <input type=\"checkbox\" id=\"dizziness_ear_tinnitus\" onchange=\"handleDizzinessEarChange()\" class=\"mt-0.5 rounded text-medical-600 h-4 w-4\">\n                  <div class=\"ml-2.5\">\n                    <span class=\"font-semibold text-slate-800 block\">มีเสียงวิ้งๆ อื้อๆ ในหู (Tinnitus)</span>\n                    <span class=\"text-[11px] text-slate-500\">ได้ยินเสียงจิ้งหรีด เสียงจักจั่น หรือเสียงลมในหูข้างใดข้างหนึ่ง</span>\n                  </div>\n                </label>\n\n                <!-- 3. แน่นตึงในหู / ปวดหู (เพิ่มการเลือกข้างซ้าย/ขวา/ทั้งสองข้าง) -->\n                <label class=\"selectable-card p-3 rounded-xl flex items-start cursor-pointer\">\n                  <input type=\"checkbox\" id=\"dizziness_ear_fullness_pain\" onchange=\"handleDizzinessEarChange()\" class=\"mt-0.5 rounded text-medical-600 h-4 w-4\">\n                  <div class=\"ml-2.5\">\n                    <span class=\"font-semibold text-slate-800 block\">รู้สึกแน่นตึง อัดอั้นในหู หรือปวดหู</span>\n                    <span class=\"text-[11px] text-slate-500\">รู้สึกเหมือนมีแรงดันในหู หรือมีน้ำไหลออกจากช่องหู</span>\n                  </div>\n                </label>\n\n                <!-- 4. ประวัติเป็นหวัดนำมาก่อน -->\n                <label class=\"selectable-card p-3 rounded-xl flex items-start cursor-pointer\">\n                  <input type=\"checkbox\" id=\"dizziness_ear_recent_uri\" class=\"mt-0.5 rounded text-medical-600 h-4 w-4\">\n                  <div class=\"ml-2.5\">\n                    <span class=\"font-semibold text-slate-800 block\">มีประวัติเป็นหวัด ติดเชื้อทางเดินหายใจ หรือท้องเสียนำมาก่อนใน 1-2 สัปดาห์</span>\n                    <span class=\"text-[11px] text-slate-500\">เช่น ไข้หวัด มีน้ำมูก เจ็บคอ หรือถ่ายเหลวก่อนจะเริ่มเวียนศีรษะ</span>\n                  </div>\n                </label>\n              </div>\n\n              <!-- กิ่งเจาะลึก: ตำแหน่งหูที่การได้ยินลดลง (Hearing Loss) -->\n              <div id=\"dizziness_hearing_loss_side_wrap\" class=\"hidden bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-2 text-xs\">\n                <span class=\"font-semibold text-slate-800 block\">ตำแหน่งหูที่มีอาการหูตึง / การได้ยินลดลง:</span>\n                <div class=\"grid grid-cols-1 sm:grid-cols-3 gap-2\">\n                  <label class=\"selectable-card bg-white p-2.5 rounded-lg flex items-center cursor-pointer\">\n                    <input type=\"radio\" name=\"dizzinessHearingLossSide\" value=\"left\" class=\"text-medical-600 focus:ring-medical-500 h-3.5 w-3.5\">\n                    <span class=\"ml-2 font-medium\">หูข้างซ้าย</span>\n                  </label>\n                  <label class=\"selectable-card bg-white p-2.5 rounded-lg flex items-center cursor-pointer\">\n                    <input type=\"radio\" name=\"dizzinessHearingLossSide\" value=\"right\" class=\"text-medical-600 focus:ring-medical-500 h-3.5 w-3.5\">\n                    <span class=\"ml-2 font-medium\">หูข้างขวา</span>\n                  </label>\n                  <label class=\"selectable-card bg-white p-2.5 rounded-lg flex items-center cursor-pointer\">\n                    <input type=\"radio\" name=\"dizzinessHearingLossSide\" value=\"both\" class=\"text-medical-600 focus:ring-medical-500 h-3.5 w-3.5\">\n                    <span class=\"ml-2 font-medium\">ทั้งสองข้าง</span>\n                  </label>\n                </div>\n              </div>\n\n              <!-- กิ่งเจาะลึก: ตำแหน่งหูที่มีเสียงวิ้งๆ (Tinnitus) -->\n              <div id=\"dizziness_tinnitus_side_wrap\" class=\"hidden bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-2 text-xs\">\n                <span class=\"font-semibold text-slate-800 block\">ตำแหน่งหูที่มีเสียงวิ้งๆ ในหู:</span>\n                <div class=\"grid grid-cols-1 sm:grid-cols-3 gap-2\">\n                  <label class=\"selectable-card bg-white p-2.5 rounded-lg flex items-center cursor-pointer\">\n                    <input type=\"radio\" name=\"dizzinessTinnitusSide\" value=\"left\" class=\"text-medical-600 focus:ring-medical-500 h-3.5 w-3.5\">\n                    <span class=\"ml-2 font-medium\">หูข้างซ้าย</span>\n                  </label>\n                  <label class=\"selectable-card bg-white p-2.5 rounded-lg flex items-center cursor-pointer\">\n                    <input type=\"radio\" name=\"dizzinessTinnitusSide\" value=\"right\" class=\"text-medical-600 focus:ring-medical-500 h-3.5 w-3.5\">\n                    <span class=\"ml-2 font-medium\">หูข้างขวา</span>\n                  </label>\n                  <label class=\"selectable-card bg-white p-2.5 rounded-lg flex items-center cursor-pointer\">\n                    <input type=\"radio\" name=\"dizzinessTinnitusSide\" value=\"both\" class=\"text-medical-600 focus:ring-medical-500 h-3.5 w-3.5\">\n                    <span class=\"ml-2 font-medium\">ทั้งสองข้าง</span>\n                  </label>\n                </div>\n              </div>\n\n              <!-- กิ่งเจาะลึก: ตำแหน่งหูที่รู้สึกแน่นตึง อัดอั้น หรือปวดหู -->\n              <div id=\"dizziness_fullness_side_wrap\" class=\"hidden bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-2 text-xs\">\n                <span class=\"font-semibold text-slate-800 block\">ตำแหน่งหูที่รู้สึกแน่นตึง อัดอั้น หรือปวดหู:</span>\n                <div class=\"grid grid-cols-1 sm:grid-cols-3 gap-2\">\n                  <label class=\"selectable-card bg-white p-2.5 rounded-lg flex items-center cursor-pointer\">\n                    <input type=\"radio\" name=\"dizzinessFullnessSide\" value=\"left\" class=\"text-medical-600 focus:ring-medical-500 h-3.5 w-3.5\">\n                    <span class=\"ml-2 font-medium\">หูข้างซ้าย</span>\n                  </label>\n                  <label class=\"selectable-card bg-white p-2.5 rounded-lg flex items-center cursor-pointer\">\n                    <input type=\"radio\" name=\"dizzinessFullnessSide\" value=\"right\" class=\"text-medical-600 focus:ring-medical-500 h-3.5 w-3.5\">\n                    <span class=\"ml-2 font-medium\">หูข้างขวา</span>\n                  </label>\n                  <label class=\"selectable-card bg-white p-2.5 rounded-lg flex items-center cursor-pointer\">\n                    <input type=\"radio\" name=\"dizzinessFullnessSide\" value=\"both\" class=\"text-medical-600 focus:ring-medical-500 h-3.5 w-3.5\">\n                    <span class=\"ml-2 font-medium\">ทั้งสองข้าง</span>\n                  </label>\n                </div>\n              </div>\n\n            </div>\n          </div>\n\n          <!-- CARD 4: อาการร่วมทางระบบประสาท และอาการร่วมสำคัญ (Neurological & Critical Red Flags) -->\n          <div class=\"bg-white rounded-2xl p-6 shadow-sm border border-slate-200\">\n            <div class=\"flex items-center space-x-3 mb-4 pb-3 border-b border-slate-100\">\n              <div class=\"bg-medical-100 text-medical-700 p-2 rounded-xl\">\n                <i data-lucide=\"shield-alert\" class=\"w-5 h-5\"></i>\n              </div>\n              <div>\n                <h2 class=\"text-base font-bold text-slate-800 section-title\" data-base-title=\"อาการร่วมทางระบบประสาท และอาการร่วมสำคัญ\">4. อาการร่วมทางระบบประสาท และอาการร่วมสำคัญ</h2>\n                <p class=\"text-xs text-slate-500\">กรุณาเลือกอาการที่ท่านมีร่วมด้วยอย่างตรงไปตรงมา (เลือกได้หลายข้อ หรือไม่ต้องเลือกหากไม่มี)</p>\n              </div>\n            </div>\n\n            <div class=\"space-y-4\">\n              <div class=\"grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs\">\n                <!-- 1. แขนขาอ่อนแรง / ชาครึ่งซีก -->\n                <label class=\"selectable-card p-3 rounded-xl flex items-start cursor-pointer\">\n                  <input type=\"checkbox\" id=\"dizziness_rf_weakness_numb\" class=\"mt-0.5 rounded text-medical-600 h-4 w-4\">\n                  <div class=\"ml-2.5\">\n                    <span class=\"font-semibold text-slate-800 block\">แขนขาอ่อนแรง หรือชาครึ่งซีก / ยกแขนไม่ขึ้น</span>\n                    <span class=\"text-[11px] text-slate-500\">แรงแขนหรือขาข้างใดข้างหนึ่งลดลง ถือของหล่น หรือเดินเซเนื่องจากขาไม่มีแรง</span>\n                  </div>\n                </label>\n\n                <!-- 2. ปากเบี้ยว / พูดไม่ชัด -->\n                <label class=\"selectable-card p-3 rounded-xl flex items-start cursor-pointer\">\n                  <input type=\"checkbox\" id=\"dizziness_rf_facial_speech\" class=\"mt-0.5 rounded text-medical-600 h-4 w-4\">\n                  <div class=\"ml-2.5\">\n                    <span class=\"font-semibold text-slate-800 block\">มุมปากตก ปากเบี้ยว ยิ้มไม่เท่ากัน หรือพูดไม่ชัด พูดอ้อแอ้</span>\n                    <span class=\"text-[11px] text-slate-500\">พูดติดขัด พูดไม่เป็นคำ หรือนึกคำพูดไม่ออก</span>\n                  </div>\n                </label>\n\n                <!-- 3. มองเห็นภาพซ้อน -->\n                <label class=\"selectable-card p-3 rounded-xl flex items-start cursor-pointer\">\n                  <input type=\"checkbox\" id=\"dizziness_rf_diplopia_vision\" class=\"mt-0.5 rounded text-medical-600 h-4 w-4\">\n                  <div class=\"ml-2.5\">\n                    <span class=\"font-semibold text-slate-800 block\">มองเห็นภาพซ้อน หรือลานสายตาดับมืดเฉียบพลัน</span>\n                    <span class=\"text-[11px] text-slate-500\">มองเห็นวัตถุแยกเป็น 2 ภาพเมื่อลืมตาทั้งสองข้าง หรือตาข้างใดข้างหนึ่งมัวลงทันที</span>\n                  </div>\n                </label>\n\n                <!-- 4. เดินเซมาก ทรงตัวไม่ได้เลย -->\n                <label class=\"selectable-card p-3 rounded-xl flex items-start cursor-pointer\">\n                  <input type=\"checkbox\" id=\"dizziness_rf_ataxia_walk\" class=\"mt-0.5 rounded text-medical-600 h-4 w-4\">\n                  <div class=\"ml-2.5\">\n                    <span class=\"font-semibold text-slate-800 block\">เดินเซมาก ทรงตัวไม่ได้เลย ปล่อยมือยืนเองไม่ได้ หรือล้มไปข้างใดข้างหนึ่ง</span>\n                    <span class=\"text-[11px] text-slate-500\">ไม่สามารถเดินก้าวต่อเท้า หรือนั่งทรงตัวไม่ได้แม้พยายาม</span>\n                  </div>\n                </label>\n\n                <!-- 5. กลืนลำบาก / สำลัก -->\n                <label class=\"selectable-card p-3 rounded-xl flex items-start cursor-pointer\">\n                  <input type=\"checkbox\" id=\"dizziness_rf_dysphagia\" class=\"mt-0.5 rounded text-medical-600 h-4 w-4\">\n                  <div class=\"ml-2.5\">\n                    <span class=\"font-semibold text-slate-800 block\">กลืนลำบาก หรือกลืนสำลักน้ำและอาหาร</span>\n                    <span class=\"text-[11px] text-slate-500\">กลืนน้ำแล้วสำลักทันที หรือกลืนอาหารไม่ลง</span>\n                  </div>\n                </label>\n\n                <!-- 6. ปวดศีรษะรุนแรงเฉียบพลัน -->\n                <label class=\"selectable-card p-3 rounded-xl flex items-start cursor-pointer\">\n                  <input type=\"checkbox\" id=\"dizziness_rf_headache\" class=\"mt-0.5 rounded text-medical-600 h-4 w-4\">\n                  <div class=\"ml-2.5\">\n                    <span class=\"font-semibold text-slate-800 block\">ปวดศีรษะรุนแรงเฉียบพลัน หรือปวดร้าวท้ายทอย/ต้นคอรุนแรง</span>\n                    <span class=\"text-[11px] text-slate-500\">ปวดขึ้นมาทันทีอย่างรุนแรงที่สุดในชีวิต หรือปวดเกร็งตึงบริเวณท้ายทอย</span>\n                  </div>\n                </label>\n\n                <!-- 7. วูบหมดสติ -->\n                <label class=\"selectable-card p-3 rounded-xl flex items-start cursor-pointer\">\n                  <input type=\"checkbox\" id=\"dizziness_rf_syncope\" class=\"mt-0.5 rounded text-medical-600 h-4 w-4\">\n                  <div class=\"ml-2.5\">\n                    <span class=\"font-semibold text-slate-800 block\">มีอาการวูบหมดสติ หรือเกือบหมดสติไปชั่วขณะ</span>\n                    <span class=\"text-[11px] text-slate-500\">หมดสติไปชั่วคราว มีผู้พบเห็นว่าล้มพับไป หรือไม่รู้สึกตัวช่วงสั้นๆ</span>\n                  </div>\n                </label>\n\n                <!-- 8. เจ็บแน่นหน้าอก / ใจสั่น -->\n                <label class=\"selectable-card p-3 rounded-xl flex items-start cursor-pointer\">\n                  <input type=\"checkbox\" id=\"dizziness_rf_chestpain_palp\" class=\"mt-0.5 rounded text-medical-600 h-4 w-4\">\n                  <div class=\"ml-2.5\">\n                    <span class=\"font-semibold text-slate-800 block\">มีอาการเจ็บแน่นหน้าอก หรือใจสั่นเต้นผิดจังหวะร่วมด้วย</span>\n                    <span class=\"text-[11px] text-slate-500\">ใจสั่นเต้นรัว หัวใจเต้นสะดุด หรือแน่นหน้าอกก่อนมีอาการเวียน</span>\n                  </div>\n                </label>\n\n                <!-- 9. แพ้แสงจ้า / ประวัติไมเกรน (นำมารวมในหมวดระบบประสาทตามคำสั่งข้อ 3) -->\n                <label class=\"selectable-card p-3 rounded-xl flex items-start cursor-pointer sm:col-span-2\">\n                  <input type=\"checkbox\" id=\"dizziness_has_photophobia_migraine\" class=\"mt-0.5 rounded text-medical-600 h-4 w-4\">\n                  <div class=\"ml-2.5\">\n                    <span class=\"font-semibold text-slate-800 block\">มีอาการแพ้แสงจ้า กลัวแสง หรือมีประวัติปวดไมเกรน</span>\n                    <span class=\"text-[11px] text-slate-500\">รู้สึกเคืองตาเวลาเจอแสงจ้า หรือมีประวัติปวดศีรษะตุ๊บๆ ข้างเดียว (Vestibular Migraine)</span>\n                  </div>\n                </label>\n              </div>\n            </div>\n          </div>\n\n          <!-- CARD 5: อาการทางเดินอาหาร (Gastrointestinal Symptoms) -->\n          <div class=\"bg-white rounded-2xl p-6 shadow-sm border border-slate-200\">\n            <div class=\"flex items-center space-x-3 mb-4 pb-3 border-b border-slate-100\">\n              <div class=\"bg-medical-100 text-medical-700 p-2 rounded-xl\">\n                <i data-lucide=\"activity\" class=\"w-5 h-5\"></i>\n              </div>\n              <div>\n                <h2 class=\"text-base font-bold text-slate-800 section-title\" data-base-title=\"อาการทางเดินอาหาร\">5. อาการทางเดินอาหาร</h2>\n                <p class=\"text-xs text-slate-500\">ประเมินภาวะเลือดออกในทางเดินอาหาร คลื่นไส้อาเจียน และการสูญเสียน้ำ (เลือกได้หลายข้อ หรือไม่ต้องเลือกหากไม่มี)</p>\n              </div>\n            </div>\n\n            <div class=\"space-y-4 text-xs\">\n              <!-- 1. ถ่ายดำ / อาเจียนเป็นเลือด (ย้ายมาจากหมวด Red Flags เดิม ตามคำสั่งข้อ 3) -->\n              <label class=\"selectable-card p-3 rounded-xl flex items-start cursor-pointer\">\n                <input type=\"checkbox\" id=\"dizziness_rf_gi_bleed\" class=\"mt-0.5 rounded text-medical-600 h-4 w-4\">\n                <div class=\"ml-2.5\">\n                  <span class=\"font-semibold text-slate-800 block\">ถ่ายอุจจาระสีดำเหนียวคล้ายยางมะตอย หรืออาเจียนเป็นเลือด</span>\n                  <span class=\"text-[11px] text-slate-500\">สงสัยภาวะเสียเลือดภายในทางเดินอาหาร หรือซีดเพลียมาก</span>\n                </div>\n              </label>\n\n              <!-- 2. คลื่นไส้ หรือ อาเจียน -->\n              <label class=\"selectable-card p-3 rounded-xl flex items-start cursor-pointer\">\n                <input type=\"checkbox\" id=\"dizziness_has_nausea_vomit\" onchange=\"handleDizzinessVomitChange()\" class=\"mt-0.5 rounded text-medical-600 h-4 w-4\">\n                <div class=\"ml-2.5\">\n                  <span class=\"font-semibold text-slate-800 block\">มีอาการคลื่นไส้ หรืออาเจียน</span>\n                  <span class=\"text-[11px] text-slate-500\">มักพบร่วมกับอาการเวียนศีรษะหรือบ้านหมุน</span>\n                </div>\n              </label>\n\n              <!-- กิ่งเจาะลึก: คลื่นไส้ / อาเจียน -->\n              <div id=\"dizziness_vomit_detail_wrap\" class=\"hidden bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-3\">\n                <span class=\"font-semibold text-slate-800 block\">ลักษณะอาการคลื่นไส้/อาเจียน:</span>\n                \n                <div class=\"grid grid-cols-1 sm:grid-cols-2 gap-2\">\n                  <label class=\"selectable-card bg-white p-2.5 rounded-lg flex items-center cursor-pointer\">\n                    <input type=\"radio\" name=\"dizzinessVomitStatus\" value=\"nausea_only\" onchange=\"handleDizzinessVomitChange()\" class=\"text-medical-600 focus:ring-medical-500 h-3.5 w-3.5\">\n                    <span class=\"ml-2 font-medium\">มีแต่คลื่นไส้ พะอืดพะอม ยังไม่อาเจียน</span>\n                  </label>\n                  <label class=\"selectable-card bg-white p-2.5 rounded-lg flex items-center cursor-pointer\">\n                    <input type=\"radio\" name=\"dizzinessVomitStatus\" value=\"vomiting\" onchange=\"handleDizzinessVomitChange()\" class=\"text-medical-600 focus:ring-medical-500 h-3.5 w-3.5\">\n                    <span class=\"ml-2 font-medium\">มีอาเจียนออกมาจริง</span>\n                  </label>\n                </div>\n\n                <!-- ช่องระบุจำนวนครั้งและลักษณะสิ่งอาเจียน (แสดงเมื่อเลือก vomiting) -->\n                <div id=\"dizziness_vomit_actual_wrap\" class=\"hidden space-y-3 pt-2 border-t border-slate-200\">\n                  <div>\n                    <label class=\"block text-slate-700 font-semibold mb-1\">จำนวนครั้งที่อาเจียน (ครั้ง/วัน):</label>\n                    <input type=\"number\" id=\"dizzinessVomitFreq\" min=\"1\" placeholder=\"เช่น 2 หรือ 3 ครั้ง\"\n                      class=\"w-full sm:w-48 bg-white border border-slate-300 rounded-lg p-2 text-slate-800 text-xs\">\n                  </div>\n\n                  <div>\n                    <span class=\"block text-slate-700 font-semibold mb-1\">สิ่งที่อาเจียนออกมา (เลือกได้หลายข้อ):</span>\n                    <div class=\"grid grid-cols-1 sm:grid-cols-3 gap-2\">\n                      <label class=\"selectable-card bg-white p-2 rounded-lg flex items-center cursor-pointer\">\n                        <input type=\"checkbox\" name=\"dizziness_vomit_content\" value=\"food_gastric\" class=\"rounded text-medical-600 h-3.5 w-3.5\">\n                        <span class=\"ml-2 font-medium\">เศษอาหาร / น้ำย่อยกระเพาะ</span>\n                      </label>\n                      <label class=\"selectable-card bg-white p-2 rounded-lg flex items-center cursor-pointer\">\n                        <input type=\"checkbox\" name=\"dizziness_vomit_content\" value=\"bilious_green\" class=\"rounded text-medical-600 h-3.5 w-3.5\">\n                        <span class=\"ml-2 font-medium\">น้ำดีสีเหลือง/เขียวขม</span>\n                      </label>\n                      <label class=\"selectable-card bg-white p-2 rounded-lg flex items-center cursor-pointer\">\n                        <input type=\"checkbox\" name=\"dizziness_vomit_content\" value=\"coffee_ground_blood\" class=\"rounded text-medical-600 h-3.5 w-3.5\">\n                        <span class=\"ml-2 font-semibold text-slate-800\">สีกาแฟ หรือมีเลือดปน</span>\n                      </label>\n                    </div>\n                  </div>\n                </div>\n              </div>\n\n              <!-- 3. ปวดมวนท้อง หรือ ถ่ายเหลว/ท้องเสีย -->\n              <label class=\"selectable-card p-3 rounded-xl flex items-start cursor-pointer\">\n                <input type=\"checkbox\" id=\"dizziness_has_abdcramps_diarrhea\" onchange=\"handleDizzinessDiarrheaChange()\" class=\"mt-0.5 rounded text-medical-600 h-4 w-4\">\n                <div class=\"ml-2.5\">\n                  <span class=\"font-semibold text-slate-800 block\">มีอาการปวดมวนท้อง หรือถ่ายเหลว/ท้องเสีย</span>\n                  <span class=\"text-[11px] text-slate-500\">อาการของการติดเชื้อทางเดินอาหาร (AGE) หรือภาวะขาดน้ำที่อาจเป็นสาเหตุของอาการเวียน/หน้ามืด</span>\n                </div>\n              </label>\n\n              <!-- กิ่งเจาะลึก: ถ่ายเหลว / ท้องเสีย -->\n              <div id=\"dizziness_diarrhea_detail_wrap\" class=\"hidden bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-3\">\n                <span class=\"font-semibold text-slate-800 block\">รายละเอียดการขับถ่าย:</span>\n                <div>\n                  <label class=\"block text-slate-700 font-semibold mb-1\">จำนวนครั้งที่ถ่ายเหลว (ครั้ง/วัน):</label>\n                  <input type=\"number\" id=\"dizzinessDiarrheaFreq\" min=\"1\" placeholder=\"เช่น 3 หรือ 4 ครั้ง\"\n                    class=\"w-full sm:w-48 bg-white border border-slate-300 rounded-lg p-2 text-slate-800 text-xs\">\n                </div>\n                <div>\n                  <span class=\"block text-slate-700 font-semibold mb-1\">ลักษณะอุจจาระ (เลือกได้หลายข้อ):</span>\n                  <div class=\"grid grid-cols-1 sm:grid-cols-2 gap-2\">\n                    <label class=\"selectable-card bg-white p-2.5 rounded-lg flex items-center cursor-pointer\">\n                      <input type=\"checkbox\" name=\"dizziness_diarrhea_stool\" value=\"watery\" class=\"rounded text-medical-600 h-3.5 w-3.5\">\n                      <span class=\"ml-2 font-medium\">ถ่ายเป็นน้ำเหลว หรือเนื้อปนน้ำ</span>\n                    </label>\n                    <label class=\"selectable-card bg-white p-2.5 rounded-lg flex items-center cursor-pointer\">\n                      <input type=\"checkbox\" name=\"dizziness_diarrhea_stool\" value=\"mucous_bloody\" class=\"rounded text-medical-600 h-3.5 w-3.5\">\n                      <span class=\"ml-2 font-semibold text-slate-800\">มีมูกเลือดปน</span>\n                    </label>\n                  </div>\n                </div>\n              </div>\n\n            </div>\n          </div>\n\n          <!-- อาการอื่นๆ เป็นช่องกรอกอิสระ -->\n          <div class=\"bg-white rounded-2xl p-6 shadow-sm border border-slate-200\">\n            <div class=\"flex items-center space-x-3 mb-3 pb-2 border-b border-slate-100\">\n              <div class=\"bg-slate-100 text-slate-600 p-2 rounded-xl\">\n                <i data-lucide=\"message-square-plus\" class=\"w-5 h-5\"></i>\n              </div>\n              <div>\n                <h2 class=\"text-base font-bold text-slate-800\">อาการอื่นๆ ที่ต้องการแจ้งเพิ่มเติม</h2>\n                <p class=\"text-xs text-slate-500\">ระบุอาการอื่นๆ ที่ท่านมีหรือต้องการบอกแพทย์เพิ่มเติม (ถ้ามี เช่น อ่อนเพลียมาก, แน่นหน้าอก, วิงเวียนศีรษะ)</p>\n              </div>\n            </div>\n            <textarea id=\"dizziness_other_free\" rows=\"2\" placeholder=\"พิมพ์ระบุอาการอื่นๆ ที่ท่านมีหรือต้องการบอกแพทย์เพิ่มเติม (ถ้ามี)...\" \n              class=\"w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-medical-500 focus:bg-white\"></textarea>\n          </div>\n\n        </div> <!-- END DIZZINESS QUESTIONNAIRE SECTION -->\n",
-  algorithm: {
-  "id": "dizziness",
-  "schemaCode": "dizziness_vertigo",
-  "titleTh": "เวียนศีรษะ / บ้านหมุน",
-  "titleEn": "Dizziness / Vertigo",
-  "sections": [
-    {
-      "sectionNo": 1,
-      "titleTh": "ลักษณะความรู้สึกและระยะเวลา (Quality, Onset & Duration)",
-      "questions": [
-        {
-          "key": "duration",
-          "labelTh": "เริ่มมีอาการเวียนศีรษะมานานเท่าไรแล้ว?",
-          "type": "duration_with_unit",
-          "units": "UNIVERSAL_DURATION_UNITS"
-        },
-        {
-          "key": "dizzinessOnsetMode",
-          "labelTh": "อาการเริ่มต้นเป็นอย่างไร?",
-          "type": "single_choice",
-          "options": [
-            {
-              "value": "sudden",
-              "patientTh": "เป็นขึ้นมาทันทีทันใดในไม่กี่วินาที (Sudden onset)",
-              "doctorTh": "Sudden onset"
-            },
-            {
-              "value": "gradual",
-              "patientTh": "ค่อยๆ มึนหรือเวียนมากขึ้นเรื่อยๆ (Gradual worsening)",
-              "doctorTh": "Gradual onset"
-            },
-            {
-              "value": "chronic",
-              "patientTh": "มีอาการเรื้อรัง เป็นๆ หายๆ มานาน (Chronic recurrent)",
-              "doctorTh": "Chronic recurrent"
-            }
-          ]
-        },
-        {
-          "key": "dizzinessSensation",
-          "labelTh": "ลักษณะความรู้สึกเวียนที่เด่นชัดที่สุด (เลือกข้อที่ตรงที่สุด)",
-          "type": "single_choice",
-          "options": [
-            {
-              "value": "vertigo",
-              "patientTh": "รู้สึกสิ่งแวดล้อมหมุนรอบตัว หรือรู้สึกตัวเองหมุนเคว้ง (บ้านหมุน)",
-              "doctorTh": "True Vertigo"
-            },
-            {
-              "value": "presyncope",
-              "patientTh": "หน้ามืด ตาลาย คล้ายจะเป็นลม",
-              "doctorTh": "Presyncope / Lightheadedness"
-            },
-            {
-              "value": "disequilibrium",
-              "patientTh": "ทรงตัวไม่อยู่ รู้สึกโคลงเคลง เดินเซเหมือนจะล้ม (เหมือนเรือโคลง)",
-              "doctorTh": "Disequilibrium / Ataxia"
-            },
-            {
-              "value": "lightheaded_other",
-              "patientTh": "มึนศีรษะ ตื้อๆ ลอยๆ โหวงๆ บอกไม่ถูก",
-              "doctorTh": "Non-specific dizziness"
-            }
-          ]
-        },
-        {
-          "key": "dizzinessEpisodeDuration",
-          "labelTh": "ระยะเวลาของแต่ละครั้งที่เวียน (Duration of Episodes)",
-          "type": "single_choice",
-          "options": [
-            {
-              "value": "seconds_to_1m",
-              "patientTh": "เป็นวูบสั้นๆ ไม่กี่วินาทีถึง 1 นาที แล้วทุเลาลง",
-              "doctorTh": "Seconds to < 1 min (Suspect BPPV)"
-            },
-            {
-              "value": "minutes_to_hours",
-              "patientTh": "เป็นครั้งละหลายนาที หรือนาน 2 - 3 ชั่วโมง",
-              "doctorTh": "Minutes to hours (Suspect Meniere / TIA / Migraine)"
-            },
-            {
-              "value": "continuous_days",
-              "patientTh": "เวียนต่อเนื่องตลอดเวลาหลายชั่วโมง หรือติดต่อกันหลายวันไม่หยุด",
-              "doctorTh": "Continuous hours to days (Suspect Neuritis / Posterior Stroke 🚩)",
-              "isRedFlag": true
-            },
-            {
-              "value": "unspecified",
-              "patientTh": "ไม่แน่ชัด / เป็นตลอดเวลาแต่ความรุนแรงไม่เท่ากัน",
-              "doctorTh": "Unspecified pattern"
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "sectionNo": 2,
-      "titleTh": "ปัจจัยกระตุ้นและท่าทาง (Triggers & Positional Factors)",
-      "items": [
-        {
-          "key": "dizziness_trig_head_motion",
-          "patientTh": "ขยับศีรษะ พลิกตัวบนที่นอน หรือก้ม/เงยหน้า"
-        },
-        {
-          "key": "dizziness_trig_postural",
-          "patientTh": "เปลี่ยนท่า ลุกขึ้นยืนเร็วๆ จากท่านั่งหรือนอน"
-        },
-        {
-          "key": "dizziness_trig_valsalva",
-          "patientTh": "ไอ จาม เบ่ง หรืออยู่ในที่เสียงดัง"
-        },
-        {
-          "key": "dizziness_trig_salty_meal",
-          "patientTh": "อาการมากขึ้น หลังมื้ออาหารเค็ม"
-        },
-        {
-          "key": "dizziness_trig_spontaneous",
-          "patientTh": "เกิดขึ้นเองเฉยๆ ขณะอยู่นิ่งๆ โดยไม่มีสิ่งกระตุ้น"
-        },
-        {
-          "key": "dizziness_trig_stress_fatigue",
-          "patientTh": "อดนอน พักผ่อนน้อย หรือเครียด"
-        },
-        {
-          "key": "dizziness_trig_other",
-          "patientTh": "อื่นๆ (พิมพ์ระบุสิ่งกระตุ้นเพิ่มเติม)"
-        }
-      ]
-    },
-    {
-      "sectionNo": 3,
-      "titleTh": "อาการร่วมทางหู คอ จมูก (ENT / Otologic Symptoms)",
-      "items": [
-        {
-          "key": "dizziness_ear_hearing_loss",
-          "patientTh": "การได้ยินลดลง หรือหูตึงเฉียบพลัน (Acute hearing loss)",
-          "isRedFlag": true
-        },
-        {
-          "key": "dizziness_ear_tinnitus",
-          "patientTh": "มีเสียงวิ้งๆ อื้อๆ ในหู (Tinnitus)"
-        },
-        {
-          "key": "dizziness_ear_fullness_pain",
-          "patientTh": "รู้สึกแน่นตึง อัดอั้นในหู หรือปวดหู"
-        },
-        {
-          "key": "dizziness_ear_recent_uri",
-          "patientTh": "มีประวัติเป็นหวัด ติดเชื้อทางเดินหายใจ หรือท้องเสียนำมาก่อนใน 1-2 สัปดาห์"
-        }
-      ]
-    },
-    {
-      "sectionNo": 4,
-      "titleTh": "อาการร่วมทางระบบประสาท และอาการร่วมสำคัญ (Neurological & Critical Red Flags)",
-      "items": [
-        {
-          "key": "dizziness_rf_weakness_numb",
-          "patientTh": "แขนขาอ่อนแรง หรือชาครึ่งซีก / ยกแขนไม่ขึ้น",
-          "isRedFlag": true
-        },
-        {
-          "key": "dizziness_rf_facial_speech",
-          "patientTh": "มุมปากตก ปากเบี้ยว ยิ้มไม่เท่ากัน หรือพูดไม่ชัด พูดอ้อแอ้",
-          "isRedFlag": true
-        },
-        {
-          "key": "dizziness_rf_diplopia_vision",
-          "patientTh": "มองเห็นภาพซ้อน หรือลานสายตาดับมืดเฉียบพลัน",
-          "isRedFlag": true
-        },
-        {
-          "key": "dizziness_rf_ataxia_walk",
-          "patientTh": "เดินเซมาก ทรงตัวไม่ได้เลย ปล่อยมือยืนเองไม่ได้ หรือล้มไปข้างใดข้างหนึ่ง",
-          "isRedFlag": true
-        },
-        {
-          "key": "dizziness_rf_dysphagia",
-          "patientTh": "กลืนลำบาก หรือกลืนสำลักน้ำและอาหาร",
-          "isRedFlag": true
-        },
-        {
-          "key": "dizziness_rf_headache",
-          "patientTh": "ปวดศีรษะรุนแรงเฉียบพลัน หรือปวดร้าวท้ายทอย/ต้นคอรุนแรง",
-          "isRedFlag": true
-        },
-        {
-          "key": "dizziness_rf_syncope",
-          "patientTh": "มีอาการวูบหมดสติ หรือเกือบหมดสติไปชั่วขณะ",
-          "isRedFlag": true
-        },
-        {
-          "key": "dizziness_rf_chestpain_palp",
-          "patientTh": "มีอาการเจ็บแน่นหน้าอก หรือใจสั่นเต้นผิดจังหวะร่วมด้วย",
-          "isRedFlag": true
-        },
-        {
-          "key": "dizziness_has_photophobia_migraine",
-          "patientTh": "มีอาการแพ้แสงจ้า กลัวแสง หรือมีประวัติปวดไมเกรน"
-        }
-      ]
-    },
-    {
-      "sectionNo": 5,
-      "titleTh": "อาการทางเดินอาหาร (Gastrointestinal Symptoms)",
-      "items": [
-        {
-          "key": "dizziness_rf_gi_bleed",
-          "patientTh": "ถ่ายอุจจาระสีดำเหนียวคล้ายยางมะตอย หรืออาเจียนเป็นเลือด",
-          "isRedFlag": true
-        },
-        {
-          "key": "dizziness_has_nausea_vomit",
-          "patientTh": "มีอาการคลื่นไส้ หรืออาเจียน"
-        },
-        {
-          "key": "dizziness_has_abdcramps_diarrhea",
-          "patientTh": "มีอาการปวดมวนท้อง หรือถ่ายเหลว/ท้องเสีย"
-        }
-      ]
-    }
-  ]
-},
-  seedPatients: [
-  {
-    "id": "case-061",
-    "queue_number": "A-061",
-    "hn": "6708912",
-    "name": "นางสมศรี ศิริพร",
-    "age": 54,
-    "gender": "หญิง",
-    "chief_complaint": "dizziness",
-    "chief_complaint_title": "เวียนศีรษะ / บ้านหมุน",
-    "status": "waiting",
-    "timestamp": "2026-10-26T02:21:26.424Z",
-    "durationVal": 2,
-    "durationUnit": "days",
-    "dizzinessOnsetMode": "sudden",
-    "dizzinessSensation": "vertigo",
-    "dizzinessEpisodeDuration": "seconds_to_1m",
-    "dizziness_trig_head_motion": true,
-    "dizziness_trig_postural": false,
-    "dizziness_trig_valsalva": false,
-    "dizziness_trig_salty_meal": false,
-    "dizziness_trig_spontaneous": false,
-    "dizziness_trig_stress_fatigue": true,
-    "dizziness_trig_other": "",
-    "dizziness_rf_weakness_numb": false,
-    "dizziness_rf_facial_speech": false,
-    "dizziness_rf_diplopia_vision": false,
-    "dizziness_rf_ataxia_walk": false,
-    "dizziness_rf_dysphagia": false,
-    "dizziness_rf_headache": false,
-    "dizziness_rf_syncope": false,
-    "dizziness_rf_chestpain_palp": false,
-    "dizziness_rf_gi_bleed": false,
-    "dizziness_ear_tinnitus": false,
-    "dizzinessTinnitusSide": "none",
-    "dizziness_ear_hearing_loss": false,
-    "dizzinessHearingLossSide": "none",
-    "dizziness_ear_fullness_pain": false,
-    "dizzinessFullnessSide": "none",
-    "dizziness_ear_recent_uri": false,
-    "dizziness_has_nausea_vomit": true,
-    "dizzinessVomitStatus": "vomiting",
-    "dizzinessVomitFreq": 2,
-    "dizziness_vomit_contents": [
-      "food_gastric"
-    ],
-    "dizziness_has_abdcramps_diarrhea": false,
-    "dizzinessDiarrheaFreq": 0,
-    "dizziness_diarrhea_stools": [],
-    "dizziness_has_photophobia_migraine": false,
-    "hospRecordStatus": "self",
-    "underlying": [
-      "ไขมันในเลือดสูง (DLP)"
-    ],
-    "drugAllergy": "ปฏิเสธ",
-    "currentMeds": "Simvastatin 20 mg 1 tab hs",
-    "doctor_notes": {
-      "additional_hpi": "ผู้ป่วยมีอาการเวียนบ้านหมุนเฉียบพลันเวลาตื่นนอนตอนเช้า หมุนวูบขึ้นมาประมาณ 30 วินาที เฉพาะเวลาล้มตัวลงนอนหรือพลิกตัวตะแคงขวา นอนนิ่งๆ แล้วดีขึ้น มีคลื่นไส้อาเจียนเศษอาหาร 2 ครั้ง ปฏิเสธหูอื้อ หูตึง ไม่มีแขนขาอ่อนแรงหรือพูดไม่ชัด",
-      "physical_exam": "Alert, good consciousness. BT 36.7 C, PR 78/min, RR 18/min, BP 128/82 mmHg. Neuro: CN intact, no facial palsy, no motor/sensory deficit, cerebellar signs negative, no spontaneous nystagmus. Dix-Hallpike test on right: positive with torsional upbeating nystagmus with latency 3 sec, lasting 25 sec with reproduction of vertigo.",
-      "preliminary_dx": "Benign Paroxysmal Positional Vertigo (BPPV) right posterior semicircular canal",
-      "plan": "Perform Epley Maneuver right side, Dimenhydrinate (50) 1 tab po tid pc prn, Post-maneuver instructions, Advice return to ER if any neurological red flags develop"
-    }
-  },
-  {
-    "id": "case-062",
-    "queue_number": "A-062",
-    "hn": "6704192",
-    "name": "นายบุญมี ทรัพย์ประเสริฐ",
-    "age": 68,
-    "gender": "ชาย",
-    "chief_complaint": "dizziness",
-    "chief_complaint_title": "เวียนศีรษะ / บ้านหมุน",
-    "status": "waiting",
-    "timestamp": "2026-10-26T02:06:26.424Z",
-    "durationVal": 4,
-    "durationUnit": "hours",
-    "dizzinessOnsetMode": "sudden",
-    "dizzinessSensation": "vertigo",
-    "dizzinessEpisodeDuration": "continuous_days",
-    "dizziness_trig_head_motion": false,
-    "dizziness_trig_postural": false,
-    "dizziness_trig_valsalva": false,
-    "dizziness_trig_salty_meal": false,
-    "dizziness_trig_spontaneous": true,
-    "dizziness_trig_stress_fatigue": false,
-    "dizziness_trig_other": "",
-    "dizziness_rf_weakness_numb": false,
-    "dizziness_rf_facial_speech": true,
-    "dizziness_rf_diplopia_vision": true,
-    "dizziness_rf_ataxia_walk": true,
-    "dizziness_rf_dysphagia": false,
-    "dizziness_rf_headache": true,
-    "dizziness_rf_syncope": false,
-    "dizziness_rf_chestpain_palp": false,
-    "dizziness_rf_gi_bleed": false,
-    "dizziness_ear_tinnitus": false,
-    "dizzinessTinnitusSide": "none",
-    "dizziness_ear_hearing_loss": false,
-    "dizzinessHearingLossSide": "none",
-    "dizziness_ear_fullness_pain": false,
-    "dizzinessFullnessSide": "none",
-    "dizziness_ear_recent_uri": false,
-    "dizziness_has_nausea_vomit": true,
-    "dizzinessVomitStatus": "vomiting",
-    "dizzinessVomitFreq": 3,
-    "dizziness_vomit_contents": [
-      "food_gastric",
-      "bilious_green"
-    ],
-    "dizziness_has_abdcramps_diarrhea": false,
-    "dizzinessDiarrheaFreq": 0,
-    "dizziness_diarrhea_stools": [],
-    "dizziness_has_photophobia_migraine": false,
-    "hospRecordStatus": "ratchaburi",
-    "underlying": [
-      "ความดันสูง (HT)",
-      "เบาหวาน (DM)",
-      "ไขมันในเลือดสูง (DLP)"
-    ],
-    "drugAllergy": "ปฏิเสธ",
-    "currentMeds": "Amlodipine 5 mg 1x1 pc, Metformin 500 mg 1x2 pc, Atorvastatin 20 mg 1 tab hs",
-    "doctor_notes": {
-      "additional_hpi": "ผู้ป่วยมีโรคประจำตัว HT, DM, DLP 4 ชั่วโมงก่อนมา มีอาการเวียนศีรษะบ้านหมุนเฉียบพลันขณะนั่งดูทีวี หมุนตลอดเวลาไม่ทุเลา มีเดินเซมากปล่อยมือแล้วล้มไปทางซ้าย มีพูดอ้อแอ้ไม่ชัดเล็กน้อย มองเห็นภาพซ้อน 2 ภาพ และปวดท้ายทอยตื้อๆ ร่วมกับอาเจียน 3 ครั้ง",
-      "physical_exam": "BT 36.9 C, PR 88/min, RR 20/min, BP 172/96 mmHg, SpO2 98%. Eye: Gaze-evoked horizontal direction-changing nystagmus, Normal Head Impulse Test (HIT negative = Central sign), Mild skew deviation. CN: Mild left facial weakness UMN type, dysarthria present. Motor: Grade V all extremities, Left dysmetria on Finger-to-Nose test, marked truncal ataxia (cannot sit or stand unassisted).",
-      "preliminary_dx": "Acute Posterior Circulation Ischemic Stroke (Suspected Left PICA / Cerebellar Infarction) 🚩",
-      "plan": "Activate Stroke Fast Track, STAT Non-contrast CT Brain & CTA Head/Neck, IV access, NPO, On cardiac monitor, Evaluate for IV Thrombolytic therapy if within window, Consult Neurologist STAT"
-    }
-  },
-  {
-    "id": "case-063",
-    "queue_number": "A-063",
-    "hn": "6707342",
-    "name": "นางจำเนียร สุขสมบัติ",
-    "age": 74,
-    "gender": "หญิง",
-    "chief_complaint": "dizziness",
-    "chief_complaint_title": "เวียนศีรษะ / บ้านหมุน",
-    "status": "waiting",
-    "timestamp": "2026-10-26T01:46:26.424Z",
-    "durationVal": 1,
-    "durationUnit": "days",
-    "dizzinessOnsetMode": "gradual",
-    "dizzinessSensation": "presyncope",
-    "dizzinessEpisodeDuration": "seconds_to_1m",
-    "dizziness_trig_head_motion": false,
-    "dizziness_trig_postural": true,
-    "dizziness_trig_valsalva": false,
-    "dizziness_trig_salty_meal": false,
-    "dizziness_trig_spontaneous": false,
-    "dizziness_trig_stress_fatigue": true,
-    "dizziness_trig_other": "",
-    "dizziness_rf_weakness_numb": false,
-    "dizziness_rf_facial_speech": false,
-    "dizziness_rf_diplopia_vision": false,
-    "dizziness_rf_ataxia_walk": false,
-    "dizziness_rf_dysphagia": false,
-    "dizziness_rf_headache": false,
-    "dizziness_rf_syncope": true,
-    "dizziness_rf_chestpain_palp": true,
-    "dizziness_rf_gi_bleed": false,
-    "dizziness_ear_tinnitus": false,
-    "dizzinessTinnitusSide": "none",
-    "dizziness_ear_hearing_loss": false,
-    "dizzinessHearingLossSide": "none",
-    "dizziness_ear_fullness_pain": false,
-    "dizzinessFullnessSide": "none",
-    "dizziness_ear_recent_uri": false,
-    "dizziness_has_nausea_vomit": true,
-    "dizzinessVomitStatus": "nausea_only",
-    "dizzinessVomitFreq": 0,
-    "dizziness_vomit_contents": [],
-    "dizziness_has_abdcramps_diarrhea": true,
-    "dizzinessDiarrheaFreq": 4,
-    "dizziness_diarrhea_stools": [
-      "watery"
-    ],
-    "dizziness_has_photophobia_migraine": false,
-    "hospRecordStatus": "ratchaburi",
-    "underlying": [
-      "ความดันสูง (HT)"
-    ],
-    "drugAllergy": "ปฏิเสธ",
-    "currentMeds": "Amlodipine 10 mg 1x1 pc, Enalapril 20 mg 1x1 pc, HCTZ 25 mg 1x1 morning (เพิ่งปรับยาเพิ่ม 1 สัปดาห์)",
-    "doctor_notes": {
-      "additional_hpi": "ผู้ป่วยสูงอายุ U/D HT เพิ่งปรับเพิ่มขนาดยาลดความดัน 1 สัปดาห์ก่อน 1 วันก่อนมีอาการปวดมวนท้อง ถ่ายเหลวเป็นน้ำ 4 ครั้ง อ่อนเพลียมาก ทานอาหารได้น้อย มีหน้ามืดตาลาย วูบเหมือนจะเป็นลม ใจสั่น เวลาลุกขึ้นยืนเร็วๆ มีวูบหมดสติล้มลงบนที่นอนไปประมาณ 10 วินาที ปฏิเสธบ้านหมุน ไม่มีชักเกร็ง ไม่มีปากเบี้ยวหรือแขนขาอ่อนแรง",
-      "physical_exam": "Pale, dry lips and mucous membranes. Supine BP 112/68 mmHg, PR 84/min -> Standing BP (at 1 min) 82/50 mmHg, PR 108/min (Drop in SBP > 30 mmHg - Positive Orthostatic Hypotension). BT 37.0 C, RR 18/min. Neuro: Normal motor, sensory, cerebellar. Abdomen: Soft, hyperactive bowel sounds, mild diffuse tenderness, no rebound.",
-      "preliminary_dx": "Presyncope with Vasovagal / Orthostatic Syncope secondary to Acute Gastroenteritis with Moderate Dehydration & Antihypertensive Overdose 🚩",
-      "plan": "Hold all antihypertensive medications, IV Fluid 0.9% NSS 1000 ml IV loading then 100 ml/hr, EKG 12 leads, STAT CBC, BUN/Cr, Electrolytes, Stool exam, Monitor orthostatic vital signs"
+  // Group 2.2: Neurological symptoms
+  const neuroItems = [
+    { key: 'dizziness_rf_weakness_numb', label: 'แขนขาอ่อนแรง / ชาครึ่งซีก' },
+    { key: 'dizziness_rf_facial_speech', label: 'ปากเบี้ยว / พูดไม่ชัด / ลิ้นแข็ง' },
+    { key: 'dizziness_rf_diplopia_vision', label: 'เห็นภาพซ้อน / ตามัว' },
+    { key: 'dizziness_rf_ataxia_walk', label: 'เดินเซมาก / ทรงตัวไม่ได้' },
+    { key: 'dizziness_rf_dysphagia', label: 'กลืนลำบาก / สำลัก' },
+    { key: 'dizziness_rf_headache', label: 'ปวดศีรษะรุนแรงฉับพลัน' },
+    { key: 'dizziness_has_photophobia_migraine', label: 'ปวดศีรษะตึ้บๆ แพ้แสงหรือเสียง' }
+  ];
+  const neuroHasItem = neuroItems.some(it => !!p[it.key]);
+  for (const it of neuroItems) {
+    if (p[it.key]) positives.push(it.label);
+  }
+  if (p.dizziness_neuro_none) {
+    negatives.push('ไม่มีอาการเตือนทางระบบประสาท (อ่อนแรง / พูดไม่ชัด / เห็นภาพซ้อน / เดินเซ)');
+  } else if (neuroHasItem) {
+    for (const it of neuroItems) {
+      if (!p[it.key]) negatives.push(it.label);
     }
   }
-],
 
-  hydrateForm(patient) {
-    const setVal = (id, val) => {
-      const el = document.getElementById(id);
-      if (el) el.value = val !== undefined && val !== null ? val : '';
-    };
-    let setChk = (id, val) => {
-      const el = document.getElementById(id);
-      if (el) el.checked = Boolean(val);
-    };
-    const durVal = document.getElementById('dizzinessDurationVal');
-    const durUnit = document.getElementById('dizzinessDurationUnit');
-    if (durVal) durVal.value = patient.durationVal || '';
-    if (durUnit && patient.durationUnit) durUnit.value = patient.durationUnit;
-
-    setRadioValue('dizzinessOnsetMode', patient.dizzinessOnsetMode);
-    setRadioValue('dizzinessSensation', patient.dizzinessSensation);
-    setRadioValue('dizzinessEpisodeDuration', patient.dizzinessEpisodeDuration);
-
-    setChk = (id, val) => { const el = document.getElementById(id); if (el) el.checked = Boolean(val); };
-
-    // Triggers
-    setChk('dizziness_trig_head_motion', patient.dizziness_trig_head_motion);
-    setChk('dizziness_trig_postural', patient.dizziness_trig_postural);
-    setChk('dizziness_trig_valsalva', patient.dizziness_trig_valsalva);
-    setChk('dizziness_trig_salty_meal', patient.dizziness_trig_salty_meal);
-    setChk('dizziness_trig_spontaneous', patient.dizziness_trig_spontaneous);
-    setChk('dizziness_trig_stress_fatigue', patient.dizziness_trig_stress_fatigue);
-    const hasTrigOther = Boolean(patient.dizziness_trig_other);
-    setChk('dizziness_trig_other_chk', hasTrigOther);
-    toggleBranch('dizziness_trig_other_wrap', hasTrigOther);
-    const trigOtherText = document.getElementById('dizziness_trig_other_text');
-    if (trigOtherText) trigOtherText.value = patient.dizziness_trig_other || '';
-
-    // Red Flags (Central / Hemodynamic)
-    setChk('dizziness_rf_weakness_numb', patient.dizziness_rf_weakness_numb);
-    setChk('dizziness_rf_facial_speech', patient.dizziness_rf_facial_speech);
-    setChk('dizziness_rf_diplopia_vision', patient.dizziness_rf_diplopia_vision);
-    setChk('dizziness_rf_ataxia_walk', patient.dizziness_rf_ataxia_walk);
-    setChk('dizziness_rf_dysphagia', patient.dizziness_rf_dysphagia);
-    setChk('dizziness_rf_headache', patient.dizziness_rf_headache);
-    setChk('dizziness_rf_syncope', patient.dizziness_rf_syncope);
-    setChk('dizziness_rf_chestpain_palp', patient.dizziness_rf_chestpain_palp);
-    setChk('dizziness_rf_gi_bleed', patient.dizziness_rf_gi_bleed);
-
-    // Otologic symptoms
-    setChk('dizziness_ear_tinnitus', patient.dizziness_ear_tinnitus);
-    setChk('dizziness_ear_hearing_loss', patient.dizziness_ear_hearing_loss);
-    setChk('dizziness_ear_fullness_pain', patient.dizziness_ear_fullness_pain);
-    setChk('dizziness_ear_recent_uri', patient.dizziness_ear_recent_uri);
-
-    handleDizzinessEarChange();
-    if (patient.dizziness_ear_tinnitus && patient.dizzinessTinnitusSide) {
-      setRadioValue('dizzinessTinnitusSide', patient.dizzinessTinnitusSide);
-    }
-    if (patient.dizziness_ear_hearing_loss && patient.dizzinessHearingLossSide) {
-      setRadioValue('dizzinessHearingLossSide', patient.dizzinessHearingLossSide);
-    }
-    if (patient.dizziness_ear_fullness_pain && patient.dizzinessFullnessSide) {
-      setRadioValue('dizzinessFullnessSide', patient.dizzinessFullnessSide);
-    }
-
-    // GI & general
-    setChk('dizziness_has_nausea_vomit', patient.dizziness_has_nausea_vomit);
-    if (patient.dizziness_has_nausea_vomit) {
-      setRadioValue('dizzinessVomitStatus', patient.dizzinessVomitStatus || 'nausea_only');
-      handleDizzinessVomitChange();
-      if (patient.dizzinessVomitStatus === 'vomiting') {
-        const vf = document.getElementById('dizzinessVomitFreq');
-        if (vf) vf.value = patient.dizzinessVomitFreq || 1;
-        setMultiCheckboxes('dizziness_vomit_content', patient.dizzinessVomitContents);
-      }
-    } else {
-      handleDizzinessVomitChange();
-    }
-
-    setChk('dizziness_has_abdcramps_diarrhea', patient.dizziness_has_abdcramps_diarrhea);
-    handleDizzinessDiarrheaChange();
-    if (patient.dizziness_has_abdcramps_diarrhea) {
-      const df = document.getElementById('dizzinessDiarrheaFreq');
-      if (df) df.value = patient.dizzinessDiarrheaFreq || 1;
-      setMultiCheckboxes('dizziness_diarrhea_stool', patient.dizzinessDiarrheaStools);
-    }
-
-    setChk('dizziness_has_photophobia_migraine', patient.dizziness_has_photophobia_migraine);
-  },
-
-  collectIntake(ctx) {
-    const {
-      recordId,
-      queueNumber,
-      randomHn,
-      patientName,
-      patientAge,
-      gender,
-      recordStatus,
-      hospRecordStatus,
-      underlying,
-      drugAllergy,
-      currentMeds,
-      preservedDoctorNotes
-    } = ctx;
-    let { otherSymptomsFree } = ctx;
-    let newPatient;
-      // ------------------ DIZZINESS INTAKE ------------------
-      const _rawDur = parseFloat(document.getElementById('dizzinessDurationVal')?.value); const durationVal = (!isNaN(_rawDur) && _rawDur > 0) ? _rawDur : null;
-      const durationUnit = document.getElementById('dizzinessDurationUnit')?.value || 'hours';
-      const dizzinessOnsetMode = document.querySelector('input[name="dizzinessOnsetMode"]:checked')?.value || 'unspecified';
-      const dizzinessSensation = document.querySelector('input[name="dizzinessSensation"]:checked')?.value || 'unspecified';
-      const dizzinessEpisodeDuration = document.querySelector('input[name="dizzinessEpisodeDuration"]:checked')?.value || '';
-
-      // Triggers
-      const dizziness_trig_head_motion = document.getElementById('dizziness_trig_head_motion')?.checked || false;
-      const dizziness_trig_postural = document.getElementById('dizziness_trig_postural')?.checked || false;
-      const dizziness_trig_valsalva = document.getElementById('dizziness_trig_valsalva')?.checked || false;
-      const dizziness_trig_salty_meal = document.getElementById('dizziness_trig_salty_meal')?.checked || false;
-      const dizziness_trig_spontaneous = document.getElementById('dizziness_trig_spontaneous')?.checked || false;
-      const dizziness_trig_stress_fatigue = document.getElementById('dizziness_trig_stress_fatigue')?.checked || false;
-      const dizziness_trig_other_chk = document.getElementById('dizziness_trig_other_chk')?.checked || false;
-      const dizziness_trig_other = dizziness_trig_other_chk ? (document.getElementById('dizziness_trig_other_text')?.value.trim() || '') : '';
-
-      // Red Flags (Central / Hemodynamic)
-      const dizziness_rf_weakness_numb = document.getElementById('dizziness_rf_weakness_numb')?.checked || false;
-      const dizziness_rf_facial_speech = document.getElementById('dizziness_rf_facial_speech')?.checked || false;
-      const dizziness_rf_diplopia_vision = document.getElementById('dizziness_rf_diplopia_vision')?.checked || false;
-      const dizziness_rf_ataxia_walk = document.getElementById('dizziness_rf_ataxia_walk')?.checked || false;
-      const dizziness_rf_dysphagia = document.getElementById('dizziness_rf_dysphagia')?.checked || false;
-      const dizziness_rf_headache = document.getElementById('dizziness_rf_headache')?.checked || false;
-      const dizziness_rf_syncope = document.getElementById('dizziness_rf_syncope')?.checked || false;
-      const dizziness_rf_chestpain_palp = document.getElementById('dizziness_rf_chestpain_palp')?.checked || false;
-      const dizziness_rf_gi_bleed = document.getElementById('dizziness_rf_gi_bleed')?.checked || false;
-
-      // Otologic symptoms
-      const dizziness_ear_tinnitus = document.getElementById('dizziness_ear_tinnitus')?.checked || false;
-      const dizzinessTinnitusSide = dizziness_ear_tinnitus ? (document.querySelector('input[name="dizzinessTinnitusSide"]:checked')?.value || 'unspecified') : 'none';
-      const dizziness_ear_hearing_loss = document.getElementById('dizziness_ear_hearing_loss')?.checked || false;
-      const dizzinessHearingLossSide = dizziness_ear_hearing_loss ? (document.querySelector('input[name="dizzinessHearingLossSide"]:checked')?.value || 'unspecified') : 'none';
-      const dizziness_ear_fullness_pain = document.getElementById('dizziness_ear_fullness_pain')?.checked || false;
-      const dizzinessFullnessSide = dizziness_ear_fullness_pain ? (document.querySelector('input[name="dizzinessFullnessSide"]:checked')?.value || 'unspecified') : 'none';
-      const dizziness_ear_recent_uri = document.getElementById('dizziness_ear_recent_uri')?.checked || false;
-
-      // GI & general
-      const dizziness_has_nausea_vomit = document.getElementById('dizziness_has_nausea_vomit')?.checked || false;
-      const dizzinessVomitStatus = dizziness_has_nausea_vomit ? (document.querySelector('input[name="dizzinessVomitStatus"]:checked')?.value || 'nausea_only') : 'none';
-      const dizzinessVomitFreq = (dizziness_has_nausea_vomit && dizzinessVomitStatus === 'vomiting') ? (parseInt(document.getElementById('dizzinessVomitFreq')?.value) || 1) : 0;
-      const dizzinessVomitContents = (dizziness_has_nausea_vomit && dizzinessVomitStatus === 'vomiting')
-        ? Array.from(document.querySelectorAll('input[name="dizziness_vomit_content"]:checked')).map(cb => cb.value)
-        : [];
-
-      const dizziness_has_abdcramps_diarrhea = document.getElementById('dizziness_has_abdcramps_diarrhea')?.checked || false;
-      const dizzinessDiarrheaFreq = dizziness_has_abdcramps_diarrhea ? (parseInt(document.getElementById('dizzinessDiarrheaFreq')?.value) || 1) : 0;
-      const dizzinessDiarrheaStools = dizziness_has_abdcramps_diarrhea
-        ? Array.from(document.querySelectorAll('input[name="dizziness_diarrhea_stool"]:checked')).map(cb => cb.value)
-        : [];
-
-      const dizziness_has_photophobia_migraine = document.getElementById('dizziness_has_photophobia_migraine')?.checked || false;
-
-      newPatient = {
-        id: recordId,
-        queue_number: queueNumber,
-        hn: randomHn,
-        name: patientName,
-        age: patientAge,
-        gender: gender,
-        chief_complaint: 'dizziness',
-        chief_complaint_title: 'เวียนศีรษะ / บ้านหมุน',
-        status: recordStatus,
-        timestamp: new Date().toISOString(),
-        durationVal,
-        durationUnit,
-        dizzinessOnsetMode,
-        dizzinessSensation,
-        dizzinessEpisodeDuration,
-        dizziness_trig_head_motion,
-        dizziness_trig_postural,
-        dizziness_trig_valsalva,
-        dizziness_trig_salty_meal,
-        dizziness_trig_spontaneous,
-        dizziness_trig_stress_fatigue,
-        dizziness_trig_other,
-        dizziness_rf_weakness_numb,
-        dizziness_rf_facial_speech,
-        dizziness_rf_diplopia_vision,
-        dizziness_rf_ataxia_walk,
-        dizziness_rf_dysphagia,
-        dizziness_rf_headache,
-        dizziness_rf_syncope,
-        dizziness_rf_chestpain_palp,
-        dizziness_rf_gi_bleed,
-        dizziness_ear_tinnitus,
-        dizzinessTinnitusSide,
-        dizziness_ear_hearing_loss,
-        dizzinessHearingLossSide,
-        dizziness_ear_fullness_pain,
-        dizzinessFullnessSide,
-        dizziness_ear_recent_uri,
-        dizziness_has_nausea_vomit,
-        dizzinessVomitStatus,
-        dizzinessVomitFreq,
-        dizzinessVomitContents,
-        dizziness_has_abdcramps_diarrhea,
-        dizzinessDiarrheaFreq,
-        dizzinessDiarrheaStools,
-        dizziness_has_photophobia_migraine,
-        otherSymptomsFree,
-        hospRecordStatus,
-        underlying: underlying.length > 0 ? underlying : ((hospRecordStatus === 'self' || hospRecordStatus === 'additional') ? ['ปฏิเสธ'] : []),
-        drugAllergy,
-        currentMeds,
-        doctor_notes: preservedDoctorNotes
-      };
-    return newPatient;
-  },
-
-  isRedFlag(p) {
-    return Boolean(
-      p.dizziness_rf_weakness_numb ||
-      p.dizziness_rf_facial_speech ||
-      p.dizziness_rf_diplopia_vision ||
-      p.dizziness_rf_ataxia_walk ||
-      p.dizziness_rf_dysphagia ||
-      p.dizziness_rf_headache ||
-      p.dizziness_rf_syncope ||
-      p.dizziness_rf_chestpain_palp ||
-      p.dizziness_rf_gi_bleed ||
-      p.dizziness_ear_hearing_loss ||
-      (p.dizziness_has_nausea_vomit && p.dizzinessVomitContents?.includes('coffee_ground_blood')) ||
-      (p.dizziness_has_abdcramps_diarrhea && p.dizzinessDiarrheaStools?.includes('mucous_bloody'))
-    );
-  },
-
-  evaluateRedFlags(patient) {
-    const redFlags = [];
-    if (patient.dizziness_rf_weakness_numb || patient.dizziness_rf_facial_speech || patient.dizziness_rf_diplopia_vision || patient.dizziness_rf_ataxia_walk || patient.dizziness_rf_dysphagia) {
-      redFlags.push({
-        key: 'central_vestibular_stroke',
-        textTh: 'มีอาการระบบประสาทส่วนกลาง: แขนขาอ่อนแรง/ชา / ปากเบี้ยวพูดไม่ชัด / เห็นภาพซ้อน / เดินเซทรงตัวไม่ได้ / กลืนลำบาก (Central Neurological Deficits / Suspected Posterior Circulation Stroke)',
-        risk: 'เสี่ยงภาวะหลอดเลือดสมองส่วนหลังตีบ/แตกเฉียบพลัน (PICA/AICA Infarct, Vertebrobasilar Stroke, Cerebellar Hemorrhage) ต้องส่ง Stroke Fast Track, CT/MRI สมอง และประเมิน HINTS exam ทันที'
-      });
-    }
-    if (patient.dizziness_rf_headache) {
-      redFlags.push({
-        key: 'cerebellar_subarachnoid_hemorrhage',
-        textTh: 'เวียนศีรษะร่วมกับปวดศีรษะรุนแรงเฉียบพลัน หรือปวดท้ายทอย (Thunderclap / Severe Occipital Headache)',
-        risk: 'เสี่ยงภาวะเลือดออกใต้เยื่อหุ้มสมอง (SAH) หรือเลือดออกในสมองน้อย (Cerebellar Hemorrhage) หรือ Vertebral Artery Dissection'
-      });
-    }
-    if (patient.dizziness_rf_syncope) {
-      redFlags.push({
-        key: 'cardiogenic_syncope_collapse',
-        textTh: 'มีอาการวูบ หมดสติ หรือหมดความรู้สึกตัว (Syncope / Loss of Consciousness)',
-        risk: 'เสี่ยงภาวะหัวใจเต้นผิดจังหวะอันตราย (Arrhythmia / AV Block), ลิ้นหัวใจเอออร์ติกตีบ (Aortic Stenosis) หรือความดันโลหิตตกวิกฤต'
-      });
-    }
-    if (patient.dizziness_rf_chestpain_palp) {
-      redFlags.push({
-        key: 'cardiac_ischemia_arrhythmia',
-        textTh: 'เวียนศีรษะร่วมกับเจ็บแน่นหน้าอก หรือใจสั่นเต้นผิดจังหวะ (Chest Pain / Palpitation)',
-        risk: 'เสี่ยงภาวะกล้ามเนื้อหัวใจขาดเลือดเฉียบพลัน (ACS) หรือภาวะหัวใจเต้นผิดจังหวะรุนแรงที่ทำให้ Cardiac Output ลดลงฉับพลัน ต้องตรวจ EKG 12 สายทันที'
-      });
-    }
-    if (patient.dizziness_rf_gi_bleed || (patient.dizziness_has_nausea_vomit && patient.dizzinessVomitContents?.includes('coffee_ground_blood')) || (patient.dizziness_has_abdcramps_diarrhea && patient.dizzinessDiarrheaStools?.includes('mucous_bloody'))) {
-      redFlags.push({
-        key: 'hypovolemic_shock_gi_bleed',
-        textTh: 'มีอาการถ่ายดำ ถ่ายเป็นเลือด หรืออาเจียนเป็นเลือด/สีกาแฟ (GI Bleeding / Severe Blood Loss)',
-        risk: 'เสี่ยงภาวะช็อกจากเสียเลือดและขาดน้ำรุนแรง (Hypovolemic Shock secondary to GI Hemorrhage) นำไปสู่อาการ Presyncope และความดันตก'
-      });
-    }
-    if (patient.dizziness_ear_hearing_loss) {
-      redFlags.push({
-        key: 'acute_hearing_loss_warning',
-        textTh: 'การได้ยินลดลง หรือหูตึงเฉียบพลัน (Acute Sensorineural Hearing Loss / AICA Infarction)',
-        risk: 'ต้องแยกภาวะหลอดเลือดสมองส่วน AICA อุดตัน (AICA Infarction) หรือ Sudden Sensorineural Hearing Loss (SSNHL) ซึ่งต้องได้รับยาสเตียรอยด์โดยเร็ว'
-      });
-    }
-    return redFlags;
-  },
-
-  updateOutputs(patient) {
-    updateDizzinessOutputs(patient);
-  },
-
-  generateCds(patient, ctx) {
-    const { rfs, ddxList, workupList, managementList } = ctx;
-    if (rfs.some(r => r.key === 'central_vestibular_stroke' || r.key === 'cerebellar_subarachnoid_hemorrhage')) {
-      ddxList.push('1. Acute Posterior Circulation Stroke (Cerebellar / Brainstem Infarct - PICA/AICA/Basilar 🚩)');
-      ddxList.push('2. Cerebellar Hemorrhage / Subarachnoid Hemorrhage (SAH) / Vertebral Artery Dissection 🚩');
-      ddxList.push('3. Vestibular Migraine / Central Demyelinating Disease');
-      workupList.push('• ประเมิน HINTS Exam (Head Impulse, Nystagmus, Test of Skew) เพื่อแยก Central vs Peripheral');
-      workupList.push('• NIHSS score, แจ้ง Stroke Fast Track');
-      workupList.push('• Non-contrast CT Brain ด่วน หรือ MRI Brain with DWI / MRA Brain & Neck');
-      workupList.push('• 12-lead EKG, DTX, CBC, Coagulation profile (PT/INR, PTT), Electrolytes');
-      managementList.push('• 🛑 เปิดเส้น IV, งดน้ำและอาหาร (NPO) ระวังสำลัก (Aspiration)');
-      managementList.push('• ประเมินเกณฑ์ Thrombolytic therapy (IV rt-PA / Tenecteplase) หรือ Endovascular Thrombectomy หากอยู่ใน Time window (< 4.5 ชม.)');
-      managementList.push('• ควบคุมความดันโลหิตและสังเกตอาการทางระบบประสาทอย่างใกล้ชิด');
-    } else if (rfs.some(r => r.key === 'cardiogenic_syncope_collapse' || r.key === 'cardiac_ischemia_arrhythmia' || r.key === 'hypovolemic_shock_gi_bleed')) {
-      ddxList.push('1. Presyncope / Syncope secondary to Cardiac Arrhythmia (Sick Sinus, AV block, VT/SVT 🚩)');
-      ddxList.push('2. Acute Coronary Syndrome (ACS) with Hemodynamic Instability 🚩');
-      ddxList.push('3. Orthostatic Hypotension secondary to Dehydration / Blood Loss / Medication');
-      workupList.push('• 12-lead EKG ทันที, Continuous Cardiac Monitoring');
-      workupList.push('• ตรวจ Orthostatic Vitals (BP, HR ท่านอนและท่ายืน), Troponin, CBC, Electrolytes, BUN/Cr');
-      workupList.push('• ตรวจ Stool occult blood / Rectal exam หากสงสัย GI Bleed');
-      managementList.push('• นอนราบ ยกขาสูงหากความดันตก, ให้ออกซิเจนหาก SpO2 ต่ำ');
-      managementList.push('• เปิดเส้น IV ให้สารน้ำ Isotonic Crystalloid หากเกิดจาก Dehydration/Hypovolemia');
-      managementList.push('• ทบทวนและชะลอยาลดความดันโลหิต/ยาขับปัสสาวะ');
-    } else {
-      if (patient.dizzinessSensation === 'vertigo' && patient.dizziness_trig_head_motion && patient.dizzinessEpisodeDuration === 'seconds_to_1m') {
-        ddxList.push('1. Benign Paroxysmal Positional Vertigo (BPPV - Posterior/Horizontal Semicircular Canal)');
-        ddxList.push('2. Vestibular Neuritis (Convalescent phase)');
-        ddxList.push('3. Cervicogenic Dizziness');
-        workupList.push('• Dix-Hallpike Test เพื่อยืนยันและระบุด้านที่มี Canalithiasis (ระวังทำในผู้ป่วยโรคหลอดเลือดคอ/กระดูกคอเสื่อม)');
-        workupList.push('• ตรวจระบบประสาทและ Otoscopy ตรวจหู');
-        managementList.push('• การรักษาหลัก: ท่าบริหารขยับตะกอนหินปูน (Epley Maneuver หรือ Semont Maneuver) ตามข้างที่มีรอยโรค');
-        managementList.push('• หลีกเลี่ยงการใช้ยา Vestibular Suppressants (Dimenhydrinate) ต่อเนื่องระยะยาวเพื่อไม่ให้ขัดขวาง Central Compensation');
-      } else if (patient.dizziness_ear_tinnitus || patient.dizziness_ear_hearing_loss || patient.dizziness_ear_fullness_pain) {
-        ddxList.push('1. Meniere\'s Disease (Endolymphatic Hydrops)');
-        ddxList.push('2. Acute Labyrinthitis / Otitis Media with Vestibular Involvement');
-        ddxList.push('3. Vestibular Schwannoma (Acoustic Neuroma)');
-        workupList.push('• Otoscopic examination, Tuning fork test (Weber & Rinne test)');
-        workupList.push('• ส่งตรวจ Audiometry / ปรึกษาโสต ศอ นาสิกแพทย์ (ENT)');
-        managementList.push('• Symptomatic relief: Antiemetic, Vestibular suppressant ระยะสั้นช่วงกำเริบ');
-        managementList.push('• ในรายสงสัย Meniere: แนะนำจำกัดอาหารเค็ม (Low-salt diet < 2g/day) และหลีกเลี่ยงคาเฟอีน');
-      } else {
-        ddxList.push('1. Peripheral Vestibulopathy (Vestibular Neuritis / Labyrinthitis)');
-        ddxList.push('2. Benign Paroxysmal Positional Vertigo (BPPV)');
-        ddxList.push('3. Dizziness secondary to Systemic Cause / Dehydration / AGE / Drug-induced');
-        workupList.push('• Complete Neurological Examination, Romberg test, Tandem gait');
-        workupList.push('• Otoscopy, Vital signs, Basic blood chemistry if elderly or dehydrated');
-        managementList.push('• ให้สารน้ำ IV ทดแทนหากมีคลื่นไส้อาเจียนหรือท้องเสียรุนแรง');
-        managementList.push('• ให้ยาแก้อาเจียนและยาบรรเทาอาการเวียนศีรษะระยะสั้น (Dimenhydrinate, Ondansetron)');
-      }
+  // Group 3.1: Hemodynamic / Cardiac
+  const hemoItems = [
+    { key: 'dizziness_rf_syncope', label: 'มีอาการวูบ / หมดสติร่วมด้วย' },
+    { key: 'dizziness_rf_chestpain_palp', label: 'เจ็บแน่นหน้าอก / ใจสั่น' }
+  ];
+  const hemoHasItem = hemoItems.some(it => !!p[it.key]);
+  for (const it of hemoItems) {
+    if (p[it.key]) positives.push(it.label);
+  }
+  if (p.dizziness_hemo_none) {
+    negatives.push('ไม่มีอาการวูบหมดสติ เจ็บหน้าอก หรือใจสั่น');
+  } else if (hemoHasItem) {
+    for (const it of hemoItems) {
+      if (!p[it.key]) negatives.push(it.label);
     }
   }
-});
+
+  // Group 3.2: GI symptoms & Fever
+  const giHasItem = !!(p.dizziness_has_fever || p.dizziness_rf_gi_bleed || p.dizziness_has_nausea_vomit || p.dizziness_has_abdcramps_diarrhea);
+  if (p.dizziness_has_fever) positives.push('มีไข้');
+  if (p.dizziness_rf_gi_bleed) positives.push('อาเจียนเป็นเลือด / ถ่ายดำ / ถ่ายเป็นเลือด');
+  if (p.dizziness_has_nausea_vomit) {
+    const vStatus = vomitStatusMap[p.dizzinessVomitStatus];
+    const parts = [vStatus || 'คลื่นไส้หรืออาเจียน'];
+    if (p.dizzinessVomitStatus === 'vomiting') {
+      if (p.dizzinessVomitFreq) parts.push(`${p.dizzinessVomitFreq} ครั้ง`);
+      const vcRaw = Array.isArray(p.dizzinessVomitContents) ? p.dizzinessVomitContents : [];
+      const vcLabels = vcRaw.map(v => vomitContentMap[v]).filter(Boolean);
+      if (vcLabels.length > 0) parts.push(`ลักษณะ: ${vcLabels.join(', ')}`);
+    }
+    positives.push(parts.join(' '));
+  }
+  if (p.dizziness_has_abdcramps_diarrhea) {
+    const parts = ['ปวดบิดท้อง / ถ่ายเหลว'];
+    if (p.dizzinessDiarrheaFreq) parts.push(`${p.dizzinessDiarrheaFreq} ครั้ง`);
+    const dsRaw = Array.isArray(p.dizzinessDiarrheaStools) ? p.dizzinessDiarrheaStools : [];
+    const dsLabels = dsRaw.map(v => stoolMap[v]).filter(Boolean);
+    if (dsLabels.length > 0) parts.push(`ลักษณะ: ${dsLabels.join(', ')}`);
+    positives.push(parts.join(' '));
+  }
+  if (p.dizziness_gi_none) {
+    negatives.push('ไม่มีอาการทางเดินอาหารและไม่มีไข้ (มีไข้ / อาเจียนเป็นเลือด / คลื่นไส้อาเจียน / ถ่ายเหลว)');
+  } else if (giHasItem) {
+    if (!p.dizziness_has_fever) negatives.push('มีไข้');
+    if (!p.dizziness_rf_gi_bleed) negatives.push('อาเจียนเป็นเลือด / ถ่ายดำ');
+    if (!p.dizziness_has_nausea_vomit) negatives.push('คลื่นไส้ / อาเจียน');
+    if (!p.dizziness_has_abdcramps_diarrhea) negatives.push('ปวดท้อง / ถ่ายเหลว');
+  }
+
+  return { trigList, positives, negatives };
+}
+
+function updateDizzinessOutputs(p) {
+  if (!p) return { rapid: '', narrative: '', json: '{}' };
+
+  const unitMap = { minutes: 'นาที', hours: 'ชั่วโมง', days: 'วัน', weeks: 'สัปดาห์', months: 'เดือน', years: 'ปี' };
+  const onsetMap = { sudden: 'เป็นขึ้นมาทันทีทันใด', gradual: 'ค่อยๆ เวียนมากขึ้น', chronic: 'เวียนๆ หายๆ มานาน' };
+  const senseMap = {
+    vertigo: 'บ้านหมุน / สิ่งรอบตัวหมุน',
+    presyncope: 'หน้ามืด / คล้ายจะเป็นลม',
+    disequilibrium: 'ทรงตัวไม่อยู่ / เซเวลาเดิน',
+    lightheaded_other: 'มึนงง / หนักศีรษะ'
+  };
+  const epMap = {
+    seconds_to_1m: 'ไม่กี่วินาที - 1 นาที',
+    minutes_to_hours: 'หลายนาที - หลายชั่วโมง',
+    continuous_days: 'เวียนต่อเนื่องตลอดเวลา',
+    unspecified: 'จำระยะเวลาไม่ได้ / ไม่แน่ใจ'
+  };
+
+  const unitText = unitMap[p.dizzinessDurationUnit] || '';
+  const durValText = (p.dizzinessDurationVal !== null && p.dizzinessDurationVal !== undefined && String(p.dizzinessDurationVal).trim() !== '')
+    ? `${p.dizzinessDurationVal}${unitText ? ' ' + unitText : ''}`
+    : '';
+  const onsetText = onsetMap[p.dizzinessOnsetMode] || '';
+  const senseText = senseMap[p.dizzinessSensation] || '';
+  const epText = epMap[p.dizzinessEpisodeDuration] || '';
+
+  const { trigList, positives, negatives } = buildDizzinessPositivesAndNegatives(p);
+  const posList = positives.length > 0 ? positives : ['ผู้ป่วยไม่ได้ระบุอาการร่วมเพิ่มเติม'];
+  const negList = negatives.length > 0 ? negatives : ['ผู้ป่วยไม่ได้ระบุคำตอบยืนยันในหมวดอาการร่วม'];
+  p.pertinentPositives = posList;
+  p.pertinentNegatives = negList;
+
+  const redFlags = evaluateDizzinessRedFlags(p);
+
+  let trigText = 'ไม่ได้ระบุ';
+  if (trigList.length > 0) trigText = trigList.join(', ');
+  else if (p.dizziness_trig_none) trigText = 'ไม่มีสิ่งกระตุ้นชัดเจน';
+
+  const durationSummary = [durValText, onsetText].filter(Boolean).join(' — ') || 'ไม่ได้ระบุ';
+  const charSummary = [senseText, epText ? `ระยะเวลาต่อครั้ง: ${epText}` : ''].filter(Boolean).join(' | ') || 'ไม่ได้ระบุ';
+
+  let pmhSummary = 'ไม่ได้ระบุ';
+  let medsSummary = 'ไม่ได้ระบุ';
+  let allergySummary = (!p.drugAllergy || p.drugAllergy === 'ไม่ได้ระบุ') ? 'ไม่ได้ระบุ' : p.drugAllergy;
+  const hospStatus = p.hospRecordStatus || 'unspecified';
+  const udArr = Array.isArray(p.underlying) ? p.underlying : (Array.isArray(p.udList) ? p.udList : []);
+  const medsStr = p.currentMeds || (Array.isArray(p.medsList) && p.medsList.length > 0 ? p.medsList.join(', ') : '');
+  const hasKnownHosp = hospStatus === 'ratchaburi' || hospStatus === 'complete' || hospStatus === 'self' || hospStatus === 'additional' || hospStatus === 'known';
+  if (hasKnownHosp) {
+    pmhSummary = udArr.length > 0 ? udArr.join(', ') : 'ปฏิเสธ';
+    medsSummary = (medsStr && medsStr !== 'ไม่ได้ระบุ') ? medsStr : 'ไม่มี';
+    if (!p.drugAllergy || p.drugAllergy === 'ไม่ได้ระบุ') allergySummary = 'ปฏิเสธ';
+  } else {
+    if (udArr.length > 0) pmhSummary = udArr.join(', ');
+    if (medsStr && medsStr !== 'ไม่ได้ระบุ') medsSummary = medsStr;
+  }
+
+  const hospLabelMap = {
+    ratchaburi: 'มีประวัติกับ รพ.ราชบุรี ครบถ้วน (ดึงข้อมูลเดิมจากระบบ)',
+    complete: 'มีประวัติกับ รพ.ราชบุรี ครบถ้วน (ดึงข้อมูลเดิมจากระบบ)',
+    additional: 'มีประวัติกับ รพ.ราชบุรี และขอให้ข้อมูลเพิ่มเติม',
+    self: 'ขอให้ข้อมูลด้วยตนเองทั้งหมด',
+    known: 'มีประวัติกับ รพ.ราชบุรี ครบถ้วน (ดึงข้อมูลเดิมจากระบบ)',
+    unspecified: 'ไม่ได้ระบุ'
+  };
+  const hospLabel = hospLabelMap[hospStatus] || 'ไม่ได้ระบุ';
+  const docNotes = p.doctor_notes || {};
+
+  const extraFree = (p.dizziness_other_free || p.otherSymptomsFree || '').trim();
+  const extraLine = extraFree ? `\n• ข้อมูลเพิ่มเติม: ${extraFree}` : '';
+  const ageText = (p.age !== null && p.age !== undefined && p.age !== '') ? `${p.age} ปี` : 'ไม่ระบุอายุ';
+  const ccTitle = p.chief_complaint_title || 'เวียนศีรษะ / บ้านหมุน (Dizziness / Vertigo)';
+
+  const rapid =
+    `[Chief Complaint (CC)]\n` +
+    `• อาการสำคัญ: ${ccTitle}\n` +
+    `• ข้อมูลผู้ป่วย: ${p.name || 'ไม่ได้ระบุ'} (${p.gender || 'ไม่ระบุเพศ'}, ${ageText})\n\n` +
+    `[History of Present Illness (HPI)]\n` +
+    `• ระยะเวลาและการเริ่ม: ${durationSummary}\n` +
+    `• ลักษณะอาการเวียน: ${charSummary}\n` +
+    `• สิ่งกระตุ้น: ${trigText}\n` +
+    `• Pertinent Positives: ${posList.join(', ')}\n` +
+    `• Pertinent Negatives: ${negList.join(', ')}${extraLine}\n\n` +
+    `[Emergency Risk Assessment (Red Flags)]\n` +
+    `${redFlags.length > 0
+      ? `🚩 RED FLAGS DETECTED:\n${redFlags.map(f => `  * ${f.textTh}`).join('\n')}`
+      : '✓ ไม่พบสัญญาณเตือนวิกฤตเฉียบพลันเบื้องต้น'}\n\n` +
+    `[Past Medical History & Underlying]\n` +
+    `• แหล่งข้อมูลประวัติ: ${hospLabel}\n` +
+    `• โรคประจำตัว (U/D): ${pmhSummary}\n` +
+    `• ยาที่ใช้ประจำ: ${medsSummary}\n` +
+    `• ประวัติแพ้ยา: ${allergySummary}\n\n` +
+    `[Doctor's Clinical Addendum & Exam]\n` +
+    `• ประวัติเพิ่มเติม/แก้ไขโดยแพทย์: ${docNotes.additional_hpi || '-'}\n` +
+    `• สัญญาณชีพและการตรวจร่างกาย: ${docNotes.physical_exam || '-'}\n` +
+    `• การวินิจฉัยเบื้องต้น (Impression): ${docNotes.preliminary_dx || '-'}\n` +
+    `• แผนการรักษา (Plan/Orders): ${docNotes.plan || '-'}`;
+
+  const narrative =
+    `ผู้ป่วย ${p.name || 'ไม่ได้ระบุ'} (${p.gender || 'ไม่ระบุเพศ'} อายุ ${ageText}) ` +
+    `มาด้วยอาการสำคัญ เวียนศีรษะ / บ้านหมุน ระยะเวลาและรูปแบบการเริ่ม: ${durationSummary} ` +
+    `ลักษณะอาการเวียน: ${charSummary} ปัจจัยกระตุ้น: ${trigText} ` +
+    `อาการร่วมที่ตรวจพบ: ${posList.join(', ')} อาการที่ปฏิเสธ/ไม่พบ: ${negList.join(', ')}` +
+    (extraFree ? ` ข้อมูลเพิ่มเติม: ${extraFree}` : '') +
+    ` ประวัติสุขภาพ [${hospLabel}]: โรคประจำตัว ${pmhSummary} ยาประจำ ${medsSummary} แพ้ยา ${allergySummary}` +
+    (redFlags.length > 0 ? `\n[แจ้งเตือนความเสี่ยงสูง]: ${redFlags.map(f => f.textTh).join('; ')}` : '');
+
+  const jsonObj = {
+    '$schema': 'https://json-schema.org/draft/2020-12/schema',
+    encounter: {
+      hospital_site: 'Ratchaburi Hospital',
+      queue_id: p.queue_number || p.queueNumber || null,
+      hn: p.hn || null,
+      patient_name: p.name || null,
+      age: (p.age !== undefined && p.age !== '') ? p.age : null,
+      gender: p.gender || null,
+      timestamp: p.timestamp || null,
+      status: p.status || null,
+      triage_urgency_flag: redFlags.length > 0,
+      red_flags_count: redFlags.length,
+      hospital_record_status: hospStatus
+    },
+    schemaCode: 'dizziness_vertigo',
+    chiefComplaint: p.chief_complaint || 'dizziness',
+    duration: durationSummary,
+    sensation: senseText || 'ไม่ได้ระบุ',
+    episodeDuration: epText || 'ไม่ได้ระบุ',
+    triggers: trigList,
+    pertinentPositives: posList,
+    pertinentNegatives: negList,
+    redFlags: redFlags.map(f => ({ key: f.key, label: f.textTh, risk: f.risk })),
+    pastMedicalHistory: { status: hospStatus, underlying: pmhSummary, meds: medsSummary, drugAllergy: allergySummary },
+    doctor_clinical_addendum: {
+      additional_or_corrected_history: docNotes.additional_hpi || '',
+      physical_exam: docNotes.physical_exam || '',
+      preliminary_diagnosis: docNotes.preliminary_dx || '',
+      plan_and_orders: docNotes.plan || ''
+    }
+  };
+  const json = JSON.stringify(jsonObj, null, 2);
+
+  p.rapidHpi = p.custom_rapid_note || rapid;
+  p.narrativeHpi = p.custom_narrative_note || narrative;
+  p.medicalJson = json;
+
+  if (typeof document !== 'undefined') {
+    const rEl = document.getElementById('rapidTextView');
+    const nEl = document.getElementById('narrativeTextView');
+    const jEl = document.getElementById('jsonViewer');
+    if (rEl) rEl.value = p.rapidHpi;
+    if (nEl) nEl.value = p.narrativeHpi;
+    if (jEl) jEl.textContent = json;
+  }
+
+  return { rapid: p.rapidHpi, narrative: p.narrativeHpi, json };
+}
+
+// ============================================================================
+// FORM COLLECTION, HYDRATION & LIFECYCLE HOOKS
+// ============================================================================
+
+function collectDizzinessIntake(ctx) {
+  const safeCtx = ctx || {};
+  const hasDoc = typeof document !== 'undefined';
+  const getVal = id => (hasDoc ? (document.getElementById(id)?.value?.trim() || '') : '');
+  const getChk = id => (hasDoc ? !!document.getElementById(id)?.checked : false);
+  const getRadio = name => {
+    if (!hasDoc) return '';
+    return document.querySelector(`input[name="${name}"]:checked`)?.value || '';
+  };
+  const getMulti = name => {
+    if (!hasDoc) return [];
+    return Array.from(document.querySelectorAll(`input[name="${name}"]:checked`)).map(el => el.value);
+  };
+
+  const titleVal = safeCtx.title || getVal('patientTitle') || '';
+  const nameVal = safeCtx.patientName || getVal('patientName') || 'ผู้ป่วย (ไม่ได้ระบุชื่อ)';
+  const genderVal = safeCtx.gender || (titleVal === 'นาย' ? 'ชาย' : (titleVal ? 'หญิง' : 'ไม่ระบุ'));
+  const hospRecordStatus = safeCtx.hospRecordStatus || 'unspecified';
+  const underlyingArr = Array.isArray(safeCtx.underlying)
+    ? safeCtx.underlying
+    : (Array.isArray(safeCtx.udList) ? safeCtx.udList : []);
+
+  const p = {
+    id: safeCtx.recordId || safeCtx.id || `case-dz-${Date.now()}`,
+    recordId: safeCtx.recordId || safeCtx.id || '',
+    queue_number: safeCtx.queueNumber || safeCtx.queue_number || 'ER-000',
+    hn: safeCtx.randomHn || safeCtx.hn || '67-000000',
+    title: titleVal,
+    name: nameVal,
+    age: safeCtx.patientAge !== undefined ? safeCtx.patientAge : (getVal('patientAge') || null),
+    gender: genderVal,
+    chief_complaint: 'dizziness',
+    chief_complaint_title: safeCtx.chiefComplaintTitle || 'เวียนศีรษะ / บ้านหมุน (Dizziness / Vertigo)',
+    status: safeCtx.recordStatus || safeCtx.status || 'waiting',
+    timestamp: safeCtx.timestamp || new Date().toISOString(),
+    vital_signs: safeCtx.vital_signs || safeCtx.vitalSigns || {},
+    hospRecordStatus,
+    underlying: underlyingArr,
+    udList: underlyingArr,
+    currentMeds: safeCtx.currentMeds || 'ไม่ได้ระบุ',
+    medsList: Array.isArray(safeCtx.medsList) ? safeCtx.medsList : [],
+    drugAllergy: safeCtx.drugAllergy || 'ไม่ได้ระบุ',
+    doctor_notes: safeCtx.preservedDoctorNotes || { additional_hpi: '', physical_exam: '', preliminary_dx: '', plan: '' },
+    otherSymptomsFree: getVal('dizziness_other_free') || safeCtx.otherSymptomsFree || '',
+
+    dizzinessDurationVal: getVal('dizzinessDurationVal'),
+    dizzinessDurationUnit: getVal('dizzinessDurationUnit') || 'hours',
+    dizzinessOnsetMode: getRadio('dizzinessOnsetMode'),
+    dizzinessSensation: getRadio('dizzinessSensation'),
+    dizzinessEpisodeDuration: getRadio('dizzinessEpisodeDuration'),
+
+    dizziness_trig_none: getChk('dizziness_trig_none'),
+    dizziness_trig_head_motion: getChk('dizziness_trig_head_motion'),
+    dizziness_trig_postural: getChk('dizziness_trig_postural'),
+    dizziness_trig_valsalva: getChk('dizziness_trig_valsalva'),
+    dizziness_trig_salty_meal: getChk('dizziness_trig_salty_meal'),
+    dizziness_trig_stress_fatigue: getChk('dizziness_trig_stress_fatigue'),
+    dizziness_trig_other_chk: getChk('dizziness_trig_other_chk'),
+    dizziness_trig_other_text: getVal('dizziness_trig_other_text'),
+
+    dizziness_ear_none: getChk('dizziness_ear_none'),
+    dizziness_ear_hearing_loss: getChk('dizziness_ear_hearing_loss'),
+    dizzinessHearingLossSide: getRadio('dizzinessHearingLossSide'),
+    dizziness_ear_tinnitus: getChk('dizziness_ear_tinnitus'),
+    dizzinessTinnitusSide: getRadio('dizzinessTinnitusSide'),
+    dizziness_ear_fullness_pain: getChk('dizziness_ear_fullness_pain'),
+    dizzinessFullnessSide: getRadio('dizzinessFullnessSide'),
+    dizziness_ear_recent_uri: getChk('dizziness_ear_recent_uri'),
+
+    dizziness_neuro_none: getChk('dizziness_neuro_none'),
+    dizziness_rf_weakness_numb: getChk('dizziness_rf_weakness_numb'),
+    dizziness_rf_facial_speech: getChk('dizziness_rf_facial_speech'),
+    dizziness_rf_diplopia_vision: getChk('dizziness_rf_diplopia_vision'),
+    dizziness_rf_ataxia_walk: getChk('dizziness_rf_ataxia_walk'),
+    dizziness_rf_dysphagia: getChk('dizziness_rf_dysphagia'),
+    dizziness_rf_headache: getChk('dizziness_rf_headache'),
+    dizziness_has_photophobia_migraine: getChk('dizziness_has_photophobia_migraine'),
+
+    dizziness_hemo_none: getChk('dizziness_hemo_none'),
+    dizziness_rf_syncope: getChk('dizziness_rf_syncope'),
+    dizziness_rf_chestpain_palp: getChk('dizziness_rf_chestpain_palp'),
+
+    dizziness_gi_none: getChk('dizziness_gi_none'),
+    dizziness_has_fever: getChk('dizziness_has_fever'),
+    dizziness_rf_gi_bleed: getChk('dizziness_rf_gi_bleed'),
+    dizziness_has_nausea_vomit: getChk('dizziness_has_nausea_vomit'),
+    dizzinessVomitStatus: getRadio('dizzinessVomitStatus') || 'unspecified',
+    dizzinessVomitFreq: getVal('dizzinessVomitFreq') || null,
+    dizzinessVomitContents: getMulti('dizziness_vomit_content'),
+
+    dizziness_has_abdcramps_diarrhea: getChk('dizziness_has_abdcramps_diarrhea'),
+    dizzinessDiarrheaFreq: getVal('dizzinessDiarrheaFreq') || null,
+    dizzinessDiarrheaStools: getMulti('dizziness_diarrhea_stool'),
+
+    dizziness_other_free: getVal('dizziness_other_free')
+  };
+
+  updateDizzinessOutputs(p);
+  return p;
+}
+
+const DIZZINESS_CHECKBOX_FIELDS = [
+  'dizziness_trig_none',
+  'dizziness_trig_head_motion',
+  'dizziness_trig_postural',
+  'dizziness_trig_valsalva',
+  'dizziness_trig_salty_meal',
+  'dizziness_trig_stress_fatigue',
+  'dizziness_trig_other_chk',
+  'dizziness_ear_none',
+  'dizziness_ear_hearing_loss',
+  'dizziness_ear_tinnitus',
+  'dizziness_ear_fullness_pain',
+  'dizziness_ear_recent_uri',
+  'dizziness_neuro_none',
+  'dizziness_rf_weakness_numb',
+  'dizziness_rf_facial_speech',
+  'dizziness_rf_diplopia_vision',
+  'dizziness_rf_ataxia_walk',
+  'dizziness_rf_dysphagia',
+  'dizziness_rf_headache',
+  'dizziness_has_photophobia_migraine',
+  'dizziness_hemo_none',
+  'dizziness_rf_syncope',
+  'dizziness_rf_chestpain_palp',
+  'dizziness_gi_none',
+  'dizziness_has_fever',
+  'dizziness_rf_gi_bleed',
+  'dizziness_has_nausea_vomit',
+  'dizziness_has_abdcramps_diarrhea'
+];
+
+function hydrateDizzinessForm(p) {
+  if (!p || typeof document === 'undefined') return;
+  const setVal = (id, v) => { const el = document.getElementById(id); if (el) el.value = v ?? ''; };
+  const setRadio = (name, v) => {
+    document.querySelectorAll(`input[name="${name}"]`).forEach(el => {
+      el.checked = !!v && el.value === v;
+    });
+  };
+  const setMulti = (name, arr) => {
+    const list = Array.isArray(arr) ? arr : [];
+    document.querySelectorAll(`input[name="${name}"]`).forEach(el => {
+      el.checked = list.includes(el.value);
+    });
+  };
+
+  setVal('dizzinessDurationVal', p.dizzinessDurationVal ?? '');
+  setVal('dizzinessDurationUnit', p.dizzinessDurationUnit || 'hours');
+  setRadio('dizzinessOnsetMode', p.dizzinessOnsetMode);
+  setRadio('dizzinessSensation', p.dizzinessSensation);
+  setRadio('dizzinessEpisodeDuration', p.dizzinessEpisodeDuration);
+
+  for (const id of DIZZINESS_CHECKBOX_FIELDS) {
+    const el = document.getElementById(id);
+    if (el) el.checked = !!p[id];
+  }
+  setVal('dizziness_trig_other_text', p.dizziness_trig_other_text || '');
+  setRadio('dizzinessHearingLossSide', p.dizzinessHearingLossSide);
+  setRadio('dizzinessTinnitusSide', p.dizzinessTinnitusSide);
+  setRadio('dizzinessFullnessSide', p.dizzinessFullnessSide);
+
+  setRadio('dizzinessVomitStatus', p.dizzinessVomitStatus !== 'unspecified' ? p.dizzinessVomitStatus : '');
+  setVal('dizzinessVomitFreq', p.dizzinessVomitFreq ?? '');
+  setMulti('dizziness_vomit_content', p.dizzinessVomitContents || p.dizziness_vomit_contents);
+
+  setVal('dizzinessDiarrheaFreq', p.dizzinessDiarrheaFreq ?? '');
+  setMulti('dizziness_diarrhea_stool', p.dizzinessDiarrheaStools || p.dizziness_diarrhea_stools);
+  setVal('dizziness_other_free', p.dizziness_other_free || p.otherSymptomsFree || '');
+
+  handleDizzinessTrigOtherToggle(!!p.dizziness_trig_other_chk);
+  handleDizzinessEarChange();
+  handleDizzinessVomitChange();
+  handleDizzinessDiarrheaChange();
+  updateDizzinessOutputs(p);
+}
+
+const DIZZINESS_BRANCH_IDS = [
+  'dizziness_trig_other_wrap',
+  'dizziness_hearing_loss_side_wrap',
+  'dizziness_tinnitus_side_wrap',
+  'dizziness_fullness_side_wrap',
+  'dizziness_vomit_detail_wrap',
+  'dizziness_vomit_actual_wrap',
+  'dizziness_diarrhea_detail_wrap'
+];
+
+const DIZZINESS_INPUT_IDS_TO_CLEAR = [
+  'dizzinessDurationVal',
+  'dizziness_trig_other_text',
+  'dizzinessVomitFreq',
+  'dizzinessDiarrheaFreq',
+  'dizziness_other_free'
+];
+
+function resetDizzinessForm() {
+  if (typeof document === 'undefined') return;
+  for (const id of DIZZINESS_INPUT_IDS_TO_CLEAR) {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  }
+  const unitEl = document.getElementById('dizzinessDurationUnit');
+  if (unitEl) unitEl.value = 'hours';
+
+  const radioNames = [
+    'dizzinessOnsetMode', 'dizzinessSensation', 'dizzinessEpisodeDuration',
+    'dizzinessHearingLossSide', 'dizzinessTinnitusSide', 'dizzinessFullnessSide',
+    'dizzinessVomitStatus'
+  ];
+  for (const rName of radioNames) {
+    document.querySelectorAll(`input[name="${rName}"]`).forEach(el => { el.checked = false; });
+  }
+  for (const cId of DIZZINESS_CHECKBOX_FIELDS) {
+    const el = document.getElementById(cId);
+    if (el) el.checked = false;
+  }
+  document.querySelectorAll('input[name="dizziness_vomit_content"], input[name="dizziness_diarrhea_stool"]').forEach(el => {
+    el.checked = false;
+  });
+  for (const bId of DIZZINESS_BRANCH_IDS) {
+    toggleDizzinessBranch(bId, false);
+  }
+}
+
+// ============================================================================
+// SEED PATIENTS (4 CASES — COVERING BPPV, CENTRAL STROKE, PRESYNCOPE & SSNHL)
+// ============================================================================
+
+function makeDizzinessSeed(overrides) {
+  return Object.assign({
+    chief_complaint: 'dizziness',
+    chief_complaint_title: 'เวียนศีรษะ / บ้านหมุน (Dizziness / Vertigo)',
+    status: 'waiting',
+    timestamp: new Date(Date.now() - 15 * 60000).toISOString(),
+    vital_signs: { bp: '126/78', pr: 84, rr: 18, temp: 36.8, spo2: 98 },
+    hospRecordStatus: 'self',
+    underlying: [],
+    currentMeds: 'ไม่มี',
+    drugAllergy: 'ปฏิเสธ',
+    dizzinessDurationVal: '',
+    dizzinessDurationUnit: 'hours',
+    dizzinessOnsetMode: '',
+    dizzinessSensation: '',
+    dizzinessEpisodeDuration: '',
+    dizziness_trig_none: false,
+    dizziness_trig_head_motion: false,
+    dizziness_trig_postural: false,
+    dizziness_trig_valsalva: false,
+    dizziness_trig_salty_meal: false,
+    dizziness_trig_stress_fatigue: false,
+    dizziness_trig_other_chk: false,
+    dizziness_trig_other_text: '',
+    dizziness_ear_none: false,
+    dizziness_ear_hearing_loss: false,
+    dizzinessHearingLossSide: '',
+    dizziness_ear_tinnitus: false,
+    dizzinessTinnitusSide: '',
+    dizziness_ear_fullness_pain: false,
+    dizzinessFullnessSide: '',
+    dizziness_ear_recent_uri: false,
+    dizziness_neuro_none: false,
+    dizziness_rf_weakness_numb: false,
+    dizziness_rf_facial_speech: false,
+    dizziness_rf_diplopia_vision: false,
+    dizziness_rf_ataxia_walk: false,
+    dizziness_rf_dysphagia: false,
+    dizziness_rf_headache: false,
+    dizziness_has_photophobia_migraine: false,
+    dizziness_hemo_none: false,
+    dizziness_rf_syncope: false,
+    dizziness_rf_chestpain_palp: false,
+    dizziness_gi_none: false,
+    dizziness_has_fever: false,
+    dizziness_rf_gi_bleed: false,
+    dizziness_has_nausea_vomit: false,
+    dizzinessVomitStatus: 'unspecified',
+    dizzinessVomitFreq: null,
+    dizzinessVomitContents: [],
+    dizziness_has_abdcramps_diarrhea: false,
+    dizzinessDiarrheaFreq: null,
+    dizzinessDiarrheaStools: [],
+    dizziness_other_free: '',
+    doctor_notes: { additional_hpi: '', physical_exam: '', preliminary_dx: '', plan: '' }
+  }, overrides);
+}
+
+const DIZZINESS_SEED_PATIENTS = [
+  makeDizzinessSeed({
+    id: 'case-062',
+    queue_number: 'ER-062',
+    hn: '67-006201',
+    name: 'นายบุญมี ทรัพย์ประเสริฐ',
+    age: 68,
+    gender: 'ชาย',
+    hospRecordStatus: 'ratchaburi',
+    vital_signs: { bp: '188/104', pr: 88, rr: 20, temp: 36.7, spo2: 97 },
+    underlying: ['ความดันโลหิตสูง', 'ไขมันในเลือดสูง'],
+    currentMeds: 'Amlodipine 5 mg, Simvastatin 20 mg',
+    dizzinessDurationVal: '4',
+    dizzinessDurationUnit: 'hours',
+    dizzinessOnsetMode: 'sudden',
+    dizzinessSensation: 'vertigo',
+    dizzinessEpisodeDuration: 'continuous_days',
+    dizziness_ear_none: true,
+    dizziness_rf_facial_speech: true,
+    dizziness_rf_diplopia_vision: true,
+    dizziness_rf_ataxia_walk: true,
+    dizziness_rf_headache: true,
+    dizziness_hemo_none: true,
+    dizziness_has_nausea_vomit: true,
+    dizzinessVomitStatus: 'vomiting',
+    dizzinessVomitFreq: '3',
+    dizzinessVomitContents: ['food_gastric', 'bilious_green']
+  }),
+  makeDizzinessSeed({
+    id: 'case-061',
+    queue_number: 'ER-061',
+    hn: '67-006101',
+    name: 'นางสมศรี ศิริพร',
+    age: 54,
+    gender: 'หญิง',
+    dizzinessDurationVal: '2',
+    dizzinessDurationUnit: 'days',
+    dizzinessOnsetMode: 'sudden',
+    dizzinessSensation: 'vertigo',
+    dizzinessEpisodeDuration: 'seconds_to_1m',
+    dizziness_trig_head_motion: true,
+    dizziness_trig_stress_fatigue: true,
+    dizziness_ear_none: true,
+    dizziness_neuro_none: true,
+    dizziness_hemo_none: true,
+    dizziness_has_nausea_vomit: true,
+    dizzinessVomitStatus: 'vomiting',
+    dizzinessVomitFreq: '2',
+    dizzinessVomitContents: ['food_gastric']
+  }),
+  makeDizzinessSeed({
+    id: 'case-063',
+    queue_number: 'ER-063',
+    hn: '67-006301',
+    name: 'นางจำเนียร สุขสมบัติ',
+    age: 74,
+    gender: 'หญิง',
+    hospRecordStatus: 'ratchaburi',
+    vital_signs: { bp: '92/58', pr: 112, rr: 22, temp: 37.1, spo2: 96 },
+    underlying: ['เบาหวาน', 'โรคหัวใจ'],
+    currentMeds: 'Metformin 500 mg, Aspirin 81 mg',
+    dizzinessDurationVal: '1',
+    dizzinessDurationUnit: 'days',
+    dizzinessOnsetMode: 'gradual',
+    dizzinessSensation: 'presyncope',
+    dizzinessEpisodeDuration: 'seconds_to_1m',
+    dizziness_trig_postural: true,
+    dizziness_trig_stress_fatigue: true,
+    dizziness_ear_none: true,
+    dizziness_neuro_none: true,
+    dizziness_rf_syncope: true,
+    dizziness_rf_chestpain_palp: true,
+    dizziness_has_nausea_vomit: true,
+    dizzinessVomitStatus: 'nausea_only',
+    dizziness_has_abdcramps_diarrhea: true,
+    dizzinessDiarrheaFreq: '4',
+    dizzinessDiarrheaStools: ['watery']
+  }),
+  makeDizzinessSeed({
+    id: 'case-064',
+    queue_number: 'ER-064',
+    hn: '67-006401',
+    name: 'นางสาวอรุณี วัฒนาพร',
+    age: 58,
+    gender: 'หญิง',
+    vital_signs: { bp: '134/82', pr: 90, rr: 18, temp: 36.6, spo2: 99 },
+    dizzinessDurationVal: '6',
+    dizzinessDurationUnit: 'hours',
+    dizzinessOnsetMode: 'sudden',
+    dizzinessSensation: 'vertigo',
+    dizzinessEpisodeDuration: 'minutes_to_hours',
+    dizziness_trig_none: true,
+    dizziness_ear_hearing_loss: true,
+    dizzinessHearingLossSide: 'left',
+    dizziness_ear_tinnitus: true,
+    dizzinessTinnitusSide: 'left',
+    dizziness_neuro_none: true,
+    dizziness_hemo_none: true,
+    dizziness_gi_none: true
+  })
+];
+
+// ============================================================================
+// REGISTER CC MODULE & EXPORTS
+// ============================================================================
+
+if (typeof window !== 'undefined') {
+  window.handleDizzinessSensationChange = handleDizzinessSensationChange;
+  window.handleDizzinessGroupItemChange = handleDizzinessGroupItemChange;
+  window.handleDizzinessGroupNoneToggle = handleDizzinessGroupNoneToggle;
+  window.handleDizzinessTrigOtherToggle = handleDizzinessTrigOtherToggle;
+  window.handleDizzinessEarChange = handleDizzinessEarChange;
+  window.handleDizzinessVomitChange = handleDizzinessVomitChange;
+  window.handleDizzinessDiarrheaChange = handleDizzinessDiarrheaChange;
+}
+
+if (typeof registerCcModule === 'function') {
+  registerCcModule({
+    id: 'dizziness',
+    recordCc: 'dizziness',
+    schemaCode: 'dizziness_vertigo',
+    titleTh: 'เวียนศีรษะ / บ้านหมุน',
+    titleEn: 'Dizziness / Vertigo',
+    icon: 'compass',
+    sectionDomId: 'dizzinessQuestionnaireSection',
+    doctorCcBadgeHtml: '<i data-lucide="compass" class="w-3 h-3 mr-1"></i> CC: เวียนศีรษะ / บ้านหมุน (Dizziness / Vertigo)',
+    pmhSectionNumber: 5,
+    getPmhSectionNumber: () => 5,
+    dateFields: [],
+    timeFields: [],
+    branchIds: DIZZINESS_BRANCH_IDS,
+    inputIdsToClear: DIZZINESS_INPUT_IDS_TO_CLEAR,
+    formHtml: DIZZINESS_FORM_HTML,
+    algorithm: {
+      id: 'dizziness',
+      titleTh: 'เวียนศีรษะ / บ้านหมุน',
+      titleEn: 'Dizziness / Vertigo',
+      triageLevelRules: [
+        { level: 1, criteria: 'Central vestibular / Brainstem-Cerebellar stroke deficits, altered airway/breathing or hemodynamic instability' },
+        { level: 2, criteria: 'Sudden severe headache + vertigo (SAH/cerebellar bleed), syncope/chest pain/palpitation, GI bleed/hematemesis, or acute sudden SNHL/AICA risk' },
+        { level: 3, criteria: 'Acute persistent peripheral vertigo with repeated vomiting risking dehydration' },
+        { level: 4, criteria: 'Brief positional vertigo (BPPV) or mild chronic dizziness with zero red flags' }
+      ]
+    },
+    collectIntake: collectDizzinessIntake,
+    hydrateForm: hydrateDizzinessForm,
+    updateOutputs: updateDizzinessOutputs,
+    isRedFlag(p) { return evaluateDizzinessRedFlags(p).length > 0; },
+    evaluateRedFlags: evaluateDizzinessRedFlags,
+    resetForm: resetDizzinessForm,
+    onSelectForm: () => { if (typeof lucide !== 'undefined') lucide.createIcons(); },
+    onActivate: () => { if (typeof lucide !== 'undefined') lucide.createIcons(); },
+    onTitleChange: () => {},
+    seedPatients: DIZZINESS_SEED_PATIENTS
+  });
+}

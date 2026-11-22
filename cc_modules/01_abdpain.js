@@ -735,7 +735,7 @@ ${rfs.length > 0
 อาการร่วมที่พบ: ${patient.pertinentPositives.join(', ')}
 อาการสำคัญที่ปฏิเสธ: ${patient.pertinentNegatives.join(', ')}
 ประวัติสุขภาพและความเสี่ยง: [${hospLabel}] ผ่าตัดช่องท้อง: ${surgeryText}, ความเสี่ยงยา/โรคกระเพาะ: ${riskMedsText}, ดื่มสุรา: ${alcoholText}, โรคประจำตัว: ${udText}, ยาประจำตัว: ${medsText}, แพ้ยา: ${allergyText}
-${rfs.length > 0 ? `[🚩 แจ้งเตือนสัญญาณวิกฤต (Red Flags)]: ${rfs.map(rf => rf.textTh).join('; ')}` : ''}
+${rfs.length > 0 ? `[แจ้งเตือนความเสี่ยงสูง]: ${rfs.map(rf => rf.textTh).join('; ')}` : ''}
 
 [บันทึกการตรวจและการประเมินโดยแพทย์]:
 ${docNotes.additional_hpi ? `• ประวัติเพิ่มเติม: ${docNotes.additional_hpi}\n` : ''}${docNotes.physical_exam ? `• การตรวจร่างกาย: ${docNotes.physical_exam}\n` : ''}${docNotes.preliminary_dx ? `• การวินิจฉัย: ${docNotes.preliminary_dx}\n` : ''}${docNotes.plan ? `• แผนการรักษา: ${docNotes.plan}` : ''}`;
@@ -1862,30 +1862,5 @@ registerCcModule({
   },
 
   evaluateRedFlags: evaluateAbdpainRedFlags,
-  updateOutputs: updateAbdominalPainOutputs,
-
-  generateCds(patient, ctx) {
-    const { rfs, ddxList, workupList, managementList } = ctx;
-    if (rfs.some(r => r.key === 'ectopic_pregnancy')) {
-      ddxList.push('1. Ruptured Ectopic Pregnancy (ต้องตัดออกเป็นอันดับแรกในหญิงวัยเจริญพันธุ์!)');
-      ddxList.push('2. Ruptured Ovarian Cyst / Pelvic Inflammatory Disease (PID) / Tubo-ovarian Abscess');
-      ddxList.push('3. Acute Appendicitis');
-      workupList.push('• Urine Pregnancy Test (UPT) ด่วนที่สุด + Bedside Pelvic/FAST Ultrasound ดู Free fluid ในช่องท้อง');
-      workupList.push('• CBC, Crossmatch จองเลือด, Serum beta-hCG');
-      managementList.push('• เปิดเส้น IV เข็มใหญ่ 2 เส้น, Resuscitate ด้วย Crystalloid หากมีภาวะช็อก และปรึกษาสูตินรีแพทย์ฉุกเฉินทันที');
-    } else if (rfs.some(r => r.key === 'acute_appendicitis' || r.key === 'peritonitis')) {
-      ddxList.push('1. Acute Appendicitis (with/without localized perforation)');
-      ddxList.push('2. Hollow Viscus Perforation (เช่น Peptic Ulcer Perforation) / Acute Peritonitis');
-      ddxList.push('3. Acute Cholecystitis / Acute Diverticulitis');
-      workupList.push('• CBC, UA, Electrolytes, BUN/Cr, UPT (ถ้าเป็นหญิงวัยเจริญพันธุ์)');
-      workupList.push('• Acute Abdomen Series (CXR upright ดู Free air ใต้กะบังลม) / Ultrasound หรือ CT Whole Abdomen');
-      managementList.push('• งดน้ำและอาหารทางปาก (NPO), เปิดเส้นให้สารน้ำ IV, ให้ยาแก้ปวดเหมาะสม และปรึกษาศัลยแพทย์');
-    } else {
-      ddxList.push('1. Acute Gastritis / Peptic Ulcer Disease / Upper GI Bleeding');
-      ddxList.push('2. Biliary Colic / Acute Cholecystitis / Acute Pancreatitis');
-      ddxList.push('3. Acute Gastroenteritis / Ureteric Calculi (Renal Colic)');
-      workupList.push('• CBC, BUN/Cr, Electrolytes, LFT, Serum Amylase/Lipase, UA, EKG (ในผู้สูงอายุที่ปวด Epigastrium เพื่อแยก Inferior MI)');
-      managementList.push('• ประเมินภาวะขาดน้ำ/เสียเลือด หลีกเลี่ยงการใช้ยากลุ่ม NSAIDs ในผู้ป่วยสงสัยแผลในกระเพาะหรือเลือดออกทางเดินอาหาร');
-    }
-  }
+  updateOutputs: updateAbdominalPainOutputs
 });

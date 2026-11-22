@@ -8,6 +8,106 @@
 // --- Module-scoped State & Helpers ---
 let fallPainScoreTouched = false;
 
+function wrapFallWords(chunks) {
+  if (!Array.isArray(chunks)) return chunks;
+  return chunks.map(c => `<span class="inline-block whitespace-nowrap">${c}</span>`).join(' ');
+}
+
+function renderFallOption(cfg) {
+  const {
+    kind = 'checkbox',
+    id = '',
+    name = '',
+    value = '',
+    title,
+    desc = '',
+    onchange = '',
+    compact = false,
+    colSpan2 = false
+  } = cfg;
+  const idAttr = id ? `id="${id}" ` : '';
+  const nameAttr = name ? `name="${name}" ` : '';
+  const valAttr = value ? `value="${value}" ` : '';
+  const chgAttr = onchange ? `onchange="${onchange}" ` : '';
+  const alignCls = desc ? 'items-start' : 'items-center';
+  const padCls = compact ? 'p-2.5' : 'p-3';
+  const spanCls = colSpan2 ? ' sm:col-span-2' : '';
+  const roundCls = kind === 'checkbox' ? 'rounded ' : '';
+  const topCls = desc ? 'mt-0.5 ' : '';
+  const szCls = compact ? 'h-3.5 w-3.5' : 'h-4 w-4';
+  const titleHtml = Array.isArray(title) ? wrapFallWords(title) : title;
+  const bodyHtml = desc
+    ? `<div class="ml-3 leading-snug"><span class="block text-xs sm:text-sm font-semibold text-slate-800">${titleHtml}</span><span class="block text-[11px] text-slate-500 font-normal mt-0.5">${desc}</span></div>`
+    : `<span class="ml-3 ${compact ? 'text-xs' : 'text-xs sm:text-sm'} font-semibold text-slate-800 leading-snug">${titleHtml}</span>`;
+  return `<label class="selectable-card bg-white flex ${alignCls} ${padCls} rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition${spanCls}"><input type="${kind}" ${idAttr}${nameAttr}${valAttr}${chgAttr}class="${topCls}${roundCls}text-medical-600 focus:ring-medical-500 ${szCls} flex-shrink-0">${bodyHtml}</label>`;
+}
+
+function renderFallGrid(colsCls, items, shared = {}) {
+  return `<div class="grid ${colsCls} gap-2.5">${items.map(it => renderFallOption({ ...shared, ...it })).join('\n')}</div>`;
+}
+
+function renderFallSysHeader({
+  label,
+  icon,
+  colorClass,
+  toggleKind = 'checkbox',
+  toggleId = '',
+  toggleLabel = '',
+  toggleName = '',
+  toggleValue = '',
+  toggleOnchange = ''
+}) {
+  const nameAttr = toggleName ? `name="${toggleName}" ` : '';
+  const valAttr = toggleValue ? `value="${toggleValue}" ` : '';
+  const chgAttr = toggleOnchange ? `onchange="${toggleOnchange}" ` : '';
+  const roundCls = toggleKind === 'checkbox' ? ' rounded' : '';
+  const toggleHtml = toggleId
+    ? `<label class="inline-flex items-center px-2.5 py-1 rounded-lg bg-white hover:bg-slate-100 border border-slate-200 text-xs font-medium text-slate-700 cursor-pointer transition select-none flex-shrink-0">
+      <input type="${toggleKind}" id="${toggleId}" ${nameAttr}${valAttr}${chgAttr}class="text-medical-600 focus:ring-medical-500 h-3.5 w-3.5${roundCls}">
+      <span class="ml-1.5 whitespace-nowrap">${toggleLabel}</span>
+    </label>`
+    : '';
+  return `<div class="flex flex-wrap items-center justify-between gap-2 mb-2.5">
+    <label class="flex items-center text-xs sm:text-sm font-bold text-slate-800">
+      <span class="${colorClass} p-1.5 rounded-lg mr-2 inline-flex items-center justify-center"><i data-lucide="${icon}" class="w-4 h-4"></i></span>
+      <span>${label}</span>
+    </label>
+    ${toggleHtml}
+  </div>`;
+}
+
+function renderFallMechCard(value, title, desc, containerId, inputId, placeholder) {
+  return `<div>
+    ${renderFallOption({
+      name: 'fallMechanisms',
+      value,
+      title,
+      desc,
+      onchange: `toggleFallGroup('${containerId}', this.checked)`
+    })}
+    <div id="${containerId}" class="hidden mt-2 pl-3 border-l-2 border-medical-200">
+      <input type="text" id="${inputId}" placeholder="${placeholder}" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-1.5 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-medical-500 focus:bg-white">
+    </div>
+  </div>`;
+}
+
+function handleFallGroupNoneToggle(noneEl, inputName) {
+  if (!noneEl || !noneEl.checked || typeof document === 'undefined') return;
+  document.querySelectorAll(`input[name="${inputName}"]`).forEach(cb => {
+    if (cb !== noneEl) cb.checked = false;
+  });
+}
+
+function handleFallGroupItemChange(itemEl, noneId) {
+  if (!itemEl || !itemEl.checked || !noneId || typeof document === 'undefined') return;
+  const noneEl = document.getElementById(noneId);
+  if (noneEl) noneEl.checked = false;
+}
+
+function handleFallProdromeChange(val) {
+  toggleFallGroup('fallProdromeDetailContainer', val === 'has_prodrome');
+}
+
 function toggleFallGroup(subId, show) {
   const el = document.getElementById(subId);
   if (!el) return;
@@ -33,9 +133,9 @@ function clearFallPainScore() {
 
 function handleFallPainScoreChange(val) {
   fallPainScoreTouched = true;
-  const num = parseInt(val, 10);
+  const num = parseInt(val, 10) || 0;
   const slider = document.getElementById('fallPainScore');
-  if (slider) slider.value = num;
+  if (slider && String(slider.value) !== String(num)) slider.value = num;
   const emojiEl = document.getElementById('fallPainScoreEmoji'), textEl = document.getElementById('fallPainScoreText');
   const badgeEl = document.getElementById('fallPainScoreBadge'), clearBtn = document.getElementById('fallPainScoreClearBtn');
   if (clearBtn) clearBtn.classList.remove('hidden');
@@ -45,14 +145,29 @@ function handleFallPainScoreChange(val) {
   if (num === 0) { emoji = '😊'; label = 'สบายดี (ไม่ปวดเลย)'; badgeClass = 'bg-emerald-100 text-emerald-800 border-emerald-300'; }
   else if (num <= 3) { emoji = '🙂'; label = 'ปวดเล็กน้อย (ทนได้)'; badgeClass = 'bg-lime-100 text-lime-800 border-lime-300'; }
   else if (num <= 6) { emoji = '😐'; label = 'ปวดปานกลาง (รบกวนสมาธิ)'; badgeClass = 'bg-amber-100 text-amber-800 border-amber-300'; }
-  else if (num <= 8) { emoji = '😣'; label = 'ปวดรุนแรง (ทนแทบไม่ไหว)'; badgeClass = 'bg-orange-100 text-orange-800 border-orange-300'; }
-  else { emoji = '😫'; label = 'ปวดรุนแรงที่สุดในชีวิต'; badgeClass = 'bg-rose-100 text-rose-800 border-rose-300'; }
+  else if (num <= 9) { emoji = '😣'; label = 'ปวดมาก (ทนแทบไม่ไหว)'; badgeClass = 'bg-rose-100 text-rose-800 border-rose-300'; }
+  else { emoji = '😭'; label = 'เจ็บปวดรุนแรงที่สุดในชีวิต'; badgeClass = 'bg-red-200 text-red-900 border-red-400 animate-pulse'; }
 
   emojiEl.textContent = emoji;
-  textEl.textContent = `${num}/10 คะแนน - ${label}`;
-  badgeEl.className = `inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-bold border self-start sm:self-auto transition-all ${badgeClass}`;
+  textEl.textContent = `${num} / 10 (${label})`;
+  badgeEl.className = `inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-bold border transition ${badgeClass}`;
+}
+function setFallPainScore(score) {
+  fallPainScoreTouched = true;
+  const slider = document.getElementById('fallPainScore');
+  if (slider) slider.value = score;
+  handleFallPainScoreChange(score);
 }
 const handleFallPainSliderTouch = handleFallPainScoreChange;
+if (typeof window !== 'undefined') {
+  window.toggleFallGroup = toggleFallGroup;
+  window.handleFallGroupNoneToggle = handleFallGroupNoneToggle;
+  window.handleFallGroupItemChange = handleFallGroupItemChange;
+  window.handleFallProdromeChange = handleFallProdromeChange;
+  window.clearFallPainScore = clearFallPainScore;
+  window.handleFallPainScoreChange = handleFallPainScoreChange;
+  window.setFallPainScore = setFallPainScore;
+}
 
 // --- Clinical Decision Support & Evaluation Functions ---
 function evaluateFallRedFlags(patient) {
@@ -148,7 +263,7 @@ function evaluateFallRedFlags(patient) {
   const hasClosedExtremityDeformity = (patient.fallParentUpperExtremity && (upperSigns.includes('deformity_dislocation_arm') || upperSigns.includes('cannot_move_arm_hand') || upperSigns.includes('nerve_numbness_arm'))) ||
     (patient.fallParentLowerExtremity && (lowerSigns.includes('inability_to_bear_weight') || lowerSigns.includes('nerve_numbness_cannot_dorsiflex'))) ||
     (patient.fallParentChest && chestSigns.includes('deformity_crepitus_clavicle_ribs')) ||
-    (patient.fallParentHeadFace && headSigns.includes('jaw_malocclusion_broken_tooth'));
+    (patient.fallParentHeadFace && (headSigns.includes('jaw_malocclusion') || headSigns.includes('jaw_malocclusion_broken_tooth')));
 
   if (hasClosedExtremityDeformity && !rfs.some(r => r.key === 'rf_fall_open_fracture_neurovascular_hip')) {
     addRf('rf_fall_extremity_fracture_inability_to_bear_weight', 'ESI 3',
@@ -174,6 +289,8 @@ function formatFallMechanisms(patient) {
     labels.push(`พลัดตกจากที่สูง${hStr ? ` [${hStr}]` : ''}${patient.fallMechHeightDetail ? ` (${patient.fallMechHeightDetail})` : ''}`);
   }
   if (mechs.includes('blunt_heavy_impact')) labels.push(`ชนกระแทก/ของหนักทับ${patient.fallMechBluntDetail ? ` (${patient.fallMechBluntDetail})` : ''}`);
+  if (mechs.includes('sports_injury')) labels.push(`บาดเจ็บจากการเล่นกีฬา${patient.fallMechSportsDetail ? ` (${patient.fallMechSportsDetail})` : ''}`);
+  if (mechs.includes('ankle_sprain')) labels.push(`ข้อเท้าพลิก${patient.fallMechAnkleDetail ? ` (${patient.fallMechAnkleDetail})` : ''}`);
   if (mechs.includes('sports_twist')) labels.push(`บาดเจ็บจากการเล่นกีฬา/ข้อพลิกผิดท่า${patient.fallMechSportsDetail ? ` (${patient.fallMechSportsDetail})` : ''}`);
   if (mechs.includes('other_mechanism')) labels.push(`สาเหตุอื่น${patient.fallMechOtherDetail ? ` (${patient.fallMechOtherDetail})` : ''}`);
   return labels.join(', ');
@@ -190,7 +307,11 @@ function formatFallWoundStatus(patient) {
 }
 
 function formatFallProdrome(patient) {
-  if (patient.fallProdrome === 'has_prodrome') return 'มีอาการวูบ หน้ามืด เวียนศีรษะ ใจสั่น หรืออ่อนแรงนำมาก่อนล้ม (Syncopal Fall)';
+  if (patient.fallProdrome === 'has_prodrome') {
+    return patient.fallProdromeDetail
+      ? `มีอาการวูบ หน้ามืด เวียนศีรษะ ใจสั่น หรืออ่อนแรงนำมาก่อนล้ม (${patient.fallProdromeDetail}) (Syncopal Fall)`
+      : 'มีอาการวูบ หน้ามืด เวียนศีรษะ ใจสั่น หรืออ่อนแรงนำมาก่อนล้ม (Syncopal Fall)';
+  }
   if (patient.fallProdrome === 'no_prodrome') return 'ไม่มีอาการผิดปกตินำมาก่อน (อุบัติเหตุโดยตรง Mechanical Fall)';
   return 'ไม่ได้ระบุ';
 }
@@ -312,12 +433,15 @@ function renderFallRapidHpi(patient) {
   else if (patient.fallParentHeadFace) negatives.push('ไม่มีประวัติสลบหรือหมดสติ');
   if (headSigns.includes('severe_headache_vomit_drowsy')) positives.push('ปวดศีรษะรุนแรง ซึมลง หรือมีอาเจียน');
   if (headSigns.includes('csf_leak_ear_nose')) positives.push('มีเลือดหรือน้ำใสไหลออกจากรูหู/จมูก (สงสัย Basilar skull fracture)');
+  if (headSigns.includes('jaw_malocclusion') || headSigns.includes('jaw_malocclusion_broken_tooth')) positives.push('อ้าปากไม่ได้ ขากรรไกรค้าง หรือสบฟันไม่สนิท');
+  if (headSigns.includes('broken_loose_tooth')) positives.push('ฟันหัก บิ่น หรือฟันโยกคลอน');
   if (neckSigns.includes('severe_cervical_pain_limited_rom')) positives.push('ปวดตึงแนวกระดูกต้นคอรุนแรง ขยับคอไม่ได้');
   if (neckSigns.includes('radicular_shock_numbness_weakness')) positives.push('มีอาการชา/ไฟช็อต/อ่อนแรงร้าวลงแขนขา');
   if (chestSigns.includes('dyspnea_shortness_of_breath')) positives.push('หายใจหอบเหนื่อย แน่นหน้าอก');
   if (chestSigns.includes('pleuritic_chest_pain')) positives.push('เจ็บแปล๊บหน้าอกเวลาหายใจเข้าลึก');
   if (abdSigns.includes('severe_abd_pain_distension')) positives.push('ปวดท้องรุนแรง ท้องอืดตึง');
   if (abdSigns.includes('pelvic_hip_pain_cannot_bear_weight')) positives.push('ปวดสะโพก/เชิงกรานมากจนขยับขาไม่ได้');
+  if (abdSigns.includes('sciatica_numbness_cauda_equina')) positives.push('ปวดร้าวลงขา ชาขา หรือกลั้นปัสสาวะ/อุจจาระไม่ได้');
   if (abdSigns.includes('urinary_retention_hematuria')) positives.push('ปัสสาวะไม่ออกหรือมีเลือดปน');
   if (upperSigns.includes('deformity_dislocation_arm')) positives.push('แขน/ข้อมือ/นิ้วมือ บวมผิดรูปหรือข้อหลุด');
   if (upperSigns.includes('open_fracture_arm')) positives.push('กระดูกแขนหักแบบมีแผลเปิด (Open fracture)');
@@ -366,7 +490,7 @@ function renderFallRapidHpi(patient) {
   const tetText = patient.fallTetanusHx ? `\n• ประวัติวัคซีนบาดทะยัก: ${tMap[patient.fallTetanusHx] || patient.fallTetanusHx}` : '';
   const femText = (isFallFemalePatient(patient) && (patient.fallLmpDate || patient.fallPregnancyStatus)) ? `\n• ประวัติสตรี: LMP ${patient.fallLmpDate || 'ไม่ระบุ'} (${pregMap[patient.fallPregnancyStatus] || 'ไม่ได้ระบุ'})` : '';
   const rfText = rfs.length > 0
-    ? `🚩 ตรวจพบสัญญาณเตือนฉุกเฉิน (${rfs.length} รายการ):\n${rfs.map(r => `  * [${r.level}] ${r.title}`).join('\n')}`
+    ? `🚩 RED FLAGS DETECTED (${rfs.length} รายการ):\n${rfs.map(r => `  * [${r.level}] ${r.title}`).join('\n')}`
     : '✓ ไม่พบสัญญาณเตือนวิกฤต ESI 1-2 ในขณะคัดกรอง (Low-Risk Blunt/Fall Trauma)';
 
   return `[Chief Complaint (CC)]
@@ -486,6 +610,7 @@ function updateFallOutputs(rec) {
       mechanisms: Array.isArray(rec.fallMechanisms) ? rec.fallMechanisms : [],
       height_level: rec.fallHeightLevel || null,
       prodrome: rec.fallProdrome || null,
+      prodrome_detail: rec.fallProdromeDetail || '',
       wound_status: rec.fallWoundStatus || null,
       pain_score: rec.painScore,
       antithrombotic: rec.fallAntithrombotic || null,
@@ -522,54 +647,7 @@ function updateFallOutputs(rec) {
   };
   const jsonEl = document.getElementById('jsonViewer');
   if (jsonEl) jsonEl.textContent = JSON.stringify(jsonOutput, null, 2);
-}
-
-function generateFallCds(patient, { rfs, ddxList = [], workupList = [], managementList = [] } = {}) {
-  if (!patient) return '';
-  const redFlags = rfs || evaluateFallRedFlags(patient);
-  const setPlan = (dxs, wus, mgmts) => {
-    ddxList.push(...dxs); workupList.push(...wus); managementList.push(...mgmts);
-  };
-
-  if (redFlags.some(r => r.key === 'rf_fall_high_energy_shock_internal_bleed')) {
-    setPlan(
-      ['1. 🚨 High-Energy Multiple Trauma with Hemorrhagic Shock', '2. Blunt Abdominal Trauma (Liver / Spleen Laceration)', '3. Blunt Thoracic Trauma (Hemopneumothorax / Pulmonary Contusion)'],
-      ['ATLS Primary Survey (A-B-C-D-E)', 'Bedside eFAST (Focused Assessment with Sonography in Trauma)', 'Portable Chest X-ray & Pelvis AP X-ray', 'CBC, Coagulogram, Type & Screen / Crossmatch, VBG/Lactate'],
-      ['2 Large-bore IV lines (16-18G) + Warm crystalloid resuscitation', 'Pelvic binder if suspected unstable pelvic fracture', 'Urgent Surgical / Trauma Consult']
-    );
-  } else if (redFlags.some(r => r.key === 'rf_fall_cspine_spinal_cord_injury')) {
-    setPlan(
-      ['1. 🚨 Cervical Spine Fracture / Subluxation', '2. Traumatic Spinal Cord Injury (SCI) / Central Cord Syndrome'],
-      ['Stat Non-contrast CT Cervical Spine / Thoracolumbar Spine', 'Complete Neurological Assessment (ASIA Impairment Scale)'],
-      ['Rigid Cervical Collar + Full Spinal Motion Restriction (Log-roll)', 'Avoid hypotension (Maintain MAP > 85 mmHg for spinal cord perfusion)', 'Urgent Orthopedic / Neurosurgical Consult']
-    );
-  } else if (redFlags.some(r => r.key === 'rf_fall_tbi_anticoagulant_head')) {
-    setPlan(
-      ['1. 🚨 Traumatic Brain Injury (TBI) / Traumatic Subdural / Epidural Hematoma', '2. Traumatic Subarachnoid Hemorrhage (tSAH)'],
-      ['Stat Non-contrast CT Brain', 'Coagulation Profile (PT/INR, PTT)'],
-      ['Frequent Neuro-vital signs check (every 15-30 min)', 'Anticoagulant reversal protocol if intracranial hemorrhage confirmed']
-    );
-  } else if (redFlags.some(r => r.key === 'rf_fall_syncopal_medical_cause')) {
-    setPlan(
-      ['1. 🚨 Cardiogenic Syncope (Cardiac Arrhythmia / Structural Heart Disease)', '2. Acute Coronary Syndrome (ACS) with Secondary Fall', '3. Acute Ischemic Stroke with Secondary Fall'],
-      ['12-Lead ECG Stat + Cardiac Monitor', 'Stat DTX (Point-of-care Blood Glucose)', 'Troponin-T / I, Electrolytes'],
-      ['Continuous cardiac rhythm monitoring', 'Orthostatic vital signs evaluation']
-    );
-  } else if (redFlags.some(r => r.key === 'rf_fall_open_fracture_neurovascular_hip')) {
-    setPlan(
-      ['1. 🚨 Femoral Neck / Intertrochanteric Hip Fracture', '2. Open Fracture with Soft Tissue Defect', '3. Impending Compartment Syndrome / Acute Limb Ischemia'],
-      ['X-ray Pelvis AP & Hip AP/Cross-table Lateral', 'X-ray injured extremity 2 views (AP / Lateral including joints above & below)'],
-      ['Early reduction & splinting with neurovascular check pre/post splint', 'IV Antibiotics (Cefazolin) within 1 hour for Open Fracture', 'Multimodal analgesia & Urgent Orthopedic Consult']
-    );
-  } else {
-    setPlan(
-      ['1. Contusion / Sprain / Strain', '2. Simple Closed Fracture (Rule-out by X-ray)'],
-      ['Plain Radiography (X-ray) of injured area (2 views)'],
-      ['RICE protocol (Rest, Ice, Compression, Elevation)', 'Analgesia (Acetaminophen / NSAIDs if no contraindication)', 'Temporary immobilization / Elastic bandage']
-    );
-  }
-
-  return ddxList.join('\n');
+  return { rapid: rapidText, narrative: narrativeText, json: jsonOutput };
 }
 
 // --- FEMALE LMP & ANATOMY HELPERS ---
@@ -586,7 +664,7 @@ function toggleFallFemaleSection(forceShow) {
   sec.classList.toggle('hidden', !show);
   if (!show) {
     const lmp = document.getElementById('fallLmpDate'); if (lmp) lmp.value = '';
-    const preg = document.getElementById('fallPregnancyStatus'); if (preg) preg.value = '';
+    document.querySelectorAll('input[name="fallPregnancyStatus"]').forEach(r => { r.checked = false; });
   }
 }
 function checkAndDisplayFallLmp(patient) {
@@ -599,19 +677,22 @@ function checkAndDisplayFallLmp(patient) {
 function renderFallPart(id, label, hasCenter = false) {
   return `<div class="p-2.5 rounded-xl border border-slate-200 bg-white">
   <label class="flex items-center cursor-pointer">
-    <input type="checkbox" id="${id}" onchange="toggleFallGroup('${id}SidesContainer', this.checked)" class="text-medical-600 mr-2 h-4 w-4 rounded">
-    <span class="text-xs sm:text-sm font-medium text-slate-800">${label}</span>
+    <input type="checkbox" id="${id}" onchange="toggleFallGroup('${id}SidesContainer', this.checked)" class="text-medical-600 h-4 w-4 rounded flex-shrink-0">
+    <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800">${label}</span>
   </label>
-  <div id="${id}SidesContainer" class="hidden mt-2 pl-6 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs border-t border-slate-100 pt-2">
-    <span class="text-[11px] font-semibold text-slate-500">ด้าน:</span>
-    <label class="inline-flex items-center cursor-pointer"><input type="checkbox" name="${id}Sides" value="left" class="mr-1 text-medical-600 rounded"> ซ้าย</label>
-    <label class="inline-flex items-center cursor-pointer"><input type="checkbox" name="${id}Sides" value="right" class="mr-1 text-medical-600 rounded"> ขวา</label>
-    ${hasCenter ? `<label class="inline-flex items-center cursor-pointer"><input type="checkbox" name="${id}Sides" value="center" class="mr-1 text-medical-600 rounded"> ตรงกลาง</label>` : ''}
-    <span class="text-slate-300 mx-1.5">|</span>
-    <span class="text-[11px] font-semibold text-slate-500">การบาดเจ็บ:</span>
-    <label class="inline-flex items-center cursor-pointer"><input type="checkbox" name="${id}Injuries" value="wound" class="mr-1 text-medical-600 rounded"> มีแผล</label>
-    <label class="inline-flex items-center cursor-pointer"><input type="checkbox" name="${id}Injuries" value="pain_swelling" class="mr-1 text-medical-600 rounded"> ปวด/บวม</label>
-    <label class="inline-flex items-center cursor-pointer"><input type="checkbox" name="${id}Injuries" value="deformity" class="mr-1 text-medical-600 rounded"> ผิดรูป</label>
+  <div id="${id}SidesContainer" class="hidden mt-2 pl-6 flex flex-col gap-1.5 text-xs border-t border-slate-100 pt-2">
+    <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
+      <span class="text-[11px] font-semibold text-slate-500">ด้าน / ข้าง:</span>
+      <label class="inline-flex items-center cursor-pointer"><input type="checkbox" name="${id}Sides" value="left" class="mr-1 text-medical-600 rounded"> ซ้าย</label>
+      <label class="inline-flex items-center cursor-pointer"><input type="checkbox" name="${id}Sides" value="right" class="mr-1 text-medical-600 rounded"> ขวา</label>
+      ${hasCenter ? `<label class="inline-flex items-center cursor-pointer"><input type="checkbox" name="${id}Sides" value="center" class="mr-1 text-medical-600 rounded"> ตรงกลาง</label>` : ''}
+    </div>
+    <div class="flex flex-wrap items-center gap-x-3 gap-y-1 pt-1 border-t border-slate-50">
+      <span class="text-[11px] font-semibold text-slate-500">ลักษณะบาดเจ็บ:</span>
+      <label class="inline-flex items-center cursor-pointer"><input type="checkbox" name="${id}Injuries" value="wound" class="mr-1 text-medical-600 rounded"> มีแผล</label>
+      <label class="inline-flex items-center cursor-pointer"><input type="checkbox" name="${id}Injuries" value="pain_swelling" class="mr-1 text-medical-600 rounded"> ปวด/บวม</label>
+      <label class="inline-flex items-center cursor-pointer"><input type="checkbox" name="${id}Injuries" value="deformity" class="mr-1 text-medical-600 rounded"> ผิดรูป</label>
+    </div>
   </div>
 </div>`;
 }
@@ -620,19 +701,61 @@ function renderFallDigits(id, label) {
   const row = (sideName, sideLabel) => `<div class="flex items-center flex-wrap gap-2"><span class="text-[11px] font-semibold text-slate-500 w-9">${sideLabel}:</span>${digits.map(([v,t]) => `<label class="inline-flex items-center cursor-pointer"><input type="checkbox" name="${id}${sideName}" value="${v}" class="mr-1 text-medical-600 rounded"> ${t}</label>`).join('')}</div>`;
   return `<div class="p-2.5 rounded-xl border border-slate-200 bg-white">
   <label class="flex items-center cursor-pointer">
-    <input type="checkbox" id="${id}" onchange="toggleFallGroup('${id}SidesContainer', this.checked)" class="text-medical-600 mr-2 h-4 w-4 rounded">
-    <span class="text-xs sm:text-sm font-medium text-slate-800">${label}</span>
+    <input type="checkbox" id="${id}" onchange="toggleFallGroup('${id}SidesContainer', this.checked)" class="text-medical-600 h-4 w-4 rounded flex-shrink-0">
+    <span class="ml-3 text-xs sm:text-sm font-semibold text-slate-800">${label}</span>
   </label>
   <div id="${id}SidesContainer" class="hidden mt-2 pl-6 flex flex-col gap-1.5 text-xs border-t border-slate-100 pt-2">
     ${row('LeftDigits','ซ้าย')}${row('RightDigits','ขวา')}
     <div class="flex items-center flex-wrap gap-x-3 gap-y-1 pt-1 border-t border-slate-50">
-      <span class="text-[11px] font-semibold text-slate-500">การบาดเจ็บ:</span>
+      <span class="text-[11px] font-semibold text-slate-500">ลักษณะบาดเจ็บ:</span>
       <label class="inline-flex items-center cursor-pointer"><input type="checkbox" name="${id}Injuries" value="wound" class="mr-1 text-medical-600 rounded"> มีแผล</label>
       <label class="inline-flex items-center cursor-pointer"><input type="checkbox" name="${id}Injuries" value="pain_swelling" class="mr-1 text-medical-600 rounded"> ปวด/บวม</label>
       <label class="inline-flex items-center cursor-pointer"><input type="checkbox" name="${id}Injuries" value="deformity" class="mr-1 text-medical-600 rounded"> ผิดรูป</label>
     </div>
   </div>
 </div>`;
+}
+function renderFallRegionBox({
+  parentId,
+  subGroupId,
+  title,
+  desc,
+  partsHtml,
+  signsName,
+  signsNoneId,
+  signsCols = 'grid-cols-1 sm:grid-cols-2',
+  signs
+}) {
+  return `<div class="space-y-3">
+    <label class="selectable-card flex items-center p-3.5 rounded-xl border-2 border-slate-200 bg-slate-50 hover:border-medical-400 transition cursor-pointer">
+      <input type="checkbox" id="${parentId}" onchange="toggleFallGroup('${subGroupId}', this.checked)" class="text-medical-600 focus:ring-medical-500 h-5 w-5 rounded flex-shrink-0">
+      <div class="ml-3 leading-snug">
+        <span class="text-sm font-bold text-slate-900">${Array.isArray(title) ? wrapFallWords(title) : title}</span>
+        <p class="text-xs text-slate-500 mt-0.5">${desc}</p>
+      </div>
+    </label>
+    <div id="${subGroupId}" class="hidden pl-4 sm:pl-6 space-y-4 border-l-2 border-medical-200">
+      <div>
+        <p class="text-xs text-slate-600 font-semibold mb-2">จุดที่บาดเจ็บ (เลือกแล้วระบุด้านและลักษณะบาดเจ็บ):</p>
+        <div class="space-y-2">${partsHtml}</div>
+      </div>
+      <div class="p-3 bg-slate-50 rounded-xl border border-slate-200">
+        ${renderFallSysHeader({
+          label: 'อาการสำคัญที่พบร่วมด้วย (เลือกได้หลายข้อ)',
+          icon: 'alert-circle',
+          colorClass: 'bg-amber-100 text-amber-700',
+          toggleId: signsNoneId,
+          toggleLabel: 'ไม่มีอาการร่วม',
+          toggleOnchange: `handleFallGroupNoneToggle(this, '${signsName}')`
+        })}
+        ${renderFallGrid(signsCols, signs, {
+          name: signsName,
+          compact: true,
+          onchange: `handleFallGroupItemChange(this, '${signsNoneId}')`
+        })}
+      </div>
+    </div>
+  </div>`;
 }
 
 // --- FORM HTML TEMPLATE ---
@@ -645,609 +768,405 @@ const FALL_TRAUMA_FORM_HTML = `
       <i data-lucide="info" class="w-5 h-5"></i>
     </div>
     <div class="space-y-1">
-      <div class="font-bold text-amber-950 flex items-center gap-1.5">
-        <span>ข้อแนะนำการดูแลตนเองเบื้องต้นระหว่างรอพบแพทย์:</span>
-      </div>
+      <div class="font-bold text-amber-950">ข้อแนะนำระหว่างรอพบแพทย์:</div>
       <ul class="list-disc pl-4 space-y-1 text-amber-800 text-xs">
-        <li><strong>ห้ามขยับ ดึง หรือดัดส่วนที่ปวดบวมผิดรูป:</strong> หากสงสัยกระดูกหัก ข้อหลุด หรือปวดต้นคอและแผ่นหลัง <strong>ให้อยู่นิ่งๆ ในท่าที่สบายที่สุด</strong> ห้ามบีบนวดหรือดัดกระดูกเข้าที่ด้วยตนเองเด็ดขาด</li>
-        <li><strong>กรณีมีบาดแผลเลือดออกร่วมด้วย:</strong> ใช้ผ้าสะอาดกดลงบนบาดแผลโดยตรงให้แน่นและต่อเนื่อง</li>
-        <li><strong>ควรงดน้ำและอาหารไว้ก่อน:</strong> หากมีอาการปวดรุนแรง แขนขาผิดรูป หรือปวดท้อง/ศีรษะมาก ควรงดน้ำและอาหารชั่วคราว เผื่อกรณีที่แพทย์จำเป็นต้องให้ยาระงับความรู้สึกหรือผ่าตัดฉุกเฉิน</li>
+        <li><strong>ห้ามขยับ ดึง หรือดัดส่วนที่ผิดรูป:</strong> หากสงสัยกระดูกหัก ข้อหลุด หรือปวดต้นคอ/หลัง <strong>ให้อยู่นิ่งในท่าที่สบายที่สุด</strong></li>
+        <li><strong>หากมีแผลเลือดออก:</strong> ใช้ผ้าสะอาดกดลงบนแผลโดยตรงให้แน่นต่อเนื่อง</li>
+        <li><strong>ควรงดน้ำและอาหารชั่วคราว:</strong> หากปวดรุนแรง แขนขาผิดรูป หรือปวดศีรษะ/ท้องมาก เผื่อกรณีต้องให้ยาระงับความรู้สึกหรือผ่าตัด</li>
       </ul>
     </div>
   </div>
   </div></div>
 
-  <!-- CARD 1: ข้อมูลเหตุการณ์ กลไกการบาดเจ็บ และอาการนำก่อนเกิดเหตุ -->
-  <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
-    <div class="flex items-center space-x-3 mb-4 pb-3 border-b border-slate-100">
+  <!-- CARD 1: ข้อมูลเหตุการณ์ กลไก และอาการนำ -->
+  <div class="bg-white rounded-2xl p-5 sm:p-6 shadow-sm border border-slate-200 space-y-5">
+    <div class="flex items-center space-x-3 pb-3 border-b border-slate-100">
       <div class="bg-medical-100 text-medical-700 p-2 rounded-xl">
         <i data-lucide="alert-circle" class="w-5 h-5"></i>
       </div>
       <div>
-        <h2 class="text-base font-bold text-slate-900">1. ข้อมูลเหตุการณ์ กลไกการบาดเจ็บ และอาการนำก่อนเกิดเหตุ</h2>
-        <p class="text-xs text-slate-500">ระยะเวลา ลักษณะเหตุการณ์ ความสูง อาการวูบนำ และสถานะบาดแผล</p>
+        <h2 class="text-base font-bold text-slate-900">1. ข้อมูลเหตุการณ์ กลไก และอาการนำก่อนเกิดเหตุ</h2>
+        <p class="text-xs text-slate-500">ระยะเวลา กลไกการบาดเจ็บ ความสูง อาการวูบนำ และสถานะแผล</p>
       </div>
     </div>
 
     <!-- 1.1 ระยะเวลาที่เกิดเหตุ -->
-    <div class="mb-5">
-      <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
-        1.1 เหตุการณ์พลัดตกหกล้มหรือได้รับบาดเจ็บเกิดขึ้นมานานเท่าใด <span class="text-rose-500">*</span>
+    <div>
+      <label class="block text-xs font-semibold text-slate-800 mb-1.5">
+        1.1 พลัดตกหกล้มหรือได้รับบาดเจ็บมานานเท่าไรแล้ว <span class="text-rose-500">*</span>
       </label>
-      <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
-        <div class="col-span-1 sm:col-span-2">
-          <input type="number" id="fallDurationVal" min="1" max="365" placeholder="ระบุตัวเลข เช่น 2"
-            class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-medical-500 focus:bg-white transition">
-        </div>
-        <div class="col-span-1">
-          <select id="fallDurationUnit"
-            class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-medical-500 focus:bg-white transition">
-            <option value="minutes">นาที</option>
-            <option value="hours" selected>ชั่วโมง</option>
-            <option value="days">วัน</option>
-            <option value="weeks">สัปดาห์</option>
-            <option value="months">เดือน</option>
-            <option value="years">ปี</option>
-          </select>
-        </div>
+      <div class="flex items-center gap-2 max-w-sm">
+        <input type="number" id="fallDurationVal" min="1" max="365" placeholder="เช่น 2"
+          class="w-24 bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-sm font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-medical-500 focus:bg-white transition">
+        <select id="fallDurationUnit"
+          class="bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-medical-500 focus:bg-white transition">
+          <option value="minutes">นาที</option>
+          <option value="hours" selected>ชั่วโมง</option>
+          <option value="days">วัน</option>
+          <option value="weeks">สัปดาห์</option>
+          <option value="months">เดือน</option>
+          <option value="years">ปี</option>
+        </select>
       </div>
     </div>
 
     <!-- 1.2 ลักษณะเหตุการณ์ หรือกลไกการบาดเจ็บ -->
-    <div class="mb-5">
-      <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
-        1.2 ลักษณะเหตุการณ์ หรือกลไกการบาดเจ็บ (เลือกได้หลายข้อ):
+    <div class="pt-3 border-t border-slate-100">
+      <label class="block text-xs font-semibold text-slate-800 mb-2">
+        1.2 กลไกหรือลักษณะเหตุการณ์ (เลือกได้หลายข้อ):
       </label>
-      <div class="space-y-2">
-        <!-- ลื่นล้มระดับพื้นราบ -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+        ${renderFallMechCard('ground_level_fall', ['ลื่นล้ม / สะดุดล้ม'], 'หกล้มระดับพื้นราบขณะเดินหรือยืน', 'fallMechGroundDetailContainer', 'fallMechGroundDetail', 'พิมพ์ระบุ เช่น ลื่นในห้องน้ำ, สะดุดขอบฟุตบาท...')}
         <div>
-          <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-            <input type="checkbox" name="fallMechanisms" value="ground_level_fall"
-              onchange="toggleFallGroup('fallMechGroundDetailContainer', this.checked)"
-              class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
-            <span class="text-xs sm:text-sm text-slate-800">ลื่นล้ม สะดุดล้ม หรือหกล้มในระดับพื้นราบ (เดินหรือยืนอยู่แล้วล้ม)</span>
-          </label>
-          <div id="fallMechGroundDetailContainer" class="hidden mt-2 pl-6">
-            <input type="text" id="fallMechGroundDetail" placeholder="พิมพ์ระบุ เช่น ลื่นในห้องน้ำ, สะดุดขอบฟุตบาท, ก้าวพลาด..."
-              class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-medical-500 focus:bg-white">
-          </div>
+          ${renderFallOption({
+            name: 'fallMechanisms',
+            value: 'bed_chair_fall',
+            title: ['ตกเตียง / เก้าอี้'],
+            desc: 'ตกจากเตียง โซฟา หรือที่นั่งไม่สูง'
+          })}
         </div>
-
-        <!-- ตกจากเตียง/เก้าอี้ -->
-        <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-          <input type="checkbox" name="fallMechanisms" value="bed_chair_fall"
-            class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
-          <span class="text-xs sm:text-sm text-slate-800">ตกจากเตียง เก้าอี้ โซฟา หรือที่นั่งไม่สูงมาก</span>
-        </label>
-
-        <!-- ตกบันได -->
+        ${renderFallMechCard('stairs_fall', ['ตกบันได'], 'ลื่นหรือก้าวพลาดตกขั้นบันได', 'fallMechStairsDetailContainer', 'fallMechStairsDetail', 'พิมพ์ระบุ เช่น ตกบันได 5 ขั้น, ตกชั้นลอย...')}
         <div>
-          <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-            <input type="checkbox" name="fallMechanisms" value="stairs_fall"
-              onchange="toggleFallGroup('fallMechStairsDetailContainer', this.checked)"
-              class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
-            <span class="text-xs sm:text-sm text-slate-800">ตกบันได หรือก้าวพลาดตกขั้นบันได</span>
-          </label>
-          <div id="fallMechStairsDetailContainer" class="hidden mt-2 pl-6">
-            <input type="text" id="fallMechStairsDetail" placeholder="พิมพ์ระบุ เช่น ตกบันได 5 ขั้น, ก้าวพลาดตกจากชั้นลอย..."
-              class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-medical-500 focus:bg-white">
-          </div>
-        </div>
-
-        <!-- พลัดตกจากที่สูง -->
-        <div>
-          <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-            <input type="checkbox" name="fallMechanisms" value="height_fall"
-              onchange="toggleFallGroup('fallMechHeightContainer', this.checked)"
-              class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
-            <span class="text-xs sm:text-sm text-slate-800">พลัดตกจากที่สูง (เช่น ต้นไม้, หลังคา, นั่งร้าน, ระเบียง, อาคาร)</span>
-          </label>
-          <div id="fallMechHeightContainer" class="hidden mt-2 pl-6 space-y-2">
+          ${renderFallOption({
+            name: 'fallMechanisms',
+            value: 'height_fall',
+            title: ['พลัดตกจากที่สูง'],
+            desc: 'ต้นไม้ หลังคา นั่งร้าน ระเบียง อาคาร',
+            onchange: "toggleFallGroup('fallMechHeightContainer', this.checked)"
+          })}
+          <div id="fallMechHeightContainer" class="hidden mt-2 pl-3 border-l-2 border-medical-200 space-y-2">
             <div class="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
               <span class="text-xs font-semibold text-slate-700 block">ระดับความสูงโดยประมาณ:</span>
-              <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                <label class="flex items-center text-xs text-slate-700 cursor-pointer">
-                  <input type="radio" name="fallHeightLevel" value="under_2m" class="mr-1.5 text-medical-600">
-                  <span>สูงไม่เกิน 2 เมตร (< 1 ชั้น)</span>
-                </label>
-                <label class="flex items-center text-xs text-slate-700 cursor-pointer">
-                  <input type="radio" name="fallHeightLevel" value="2_to_3m" class="mr-1.5 text-medical-600">
-                  <span>สูง 2 – 3 เมตร (~ 1 ชั้น)</span>
-                </label>
-                <label class="flex items-center text-xs text-slate-700 cursor-pointer">
-                  <input type="radio" name="fallHeightLevel" value="over_3m" class="mr-1.5 text-medical-600">
-                  <span>สูง > 3 เมตร (ชั้น 2 ขึ้นไป)</span>
-                </label>
-              </div>
+              ${renderFallGrid('grid-cols-1', [
+                { kind: 'radio', name: 'fallHeightLevel', value: 'under_2m', title: ['ไม่เกิน 2 เมตร'], desc: 'ต่ำกว่า 1 ชั้น', compact: true },
+                { kind: 'radio', name: 'fallHeightLevel', value: '2_to_3m', title: ['2 – 3 เมตร'], desc: 'ประมาณ 1 ชั้น', compact: true },
+                { kind: 'radio', name: 'fallHeightLevel', value: 'over_3m', title: ['เกิน 3 เมตร'], desc: 'ชั้น 2 ขึ้นไป', compact: true }
+              ])}
               <input type="text" id="fallMechHeightDetail" placeholder="พิมพ์ระบุสิ่งที่ตกลงมา เช่น ตกต้นไม้สูง 3 เมตร, ตกหลังคา..."
-                class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-medical-500">
+                class="w-full bg-white border border-slate-300 rounded-xl px-3 py-1.5 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-medical-500">
             </div>
           </div>
         </div>
-
-        <!-- ชนกระแทก/ของหนักทับ -->
-        <div>
-          <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-            <input type="checkbox" name="fallMechanisms" value="blunt_heavy_impact"
-              onchange="toggleFallGroup('fallMechBluntDetailContainer', this.checked)"
-              class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
-            <span class="text-xs sm:text-sm text-slate-800">ชนกระแทกกับสิ่งของ หรือถูกของแข็ง/ของหนักตกใส่หรือทับ</span>
-          </label>
-          <div id="fallMechBluntDetailContainer" class="hidden mt-2 pl-6">
-            <input type="text" id="fallMechBluntDetail" placeholder="พิมพ์ระบุสิ่งที่มากระแทกหรือทับ เช่น ตู้ล้มทับ, เหล็กหล่นใส่..."
-              class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-medical-500 focus:bg-white">
-          </div>
-        </div>
-
-        <!-- กีฬา/ข้อพลิก -->
-        <div>
-          <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-            <input type="checkbox" name="fallMechanisms" value="sports_twist"
-              onchange="toggleFallGroup('fallMechSportsDetailContainer', this.checked)"
-              class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
-            <span class="text-xs sm:text-sm text-slate-800">บาดเจ็บจากการเล่นกีฬา ออกกำลังกาย หรือข้อพลิก/แพลง/บิดหมุนผิดท่า</span>
-          </label>
-          <div id="fallMechSportsDetailContainer" class="hidden mt-2 pl-6">
-            <input type="text" id="fallMechSportsDetail" placeholder="พิมพ์ระบุชนิดกีฬาหรือท่าทาง เช่น เตะฟุตบอลข้อเท้าพลิก, กระโดดลงมาเข่าบิด..."
-              class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-medical-500 focus:bg-white">
-          </div>
-        </div>
-
-        <!-- สาเหตุอื่นๆ -->
-        <div>
-          <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-            <input type="checkbox" name="fallMechanisms" value="other_mechanism"
-              onchange="toggleFallGroup('fallMechOtherDetailContainer', this.checked)"
-              class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
-            <span class="text-xs sm:text-sm text-slate-800">สาเหตุอื่นๆ</span>
-          </label>
-          <div id="fallMechOtherDetailContainer" class="hidden mt-2 pl-6">
-            <input type="text" id="fallMechOtherDetail" placeholder="พิมพ์ระบุสาเหตุ..."
-              class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-medical-500 focus:bg-white">
-          </div>
-        </div>
+        ${renderFallMechCard('blunt_heavy_impact', ['ถูกกระแทก', '/ ของหนักทับ'], 'ชนสิ่งของ หรือของหนักหล่นใส่/ทับ', 'fallMechBluntDetailContainer', 'fallMechBluntDetail', 'พิมพ์ระบุสิ่งที่มากระแทกหรือทับ เช่น ตู้ล้มทับ, เหล็กหล่นใส่...')}
+        ${renderFallMechCard('sports_injury', ['บาดเจ็บจากกีฬา'], 'ล้ม กระแทก หรือบิดระหว่างเล่นกีฬา', 'fallMechSportsDetailContainer', 'fallMechSportsDetail', 'พิมพ์ระบุ เช่น เล่นฟุตบอลชนกัน, ล้มขณะวิ่ง...')}
+        ${renderFallMechCard('ankle_sprain', ['ข้อเท้าพลิก'], 'ก้าวพลาด ตกขอบ หรือข้อเท้าบิดพลิก', 'fallMechAnkleDetailContainer', 'fallMechAnkleDetail', 'พิมพ์ระบุ เช่น ก้าวพลาดตกขอบฟุตบาท, สะดุดพื้นต่างระดับ...')}
+        ${renderFallMechCard('other_mechanism', ['สาเหตุอื่นๆ'], 'ระบุกลไกอื่นๆ เพิ่มเติม', 'fallMechOtherDetailContainer', 'fallMechOtherDetail', 'พิมพ์ระบุสาเหตุ...')}
       </div>
     </div>
 
     <!-- 1.3 อาการนำก่อนเกิดเหตุ -->
-    <div class="mb-5">
-      <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
-        1.3 ก่อนที่จะล้มหรือเกิดอุบัติเหตุ มีอาการผิดปกติของร่างกายนำมาก่อนหรือไม่: <span class="text-rose-500">*</span>
+    <div class="pt-3 border-t border-slate-100">
+      <label class="block text-xs font-semibold text-slate-800 mb-2">
+        1.3 ก่อนล้มมีอาการผิดปกตินำมาก่อนหรือไม่ <span class="text-rose-500">*</span>
       </label>
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-        <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-          <input type="radio" name="fallProdrome" value="no_prodrome" class="text-medical-600 focus:ring-medical-500 h-4 w-4 flex-shrink-0">
-          <span class="text-xs sm:text-sm text-slate-800">ไม่มีอาการผิดปกตินำมาก่อน (เกิดจากลื่น สะดุด หรืออุบัติเหตุโดยตรง)</span>
-        </label>
-        <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-          <input type="radio" name="fallProdrome" value="has_prodrome" class="text-medical-600 focus:ring-medical-500 h-4 w-4 flex-shrink-0">
-          <span class="text-xs sm:text-sm text-slate-800">มีอาการวูบ หน้ามืด เวียนศีรษะ ใจสั่น เจ็บหน้าอก หรือแขนขาอ่อนแรงนำมาก่อนแล้วจึงล้ม</span>
-        </label>
+      ${renderFallGrid('grid-cols-1 sm:grid-cols-2', [
+        {
+          kind: 'radio',
+          name: 'fallProdrome',
+          value: 'no_prodrome',
+          title: ['ไม่มีอาการนำ'],
+          desc: 'เกิดจากลื่น สะดุด หรืออุบัติเหตุโดยตรง',
+          onchange: 'handleFallProdromeChange(this.value)',
+          compact: true
+        },
+        {
+          kind: 'radio',
+          name: 'fallProdrome',
+          value: 'has_prodrome',
+          title: ['มีอาการนำ', 'ก่อนเกิดเหตุ'],
+          desc: 'วูบ หน้ามืด ใจสั่น เจ็บอก หรืออ่อนแรงก่อนล้ม',
+          onchange: 'handleFallProdromeChange(this.value)',
+          compact: true
+        }
+      ])}
+      <div id="fallProdromeDetailContainer" class="hidden mt-2.5 pl-3 border-l-2 border-medical-200">
+        <input type="text" id="fallProdromeDetail" placeholder="พิมพ์ระบุอาการนำก่อนล้ม เช่น วูบ หน้ามืด ใจสั่น เจ็บหน้าอก แขนขาอ่อนแรง..."
+          class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-1.5 text-slate-900 text-xs focus:ring-2 focus:ring-medical-500 focus:bg-white">
       </div>
     </div>
 
-    <!-- 1.4 มีบาดแผลฉีกขาดหรือเลือดออกภายนอกร่วมด้วยหรือไม่ -->
-    <div>
-      <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
-        1.4 มีบาดแผลฉีกขาดหรือเลือดออกภายนอกร่วมด้วยหรือไม่:
-      </label>
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-        <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-          <input type="radio" name="fallWoundStatus" value="no_wound" class="text-medical-600 focus:ring-medical-500 h-4 w-4 flex-shrink-0">
-          <span class="text-xs sm:text-sm text-slate-800">ไม่มีบาดแผลเปิดหรือเลือดออก (เฉพาะปวด บวม ฟกช้ำ)</span>
-        </label>
-        <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-          <input type="radio" name="fallWoundStatus" value="abrasion_stopped" class="text-medical-600 focus:ring-medical-500 h-4 w-4 flex-shrink-0">
-          <span class="text-xs sm:text-sm text-slate-800">มีแผลถลอก หรือมีแผลแตกแต่เลือดหยุดไหลแล้ว</span>
-        </label>
-        <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-          <input type="radio" name="fallWoundStatus" value="active_oozing" class="text-medical-600 focus:ring-medical-500 h-4 w-4 flex-shrink-0">
-          <span class="text-xs sm:text-sm text-slate-800">มีบาดแผลฉีกขาดและเลือดยังไหลซึมต่อเนื่อง</span>
-        </label>
-        <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-          <input type="radio" name="fallWoundStatus" value="active_spurting" class="text-medical-600 focus:ring-medical-500 h-4 w-4 flex-shrink-0">
-          <span class="text-xs sm:text-sm font-medium text-slate-900">มีแผลเลือดไหลพุ่งตามชีพจร หรือไหลทะลักมากผิดปกติ</span>
-        </label>
-      </div>
+    <!-- 1.4 บาดแผลเปิดหรือเลือดออกภายนอก -->
+    <div class="p-3.5 bg-slate-50 rounded-xl border border-slate-200">
+      ${renderFallSysHeader({
+        label: '1.4 มีบาดแผลฉีกขาดหรือเลือดออกร่วมด้วยหรือไม่',
+        icon: 'droplet',
+        colorClass: 'bg-rose-100 text-rose-700',
+        toggleKind: 'radio',
+        toggleId: 'fallWoundNoneRb',
+        toggleName: 'fallWoundStatus',
+        toggleValue: 'no_wound',
+        toggleLabel: 'ไม่มีแผล / เลือดออก'
+      })}
+      ${renderFallGrid('grid-cols-1 sm:grid-cols-3', [
+        {
+          kind: 'radio',
+          name: 'fallWoundStatus',
+          value: 'abrasion_stopped',
+          title: ['แผลถลอก / แตก', 'เลือดหยุดแล้ว'],
+          desc: 'ไม่มีเลือดไหลซึมต่อแล้ว',
+          compact: true
+        },
+        {
+          kind: 'radio',
+          name: 'fallWoundStatus',
+          value: 'active_oozing',
+          title: ['แผลฉีกขาด', 'เลือดซึมต่อเนื่อง'],
+          desc: 'ยังมีเลือดไหลซึมเรื่อยๆ',
+          compact: true
+        },
+        {
+          kind: 'radio',
+          name: 'fallWoundStatus',
+          value: 'active_spurting',
+          title: ['แผลเลือดไหลพุ่ง', '/ ทะลักมาก'],
+          desc: 'พุ่งตามชีพจร หรือออกมากผิดปกติ',
+          compact: true
+        }
+      ])}
     </div>
   </div>
 
-  <!-- CARD 2: ตำแหน่งของร่างกายที่ได้รับบาดเจ็บและอาการสำคัญร่วมด้วย (6 Anatomical Regions) -->
-  <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+  <!-- CARD 2: ตำแหน่งและอาการบาดเจ็บร่วม (6 Anatomical Regions) -->
+  <div class="bg-white rounded-2xl p-5 sm:p-6 shadow-sm border border-slate-200">
     <div class="flex items-center space-x-3 mb-4 pb-3 border-b border-slate-100">
       <div class="bg-medical-100 text-medical-700 p-2 rounded-xl">
         <i data-lucide="user-check" class="w-5 h-5"></i>
       </div>
       <div>
-        <h2 class="text-base font-bold text-slate-900">2. ตำแหน่งของร่างกายที่ได้รับบาดเจ็บและชนิดการบาดเจ็บ</h2>
-        <p class="text-xs text-slate-500">ติ๊กเลือกเฉพาะส่วนของร่างกายที่บาดเจ็บ และระบุด้าน (ซ้าย/ขวา/กลาง) แยกตามจุดได้อย่างอิสระ</p>
+        <h2 class="text-base font-bold text-slate-900">2. ตำแหน่งและอาการบาดเจ็บร่วม</h2>
+        <p class="text-xs text-slate-500">เลือกเฉพาะส่วนที่บาดเจ็บ ระบบจะเปิดช่องระบุด้านและอาการร่วมให้อัตโนมัติ</p>
       </div>
     </div>
 
-    <div class="space-y-5">
-      <!-- 2.1 ศีรษะ ใบหน้า ดวงตา หรือในช่องปาก -->
-      <div class="space-y-3">
-        <label class="selectable-card flex items-center p-3.5 rounded-xl border-2 border-slate-200 bg-slate-50 hover:border-medical-400 transition cursor-pointer">
-          <input type="checkbox" id="fallParentHeadFace" onchange="toggleFallGroup('fallHeadSubGroup', this.checked)"
-            class="text-medical-600 focus:ring-medical-500 h-5 w-5 rounded flex-shrink-0">
-          <div class="ml-3">
-            <span class="text-sm font-bold text-slate-900">2.1 บาดเจ็บที่ศีรษะ ใบหน้า ดวงตา หรือในช่องปาก</span>
-            <p class="text-xs text-slate-500">ติ๊กเลือกหากศีรษะกระแทกพื้น มีแผลแตก โนบวม หรือเจ็บใบหน้า/คาง/ฟัน</p>
-          </div>
-        </label>
+    <div class="space-y-4">
+      ${renderFallRegionBox({
+        parentId: 'fallParentHeadFace',
+        subGroupId: 'fallHeadSubGroup',
+        title: ['2.1 ศีรษะ ใบหน้า', 'ดวงตา หรือในปาก'],
+        desc: 'ศีรษะกระแทกพื้น แผลแตก โนบวม เจ็บใบหน้า/คาง/ฟัน',
+        partsHtml: [
+          renderFallPart('fallHeadScalp', 'หนังศีรษะ / หน้าผาก / ท้ายทอย', true),
+          renderFallPart('fallHeadFace', 'ใบหน้า / คิ้ว / โหนกแก้ม / ขากรรไกร / คาง', true),
+          renderFallPart('fallHeadEye', 'ดวงตา / เปลือกตา / เบ้าตา', false),
+          renderFallPart('fallHeadEar', 'ใบหู', false),
+          renderFallPart('fallHeadNoseMouth', 'จมูก / ริมฝีปาก / ฟัน / ในช่องปาก', true)
+        ].join(''),
+        signsName: 'fallHeadSigns',
+        signsNoneId: 'fallHeadSignsNoneCb',
+        signs: [
+          { value: 'loss_of_consciousness', title: ['สลบ หมดสติ', 'จำเหตุการณ์ไม่ได้'] },
+          { value: 'severe_headache_vomit_drowsy', title: ['ปวดหัวมาก ซึมลง', 'สับสน / อาเจียน'] },
+          { value: 'vision_problem_eye_swelling', title: ['ตาพร่า ภาพซ้อน', 'บวมรอบเบ้าตา'], desc: 'หรือบวมจนลืมตาไม่ขึ้น' },
+          { value: 'csf_leak_ear_nose', title: ['เลือดหรือน้ำใส', 'ออกหู / จมูก'] },
+          { value: 'jaw_malocclusion', title: ['อ้าปากไม่ได้ /', 'ขากรรไกรค้าง'], desc: 'หรือสบฟันไม่สนิท เจ็บข้อต่อขากรรไกร' },
+          { value: 'broken_loose_tooth', title: ['ฟันหัก / โยก'], desc: 'ฟันแตก บิ่น หลุด หรือโยกคลอน' }
+        ]
+      })}
 
-        <div id="fallHeadSubGroup" class="hidden pl-4 sm:pl-6 space-y-4 border-l-2 border-medical-200">
-          <div>
-            <p class="text-xs text-slate-600 font-semibold mb-2">จุดที่บาดเจ็บ (เลือกได้หลายจุด พร้อมระบุด้านและชนิดการบาดเจ็บ):</p>
-            <div class="space-y-2">
-              ${renderFallPart('fallHeadScalp', 'หนังศีรษะ / หน้าผาก / ท้ายทอย', true)}
+      ${renderFallRegionBox({
+        parentId: 'fallParentNeck',
+        subGroupId: 'fallNeckSubGroup',
+        title: ['2.2 ลำคอ หรือต้นคอ'],
+        desc: 'เจ็บแนวกระดูกต้นคอ คอด้านหน้า หรือคอด้านข้าง',
+        partsHtml: [
+          renderFallPart('fallNeckSpine', 'ต้นคอด้านหลัง (แนวกระดูกต้นคอ)', true),
+          renderFallPart('fallNeckFront', 'ลำคอด้านหน้า', true),
+          renderFallPart('fallNeckSide', 'ลำคอด้านข้าง', false)
+        ].join(''),
+        signsName: 'fallNeckSigns',
+        signsNoneId: 'fallNeckSignsNoneCb',
+        signsCols: 'grid-cols-1 sm:grid-cols-3',
+        signs: [
+          { value: 'severe_cervical_pain_limited_rom', title: ['ปวดตึงต้นคอมาก', 'หัน / ก้มเงยไม่ได้'] },
+          { value: 'radicular_shock_numbness_weakness', title: ['ชาแปล๊บไฟช็อต', 'อ่อนแรงแขนขา'] },
+          { value: 'dyspnea_dysphagia_neck_swelling', title: ['หายใจ / กลืนลำบาก', 'เสียงแหบ / คอบวม'] }
+        ]
+      })}
 
-              ${renderFallPart('fallHeadFace', 'ใบหน้า / คิ้ว / โหนกแก้ม / ขากรรไกร / คาง', true)}
+      ${renderFallRegionBox({
+        parentId: 'fallParentChest',
+        subGroupId: 'fallChestSubGroup',
+        title: ['2.3 หน้าอก ซี่โครง', 'ไหปลาร้า หรือหลังบน'],
+        desc: 'กระแทกหน้าอก ซี่โครง ไหปลาร้า หรือสะบัก',
+        partsHtml: [
+          renderFallPart('fallChestRibs', 'หน้าอก / ซี่โครง', true),
+          renderFallPart('fallChestClavicle', 'ไหปลาร้า', false),
+          renderFallPart('fallChestUpperBack', 'หลังส่วนบน / สะบัก', true)
+        ].join(''),
+        signsName: 'fallChestSigns',
+        signsNoneId: 'fallChestSignsNoneCb',
+        signsCols: 'grid-cols-1 sm:grid-cols-3',
+        signs: [
+          { value: 'dyspnea_shortness_of_breath', title: ['หอบเหนื่อย', 'แน่นหน้าอก'] },
+          { value: 'pleuritic_chest_pain', title: ['เจ็บอก / ซี่โครง', 'เวลาหายใจลึก / ไอ'] },
+          { value: 'deformity_crepitus_clavicle_ribs', title: ['ไหปลาร้า / ซี่โครง', 'ปูดนูน ผิดรูป'] }
+        ]
+      })}
 
-              ${renderFallPart('fallHeadEye', 'ดวงตา / เปลือกตา / เบ้าตา', false)}
+      ${renderFallRegionBox({
+        parentId: 'fallParentAbdomen',
+        subGroupId: 'fallAbdomenSubGroup',
+        title: ['2.4 ช่องท้อง', 'หลังล่าง สะโพก', 'หรือก้นกบ'],
+        desc: 'กระแทกหน้าท้อง เอว หลัง สะโพก เชิงกราน หรือก้นกบ',
+        partsHtml: [
+          renderFallPart('fallAbdWall', 'หน้าท้อง', true),
+          renderFallPart('fallAbdFlank', 'สีข้าง / บั้นเอว', false),
+          renderFallPart('fallAbdLowerBack', 'หลังส่วนล่าง (แนวกระดูกสันหลังส่วนเอว)', true),
+          renderFallPart('fallAbdPelvisHip', 'สะโพก / เชิงกราน / ก้นกบ', true),
+          renderFallPart('fallAbdGenitalia', 'ขาหนีบ / อวัยวะเพศ', true)
+        ].join(''),
+        signsName: 'fallAbdomenSigns',
+        signsNoneId: 'fallAbdomenSignsNoneCb',
+        signs: [
+          { value: 'severe_abd_pain_distension', title: ['ปวดท้องรุนแรง', 'ท้องอืดตึง กดเจ็บ'] },
+          { value: 'pelvic_hip_pain_cannot_bear_weight', title: ['ปวดสะโพก เชิงกราน', 'ลงน้ำหนักไม่ได้'] },
+          { value: 'sciatica_numbness_cauda_equina', title: ['ปวดร้าวลงขา', 'ชาขา หรือ', 'กลั้นขับถ่ายไม่ได้'] },
+          { value: 'urinary_retention_hematuria', title: ['ปัสสาวะไม่ออก', '/ ปัสสาวะเป็นเลือด'] }
+        ]
+      })}
 
-              ${renderFallPart('fallHeadEar', 'ใบหู', false)}
+      ${renderFallRegionBox({
+        parentId: 'fallParentUpperExtremity',
+        subGroupId: 'fallUpperExtSubGroup',
+        title: ['2.5 ไหล่ แขน ศอก', 'ข้อมือ หรือมือ/นิ้ว'],
+        desc: 'ล้มเอามือยันพื้น ไหล่กระแทก ศอกบวม ข้อมือผิดรูป',
+        partsHtml: [
+          renderFallPart('fallArmShoulder', 'หัวไหล่ / ต้นแขน', false),
+          renderFallPart('fallArmElbow', 'ข้อศอก / แขนท่อนล่าง', false),
+          renderFallPart('fallArmWrist', 'ข้อมือ / ฝ่ามือ / หลังมือ', false),
+          renderFallDigits('fallArmFingers', 'นิ้วมือ')
+        ].join(''),
+        signsName: 'fallUpperExtSigns',
+        signsNoneId: 'fallUpperExtSignsNoneCb',
+        signs: [
+          { value: 'deformity_dislocation_arm', title: ['แขน มือ นิ้ว', 'บวมโต ผิดรูป'] },
+          { value: 'cannot_move_arm_hand', title: ['ยกแขน ขยับศอก', 'หรือกำมือไม่ได้'] },
+          { value: 'nerve_numbness_arm', title: ['ชาแขน ฝ่ามือ', 'หรือปลายนิ้วมือ'] },
+          { value: 'vascular_cold_pale_hand', title: ['ปลายนิ้วซีดขาว', 'เย็นเฉียบ / คล้ำ'] },
+          { value: 'open_fracture_arm', title: ['แผลเปิดลึก', 'เห็นกระดูกโผล่'], colSpan2: true }
+        ]
+      })}
 
-              ${renderFallPart('fallHeadNoseMouth', 'จมูก / ริมฝีปาก / ฟัน / ในช่องปาก', true)}
-            </div>
-          </div>
-
-          <div>
-            <p class="text-xs text-slate-600 font-semibold mb-1">อาการสำคัญที่พบร่วมด้วย (เลือกได้หลายข้อหากมีอาการ):</p>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              <label class="selectable-card gap-2.5 flex items-center p-2.5 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-                <input type="checkbox" name="fallHeadSigns" value="loss_of_consciousness" class="text-medical-600 h-4 w-4 rounded flex-shrink-0">
-                <span class="text-xs text-slate-800">มีอาการสลบ หมดสติไปชั่วขณะ หรือจำเหตุการณ์ไม่ได้</span>
-              </label>
-              <label class="selectable-card gap-2.5 flex items-center p-2.5 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-                <input type="checkbox" name="fallHeadSigns" value="severe_headache_vomit_drowsy" class="text-medical-600 h-4 w-4 rounded flex-shrink-0">
-                <span class="text-xs text-slate-800">ปวดศีรษะรุนแรง ง่วงซึมลง มึนงงสับสน หรือมีอาเจียน</span>
-              </label>
-              <label class="selectable-card gap-2.5 flex items-center p-2.5 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-                <input type="checkbox" name="fallHeadSigns" value="vision_problem_eye_swelling" class="text-medical-600 h-4 w-4 rounded flex-shrink-0">
-                <span class="text-xs text-slate-800">ตาพร่ามัว มองเห็นภาพซ้อน หรือบวมรอบเบ้าตาจนลืมตาไม่ขึ้น</span>
-              </label>
-              <label class="selectable-card gap-2.5 flex items-center p-2.5 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-                <input type="checkbox" name="fallHeadSigns" value="csf_leak_ear_nose" class="text-medical-600 h-4 w-4 rounded flex-shrink-0">
-                <span class="text-xs text-slate-800">มีเลือดหรือน้ำใสไหลออกจากรูหู หรือรูจมูก</span>
-              </label>
-              <label class="selectable-card gap-2.5 flex items-center p-2.5 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-                <input type="checkbox" name="fallHeadSigns" value="jaw_malocclusion_broken_tooth" class="text-medical-600 h-4 w-4 rounded flex-shrink-0">
-                <span class="text-xs text-slate-800">อ้าปากไม่ได้ ขากรรไกรค้าง/สบฟันไม่สนิท หรือมีฟันหัก/โยก</span>
-              </label>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- 2.2 ลำคอ หรือต้นคอ -->
-      <div class="space-y-3">
-        <label class="selectable-card flex items-center p-3.5 rounded-xl border-2 border-slate-200 bg-slate-50 hover:border-medical-400 transition cursor-pointer">
-          <input type="checkbox" id="fallParentNeck" onchange="toggleFallGroup('fallNeckSubGroup', this.checked)"
-            class="text-medical-600 focus:ring-medical-500 h-5 w-5 rounded flex-shrink-0">
-          <div class="ml-3">
-            <span class="text-sm font-bold text-slate-900">2.2 บาดเจ็บที่ลำคอ หรือต้นคอ</span>
-            <p class="text-xs text-slate-500">ติ๊กเลือกหากเจ็บแนวกระดูกต้นคอด้านหลัง หรือคอด้านหน้า/ด้านข้าง</p>
-          </div>
-        </label>
-
-        <div id="fallNeckSubGroup" class="hidden pl-4 sm:pl-6 space-y-4 border-l-2 border-medical-200">
-          <div>
-            <p class="text-xs text-slate-600 font-semibold mb-2">จุดที่บาดเจ็บ (เลือกได้หลายจุด พร้อมระบุด้านและชนิดการบาดเจ็บ):</p>
-            <div class="space-y-2">
-              ${renderFallPart('fallNeckSpine', 'ต้นคอด้านหลัง (แนวกระดูกต้นคอ)', true)}
-
-              ${renderFallPart('fallNeckFront', 'ลำคอด้านหน้า', true)}
-
-              ${renderFallPart('fallNeckSide', 'ลำคอด้านข้าง', false)}
-            </div>
-          </div>
-
-          <div>
-            <p class="text-xs text-slate-600 font-semibold mb-1">อาการสำคัญที่พบร่วมด้วย (เลือกได้หลายข้อหากมีอาการ):</p>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              <label class="selectable-card gap-2.5 flex items-center p-2.5 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-                <input type="checkbox" name="fallNeckSigns" value="severe_cervical_pain_limited_rom" class="text-medical-600 h-4 w-4 rounded flex-shrink-0">
-                <span class="text-xs text-slate-800">ปวดตึงแนวกระดูกต้นคอมาก หรือหันคอ/ก้มเงยไม่ได้</span>
-              </label>
-              <label class="selectable-card gap-2.5 flex items-center p-2.5 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-                <input type="checkbox" name="fallNeckSigns" value="radicular_shock_numbness_weakness" class="text-medical-600 h-4 w-4 rounded flex-shrink-0">
-                <span class="text-xs text-slate-800">มีอาการชา แปล๊บเหมือนไฟช็อต หรืออ่อนแรงร้าวลงแขน/มือ/ขา</span>
-              </label>
-              <label class="selectable-card gap-2.5 flex items-center p-2.5 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-                <input type="checkbox" name="fallNeckSigns" value="dyspnea_dysphagia_neck_swelling" class="text-medical-600 h-4 w-4 rounded flex-shrink-0">
-                <span class="text-xs text-slate-800">หายใจลำบาก กลืนลำบาก เสียงแหบ หรือบริเวณคอบวมโต</span>
-              </label>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- 2.3 หน้าอก ซี่โครง ไหปลาร้า หรือหลังส่วนบน/สะบัก -->
-      <div class="space-y-3">
-        <label class="selectable-card flex items-center p-3.5 rounded-xl border-2 border-slate-200 bg-slate-50 hover:border-medical-400 transition cursor-pointer">
-          <input type="checkbox" id="fallParentChest" onchange="toggleFallGroup('fallChestSubGroup', this.checked)"
-            class="text-medical-600 focus:ring-medical-500 h-5 w-5 rounded flex-shrink-0">
-          <div class="ml-3">
-            <span class="text-sm font-bold text-slate-900">2.3 บาดเจ็บที่หน้าอก ซี่โครง ไหปลาร้า หรือหลังส่วนบน/สะบัก</span>
-            <p class="text-xs text-slate-500">ติ๊กเลือกหากกระแทกหน้าอก ซี่โครง ไหปลาร้า หรือสะบักหลังส่วนบน</p>
-          </div>
-        </label>
-
-        <div id="fallChestSubGroup" class="hidden pl-4 sm:pl-6 space-y-4 border-l-2 border-medical-200">
-          <div>
-            <p class="text-xs text-slate-600 font-semibold mb-2">จุดที่บาดเจ็บ (เลือกได้หลายจุด พร้อมระบุด้านและชนิดการบาดเจ็บ):</p>
-            <div class="space-y-2">
-              ${renderFallPart('fallChestRibs', 'หน้าอก / ซี่โครง', true)}
-
-              ${renderFallPart('fallChestClavicle', 'ไหปลาร้า', false)}
-
-              ${renderFallPart('fallChestUpperBack', 'หลังส่วนบน / สะบัก', true)}
-            </div>
-          </div>
-
-          <div>
-            <p class="text-xs text-slate-600 font-semibold mb-1">อาการสำคัญที่พบร่วมด้วย (เลือกได้หลายข้อหากมีอาการ):</p>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              <label class="selectable-card gap-2.5 flex items-center p-2.5 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-                <input type="checkbox" name="fallChestSigns" value="dyspnea_shortness_of_breath" class="text-medical-600 h-4 w-4 rounded flex-shrink-0">
-                <span class="text-xs text-slate-800">หายใจหอบเหนื่อย แน่นหน้าอก หรือรู้สึกหายใจไม่อิ่ม</span>
-              </label>
-              <label class="selectable-card gap-2.5 flex items-center p-2.5 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-                <input type="checkbox" name="fallChestSigns" value="pleuritic_chest_pain" class="text-medical-600 h-4 w-4 rounded flex-shrink-0">
-                <span class="text-xs text-slate-800">เจ็บแปล๊บที่หน้าอกหรือซี่โครงมากเวลาหายใจลึก/ไอ/ขยับตัว</span>
-              </label>
-              <label class="selectable-card gap-2.5 flex items-center p-2.5 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-                <input type="checkbox" name="fallChestSigns" value="deformity_crepitus_clavicle_ribs" class="text-medical-600 h-4 w-4 rounded flex-shrink-0">
-                <span class="text-xs text-slate-800">กระดูกไหปลาร้าหรือซี่โครงปูดนูน ผิดรูป หรือกดเจ็บมาก</span>
-              </label>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- 2.4 ช่องท้อง บั้นเอว หลังส่วนล่าง สะโพก/เชิงกราน หรือก้นกบ -->
-      <div class="space-y-3">
-        <label class="selectable-card flex items-center p-3.5 rounded-xl border-2 border-slate-200 bg-slate-50 hover:border-medical-400 transition cursor-pointer">
-          <input type="checkbox" id="fallParentAbdomen" onchange="toggleFallGroup('fallAbdomenSubGroup', this.checked)"
-            class="text-medical-600 focus:ring-medical-500 h-5 w-5 rounded flex-shrink-0">
-          <div class="ml-3">
-            <span class="text-sm font-bold text-slate-900">2.4 บาดเจ็บที่ช่องท้อง บั้นเอว หลังส่วนล่าง สะโพก/เชิงกราน หรือก้นกบ</span>
-            <p class="text-xs text-slate-500">ติ๊กเลือกหากกระแทกหน้าท้อง เอว หลัง สะโพก หรือก้นกบกระแทกพื้น</p>
-          </div>
-        </label>
-
-        <div id="fallAbdomenSubGroup" class="hidden pl-4 sm:pl-6 space-y-4 border-l-2 border-medical-200">
-          <div>
-            <p class="text-xs text-slate-600 font-semibold mb-2">จุดที่บาดเจ็บ (เลือกได้หลายจุด พร้อมระบุด้านและชนิดการบาดเจ็บ):</p>
-            <div class="space-y-2">
-              ${renderFallPart('fallAbdWall', 'หน้าท้อง', true)}
-
-              ${renderFallPart('fallAbdFlank', 'สีข้าง / บั้นเอว', false)}
-
-              ${renderFallPart('fallAbdLowerBack', 'หลังส่วนล่าง (แนวกระดูกสันหลังส่วนเอว)', true)}
-
-              ${renderFallPart('fallAbdPelvisHip', 'สะโพก / เชิงกราน / ก้นกบ', true)}
-
-              ${renderFallPart('fallAbdGenitalia', 'ขาหนีบ / อวัยวะเพศ', true)}
-            </div>
-          </div>
-
-          <div>
-            <p class="text-xs text-slate-600 font-semibold mb-1">อาการสำคัญที่พบร่วมด้วย (เลือกได้หลายข้อหากมีอาการ):</p>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              <label class="selectable-card gap-2.5 flex items-center p-2.5 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-                <input type="checkbox" name="fallAbdomenSigns" value="severe_abd_pain_distension" class="text-medical-600 h-4 w-4 rounded flex-shrink-0">
-                <span class="text-xs text-slate-800">ปวดท้องรุนแรง ท้องอืดตึง หรือกดเจ็บมาก</span>
-              </label>
-              <label class="selectable-card gap-2.5 flex items-center p-2.5 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-                <input type="checkbox" name="fallAbdomenSigns" value="pelvic_hip_pain_cannot_bear_weight" class="text-medical-600 h-4 w-4 rounded flex-shrink-0">
-                <span class="text-xs text-slate-800">ปวดสะโพก/เชิงกรานมากจนขยับขาไม่ได้ หรือยืนลงน้ำหนักไม่ได้</span>
-              </label>
-              <label class="selectable-card gap-2.5 flex items-center p-2.5 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-                <input type="checkbox" name="fallAbdomenSigns" value="sciatica_numbness_cauda_equina" class="text-medical-600 h-4 w-4 rounded flex-shrink-0">
-                <span class="text-xs text-slate-800">ปวดหลังร้าวลงขา ชาขา/อ่อนแรง หรือกลั้นปัสสาวะ-อุจจาระไม่ได้</span>
-              </label>
-              <label class="selectable-card gap-2.5 flex items-center p-2.5 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-                <input type="checkbox" name="fallAbdomenSigns" value="urinary_retention_hematuria" class="text-medical-600 h-4 w-4 rounded flex-shrink-0">
-                <span class="text-xs text-slate-800">ปัสสาวะไม่ออก หรือมีเลือดปนในปัสสาวะ</span>
-              </label>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- 2.5 ไหล่ แขน ข้อศอก ข้อมือ หรือมือ/นิ้วมือ -->
-      <div class="space-y-3">
-        <label class="selectable-card flex items-center p-3.5 rounded-xl border-2 border-slate-200 bg-slate-50 hover:border-medical-400 transition cursor-pointer">
-          <input type="checkbox" id="fallParentUpperExtremity" onchange="toggleFallGroup('fallUpperExtSubGroup', this.checked)"
-            class="text-medical-600 focus:ring-medical-500 h-5 w-5 rounded flex-shrink-0">
-          <div class="ml-3">
-            <span class="text-sm font-bold text-slate-900">2.5 บาดเจ็บที่ไหล่ แขน ข้อศอก ข้อมือ หรือมือ/นิ้วมือ</span>
-            <p class="text-xs text-slate-500">ติ๊กเลือกหากล้มเอามือยันพื้น ไหล่กระแทก ศอกบวม หรือข้อมือผิดรูป</p>
-          </div>
-        </label>
-
-        <div id="fallUpperExtSubGroup" class="hidden pl-4 sm:pl-6 space-y-4 border-l-2 border-medical-200">
-          <div>
-            <p class="text-xs text-slate-600 font-semibold mb-2">จุดที่บาดเจ็บ (เลือกได้หลายจุด พร้อมระบุด้านและชนิดการบาดเจ็บ):</p>
-            <div class="space-y-2">
-              ${renderFallPart('fallArmShoulder', 'หัวไหล่ / ต้นแขน', false)}
-
-              ${renderFallPart('fallArmElbow', 'ข้อศอก / แขนท่อนล่าง', false)}
-
-              ${renderFallPart('fallArmWrist', 'ข้อมือ / ฝ่ามือ / หลังมือ', false)}
-
-              ${renderFallDigits('fallArmFingers', 'นิ้วมือ')}
-            </div>
-          </div>
-
-          <div>
-            <p class="text-xs text-slate-600 font-semibold mb-1">อาการสำคัญที่พบร่วมด้วย (เลือกได้หลายข้อหากมีอาการ):</p>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              <label class="selectable-card gap-2.5 flex items-center p-2.5 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-                <input type="checkbox" name="fallUpperExtSigns" value="deformity_dislocation_arm" class="text-medical-600 h-4 w-4 rounded flex-shrink-0">
-                <span class="text-xs text-slate-800">แขน ข้อมือ หรือนิ้ว บวมโต ผิดรูป บิดเบี้ยว หรือสงสัยข้อหลุด</span>
-              </label>
-              <label class="selectable-card gap-2.5 flex items-center p-2.5 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-                <input type="checkbox" name="fallUpperExtSigns" value="cannot_move_arm_hand" class="text-medical-600 h-4 w-4 rounded flex-shrink-0">
-                <span class="text-xs text-slate-800">ปวดมากจนยกแขน ขยับศอก หมุนข้อมือ หรือกำมือไม่ได้</span>
-              </label>
-              <label class="selectable-card gap-2.5 flex items-center p-2.5 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-                <input type="checkbox" name="fallUpperExtSigns" value="nerve_numbness_arm" class="text-medical-600 h-4 w-4 rounded flex-shrink-0">
-                <span class="text-xs text-slate-800">มีอาการชา หรือไร้ความรู้สึกที่แขน ฝ่ามือ หรือปลายนิ้วมือ</span>
-              </label>
-              <label class="selectable-card gap-2.5 flex items-center p-2.5 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-                <input type="checkbox" name="fallUpperExtSigns" value="vascular_cold_pale_hand" class="text-medical-600 h-4 w-4 rounded flex-shrink-0">
-                <span class="text-xs text-slate-800">ปลายนิ้วมือซีดขาว เย็นเฉียบ หรือม่วงคล้ำ</span>
-              </label>
-              <label class="selectable-card gap-2.5 flex items-center p-2.5 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-                <input type="checkbox" name="fallUpperExtSigns" value="open_fracture_arm" class="text-medical-600 h-4 w-4 rounded flex-shrink-0">
-                <span class="text-xs text-slate-800">มีแผลเปิดลึกบริเวณที่กระดูกหัก หรือมองเห็นกระดูกโผล่</span>
-              </label>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- 2.6 ต้นขา เข่า หน้าแข้ง ข้อเท้า หรือเท้า/นิ้วเท้า -->
-      <div class="space-y-3">
-        <label class="selectable-card flex items-center p-3.5 rounded-xl border-2 border-slate-200 bg-slate-50 hover:border-medical-400 transition cursor-pointer">
-          <input type="checkbox" id="fallParentLowerExtremity" onchange="toggleFallGroup('fallLowerExtSubGroup', this.checked)"
-            class="text-medical-600 focus:ring-medical-500 h-5 w-5 rounded flex-shrink-0">
-          <div class="ml-3">
-            <span class="text-sm font-bold text-slate-900">2.6 บาดเจ็บที่ต้นขา เข่า หน้าแข้ง ข้อเท้า หรือเท้า/นิ้วเท้า</span>
-            <p class="text-xs text-slate-500">ติ๊กเลือกหากต้นขาบวม เข่าบิดกระแทก ข้อเท้าพลิก หรือยืนลงน้ำหนักไม่ได้</p>
-          </div>
-        </label>
-
-        <div id="fallLowerExtSubGroup" class="hidden pl-4 sm:pl-6 space-y-4 border-l-2 border-medical-200">
-          <div>
-            <p class="text-xs text-slate-600 font-semibold mb-2">จุดที่บาดเจ็บ (เลือกได้หลายจุด พร้อมระบุด้านและชนิดการบาดเจ็บ):</p>
-            <div class="space-y-2">
-              ${renderFallPart('fallLegThigh', 'ต้นขา', false)}
-
-              ${renderFallPart('fallLegKneeShin', 'เข่า / หน้าแข้ง / น่อง', false)}
-
-              ${renderFallPart('fallLegAnkleFoot', 'ข้อเท้า / ส้นเท้า / ฝ่าเท้า / หลังเท้า', false)}
-
-              ${renderFallDigits('fallLegToes', 'นิ้วเท้า')}
-            </div>
-          </div>
-
-          <div>
-            <p class="text-xs text-slate-600 font-semibold mb-1">อาการสำคัญที่พบร่วมด้วย (เลือกได้หลายข้อหากมีอาการ):</p>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              <label class="selectable-card gap-2.5 flex items-center p-2.5 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-                <input type="checkbox" name="fallLowerExtSigns" value="deformity_shortened_external_rotation_leg" class="text-medical-600 h-4 w-4 rounded flex-shrink-0">
-                <span class="text-xs text-slate-800">ขา เข่า ข้อเท้า บวมผิดรูป หรือขาสั้นลง/บิดหมุนออกด้านนอก</span>
-              </label>
-              <label class="selectable-card gap-2.5 flex items-center p-2.5 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-                <input type="checkbox" name="fallLowerExtSigns" value="inability_to_bear_weight" class="text-medical-600 h-4 w-4 rounded flex-shrink-0">
-                <span class="text-xs text-slate-800">เดินหรือยืนลงน้ำหนักที่ขา/เท้าข้างที่เจ็บไม่ได้เลย</span>
-              </label>
-              <label class="selectable-card gap-2.5 flex items-center p-2.5 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-                <input type="checkbox" name="fallLowerExtSigns" value="nerve_numbness_cannot_dorsiflex" class="text-medical-600 h-4 w-4 rounded flex-shrink-0">
-                <span class="text-xs text-slate-800">มีอาการชา หรือกระดกข้อเท้า/ขยับนิ้วเท้าไม่ได้ตามปกติ</span>
-              </label>
-              <label class="selectable-card gap-2.5 flex items-center p-2.5 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-                <input type="checkbox" name="fallLowerExtSigns" value="vascular_cold_pale_foot" class="text-medical-600 h-4 w-4 rounded flex-shrink-0">
-                <span class="text-xs text-slate-800">ปลายเท้าซีดขาว เย็นเฉียบ หรือม่วงคล้ำ</span>
-              </label>
-              <label class="selectable-card gap-2.5 flex items-center p-2.5 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-                <input type="checkbox" name="fallLowerExtSigns" value="open_fracture_leg" class="text-medical-600 h-4 w-4 rounded flex-shrink-0">
-                <span class="text-xs text-slate-800">มีแผลเปิดลึกบริเวณที่กระดูกหัก หรือมองเห็นกระดูกโผล่</span>
-              </label>
-            </div>
-          </div>
-        </div>
-      </div>
+      ${renderFallRegionBox({
+        parentId: 'fallParentLowerExtremity',
+        subGroupId: 'fallLowerExtSubGroup',
+        title: ['2.6 ต้นขา เข่า', 'ข้อเท้า หรือเท้า'],
+        desc: 'ต้นขาบวม เข่าบิดกระแทก ข้อเท้าพลิก ยืนลงน้ำหนักไม่ได้',
+        partsHtml: [
+          renderFallPart('fallLegThigh', 'ต้นขา', false),
+          renderFallPart('fallLegKneeShin', 'เข่า / หน้าแข้ง / น่อง', false),
+          renderFallPart('fallLegAnkleFoot', 'ข้อเท้า / ส้นเท้า / ฝ่าเท้า / หลังเท้า', false),
+          renderFallDigits('fallLegToes', 'นิ้วเท้า')
+        ].join(''),
+        signsName: 'fallLowerExtSigns',
+        signsNoneId: 'fallLowerExtSignsNoneCb',
+        signs: [
+          { value: 'deformity_shortened_external_rotation_leg', title: ['ขา เข่า ข้อเท้า', 'ผิดรูป / ขาสั้นลง'] },
+          { value: 'inability_to_bear_weight', title: ['เดินหรือยืน', 'ลงน้ำหนักไม่ได้เลย'] },
+          { value: 'nerve_numbness_cannot_dorsiflex', title: ['มีอาการชา', 'กระดกเท้าไม่ได้'] },
+          { value: 'vascular_cold_pale_foot', title: ['ปลายเท้าซีดขาว', 'เย็นเฉียบ / คล้ำ'] },
+          { value: 'open_fracture_leg', title: ['แผลเปิดลึก', 'เห็นกระดูกโผล่'], colSpan2: true }
+        ]
+      })}
 
       <!-- 2.7 บาดแผลที่ตำแหน่งอื่นๆ (พิมพ์ระบุ) -->
-      <div class="border border-slate-200 rounded-2xl p-4 bg-slate-50/50">
-        <label class="flex items-center space-x-2.5 cursor-pointer">
-          <input type="checkbox" id="fallParentOther" onchange="toggleFallGroup('fallOtherSubGroup', this.checked)" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded">
-          <span class="text-xs sm:text-sm font-bold text-slate-900">2.7 บาดแผลที่ตำแหน่งอื่นๆ (พิมพ์ระบุ)</span>
+      <div class="border border-slate-200 rounded-2xl p-3.5 bg-slate-50/50">
+        <label class="selectable-card flex items-center cursor-pointer">
+          <input type="checkbox" id="fallParentOther" onchange="toggleFallGroup('fallOtherSubGroup', this.checked)" class="text-medical-600 focus:ring-medical-500 h-4 w-4 rounded flex-shrink-0">
+          <span class="ml-3 text-xs sm:text-sm font-bold text-slate-900">2.7 บาดเจ็บที่ตำแหน่งอื่นๆ (พิมพ์ระบุ)</span>
         </label>
         <div id="fallOtherSubGroup" class="hidden mt-3 pl-6 border-l-2 border-medical-200 space-y-2">
           <label class="text-xs font-semibold text-slate-600 block">ระบุตำแหน่งบาดเจ็บเพิ่มเติม:</label>
-          <input type="text" id="fallOtherLocationDetail" placeholder="เช่น บริเวณรักแร้, ซอกคอ, ก้นกบ..." class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-medical-500">
+          <input type="text" id="fallOtherLocationDetail" placeholder="เช่น รักแร้, ซอกคอ, ก้นกบ..." class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-medical-500">
         </div>
       </div>
     </div>
   </div>
 
   <!-- CARD 3: อาการผิดปกติของร่างกาย และระดับความปวด -->
-  <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
-    <div class="flex items-center space-x-3 mb-4 pb-3 border-b border-slate-100">
+  <div class="bg-white rounded-2xl p-5 sm:p-6 shadow-sm border border-slate-200 space-y-5">
+    <div class="flex items-center space-x-3 pb-3 border-b border-slate-100">
       <div class="bg-medical-100 text-medical-700 p-2 rounded-xl">
         <i data-lucide="activity" class="w-5 h-5"></i>
       </div>
       <div>
         <h2 class="text-base font-bold text-slate-900">3. อาการผิดปกติของร่างกาย และระดับความปวด</h2>
-        <p class="text-xs text-slate-500">ภาวะหน้ามืด เป็นลม เสียเลือดภายใน และแถบประเมินความปวด</p>
+        <p class="text-xs text-slate-500">ภาวะหน้ามืด เป็นลม ชัก และแถบประเมินความปวด</p>
       </div>
     </div>
 
     <!-- 3.1 อาการผิดปกติของร่างกายที่พบร่วมด้วย -->
-    <div class="mb-5">
-      <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
-        3.1 อาการผิดปกติของร่างกายที่พบร่วมด้วยในขณะนี้ (เลือกได้หลายข้อหากมีอาการ):
-      </label>
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-        <label class="selectable-card gap-2.5 flex items-center p-2.5 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-          <input type="checkbox" name="fallSystemicSigns" value="dizziness_presyncope" class="text-medical-600 h-4 w-4 rounded flex-shrink-0">
-          <span class="text-xs text-slate-800">หน้ามืด เวียนศีรษะ วูบ หรือเหมือนจะเป็นลมเวลาขยับตัว/ลุกนั่ง</span>
-        </label>
-        <label class="selectable-card gap-2.5 flex items-center p-2.5 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-          <input type="checkbox" name="fallSystemicSigns" value="palpitation_cold_sweat" class="text-medical-600 h-4 w-4 rounded flex-shrink-0">
-          <span class="text-xs text-slate-800">ใจสั่น เหงื่อแตกท่วมตัว ตัวเย็น หรือหน้าซีดปากซีด</span>
-        </label>
-        <label class="selectable-card gap-2.5 flex items-center p-2.5 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-          <input type="checkbox" name="fallSystemicSigns" value="excessive_thirst_weakness" class="text-medical-600 h-4 w-4 rounded flex-shrink-0">
-          <span class="text-xs text-slate-800">กระหายน้ำมากผิดปกติ หรืออ่อนเพลียไม่มีแรง</span>
-        </label>
-        <label class="selectable-card gap-2.5 flex items-center p-2.5 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-          <input type="checkbox" name="fallSystemicSigns" value="post_fall_seizure" class="text-medical-600 h-4 w-4 rounded flex-shrink-0">
-          <span class="text-xs text-slate-800">มีอาการชักเกร็งหลังเกิดเหตุ</span>
-        </label>
-        <label class="selectable-card gap-2.5 flex items-center p-2.5 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer col-span-1 sm:col-span-2">
-          <input type="checkbox" name="fallSystemicSigns" value="no_systemic_signs" class="text-medical-600 h-4 w-4 rounded flex-shrink-0">
-          <span class="text-xs text-slate-800">ไม่มีอาการผิดปกติของร่างกายดังกล่าว</span>
-        </label>
-      </div>
+    <div class="p-3.5 bg-slate-50 rounded-xl border border-slate-200">
+      ${renderFallSysHeader({
+        label: '3.1 อาการผิดปกติของร่างกายที่พบร่วม (เลือกได้หลายข้อ)',
+        icon: 'shield-alert',
+        colorClass: 'bg-rose-100 text-rose-700',
+        toggleId: 'fallSystemicNoneCb',
+        toggleName: 'fallSystemicSigns',
+        toggleValue: 'no_systemic_signs',
+        toggleLabel: 'ไม่มีอาการในหมวดนี้',
+        toggleOnchange: "handleFallGroupNoneToggle(this, 'fallSystemicSigns')"
+      })}
+      ${renderFallGrid('grid-cols-1 sm:grid-cols-2', [
+        {
+          name: 'fallSystemicSigns',
+          value: 'dizziness_presyncope',
+          title: ['หน้ามืด เวียนหัว', 'เวลาลุก / ขยับตัว'],
+          onchange: "handleFallGroupItemChange(this, 'fallSystemicNoneCb')",
+          compact: true
+        },
+        {
+          name: 'fallSystemicSigns',
+          value: 'palpitation_cold_sweat',
+          title: ['ใจสั่น เหงื่อแตก', 'ตัวเย็น / หน้าซีด'],
+          onchange: "handleFallGroupItemChange(this, 'fallSystemicNoneCb')",
+          compact: true
+        },
+        {
+          name: 'fallSystemicSigns',
+          value: 'excessive_thirst_weakness',
+          title: ['กระหายน้ำมาก', 'อ่อนเพลียไม่มีแรง'],
+          onchange: "handleFallGroupItemChange(this, 'fallSystemicNoneCb')",
+          compact: true
+        },
+        {
+          name: 'fallSystemicSigns',
+          value: 'post_fall_seizure',
+          title: ['มีอาการชักเกร็ง', 'หลังเกิดเหตุ'],
+          onchange: "handleFallGroupItemChange(this, 'fallSystemicNoneCb')",
+          compact: true
+        }
+      ])}
     </div>
 
     <!-- 3.2 Pain Score Slider -->
-    <div>
-      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-2">
-        <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider">
-          3.2 ระดับความปวดในขณะนี้ (Pain Score 0–10):
-        </label>
+    <div class="bg-slate-50/80 border border-slate-200 rounded-2xl p-4 sm:p-5 space-y-3">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+        <label class="block text-xs font-semibold text-slate-800 uppercase tracking-wider">3.2 ระดับความเจ็บปวดในขณะนี้ (0 – 10)</label>
         <div class="flex items-center space-x-2">
           <span id="fallPainScoreBadge" class="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-600 border border-slate-300 self-start sm:self-auto transition-all">
             <span id="fallPainScoreEmoji" class="text-base">⚪</span>
             <span id="fallPainScoreText">ยังไม่ได้ระบุ (แตะแถบเพื่อระบุ)</span>
           </span>
-          <button type="button" id="fallPainScoreClearBtn" onclick="clearFallPainScore()" class="hidden text-xs text-slate-400 hover:text-slate-600 underline">ล้างค่า</button>
+          <button type="button" id="fallPainScoreClearBtn" onclick="clearFallPainScore()" class="text-xs text-slate-400 hover:text-rose-600 underline hidden transition" title="ล้างค่าเพื่อให้เป็นไม่ได้ระบุ">ล้างค่า</button>
         </div>
       </div>
-      <div class="pt-2 px-1">
-        <input type="range" id="fallPainScore" min="0" max="10" value="0"
-          oninput="handleFallPainScoreChange(this.value)"
-          class="w-full h-2.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-medical-600">
-        <div class="flex justify-between text-[11px] text-slate-400 mt-1 font-medium">
-          <span>0 ไม่ปวดเลย</span>
-          <span>5 ปวดปานกลาง</span>
-          <span>10 ปวดมากที่สุด</span>
-        </div>
+      <div class="px-1 pt-1">
+        <input type="range" id="fallPainScore" min="0" max="10" value="0" step="1" oninput="handleFallPainScoreChange(this.value)" class="w-full h-2.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-medical-600 focus:outline-none focus:ring-2 focus:ring-medical-500">
+      </div>
+      <div class="grid grid-cols-5 text-center text-[10px] sm:text-[11px] pt-1 gap-1 text-slate-500 font-medium">
+        <div class="cursor-pointer hover:text-medical-600 transition" onclick="setFallPainScore(0)"><span class="text-lg sm:text-xl block">😊</span><span>0: สบายดี</span></div>
+        <div class="cursor-pointer hover:text-medical-600 transition" onclick="setFallPainScore(2)"><span class="text-lg sm:text-xl block">🙂</span><span>1–3: เล็กน้อย</span></div>
+        <div class="cursor-pointer hover:text-medical-600 transition" onclick="setFallPainScore(5)"><span class="text-lg sm:text-xl block">😐</span><span>4–6: ปานกลาง</span></div>
+        <div class="cursor-pointer hover:text-medical-600 transition" onclick="setFallPainScore(8)"><span class="text-lg sm:text-xl block">😣</span><span>7–9: ปวดมาก</span></div>
+        <div class="cursor-pointer hover:text-medical-600 transition" onclick="setFallPainScore(10)"><span class="text-lg sm:text-xl block">😭</span><span>10: ปวดที่สุด</span></div>
       </div>
     </div>
   </div>
 
-  <!-- CARD 4: ประวัติยาละลายลิ่มเลือด และวัคซีนป้องกันโรคบาดทะยัก -->
-  <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
-    <div class="flex items-center space-x-3 mb-4 pb-3 border-b border-slate-100">
+  <!-- CARD 4: ประวัติยาละลายลิ่มเลือด วัคซีนบาดทะยัก และข้อมูลสตรี -->
+  <div class="bg-white rounded-2xl p-5 sm:p-6 shadow-sm border border-slate-200 space-y-5">
+    <div class="flex items-center space-x-3 pb-3 border-b border-slate-100">
       <div class="bg-medical-100 text-medical-700 p-2 rounded-xl">
         <i data-lucide="shield-plus" class="w-5 h-5"></i>
       </div>
@@ -1258,83 +1177,115 @@ const FALL_TRAUMA_FORM_HTML = `
     </div>
 
     <!-- 4.1 ยาละลายลิ่มเลือด -->
-    <div class="mb-5">
-      <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
-        4.1 ประวัติการใช้ยาละลายลิ่มเลือด ยาต้านเกล็ดเลือด หรือโรคเลือดหยุดยาก: <span class="text-rose-500">*</span>
-      </label>
-      <div class="space-y-2">
-        <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-          <input type="radio" name="fallAntithrombotic" value="on_anticoagulant_antiplatelet" class="text-medical-600 focus:ring-medical-500 h-4 w-4 flex-shrink-0">
-          <span class="text-xs sm:text-sm text-slate-800">รับประทานยาละลายลิ่มเลือด หรือยาต้านเกล็ดเลือด (เช่น Warfarin, Aspirin, Plavix/Clopidogrel, DOACs)</span>
-        </label>
-        <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-          <input type="radio" name="fallAntithrombotic" value="coagulopathy_history" class="text-medical-600 focus:ring-medical-500 h-4 w-4 flex-shrink-0">
-          <span class="text-xs sm:text-sm text-slate-800">มีโรคประจำตัวที่ทำให้เลือดออกง่ายหรือหยุดยาก (เช่น โรคตับแข็ง, เกล็ดเลือดต่ำ, ฮีโมฟีเลีย)</span>
-        </label>
-        <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-          <input type="radio" name="fallAntithrombotic" value="unknown_meds" class="text-medical-600 focus:ring-medical-500 h-4 w-4 flex-shrink-0">
-          <span class="text-xs sm:text-sm text-slate-800">มียาประจำตัวรับประทานอยู่ แต่ไม่ทราบชื่อยาแน่ชัด</span>
-        </label>
-        <label class="selectable-card gap-2.5 flex items-center p-3 rounded-xl border border-slate-200 bg-white hover:border-medical-300 transition cursor-pointer">
-          <input type="radio" name="fallAntithrombotic" value="no_antithrombotic" class="text-medical-600 focus:ring-medical-500 h-4 w-4 flex-shrink-0">
-          <span class="text-xs sm:text-sm text-slate-800">ไม่ได้ใช้ยากลุ่มนี้ และไม่มีโรคเลือดหยุดยาก</span>
-        </label>
-      </div>
+    <div class="p-3.5 bg-slate-50 rounded-xl border border-slate-200">
+      ${renderFallSysHeader({
+        label: '4.1 ยาละลายลิ่มเลือด หรือโรคเลือดหยุดยาก <span class="text-rose-500">*</span>',
+        icon: 'pill',
+        colorClass: 'bg-blue-100 text-blue-700',
+        toggleKind: 'radio',
+        toggleId: 'fallAntithromboticNoneRb',
+        toggleName: 'fallAntithrombotic',
+        toggleValue: 'no_antithrombotic',
+        toggleLabel: 'ไม่มี / ไม่ได้ใช้'
+      })}
+      ${renderFallGrid('grid-cols-1 sm:grid-cols-3', [
+        {
+          kind: 'radio',
+          name: 'fallAntithrombotic',
+          value: 'on_anticoagulant_antiplatelet',
+          title: ['ใช้ยาละลายลิ่มเลือด', '/ ต้านเกล็ดเลือด'],
+          desc: 'เช่น วาร์ฟาริน แอสไพริน',
+          compact: true
+        },
+        {
+          kind: 'radio',
+          name: 'fallAntithrombotic',
+          value: 'coagulopathy_history',
+          title: ['มีโรคเลือดออกง่าย', '/ หยุดยาก'],
+          desc: 'เช่น ตับแข็ง เกล็ดเลือดต่ำ',
+          compact: true
+        },
+        {
+          kind: 'radio',
+          name: 'fallAntithrombotic',
+          value: 'unknown_meds',
+          title: ['กินยาประจำตัว', 'แต่ไม่ทราบชื่อยา'],
+          desc: 'จำชื่อยาไม่ได้',
+          compact: true
+        }
+      ])}
     </div>
 
-    <!-- 4.2 ประวัติการได้รับวัคซีนป้องกันบาดทะยัก (Tetanus Vaccine) -->
-    <div>
+    <!-- 4.2 ประวัติการได้รับวัคซีนป้องกันบาดทะยัก (Locked Tetanus Standard) -->
+    <div class="pt-3 border-t border-slate-100">
       <label class="block text-xs sm:text-sm font-semibold text-slate-800 mb-2">
-        4.2 ประวัติการได้รับวัคซีนป้องกันบาดทะยัก (Tetanus Vaccine):
+        4.2 ประวัติการได้รับวัคซีนป้องกันบาดทะยัก
       </label>
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-        <label class="selectable-card flex items-start p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-          <input type="radio" name="fallTetanusHx" value="within_5_years" class="mt-0.5 text-medical-600 focus:ring-medical-500 h-4 w-4">
-          <div class="ml-3"><span class="block text-xs sm:text-sm font-semibold text-slate-800">เคยฉีดเข็มกระตุ้นภายใน 5 ปีที่ผ่านมา</span><span class="block text-[11px] text-slate-500 font-normal mt-0.5">เคยฉีดครบ (3 เข็ม) มาก่อน และเข็มสุดท้ายหรือกระตุ้นไม่เกิน 5 ปี</span></div>
-        </label>
-        <label class="selectable-card flex items-start p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-          <input type="radio" name="fallTetanusHx" value="5_to_10_years" class="mt-0.5 text-medical-600 focus:ring-medical-500 h-4 w-4">
-          <div class="ml-3"><span class="block text-xs sm:text-sm font-semibold text-slate-800">เคยฉีดในช่วง 5–10 ปีที่ผ่านมา</span><span class="block text-[11px] text-slate-500 font-normal mt-0.5">เคยฉีดครบ (3 เข็ม) มาก่อน และเข็มสุดท้ายหรือกระตุ้นอยู่ในช่วง 5–10 ปี</span></div>
-        </label>
-        <label class="selectable-card flex items-start p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-          <input type="radio" name="fallTetanusHx" value="more_than_10_years" class="mt-0.5 text-medical-600 focus:ring-medical-500 h-4 w-4">
-          <div class="ml-3"><span class="block text-xs sm:text-sm font-semibold text-slate-800">เคยฉีดครบ แต่เกิน 10 ปีแล้ว</span><span class="block text-[11px] text-slate-500 font-normal mt-0.5">เคยฉีดครบ (3 เข็ม) มาก่อน แต่เข็มสุดท้ายนานเกิน 10 ปีแล้ว</span></div>
-        </label>
-        <label class="selectable-card flex items-start p-3 rounded-xl border border-slate-200 hover:border-medical-300 cursor-pointer transition">
-          <input type="radio" name="fallTetanusHx" value="never_or_unsure" class="mt-0.5 text-medical-600 focus:ring-medical-500 h-4 w-4">
-          <div class="ml-3"><span class="block text-xs sm:text-sm font-semibold text-slate-800">ไม่เคยฉีด หรือจำประวัติไม่ได้</span><span class="block text-[11px] text-slate-500 font-normal mt-0.5">ไม่เคยได้รับวัคซีนบาดทะยัก ฉีดไม่ครบ 3 เข็ม หรือไม่ทราบประวัติ</span></div>
-        </label>
-      </div>
+      ${renderFallGrid('grid-cols-1 sm:grid-cols-2', [
+        {
+          kind: 'radio',
+          name: 'fallTetanusHx',
+          value: 'within_5_years',
+          title: ['ฉีดกระตุ้น', 'ภายใน 5 ปี'],
+          desc: 'เคยฉีดครบ (3 เข็ม) มาก่อน และเข็มสุดท้ายหรือกระตุ้นไม่เกิน 5 ปี',
+          compact: true
+        },
+        {
+          kind: 'radio',
+          name: 'fallTetanusHx',
+          value: '5_to_10_years',
+          title: ['ฉีดล่าสุด', '5–10 ปีก่อน'],
+          desc: 'เคยฉีดครบ (3 เข็ม) มาก่อน และเข็มสุดท้ายหรือกระตุ้นอยู่ในช่วง 5–10 ปี',
+          compact: true
+        },
+        {
+          kind: 'radio',
+          name: 'fallTetanusHx',
+          value: 'more_than_10_years',
+          title: ['ฉีดครบ', 'เกิน 10 ปีแล้ว'],
+          desc: 'เคยฉีดครบ (3 เข็ม) มาก่อน แต่เข็มสุดท้ายนานเกิน 10 ปีแล้ว',
+          compact: true
+        },
+        {
+          kind: 'radio',
+          name: 'fallTetanusHx',
+          value: 'never_or_unsure',
+          title: ['ไม่เคยฉีด', '/ จำไม่ได้'],
+          desc: 'ไม่เคยได้รับวัคซีนบาดทะยัก ฉีดไม่ครบ 3 เข็ม หรือไม่ทราบประวัติ',
+          compact: true
+        }
+      ])}
     </div>
 
     <!-- 4.3 เฉพาะสตรี: ประจำเดือนและการตั้งครรภ์ -->
     <div id="fallFemaleSection" class="hidden pt-3 border-t border-slate-100">
-      <div class="flex items-center justify-between mb-2">
-        <label class="text-xs sm:text-sm font-semibold text-slate-800">4.3 ประจำเดือนและการตั้งครรภ์ (LMP & Pregnancy):</label>
-        <span class="text-[10px] font-bold bg-pink-100 text-pink-700 px-2 py-0.5 rounded-full">เฉพาะสตรี</span>
-      </div>
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-pink-50/40 p-3 rounded-xl border border-pink-100">
-        <div>
-          <label class="block text-[11px] font-semibold text-slate-700 mb-1">วันแรกของประจำเดือนครั้งล่าสุด (LMP):</label>
-          <input type="text" id="fallLmpDate" data-universal-date="true" placeholder="dd/mm/yyyy (ถ้าจำไม่ได้เว้นว่าง)" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-medical-500">
-        </div>
-        <div>
-          <label class="block text-[11px] font-semibold text-slate-700 mb-1">สถานะการตั้งครรภ์:</label>
-          <select id="fallPregnancyStatus" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-800 font-medium focus:outline-none focus:ring-2 focus:ring-medical-500">
-            <option value="">-- ไม่ระบุ --</option>
-            <option value="not_pregnant">ไม่ได้ตั้งครรภ์ / ประจำเดือนมาปกติ</option>
-            <option value="suspected_or_missed">ขาดประจำเดือน / สงสัยอาจตั้งครรภ์</option>
-            <option value="confirmed_pregnant">ยืนยันกำลังตั้งครรภ์</option>
-            <option value="menopause_or_hysterectomy">วัยหมดประจำเดือน / ผ่าตัดมดลูกแล้ว</option>
-            <option value="unknown">ไม่ทราบ</option>
-          </select>
+      <div class="p-3.5 bg-pink-50/40 rounded-xl border border-pink-100 space-y-3">
+        ${renderFallSysHeader({
+          label: '4.3 ประจำเดือนและการตั้งครรภ์ (เฉพาะสตรี)',
+          icon: 'heart-pulse',
+          colorClass: 'bg-pink-100 text-pink-700',
+          toggleKind: 'radio',
+          toggleId: 'fallPregNotPregRb',
+          toggleName: 'fallPregnancyStatus',
+          toggleValue: 'not_pregnant',
+          toggleLabel: 'ไม่ได้ตั้งครรภ์'
+        })}
+        ${renderFallGrid('grid-cols-1 sm:grid-cols-2', [
+          { kind: 'radio', name: 'fallPregnancyStatus', value: 'suspected_or_missed', title: ['ขาดประจำเดือน', '/ สงสัยตั้งครรภ์'], compact: true },
+          { kind: 'radio', name: 'fallPregnancyStatus', value: 'confirmed_pregnant', title: ['ยืนยัน', 'กำลังตั้งครรภ์'], compact: true },
+          { kind: 'radio', name: 'fallPregnancyStatus', value: 'menopause_or_hysterectomy', title: ['หมดประจำเดือน', '/ ผ่าตัดมดลูกแล้ว'], compact: true },
+          { kind: 'radio', name: 'fallPregnancyStatus', value: 'unknown', title: ['ไม่ทราบ'], compact: true }
+        ])}
+        <div class="max-w-xs">
+          <label class="block text-[11px] font-semibold text-slate-700 mb-1">วันแรกของประจำเดือนครั้งล่าสุด (ถ้าจำได้):</label>
+          <input type="text" id="fallLmpDate" data-universal-date="true" placeholder="วว/ดด/ปปปป เช่น 28/10/2026" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-1.5 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-medical-500">
         </div>
       </div>
     </div>
   </div>
 
   <!-- อาการอื่นๆ เป็นช่องกรอกอิสระ -->
-  <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+  <div class="bg-white rounded-2xl p-5 sm:p-6 shadow-sm border border-slate-200">
     <div class="flex items-center space-x-3 mb-3 pb-2 border-b border-slate-100">
       <div class="bg-slate-100 text-slate-600 p-2 rounded-xl"><i data-lucide="message-square-plus" class="w-5 h-5"></i></div>
       <div><h2 class="text-base font-bold text-slate-800">อาการอื่นๆ ที่ต้องการแจ้งเพิ่มเติม</h2><p class="text-xs text-slate-500">ระบุอาการอื่นๆ ที่ท่านมีหรือต้องการบอกแพทย์เพิ่มเติม (ถ้ามี)</p></div>
@@ -1352,6 +1303,8 @@ const fallTraumaModule = {
   titleEn: 'Falls / Blunt trauma',
   icon: 'user-x',
   doctorCcBadgeHtml: '<i data-lucide="user-x" class="w-3.5 h-3.5 mr-1 text-amber-500"></i> CC: พลัดตกหกล้ม / ได้รับบาดเจ็บทางกายภาพ (Falls / Blunt Trauma)',
+  pmhSectionNumber: 5,
+  dateFields: ['fallLmpDate'],
   algorithm: 'fall-trauma-protocol',
   sectionDomId: 'cc-fall-trauma-section',
   formHtml: FALL_TRAUMA_FORM_HTML,
@@ -1381,9 +1334,11 @@ const fallTraumaModule = {
     const mechHeightDetail = document.getElementById('fallMechHeightDetail')?.value?.trim() || '';
     const mechBluntDetail = document.getElementById('fallMechBluntDetail')?.value?.trim() || '';
     const mechSportsDetail = document.getElementById('fallMechSportsDetail')?.value?.trim() || '';
+    const mechAnkleDetail = document.getElementById('fallMechAnkleDetail')?.value?.trim() || '';
     const mechOtherDetail = document.getElementById('fallMechOtherDetail')?.value?.trim() || '';
 
     const prodrome = getRadio('fallProdrome');
+    const prodromeDetail = (prodrome === 'has_prodrome') ? (document.getElementById('fallProdromeDetail')?.value?.trim() || '') : '';
     const woundStatus = getRadio('fallWoundStatus');
 
     const getSubState = (parentActive, elId, sidesName) => {
@@ -1465,7 +1420,7 @@ const fallTraumaModule = {
     const titleSelVal = document.getElementById('patientTitleSelect')?.value || '';
     const isFemale = ctx.gender ? isFallFemalePatient(ctx) : (titleSelVal ? /นาง|น\.ส\.|ด\.ญ\.|\(หญิง\)|Mrs|Miss|Ms/i.test(titleSelVal) : isFallFemalePatient(ctx));
     const fallLmpDate = isFemale ? (document.getElementById('fallLmpDate')?.value?.trim() || '') : '';
-    const fallPregnancyStatus = isFemale ? (document.getElementById('fallPregnancyStatus')?.value || '') : '';
+    const fallPregnancyStatus = isFemale ? (getRadio('fallPregnancyStatus') || '') : '';
     const otherSymptomsFree = document.getElementById('fall_trauma_other_free')?.value?.trim() || ctx.otherSymptomsFree || '';
 
     const rec = {
@@ -1481,7 +1436,7 @@ const fallTraumaModule = {
       status: ctx.recordStatus || ctx.status || 'waiting',
       durationVal: !isNaN(durVal) ? durVal : null,
       durationUnit: durUnit,
-      hospRecordStatus: ctx.hospRecordStatus || 'unspecified',
+      hospRecordStatus: ctx.hospRecordStatus || '',
       underlying: ctx.underlying || [],
       drugAllergy: ctx.drugAllergy || 'ไม่ได้ระบุ',
       currentMeds: ctx.currentMeds || 'ไม่ได้ระบุ',
@@ -1495,8 +1450,10 @@ const fallTraumaModule = {
       fallMechHeightDetail: mechHeightDetail,
       fallMechBluntDetail: mechBluntDetail,
       fallMechSportsDetail: mechSportsDetail,
+      fallMechAnkleDetail: mechAnkleDetail,
       fallMechOtherDetail: mechOtherDetail,
       fallProdrome: prodrome,
+      fallProdromeDetail: prodromeDetail,
       fallWoundStatus: woundStatus,
 
       fallParentHeadFace: parentHeadFace,
@@ -1615,21 +1572,25 @@ const fallTraumaModule = {
       if (el) el.checked = !!checked;
     };
 
-    setChecks('fallMechanisms', data.fallMechanisms);
-    if (Array.isArray(data.fallMechanisms)) {
+    const hydrateMechList = Array.isArray(data.fallMechanisms)
+      ? data.fallMechanisms.map(m => (m === 'sports_twist' ? 'sports_injury' : m))
+      : [];
+    setChecks('fallMechanisms', hydrateMechList);
+    if (hydrateMechList.length > 0) {
       [
         ['ground_level_fall', 'fallMechGroundDetailContainer', 'fallMechGroundDetail', data.fallMechGroundDetail],
         ['stairs_fall', 'fallMechStairsDetailContainer', 'fallMechStairsDetail', data.fallMechStairsDetail],
         ['blunt_heavy_impact', 'fallMechBluntDetailContainer', 'fallMechBluntDetail', data.fallMechBluntDetail],
-        ['sports_twist', 'fallMechSportsDetailContainer', 'fallMechSportsDetail', data.fallMechSportsDetail],
+        ['sports_injury', 'fallMechSportsDetailContainer', 'fallMechSportsDetail', data.fallMechSportsDetail],
+        ['ankle_sprain', 'fallMechAnkleDetailContainer', 'fallMechAnkleDetail', data.fallMechAnkleDetail],
         ['other_mechanism', 'fallMechOtherDetailContainer', 'fallMechOtherDetail', data.fallMechOtherDetail]
       ].forEach(([k, c, inp, v]) => {
-        if (data.fallMechanisms.includes(k)) {
+        if (hydrateMechList.includes(k)) {
           toggleFallGroup(c, true);
           const el = document.getElementById(inp); if (el) el.value = v || '';
         }
       });
-      if (data.fallMechanisms.includes('height_fall')) {
+      if (hydrateMechList.includes('height_fall')) {
         toggleFallGroup('fallMechHeightContainer', true);
         setRadio('fallHeightLevel', data.fallHeightLevel);
         const el = document.getElementById('fallMechHeightDetail'); if (el) el.value = data.fallMechHeightDetail || '';
@@ -1637,6 +1598,11 @@ const fallTraumaModule = {
     }
 
     setRadio('fallProdrome', data.fallProdrome);
+    if (data.fallProdrome === 'has_prodrome') {
+      handleFallProdromeChange('has_prodrome');
+      const pdEl = document.getElementById('fallProdromeDetail');
+      if (pdEl) pdEl.value = data.fallProdromeDetail || '';
+    }
     setRadio('fallWoundStatus', data.fallWoundStatus);
 
     const hydrateSub = (key, id, cont, sidesName, sidesData) => {
@@ -1656,7 +1622,10 @@ const fallTraumaModule = {
       hydrateSub('fallHeadEye', 'fallHeadEye', 'fallHeadEyeSidesContainer', 'fallHeadEyeSides', data.fallHeadEyeSides);
       hydrateSub('fallHeadEar', 'fallHeadEar', 'fallHeadEarSidesContainer', 'fallHeadEarSides', data.fallHeadEarSides);
       hydrateSub('fallHeadNoseMouth', 'fallHeadNoseMouth', 'fallHeadNoseMouthSidesContainer', 'fallHeadNoseMouthSides', data.fallHeadNoseMouthSides);
-      setChecks('fallHeadSigns', data.fallHeadSigns);
+      const headSignsHydrate = Array.isArray(data.fallHeadSigns)
+        ? data.fallHeadSigns.flatMap(s => (s === 'jaw_malocclusion_broken_tooth' ? ['jaw_malocclusion', 'broken_loose_tooth'] : [s]))
+        : [];
+      setChecks('fallHeadSigns', headSignsHydrate);
     }
 
     if (data.fallParentNeck) {
@@ -1742,14 +1711,14 @@ const fallTraumaModule = {
     checkAndDisplayFallLmp(data);
     if (isFallFemalePatient(data)) {
       const lmpEl = document.getElementById('fallLmpDate'); if (lmpEl) lmpEl.value = data.fallLmpDate || '';
-      const pregEl = document.getElementById('fallPregnancyStatus'); if (pregEl) pregEl.value = data.fallPregnancyStatus || '';
+      setRadio('fallPregnancyStatus', data.fallPregnancyStatus);
     }
     const otherFreeEl = document.getElementById('fall_trauma_other_free');
     if (otherFreeEl) otherFreeEl.value = data.otherSymptomsFree || '';
   },
 
   clearForm: function() {
-    ['fallDurationVal', 'fallMechGroundDetail', 'fallMechStairsDetail', 'fallMechHeightDetail', 'fallMechBluntDetail', 'fallMechSportsDetail', 'fallMechOtherDetail', 'fallOtherLocationDetail', 'fallLmpDate', 'fall_trauma_other_free'].forEach(id => {
+    ['fallDurationVal', 'fallMechGroundDetail', 'fallMechStairsDetail', 'fallMechHeightDetail', 'fallMechBluntDetail', 'fallMechSportsDetail', 'fallMechAnkleDetail', 'fallMechOtherDetail', 'fallProdromeDetail', 'fallOtherLocationDetail', 'fallLmpDate', 'fall_trauma_other_free'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.value = '';
     });
@@ -1758,7 +1727,7 @@ const fallTraumaModule = {
     clearFallPainScore();
 
     [
-      'fallMechGroundDetailContainer', 'fallMechStairsDetailContainer', 'fallMechHeightContainer', 'fallMechBluntDetailContainer', 'fallMechSportsDetailContainer', 'fallMechOtherDetailContainer',
+      'fallMechGroundDetailContainer', 'fallMechStairsDetailContainer', 'fallMechHeightContainer', 'fallMechBluntDetailContainer', 'fallMechSportsDetailContainer', 'fallMechAnkleDetailContainer', 'fallMechOtherDetailContainer', 'fallProdromeDetailContainer',
       'fallHeadSubGroup', 'fallHeadScalpSidesContainer', 'fallHeadFaceSidesContainer', 'fallHeadEyeSidesContainer', 'fallHeadEarSidesContainer', 'fallHeadNoseMouthSidesContainer',
       'fallNeckSubGroup', 'fallNeckSpineSidesContainer', 'fallNeckFrontSidesContainer', 'fallNeckSideSidesContainer',
       'fallChestSubGroup', 'fallChestRibsSidesContainer', 'fallChestClavicleSidesContainer', 'fallChestUpperBackSidesContainer',
@@ -1770,7 +1739,6 @@ const fallTraumaModule = {
       if (el) el.classList.add('hidden');
     });
 
-    const pregEl = document.getElementById('fallPregnancyStatus'); if (pregEl) pregEl.value = '';
     document.querySelectorAll('#cc-fall-trauma-section input[type="radio"], #cc-fall-trauma-section input[type="checkbox"]').forEach(i => { i.checked = false; });
   },
 
@@ -1795,7 +1763,6 @@ const fallTraumaModule = {
   renderRapidHpi: renderFallRapidHpi,
   renderNarrative: renderFallNarrative,
   renderDoctorHpi: renderFallDoctorHpi,
-  generateCds: generateFallCds,
 
   // --- Seed Patients Registry ---
   seedPatients: [
@@ -1885,7 +1852,7 @@ const fallTraumaModule = {
       doctor_notes: { additional_hpi: '', physical_exam: '', preliminary_dx: '', plan: '' },
       vital_signs: { bt: 36.7, sbp: 116, dbp: 72, bp: '116/72', pr: 68, rr: 16, spo2: 99 },
       esi_level: 4,
-      fallMechanisms: ['sports_twist'], fallMechSportsDetail: 'ก้าวพลาดตกขอบฟุตบาทข้อเท้าขวาพลิก',
+      fallMechanisms: ['ankle_sprain'], fallMechAnkleDetail: 'ก้าวพลาดตกขอบฟุตบาทข้อเท้าขวาพลิก',
       fallProdrome: 'no_prodrome', fallWoundStatus: 'no_wound',
       fallParentHeadFace: false, fallParentNeck: false, fallParentChest: false, fallParentAbdomen: false, fallParentUpperExtremity: false,
       fallParentLowerExtremity: true, fallLegThigh: false, fallLegKneeShin: false, fallLegAnkleFoot: true, fallLegAnkleFootSides: ['right'], fallLegToes: false,
